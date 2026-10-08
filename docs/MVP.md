@@ -1,5 +1,12 @@
 # MVP: Scope and Acceptance
 
+## Current delivery boundary
+
+This document remains the native product acceptance contract. The local
+foundation in [status](STATUS.md) does not satisfy native docking, live IDE
+writes, dirty-editor handling, or real compiler acceptance. Portable component
+and synthetic upstream tests are supplementary evidence only.
+
 ## Goal
 
 An agent in a docked TwinCAT tool window answers project questions, uses

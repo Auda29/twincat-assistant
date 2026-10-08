@@ -1,5 +1,13 @@
 # Engineering Safety and Change Workflow
 
+## Implemented boundary
+
+The current launcher is read-only with default-deny tool and provider policies.
+The portable C# core implements proposal/apply/rollback validation against an
+injected adapter, but the diagnostic [pipe bridge](BRIDGE.md) exposes none of
+those mutations. No native adapter, real build or runtime action is connected.
+The rest of this document specifies the requirements for that future integration.
+
 ## MVP Safety Boundary
 
 The Assistant may inspect project code and make controlled changes. Builds are

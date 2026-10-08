@@ -1,7 +1,14 @@
-# Planning Documentation
+# Documentation
 
-As of October 8, 2026. These documents describe the agreed target state, not
-features that have already been implemented.
+The MVP documents describe the target product. [Status](STATUS.md) records the
+implemented local foundation and the still-open native acceptance gates.
+
+- [Installation and real local checks](INSTALLATION.md)
+- [OpenChamber extension](EXTENSION.md)
+- [Diagnostic bridge and portable safety core](BRIDGE.md)
+- [Native Windows acceptance](WINDOWS_ACCEPTANCE.md)
+- [Dependency audit and release blockers](SECURITY_AUDIT.md)
+- [Executed verification and review findings](VERIFICATION.md)
 
 | Document | Contents |
 | --- | --- |

@@ -7,10 +7,12 @@ a new chat interface nor a new agent harness will be built. TwinCAT-specific
 development focuses on the IDE host, the engineering bridge, and extensions to
 the existing monorepo MCP.
 
-The specific upstream revision and reuse approach — an existing distribution,
-a fork, or an integrated source revision — will be selected after the first
-embedding test. Initially, this repository contains planning only, with no
-vendored sources or submodules.
+The local foundation reuses lockfile-pinned npm distributions: OpenChamber
+`2.1.1` and OpenCode `2.0.23`. MCP source commits and setup are recorded in
+[installation](INSTALLATION.md). No upstream fork, source vendor tree or
+submodule is committed. The architecture diagram below is the target native
+product, not the current executable topology. Current code is the external
+operator CLI, read-only context extension and portable diagnostic bridge.
 
 ## Components
 
@@ -70,8 +72,8 @@ they are not a reinterpretation of ADS variable writes.
 
 ## Current Capabilities and Limitations
 
-Research baseline: October 8, 2026. The revisions actually used must be checked
-again and recorded before implementation.
+Implementation baseline and exact pins are recorded in [status](STATUS.md) and
+[installation](INSTALLATION.md). Portable tests do not close native IDE gates.
 
 | Component | Verified Capabilities | Limitation |
 | --- | --- | --- |
@@ -101,8 +103,9 @@ upstream diff view is not an MVP requirement.
 ## Communication Boundaries
 
 - Agent/MCP processes remain outside the IDE process.
-- The bridge should preferably use a local named pipe; the transport and message
-  contract will be selected during the feasibility test.
+- The implemented diagnostic bridge uses authenticated, current-user named
+  pipes with bounded NDJSON frames; see [protocol version 1](BRIDGE.md). It
+  exposes only read-only unavailable diagnostics, not native writes/builds.
 - Endpoints are restricted to the intended user. The connection also requires
   verified identity or session authentication.
 - WebView2 accepts only the intended local interface. Origins, navigation, and
@@ -132,9 +135,9 @@ it when configurations are changed.
 
 - Exact TwinCAT/TcXaeShell64 version and installed components.
 - Suitable classic Visual Studio SDK, .NET, and WebView2 versions.
-- Compatible, recorded OpenChamber/OpenCode revisions and an update strategy.
-- Upstream reuse approach and repository layout, avoiding unnecessary duplication.
-- Concrete bridge contract, authentication, and approval binding.
+- An upstream upgrade strategy beyond the currently tested distribution pins.
+- Native host integration of the implemented diagnostic bridge and portable
+  approval contracts; no operator approval/write endpoint is currently exposed.
 - Unambiguous object identity and reliable dirty-state/revision checks.
 - Build, diagnostic, and persistence behavior in the selected shell.
 - A demonstrable rollback workflow without assuming universal IDE undo support.
