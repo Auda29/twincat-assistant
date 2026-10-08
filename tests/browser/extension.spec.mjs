@@ -128,6 +128,8 @@ test('pending attach ignores a success for a switched context and permits one re
 
   await setDirectory(page, '/projects/two');
   await setSession(page, { id: 'session-two', title: 'Second session', busy: false });
+  await expect(guest.locator('#binding')).toHaveText('Verified (/projects/two::session-two)');
+  await expect.poll(() => page.evaluate(() => window.__host.pendingAttachResults.length)).toBe(1);
   await page.evaluate(() => window.__releaseAttach());
   await expect(guest.locator('#operation')).toHaveText('Context changed; reattach the current context.');
   await expect(guest.locator('#host-error')).toHaveText('');
@@ -143,9 +145,12 @@ test('pending attach ignores an error for a switched context', async ({ page }) 
   await page.evaluate(() => window.__setMode('delay-fail'));
   const guest = page.frameLocator('#guest');
   await guest.locator('#attach').click();
+  await expect.poll(() => page.evaluate(() => window.__host.pendingAttachResults.length)).toBe(1);
 
   await setDirectory(page, '/projects/two');
   await setSession(page, { id: 'session-two', title: 'Second session', busy: false });
+  await expect(guest.locator('#binding')).toHaveText('Verified (/projects/two::session-two)');
+  await expect.poll(() => page.evaluate(() => window.__host.pendingAttachResults.length)).toBe(1);
   await page.evaluate(() => window.__releaseAttach());
   await expect(guest.locator('#operation')).toHaveText('Context changed; reattach the current context.');
   await expect(guest.locator('#host-error')).toHaveText('');
@@ -163,6 +168,7 @@ test('disposed panel does not render a late attach result', async ({ page }) => 
   await guest.locator('#attach').click();
   await expect(guest.locator('#operation')).toHaveText('Attaching verified context…');
 
+  await expect.poll(() => page.evaluate(() => window.__host.pendingAttachResults.length)).toBe(1);
   await page.frames()[1].evaluate(() => window.dispatchEvent(new Event('pagehide')));
   await page.evaluate(() => window.__releaseAttach());
   await expect(guest.locator('#operation')).toHaveText('Attaching verified context…');
