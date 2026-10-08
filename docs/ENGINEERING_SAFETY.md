@@ -1,114 +1,110 @@
-# Engineering-Sicherheit und Änderungsablauf
+# Engineering Safety and Change Workflow
 
-## Sicherheitsgrenze des MVP
+## MVP Safety Boundary
 
-Der Assistant darf Projektcode untersuchen und kontrolliert ändern. Ein Build
-ist erlaubt, aber kein implizites Deployment. Der MVP bietet keine Tools für
-Download, Online Change, Aktivierung, Login/Logout, Start/Stop oder Forcing.
-Runtime-Diagnose bleibt optional und lesend.
+The Assistant may inspect project code and make controlled changes. Builds are
+allowed, but must not implicitly deploy anything. The MVP offers no tools for
+downloads, online changes, activation, login/logout, start/stop, or forcing.
+Runtime diagnostics remain optional and read-only.
 
-Die Freigabe muss in der ausführenden Bridge beziehungsweise dem Engineering-
-Backend geprüft werden. Tool-Anmerkungen, Agent-Anweisungen oder ein ausgeblendeter
-UI-Schalter ersetzen diese Prüfung nicht.
+Approval must be validated by the executing bridge or engineering backend.
+Tool annotations, agent instructions, or a hidden UI toggle do not replace
+this validation.
 
-## Projekt- und Objektbindung
+## Project and Object Binding
 
-Ein Auftrag wird an die konkrete IDE-Instanz, Solution, PLC-Projekt und das
-Zielobjekt gebunden. Die fachliche Identität darf nicht nur aus einem Anzeigenamen
-bestehen. Projektwechsel, Objektlöschung und verlorene Verbindung invalidieren
-ausstehende Freigaben.
+A request is bound to the specific IDE instance, solution, PLC project, and
+target object. Domain identity must not consist solely of a display name.
+Project switching, object deletion, and connection loss invalidate pending
+approvals.
 
-Eine OpenCode-Session-ID kann zur Korrelation dienen, ist für sich genommen aber
-kein Authentisierungsnachweis und keine Schreibberechtigung.
+An OpenCode session ID may be used for correlation, but by itself it is neither
+proof of authentication nor permission to write.
 
-## Lesen und ungespeicherte Änderungen
+## Reads and Unsaved Changes
 
-Ergebnisse kennzeichnen, ob sie aus gespeicherten Dateien oder aus dem Live-
-Engineering-Modell stammen. Beide Stände dürfen nicht unbemerkt vermischt werden.
+Results indicate whether they come from saved files or the live engineering
+model. These states must not be mixed without making the distinction visible.
 
-Im MVP wird ein ungespeichertes Zielobjekt nicht bearbeitet. Der Benutzer muss
-seinen Stand ausdrücklich speichern und der Agent anschließend neu lesen.
-Ist Dirty-Erkennung nicht zuverlässig verfügbar, bleibt der Schreibpfad
-deaktiviert. Das Plugin speichert nicht pauschal die gesamte Solution.
+The MVP does not modify an unsaved target object. The user must explicitly save
+their state, after which the agent must read it again. If reliable dirty-state
+detection is unavailable, the write path remains disabled. The plugin does not
+indiscriminately save the entire solution.
 
-## Änderungsablauf
+## Change Workflow
 
-1. Erlaubtes Zielobjekt und ST-Sprache prüfen.
-2. Ausgangsstand und Dirty-Status erfassen.
-3. Vorschlag erstellen und einen Diff für Deklaration/Implementierung anzeigen.
-4. Freigabe an genau Ziel, Ausgangsrevision und vorgeschlagenen Inhalt binden.
-5. Unmittelbar vor der Übernahme Objektstand und Freigabe erneut prüfen.
-6. Den eigenen Ausgangsstand lokal sichern und Änderungen serialisiert ausführen.
-7. Tatsächlichen Nachher-Stand lesen und Ausgang protokollieren.
-8. Den zugehörigen, freigegebenen Build-Ablauf ausführen und Ergebnis berichten.
+1. Validate the allowed target object and ST language.
+2. Capture the baseline state and dirty state.
+3. Create a proposal and display a declaration/implementation diff.
+4. Bind approval to the exact target, baseline revision, and proposed content.
+5. Recheck the object state and approval immediately before applying the change.
+6. Back up the baseline locally and execute changes serially.
+7. Read the actual post-change state and log the outcome.
+8. Execute the associated approved build workflow and report its result.
 
-Ein Hash oder Revisionsvergleich muss genau den zuvor gelesenen, relevanten
-Objektstand abdecken. Eine Freigabe darf nicht für einen anderen Vorschlag
-wiederverwendet werden.
+A hash or revision comparison must cover the exact relevant object state that
+was previously read. An approval must not be reused for a different proposal.
 
-## Teilfehler und unbekannter Ausgang
+## Partial Failures and Unknown Outcomes
 
-Deklaration und Implementierung können getrennte API-Aufrufe erfordern. Es wird
-keine atomare TwinCAT-Transaktion vorausgesetzt. Bei einem Teilfehler müssen
-bereits ausgeführte Schritte, beobachteter Zustand und mögliche Wiederherstellung
-sichtbar sein.
+The declaration and implementation may require separate API calls. No atomic
+TwinCAT transaction is assumed. In a partial failure, completed steps, the
+observed state, and possible recovery must be visible.
 
-Ein Timeout oder Verbindungsabbruch kann nach einer tatsächlich ausgeführten
-Änderung eintreten. In diesem Fall lautet der Status zunächst „Ausgang unbekannt“.
-Erst eine erneute Zustandsprüfung darf Erfolg, Fehler oder Teiländerung bestätigen.
-Der Assistant wiederholt einen solchen Schreibauftrag nicht blind.
+A timeout or disconnection may occur after a change has actually been applied.
+In that case, the initial status is "outcome unknown." Only a fresh state check
+may confirm success, failure, or a partial change. The Assistant does not blindly
+retry such a write request.
 
-Abbrechen beendet weitere Agent-Schritte, garantiert aber nicht die Rücknahme
-eines bereits gestarteten COM-Aufrufs oder Builds. Diese Grenze wird im Thread
-sichtbar gemacht.
+Cancellation stops further agent steps, but does not guarantee rollback of an
+already started COM call or build. This limitation is made visible in the thread.
 
-## Build und Diagnosen
+## Builds and Diagnostics
 
-- Build ist nicht Aktivierung oder Download.
-- Projekt, Konfiguration und Ziel müssen nachvollziehbar ausgewählt sein.
-- Erfolg wird aus einem echten Build-Abschluss ermittelt, nicht aus dem Fehlen
-  zufälliger Meldungen in der Fehlerliste.
-- Diagnosen werden einem aktuellen Build zugeordnet. Alte IDE-Meldungen dürfen
-  keinen erfolgreichen oder fehlgeschlagenen Lauf vortäuschen.
-- Falls benutzerdefinierte Build-Hooks beliebige externe Aktionen ausführen
-  können, muss dies vor dem ersten Build geprüft und als Vertrauensgrenze
-  offengelegt werden; „Build“ ist keine universelle Sandbox.
-- Ein erfolgreicher Compilerlauf ist kein Verhaltenstest und keine Freigabe
-  für Maschinenbetrieb.
+- A build is not activation or a download.
+- Project, configuration, and target selection must be traceable.
+- Success is determined from an actual build completion, not from the absence
+  of arbitrary messages in the error list.
+- Diagnostics are associated with the current build. Old IDE messages must not
+  falsely imply that a run succeeded or failed.
+- If custom build hooks can execute arbitrary external actions, this must be
+  checked before the first build and disclosed as a trust boundary; a "build"
+  is not a universal sandbox.
+- A successful compiler run is neither a behavior test nor authorization to
+  operate a machine.
 
-## Rücknahme
+## Rollback
 
-Eigene Vorher-/Nachher-Stände werden lokal gespeichert. Zurücknehmen ist nur
-zulässig, wenn der aktuelle Stand dem eigenen Nachher-Stand entspricht. Neuere
-Benutzeränderungen blockieren die automatische Wiederherstellung.
+The agent's before/after states are stored locally. Rollback is allowed only if
+the current state matches the agent's post-change state. Newer user changes
+block automatic restoration.
 
-Es werden weder ein globaler Git-Reset noch pauschales Verwerfen von IDE-
-Änderungen verwendet. Die Verfügbarkeit nativer Undo-Integration wird separat
-geprüft; sie wird nicht vorausgesetzt.
+Neither a global Git reset nor indiscriminate discarding of IDE changes is used.
+Native undo integration is evaluated separately; its availability is not assumed.
 
-## Umgehungspfade und lokale Kommunikation
+## Bypass Paths and Local Communication
 
-- Allgemeine Datei-Schreib- und Shelltools müssen im Engineering-Agent-Profil
-  so eingeschränkt sein, dass sie die geschützten TwinCAT-Artefakte und Runtime-
-  Aktionen nicht ohne den vorgesehenen Ablauf verändern können.
-- Bei einem frei zugänglichen Shelltool wäre eine reine Pfad-Allowlist kein
-  ausreichender Schutz. Solche Zugriffe bleiben im MVP gesperrt oder benötigen
-  ein separat geprüftes Ausführungsmodell.
-- Die IDE-Bridge bietet keine beliebigen COM-Aufrufe oder Shellbefehle an.
-- Lokale Endpunkte benötigen geeignete Zugriffskontrolle und Authentisierung;
-  „localhost“ allein ist kein Berechtigungsnachweis.
-- WebView2-Herkunft, Navigation und Nachrichtenparameter werden validiert.
-  Externe Dokumentationslinks erhalten keinen Zugang zur Host-Bridge.
+- General file-write and shell tools must be restricted in the engineering agent
+  profile so they cannot modify protected TwinCAT artifacts or perform runtime
+  actions outside the intended workflow.
+- An unrestricted shell tool would make a path allowlist insufficient protection.
+  Such access remains disabled in the MVP or requires a separately validated
+  execution model.
+- The IDE bridge exposes no arbitrary COM calls or shell commands.
+- Local endpoints require appropriate access control and authentication;
+  "localhost" alone is not proof of authorization.
+- WebView2 origins, navigation, and message parameters are validated. External
+  documentation links receive no access to the host bridge.
 
-Diese Regeln sind Anwendungskontrollen, keine Behauptung einer vollständigen
-OS-Sandbox gegenüber beliebigem Code mit den Rechten des angemeldeten Benutzers.
+These rules are application-level controls, not a claim of a complete OS sandbox
+against arbitrary code running with the signed-in user's permissions.
 
-## Daten und Protokollierung
+## Data and Logging
 
-Quellcode kann über den gewählten Modellanbieter das lokale System verlassen.
-Provider, Datenfluss und Freigabe durch den Betreiber müssen sichtbar sein.
+Source code may leave the local system through the selected model provider.
+The provider, data flow, and operator approval must be visible.
 
-Reale Projekte, Dokumentationscorpus, Sitzungsdaten, Tokens und Änderungsbackups
-werden nicht in dieses Repository eingecheckt. Diagnoselogs müssen sensible
-Inhalte berücksichtigen und für eine Weitergabe bereinigt werden. Aufbewahrung
-und lokale Speicherorte werden vor der produktiven Nutzung festgelegt.
+Real projects, documentation corpora, session data, tokens, and change backups
+are not checked into this repository. Diagnostic logs must account for sensitive
+content and be sanitized before sharing. Retention and local storage locations
+will be defined before production use.

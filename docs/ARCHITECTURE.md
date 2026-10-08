@@ -1,157 +1,156 @@
-# Architektur und Integrationsgrenzen
+# Architecture and Integration Boundaries
 
-## Grundentscheidung
+## Core Decision
 
-OpenChamber und OpenCode werden als zusammengehörige Grundlage wiederverwendet.
-Es soll zunächst weder ein neuer Chat noch ein neues Agent-Harness entstehen.
-Die TwinCAT-spezifische Arbeit liegt im IDE-Host, in der Engineering-Bridge und
-in der Erweiterung des bestehenden Monorepo-MCPs.
+OpenChamber and OpenCode are reused together as the foundation. Initially, neither
+a new chat interface nor a new agent harness will be built. TwinCAT-specific
+development focuses on the IDE host, the engineering bridge, and extensions to
+the existing monorepo MCP.
 
-Der konkrete Upstream-Stand und die Form der Wiederverwendung — bestehende
-Distribution, Fork oder eingebundener Quellstand — werden nach dem ersten
-Einbettungstest festgelegt. Dieses Repository enthält zunächst nur Planung,
-keine vendorten Quellen und keine Submodule.
+The specific upstream revision and reuse approach — an existing distribution,
+a fork, or an integrated source revision — will be selected after the first
+embedding test. Initially, this repository contains planning only, with no
+vendored sources or submodules.
 
-## Komponenten
+## Components
 
 ```text
-TwinCAT-Shell / Visual Studio
+TwinCAT shell / Visual Studio
 |
-+-- C#-Plugin
-|   +-- WPF-Toolwindow mit WebView2
-|       +-- OpenChamber-Weboberfläche
++-- C# plugin
+|   +-- WPF tool window with WebView2
+|       +-- OpenChamber web interface
 |
-+-- IDE-Bridge
-    +-- Solution-/Projektbindung und Objektkontext
-    +-- kontrolliertes Lesen und Schreiben von PLC-Objekten
-    +-- Build-Ausführung und Diagnoseerfassung
++-- IDE bridge
+    +-- Solution/project binding and object context
+    +-- Controlled reads and writes of PLC objects
+    +-- Build execution and diagnostic collection
                  ^
-                 | lokale, authentisierte Verbindung
+                 | Local, authenticated connection
                  v
-OpenChamber + OpenCode außerhalb der IDE
-+-- Sitzungen, Modellzugriff, Streaming und Agent-Ausführung
+OpenChamber + OpenCode outside the IDE
++-- Sessions, model access, streaming, and agent execution
 +-- twincat-knowledge-mcp
 +-- twincat-mcp-mono
-    +-- gespeicherte Projektdateien und ADS-Diagnose
-    +-- neues Live-Engineering-Backend -> IDE-Bridge
+    +-- Saved project files and ADS diagnostics
+    +-- New live engineering backend -> IDE bridge
 ```
 
-## Zuständigkeiten
+## Responsibilities
 
-### IDE-Plugin und Bridge
+### IDE Plugin and Bridge
 
-- Toolwindow bereitstellen; WebView2 und IDE-Lebenszyklus verwalten.
-- Die konkrete IDE-Instanz, Solution und das Zielprojekt eindeutig identifizieren.
-- DTE und TwinCAT Automation Interface nur in einem geeigneten IDE-/COM-
-  Threading-Kontext aufrufen; keine UI-Thread-Blockierung durch Modellaufrufe.
-- Zielobjekt, Dirty-Status, Ausgangsrevision und Freigabe prüfen.
-- Deklaration und ST-Implementierung lesen und kontrolliert ändern.
-- Build-Abschluss und zugehörige Diagnosen erfassen.
-- Zustandsänderungen und unbekannte Ausgänge an das Backend melden.
+- Provide the tool window and manage WebView2 and the IDE lifecycle.
+- Unambiguously identify the specific IDE instance, solution, and target project.
+- Call DTE and the TwinCAT Automation Interface only in an appropriate IDE/COM
+  threading context; model calls must not block the UI thread.
+- Validate the target object, dirty state, baseline revision, and approval.
+- Read and make controlled changes to declarations and ST implementations.
+- Capture build completion and associated diagnostics.
+- Report state changes and unknown outcomes to the backend.
 
-### OpenChamber und OpenCode
+### OpenChamber and OpenCode
 
-- OpenChamber übernimmt die vertraute Thread-, Aktivitäts- und Review-Oberfläche.
-- OpenCode übernimmt Agent-Ausführung, Modellzugriff und MCP-Client-Funktionen.
-- Der Agent entscheidet, welche Lese-Tools für die Frage erforderlich sind.
-- Schreib- und Build-Aktionen müssen den Engineering-Freigabeablauf respektieren.
-- Allgemeine Werkzeuge dürfen keine unkontrollierten Umgehungspfade eröffnen.
+- OpenChamber provides the familiar thread, activity, and review interface.
+- OpenCode provides agent execution, model access, and MCP client capabilities.
+- The agent decides which read tools are needed to answer a question.
+- Write and build actions must respect the engineering approval workflow.
+- General-purpose tools must not create uncontrolled bypass paths.
 
-### Bestehende MCPs
+### Existing MCPs
 
-`twincat-knowledge-mcp` bleibt eine lesende Dokumentationsschnittstelle. Der
-Betreiber stellt einen autorisierten, validierten lokalen Corpus bereit; ohne
-diesen bleibt Dokumentationswissen nicht verfügbar.
+`twincat-knowledge-mcp` remains a read-only documentation interface. The operator
+provides an authorized, validated local corpus; without it, documentation
+knowledge remains unavailable.
 
-`twincat-mcp-mono` behält seine Core-/Adapter-Aufteilung. Ein neues Backend bindet
-die laufende IDE an. Bestehende Lese- und Build-Verträge sollen soweit fachlich
-passend erhalten bleiben. Engineering-Schreiboperationen benötigen zusätzliche,
-explizite Verträge; sie sind keine Umdeutung von ADS-Variablenschreibzugriffen.
+`twincat-mcp-mono` retains its core/adapter separation. A new backend connects to
+the running IDE. Existing read and build contracts should be preserved wherever
+they fit the domain. Engineering writes require additional, explicit contracts;
+they are not a reinterpretation of ADS variable writes.
 
-## Aktueller Bestand und Grenzen
+## Current Capabilities and Limitations
 
-Recherchebasis: 8. Oktober 2026. Die tatsächlich eingesetzten Revisionen müssen
-vor der Implementierung erneut geprüft und festgehalten werden.
+Research baseline: October 8, 2026. The revisions actually used must be checked
+again and recorded before implementation.
 
-| Bestandteil | Nachgewiesener Bestand | Grenze |
+| Component | Verified Capabilities | Limitation |
 | --- | --- | --- |
-| Knowledge-MCP | Vier Tools, lokale Pakete/Snapshots, Suche und Topic-/Hierarchieabruf | Kein Corpus gebündelt; keine Engineering- oder Runtime-Steuerung |
-| Monorepo-MCP | Gespeicherte Projektanalyse und ADS-Diagnose | Kein implementierter Live-Engineering-Schreibbackend |
-| Build-Tools im Monorepo | Registrierte Toolverträge | Dateibackend meldet Build-/Compilerdiagnosen als nicht verfügbar |
-| OpenChamber | Turn-basierte Threads und Extension-SDK | Kein fertiger TwinCAT-Host; enge Kopplung an OpenCode |
-| Automation Interface | Dokumentierte PLC-Lese-/Schreibschnittstellen | Verhalten mit ungespeicherten Editoren, Undo und konkreten Versionen praktisch prüfen |
+| Knowledge MCP | Four tools, local packages/snapshots, search, and topic/hierarchy retrieval | No bundled corpus; no engineering or runtime control |
+| Monorepo MCP | Saved project analysis and ADS diagnostics | No implemented live engineering write backend |
+| Monorepo build tools | Registered tool contracts | The file backend reports build/compiler diagnostics as unavailable |
+| OpenChamber | Turn-based threads and extension SDK | No ready-made TwinCAT host; tightly coupled to OpenCode |
+| Automation Interface | Documented PLC read/write interfaces | Unsaved editor behavior, undo, and specific versions require practical validation |
 
-## Oberflächenstrategie
+## Interface Strategy
 
-1. Zunächst die lokale OpenChamber-Weboberfläche in WebView2 anzeigen.
-2. Projektkontext, Navigation und Tooldarstellungen ergänzen.
-3. Das OpenChamber-Extension-SDK verwenden, wo es ausreicht.
-4. Erst bei nachgewiesenem Bedarf einen stärker angepassten Frontend-Host bauen.
+1. First, display the local OpenChamber web interface in WebView2.
+2. Add project context, navigation, and tool presentations.
+3. Use the OpenChamber extension SDK wherever it is sufficient.
+4. Build a more customized frontend host only when a demonstrated need arises.
 
-Die VS-Code-Erweiterung ist eine Architekturvorlage, aber keine in Visual Studio
-installierbare Erweiterung. Das OpenChamber-Extension-SDK unterstützt laut
-Recherche Web und Desktop; eine Nutzung in der eingebetteten Weboberfläche ist
-praktisch zu validieren.
+The VS Code extension is an architectural reference, not an extension that can
+be installed in Visual Studio. According to the research, the OpenChamber
+extension SDK supports web and desktop; its use in the embedded web interface
+requires practical validation.
 
-MCP-basierte Objektänderungen sind nicht automatisch normale OpenCode-Dateipatches.
-POU-Diffs, Änderungsprotokolle und Rücknahme brauchen eine explizite Integration.
-Die erste Darstellung kann ein eigenes Review-Panel sein; eine tiefe Integration
-in sämtliche Upstream-Diffansichten ist keine MVP-Voraussetzung.
+MCP-based object changes are not automatically ordinary OpenCode file patches.
+POU diffs, change logs, and rollback require explicit integration. The initial
+presentation may use a dedicated review panel; deep integration into every
+upstream diff view is not an MVP requirement.
 
-## Kommunikationsgrenzen
+## Communication Boundaries
 
-- Agent-/MCP-Prozesse bleiben außerhalb des IDE-Prozesses.
-- Die Bridge soll vorzugsweise eine lokale Named Pipe verwenden; Transport und
-  Nachrichtenvertrag werden im Machbarkeitstest festgelegt.
-- Endpunkte werden auf den vorgesehenen Benutzer begrenzt. Zusätzlich braucht
-  die Verbindung eine geprüfte Identität beziehungsweise Sitzungsauthentisierung.
-- WebView2 akzeptiert nur die vorgesehene lokale Oberfläche. Herkunft,
-  Navigation und Nachrichten werden geprüft; keine generische COM- oder
-  Shellschnittstelle für Webinhalte.
-- Die Kopplung muss IDE-Schließen, Solution-Wechsel, mehrere IDE-Instanzen und
-  abgestürzte Hilfsprozesse ausdrücklich behandeln.
-- Solution, PLC-Projekt und optionales ADS-Ziel sind getrennte Identitäten.
-  Gleiche Namen beweisen keine Übereinstimmung von Source und Runtime.
+- Agent/MCP processes remain outside the IDE process.
+- The bridge should preferably use a local named pipe; the transport and message
+  contract will be selected during the feasibility test.
+- Endpoints are restricted to the intended user. The connection also requires
+  verified identity or session authentication.
+- WebView2 accepts only the intended local interface. Origins, navigation, and
+  messages are validated; web content receives no generic COM or shell interface.
+- The integration must explicitly handle IDE shutdown, solution changes,
+  multiple IDE instances, and crashed helper processes.
+- The solution, PLC project, and optional ADS target have separate identities.
+  Matching names do not prove that source code and runtime correspond.
 
-## MCP-Kompatibilität
+## MCP Compatibility
 
-Das Knowledge-MCP verwendet laut aktuellem Adapter das Profil `2026-07-28` und
-liefert Dokumentationsinhalt in `structuredContent`, während der Textblock eine
-kurze Statuszusammenfassung enthält.
+According to its current adapter, the knowledge MCP uses the `2026-07-28` profile
+and returns documentation content in `structuredContent`, while the text block
+contains a short status summary.
 
-Die aktuelle OpenCode-V2-Dokumentation beschreibt `legacy` als Standard und
-unterstützt `auto` beziehungsweise `2026-07-28` als serverspezifische Auswahl.
-Der Knowledge-Server braucht deshalb eine bewusst passende Protokolleinstellung.
-Die Auswahl wird nicht ungeprüft auf den Monorepo-Server übertragen.
+The current OpenCode V2 documentation describes `legacy` as the default and
+supports `auto` or `2026-07-28` as server-specific selections. The knowledge
+server therefore needs a deliberately compatible protocol setting. That
+selection must not be applied to the monorepo server without validation.
 
-Verbindung und Toolkatalog allein reichen nicht: Ein echter Such-/Topic-Aufruf
-muss den Dokumentationsinhalt bis in den Modellkontext transportieren. Die
-MCP-Konfigurationsoberfläche von OpenChamber muss die benötigte Einstellung
-erhalten, statt sie bei Änderungen zu verlieren.
+Connection and tool discovery alone are insufficient: a real search/topic call
+must deliver documentation content into the model context. OpenChamber's MCP
+configuration interface must preserve the required setting rather than losing
+it when configurations are changed.
 
-## Offene Entscheidungen
+## Open Decisions
 
-- Exakte TwinCAT-/TcXaeShell64-Version und installierte Komponenten.
-- Passender klassischer Visual-Studio-SDK-, .NET- und WebView2-Stand.
-- Kompatible, festgehaltene OpenChamber-/OpenCode-Revisionen und Update-Strategie.
-- Form und Ablage der Upstream-Wiederverwendung; kein unnötiges Duplizieren.
-- Konkreter Bridge-Vertrag, Authentisierung und Freigabezuordnung.
-- Eindeutige Objektidentität und zuverlässige Dirty-/Revisionsprüfung.
-- Verhalten von Build, Diagnosen und Persistenz in der gewählten Shell.
-- Nachweisbarer Rücknahmeablauf ohne Annahme eines universellen IDE-Undo.
-- Eigene Softwarelizenz und spätere Distribution.
+- Exact TwinCAT/TcXaeShell64 version and installed components.
+- Suitable classic Visual Studio SDK, .NET, and WebView2 versions.
+- Compatible, recorded OpenChamber/OpenCode revisions and an update strategy.
+- Upstream reuse approach and repository layout, avoiding unnecessary duplication.
+- Concrete bridge contract, authentication, and approval binding.
+- Unambiguous object identity and reliable dirty-state/revision checks.
+- Build, diagnostic, and persistence behavior in the selected shell.
+- A demonstrable rollback workflow without assuming universal IDE undo support.
+- This project's software license and future distribution.
 
-## Quellen
+## Sources
 
 - [OpenChamber](https://github.com/openchamber/openchamber)
-- [OpenChamber Extension-SDK](https://github.com/openchamber/openchamber/blob/main/packages/sdk/README.md)
-- [OpenChamber Turn-Projektion, geprüfter Stand](https://github.com/openchamber/openchamber/blob/866dffd863c98a25aa6577e90cca46b01a66237e/packages/ui/src/components/chat/lib/turns/projectTurnRecords.ts)
-- [Monorepo EngineeringService, geprüfter Stand](https://github.com/Auda29/twincat-mcp-mono/blob/3c303837e6d6f72bec1b9d38e778a7c32c61ae5c/packages/core/src/engineering.ts)
-- [Monorepo Engineering-Backend-Dokumentation](https://github.com/Auda29/twincat-mcp-mono/blob/main/docs/engineering-backends.md)
-- [Knowledge-MCP Adaptervertrag](https://github.com/Auda29/twincat-knowledge-mcp/blob/main/docs/implementation/topic-mcp-adapter.md)
-- [OpenCode V2 MCP und Protokollauswahl](https://opencode.ai/v2/docs/mcp-servers)
+- [OpenChamber extension SDK](https://github.com/openchamber/openchamber/blob/main/packages/sdk/README.md)
+- [OpenChamber turn projection, reviewed revision](https://github.com/openchamber/openchamber/blob/866dffd863c98a25aa6577e90cca46b01a66237e/packages/ui/src/components/chat/lib/turns/projectTurnRecords.ts)
+- [Monorepo EngineeringService, reviewed revision](https://github.com/Auda29/twincat-mcp-mono/blob/3c303837e6d6f72bec1b9d38e778a7c32c61ae5c/packages/core/src/engineering.ts)
+- [Monorepo engineering backend documentation](https://github.com/Auda29/twincat-mcp-mono/blob/main/docs/engineering-backends.md)
+- [Knowledge MCP adapter contract](https://github.com/Auda29/twincat-knowledge-mcp/blob/main/docs/implementation/topic-mcp-adapter.md)
+- [OpenCode V2 MCP and protocol selection](https://opencode.ai/v2/docs/mcp-servers)
 - [Beckhoff: Automation Interface API](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/21905744267.html)
-- [Beckhoff: Anschluss an laufende IDE über DTE](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/21842572555.html)
-- [Microsoft: Toolwindow-Erweiterung](https://learn.microsoft.com/en-us/visualstudio/extensibility/creating-an-extension-with-a-tool-window?view=vs-2022)
-- [Microsoft: Kommunikation mit WebView2](https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/communicate-btwn-web-native)
-- [Microsoft: WebView2-Sicherheit](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/security)
+- [Beckhoff: connecting to a running IDE through DTE](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/21842572555.html)
+- [Microsoft: tool window extension](https://learn.microsoft.com/en-us/visualstudio/extensibility/creating-an-extension-with-a-tool-window?view=vs-2022)
+- [Microsoft: WebView2 communication](https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/communicate-btwn-web-native)
+- [Microsoft: WebView2 security](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/security)

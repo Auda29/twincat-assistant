@@ -1,106 +1,105 @@
-# Umsetzungsplan
+# Implementation Roadmap
 
-Alle Implementierungsmeilensteine sind offen. Es werden noch keine Termine oder
-Aufwandsschätzungen zugesichert. Die Reihenfolge reduziert zuerst die Risiken
-der Shell-Einbettung und des Engineering-Zugriffs.
+All implementation milestones remain open. No delivery dates or effort estimates
+are committed yet. The sequence first reduces the risks of shell embedding and
+engineering access.
 
-## M0: Repository und Zielumgebung
+## M0: Repository and Target Environment
 
-**Ergebnis:** Klare Ausgangsbasis ohne bereits behauptete Produktfunktionen.
+**Outcome:** A clear baseline without claiming already implemented product features.
 
-- [x] Privates Repository vorbereiten und MVP-/Architekturplan ablegen.
-- [ ] Konkrete TwinCAT-, TcXaeShell64- und Windows-Version erfassen.
-- [ ] Installierte Automation-Interface-, SDK- und WebView2-Komponenten prüfen.
-- [ ] Bestehende MCP-Installationen und verfügbaren Dokumentationscorpus erfassen.
-- [ ] Geeignetes synthetisches ST-Testprojekt und manuelle Prüffälle festlegen.
-- [ ] Upstream-Versionen und Lizenzen der übernommenen Komponenten festhalten.
+- [x] Prepare a private repository and add the MVP and architecture plans.
+- [ ] Record the specific TwinCAT, TcXaeShell64, and Windows versions.
+- [ ] Check installed Automation Interface, SDK, and WebView2 components.
+- [ ] Record existing MCP installations and the available documentation corpus.
+- [ ] Define a suitable synthetic ST test project and manual test cases.
+- [ ] Record upstream versions and licenses of reused components.
 
-Reale Kunden-/Maschinenprojekte, Corpus-Daten, Zugangsdaten und Benutzerzustand
-bleiben außerhalb des Repositorys.
+Real customer/machine projects, corpus data, credentials, and user state remain
+outside the repository.
 
-## M1: Technische Machbarkeit in der Shell
+## M1: Technical Feasibility in the Shell
 
-**Ergebnis:** Die zwei größten Integrationsrisiken sind praktisch überprüft.
+**Outcome:** The two largest integration risks have been validated in practice.
 
-- [ ] Minimales klassisches C#-Toolwindow im gewählten Shell-Host installieren.
-- [ ] Lokale OpenChamber-Weboberfläche mit WebView2 laden.
-- [ ] Docking, Tastaturfokus, Größenänderung und Toolwindow-Neustart testen.
-- [ ] Über die aktuelle IDE-Instanz das richtige PLC-Projekt und einen
-  bestehenden ST-Baustein ermitteln.
-- [ ] Deklaration und Implementierung lesen; Verhalten ungespeicherter Editor-
-  Änderungen und Dirty-Erkennung untersuchen.
-- [ ] Auf einem synthetischen Testprojekt eine ausdrücklich freigegebene
-  Änderung über die Bridge ausführen und einen echten Build auswerten.
-- [ ] Prüfen, ob die eigene Änderung kontrolliert wiederherstellbar ist.
+- [ ] Install a minimal classic C# tool window in the selected shell host.
+- [ ] Load the local OpenChamber web interface using WebView2.
+- [ ] Test docking, keyboard focus, resizing, and tool window restart.
+- [ ] Identify the correct PLC project and an existing ST block through the
+  current IDE instance.
+- [ ] Read the declaration and implementation; investigate unsaved editor
+  changes and dirty-state detection.
+- [ ] Apply an explicitly approved change through the bridge on a synthetic
+  test project and evaluate a real build.
+- [ ] Check whether the agent's change can be restored in a controlled manner.
 
-Die Schreibprobe ist ein isolierter, manuell freigegebener Integrationstest,
-noch keine Freigabe für allgemeine Agent-Schreiboperationen. Vorher-/Nachher-
-Stände werden gesichert. Keine Verbindung zu einer Produktionsruntime.
+The write test is an isolated, manually approved integration test, not approval
+for general agent writes. Before/after states are backed up. There is no
+connection to a production runtime.
 
-Bei fehlender zuverlässiger Dirty-Erkennung oder Konfliktkontrolle bleibt das
-Agent-Schreiben deaktiviert. Eine funktionierende Chatansicht allein erfüllt
-den vereinbarten MVP nicht. Ein möglicher Ausweichhost wird ausdrücklich
-entschieden, nicht stillschweigend als Shell-Kompatibilität dargestellt.
+If reliable dirty-state detection or conflict control is unavailable, agent
+writes remain disabled. A working chat view alone does not satisfy the agreed
+MVP. Any fallback host requires an explicit decision and must not silently be
+presented as shell compatibility.
 
-## M2: Projektgebundener Chat und beide MCPs
+## M2: Project-Bound Chat and Both MCPs
 
-**Ergebnis:** Ein nutzbarer, zunächst lesender Assistant in der IDE.
+**Outcome:** A usable, initially read-only Assistant inside the IDE.
 
-- [ ] Lokalen Agent-Unterbau starten oder mit einer kompatiblen laufenden
-  Instanz verbinden; keine unbeabsichtigten Doppelstarts.
-- [ ] Thread dauerhaft der konkreten Projekt-/IDE-Bindung zuordnen.
-- [ ] Beide MCPs verbinden, Toolkataloge und tatsächliche Aufrufe testen.
-- [ ] Protokollprofil und `structuredContent` des Knowledge-MCP prüfen.
-- [ ] Aktuellen Objektkontext sichtbar anhängen; gespeicherten und Live-Kontext
-  unterscheiden.
-- [ ] Aktivitätsdarstellung, Quellen, Rückfragen und Abbrechen prüfen.
-- [ ] Thread schließen und wieder öffnen; Bindung erneut validieren.
-- [ ] Solution-Wechsel und mehrere IDE-Instanzen testen.
+- [ ] Start the local agent infrastructure or connect to a compatible running
+  instance; avoid unintended duplicate starts.
+- [ ] Persistently associate the thread with the specific project/IDE binding.
+- [ ] Connect both MCPs and test tool catalogs and actual calls.
+- [ ] Check the knowledge MCP's protocol profile and `structuredContent`.
+- [ ] Visibly attach the current object context; distinguish saved and live context.
+- [ ] Verify activity views, sources, follow-up questions, and cancellation.
+- [ ] Close and reopen the thread; revalidate its binding.
+- [ ] Test solution switching and multiple IDE instances.
 
-## M3: Kontrolliertes ST-Schreiben
+## M3: Controlled ST Writes
 
-**Ergebnis:** Ein Agent kann genau den zugesicherten Schreibumfang verwenden.
+**Outcome:** An agent can use exactly the promised write scope.
 
-- [ ] Live-Engineering-Backend im Monorepo anbinden.
-- [ ] Schreibverträge für ein vorhandenes ST-Zielobjekt definieren.
-- [ ] Objektbezogenen Diff und Freigabe integrieren.
-- [ ] Ausgangsstand unmittelbar vor der Übernahme erneut prüfen.
-- [ ] Dirty-Zielobjekte blockieren; keine implizite Speicherung fremder Änderungen.
-- [ ] Eigene Vorher-/Nachher-Stände und tatsächlichen Ausgang protokollieren.
-- [ ] Kontrollierte Rücknahme mit Folgestandsprüfung implementieren.
-- [ ] Allgemeine Datei-/Shellwerkzeuge für das Engineering-Agent-Profil
-  einschränken und Umgehungsversuche testen.
-- [ ] Abbruch, Timeout und Prozessabbruch ohne automatische Schreibwiederholung
-  behandeln.
+- [ ] Connect the live engineering backend in the monorepo.
+- [ ] Define write contracts for an existing ST target object.
+- [ ] Integrate object-level diffs and approval.
+- [ ] Recheck the baseline state immediately before applying a change.
+- [ ] Block dirty target objects; do not implicitly save someone else's changes.
+- [ ] Log the agent's before/after states and actual outcome.
+- [ ] Implement controlled rollback with a post-change state check.
+- [ ] Restrict general file/shell tools for the engineering agent profile and
+  test attempted bypasses.
+- [ ] Handle cancellation, timeouts, and process termination without automatic
+  write retries.
 
-## M4: Build und vollständige MVP-Abnahme
+## M4: Build and Full MVP Acceptance
 
-**Ergebnis:** Chat, MCPs, Schreiben und echte Prüfung bilden einen vollständigen
-Engineering-Ablauf.
+**Outcome:** Chat, MCPs, writes, and real validation form a complete engineering
+workflow.
 
-- [ ] Build-Ausführung an die konkrete Projektbindung koppeln.
-- [ ] Build-Abschluss, Timeout und frische Fehler-/Warnungsmeldungen erfassen.
-- [ ] Navigierbare Diagnosen und Build-Ausgabe im Thread bereitstellen.
-- [ ] Erfolgreichen Build und absichtlich fehlerhaften Build testen.
-- [ ] Optional vorhandene Runtime-Diagnose ausschließlich lesend integrieren.
-- [ ] Sämtliche [MVP-Abnahmekriterien](MVP.md#abnahmekriterien) prüfen.
-- [ ] Installation, Start, Einschränkungen und getestete Versionen dokumentieren.
+- [ ] Bind build execution to the specific project binding.
+- [ ] Capture build completion, timeouts, and fresh error/warning messages.
+- [ ] Provide navigable diagnostics and build output in the thread.
+- [ ] Test a successful build and an intentionally failing build.
+- [ ] Optionally integrate existing runtime diagnostics in read-only mode.
+- [ ] Verify all [MVP acceptance criteria](MVP.md#acceptance-criteria).
+- [ ] Document installation, startup, limitations, and tested versions.
 
-## Nach dem MVP
+## After the MVP
 
-Erst nach Abnahme und ausdrücklicher Priorisierung:
+Only after acceptance and explicit prioritization:
 
-- Methoden, Properties, Actions und neue Bausteine bearbeiten.
-- Mehrere Objekte als kontrolliertes Change Set behandeln.
-- Ungespeicherte Editorstände live integrieren und Konflikte besser unterstützen.
-- Semantische Referenz-/Aufrufanalyse verbessern.
-- Weitere Visual-Studio-/TwinCAT-Hosts unterstützen.
-- HMI- und I/O-Engineering ergänzen.
-- Erweiterte Runtime-Funktionen mit separatem Sicherheitskonzept prüfen.
+- Edit methods, properties, actions, and new blocks.
+- Handle multiple objects as a controlled change set.
+- Integrate unsaved editor state live and improve conflict handling.
+- Improve semantic reference/call analysis.
+- Support additional Visual Studio/TwinCAT hosts.
+- Add HMI and I/O engineering.
+- Evaluate advanced runtime features under a separate safety concept.
 
-## Test- und Evidenzprinzip
+## Testing and Evidence Principle
 
-Jeder Machbarkeitsnachweis hält Host-/Upstream-Version, Eingabe, erwartetes und
-beobachtetes Ergebnis fest. Synthetische Tests beweisen keinen vollständigen
-TwinCAT-Produktumfang. Eine praktische Shell-Prüfung wird nicht durch einen
-gewöhnlichen Webbrowser-Test ersetzt.
+Each feasibility result records the host/upstream version, input, expected
+result, and observed result. Synthetic tests do not prove full TwinCAT product
+coverage. A practical shell validation cannot be replaced by an ordinary web
+browser test.

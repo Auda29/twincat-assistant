@@ -1,61 +1,61 @@
 # TwinCAT Assistant
 
-Ein KI-Agent direkt in der TwinCAT-Shell beziehungsweise Visual Studio: Projekte
-verstehen, passende InfoSys-Dokumentation finden, kontrolliert ST-Code bearbeiten
-und echte Build-Ergebnisse auswerten. Die Bedienung orientiert sich an den Threads
-und Agent-Aktivitäten von OpenChamber.
+An AI agent directly inside the TwinCAT shell or Visual Studio: understand
+projects, find relevant InfoSys documentation, make controlled ST code changes,
+and evaluate real build results. The user experience follows OpenChamber's
+threads and agent activity views.
 
-**Status:** Repository-Initialisierung und MVP-Planung. Es gibt noch keine
-ausführbare Anwendung, IDE-Erweiterung oder implementierte Engineering-Bridge.
-Das Repository wird zunächst privat geführt.
+**Status:** Repository initialization and MVP planning. There is no runnable
+application, IDE extension, or implemented engineering bridge yet. The repository
+is initially private.
 
-## Ansatz
+## Approach
 
-- OpenChamber und OpenCode wiederverwenden, statt Chat und Agent-Unterbau neu zu
-  entwickeln. Zunächst möglichst wenige Änderungen am bestehenden System.
-- Ein C#-Plugin stellt ein angedocktes Toolwindow mit WebView2 bereit.
-- Modellaufrufe und MCP-Prozesse laufen außerhalb der IDE.
-- Eine kleine IDE-Bridge verbindet das Agent-System mit der geöffneten Solution,
-  PLC-Objekten und der Build-Ausführung.
-- Die beiden bestehenden TwinCAT-MCP-Projekte bleiben die fachliche Grundlage.
+- Reuse OpenChamber and OpenCode rather than rebuilding the chat interface and
+  agent infrastructure. Start with as few changes to the existing system as possible.
+- A C# plugin provides a docked tool window using WebView2.
+- Model calls and MCP processes run outside the IDE.
+- A small IDE bridge connects the agent system to the open solution, PLC objects,
+  and build execution.
+- The two existing TwinCAT MCP projects remain the domain-specific foundation.
 
-## Bestehende Projekte
+## Existing Projects
 
-| Projekt | Rolle |
+| Project | Role |
 | --- | --- |
-| [twincat-knowledge-mcp](https://github.com/Auda29/twincat-knowledge-mcp) | Lokale, quellenbasierte Suche und Abruf von TwinCAT-/Beckhoff-Dokumentation |
-| [twincat-mcp-mono](https://github.com/Auda29/twincat-mcp-mono) | Projektanalyse und ADS-Diagnose; soll ein Live-Engineering-Backend erhalten |
-| [OpenChamber](https://github.com/openchamber/openchamber) | Chatoberfläche, Threads, Aktivitäten und Änderungsreview |
-| [OpenCode](https://github.com/anomalyco/opencode) | Agent-Ausführung, Modellanbindung und MCP-Client |
+| [twincat-knowledge-mcp](https://github.com/Auda29/twincat-knowledge-mcp) | Local, source-backed search and retrieval of TwinCAT/Beckhoff documentation |
+| [twincat-mcp-mono](https://github.com/Auda29/twincat-mcp-mono) | Project analysis and ADS diagnostics; planned extension with a live engineering backend |
+| [OpenChamber](https://github.com/openchamber/openchamber) | Chat interface, threads, activities, and change review |
+| [OpenCode](https://github.com/anomalyco/opencode) | Agent execution, model integration, and MCP client |
 
-## Erster MVP
+## Initial MVP
 
-Ein dauerhafter Chat in einer konkret festgelegten TwinCAT-Shell-Version, der das
-richtige Projekt untersucht, beide MCPs verwendet und nach Freigabe Deklaration
-und ST-Implementierung eines bestehenden Bausteins ändern und kompilieren kann.
+A persistent chat in one explicitly selected TwinCAT shell version that examines
+the correct project, uses both MCPs, and can modify the declaration and ST
+implementation of an existing block after approval, then compile it.
 
-Kein Download, Online Change, Forcing oder Runtime-Schreiben. Eine verbundene PLC
-ist für den Kernablauf nicht erforderlich.
+No downloads, online changes, forcing, or runtime writes. A connected PLC is not
+required for the core workflow.
 
-## Dokumentation
+## Documentation
 
-- [Dokumentationsübersicht](docs/README.md)
-- [MVP: Umfang und Abnahme](docs/MVP.md)
-- [Architektur und Integrationsgrenzen](docs/ARCHITECTURE.md)
-- [Umsetzungsplan und technische Prüfschritte](docs/ROADMAP.md)
-- [Engineering-Sicherheit und Änderungsablauf](docs/ENGINEERING_SAFETY.md)
+- [Documentation overview](docs/README.md)
+- [MVP: scope and acceptance](docs/MVP.md)
+- [Architecture and integration boundaries](docs/ARCHITECTURE.md)
+- [Implementation roadmap and technical validation](docs/ROADMAP.md)
+- [Engineering safety and change workflow](docs/ENGINEERING_SAFETY.md)
 
-## Entwicklung und Lizenzen
+## Development and Licensing
 
-Build- und Installationsanweisungen folgen nach dem ersten technischen Prototyp.
-Die genaue Zielversion der IDE und die kompatiblen Upstream-Versionen sind noch
-festzulegen. In diesem Initial-Commit wird kein Upstream-Code übernommen.
+Build and installation instructions will follow the first technical prototype.
+The exact target IDE version and compatible upstream versions are still to be
+selected. No upstream code is included in the initial commit.
 
-OpenChamber und OpenCode stehen zum Recherchezeitpunkt unter MIT. Bei einer
-Übernahme müssen deren Copyright- und Lizenzhinweise sowie die Lizenzen der
-Drittkomponenten erhalten beziehungsweise geprüft werden. Für dieses eigene
-Projekt ist noch keine Softwarelizenz festgelegt; Zugriff auf das Repository
-begründet keine allgemeine Nutzungs- oder Weiterverteilungserlaubnis.
+At the time of research, OpenChamber and OpenCode are licensed under MIT. When
+reusing their code, retain their copyright and license notices and review the
+licenses of third-party components. No software license has been selected for
+this project yet; repository access does not grant general permission to use or
+redistribute it.
 
-Dieses Projekt ist unabhängig und kein offizielles Beckhoff-Produkt. Beckhoff-
-Dokumentation und reale Maschinenprojekte werden nicht mitgeliefert.
+This is an independent project, not an official Beckhoff product. Beckhoff
+documentation and real machine projects are not bundled.

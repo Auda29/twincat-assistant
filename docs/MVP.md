@@ -1,104 +1,100 @@
-# MVP: Umfang und Abnahme
+# MVP: Scope and Acceptance
 
-## Ziel
+## Goal
 
-Ein Agent im angedockten TwinCAT-Toolwindow beantwortet Projektfragen, verwendet
-quellenbasierte Dokumentation und bearbeitet auf Auftrag einen bestehenden
-ST-Baustein. Änderungen werden geprüft, ausdrücklich freigegeben und anschließend
-mit einem echten Build kontrolliert.
+An agent in a docked TwinCAT tool window answers project questions, uses
+source-backed documentation, and modifies an existing ST block on request.
+Changes are reviewed, explicitly approved, and then checked with a real build.
 
-Der Kernablauf benötigt keine verbundene PLC. Zunächst wird genau eine konkrete
-TcXaeShell64-Version unterstützt. TwinCAT-Build, Shell-Version und installierte
-Komponenten werden vor der Implementierung dokumentiert; VS2022 bleibt ein
-möglicher zusätzlicher Host, aber keine zugesicherte MVP-Plattform.
+The core workflow does not require a connected PLC. Initially, exactly one
+specific TcXaeShell64 version will be supported. The TwinCAT build, shell version,
+and installed components will be documented before implementation; VS2022 remains
+a possible additional host, but is not a guaranteed MVP platform.
 
-## Beispielablauf
+## Example Workflow
 
-1. Benutzer öffnet eine Solution und das Assistant-Toolwindow.
-2. Der Thread zeigt seine Projektzuordnung sichtbar an.
-3. Benutzer fragt: „Erkläre die Timeout-Behandlung in FB_Station.“
-4. Der Agent sucht und liest Projektcode über das Monorepo-MCP und ruft bei Bedarf
-   passende Dokumentation über das Knowledge-MCP ab.
-5. Benutzer beauftragt: „Ergänze einen konfigurierbaren Timeout.“
-6. Der Agent erstellt einen objektbezogenen Diff für Deklaration und
-   ST-Implementierung. Die IDE-Bridge prüft Zielobjekt und Ausgangsstand.
-7. Benutzer bestätigt genau diese Änderung. Ein veralteter Vorschlag wird nicht
-   angewendet, sondern muss neu gelesen und geprüft werden.
-8. Die Bridge übernimmt die Änderung und führt den freigegebenen Build-Ablauf aus.
-9. Der Thread zeigt tatsächliches Build-Ergebnis, Fehler, Warnungen und die eigene
-   Änderung. Fehlgeschlagene Builds bleiben ausdrücklich fehlgeschlagen.
+1. The user opens a solution and the Assistant tool window.
+2. The thread visibly displays its project binding.
+3. The user asks: "Explain the timeout handling in FB_Station."
+4. The agent searches and reads project code through the monorepo MCP and
+   retrieves relevant documentation through the knowledge MCP when needed.
+5. The user requests: "Add a configurable timeout."
+6. The agent creates an object-level diff for the declaration and ST
+   implementation. The IDE bridge checks the target object and baseline state.
+7. The user approves that exact change. A stale proposal is not applied; the
+   current object must be read again and the proposal reviewed anew.
+8. The bridge applies the change and executes the approved build workflow.
+9. The thread shows the actual build result, errors, warnings, and the agent's
+   change. Failed builds remain explicitly marked as failed.
 
-Der Agent darf selbstständig geeignete Lese-Tools auswählen. Dieser Ablauf ist
-ein Abnahmebeispiel und keine starre Bedienungsmaske.
+The agent may independently select suitable read tools. This workflow is an
+acceptance example, not a rigid user interface sequence.
 
-## Funktionsumfang
+## Feature Scope
 
-| Bereich | Mindestumfang |
+| Area | Minimum Scope |
 | --- | --- |
-| Oberfläche | Angedocktes Toolwindow, bestehende OpenChamber-Threads und Aktivitätsdarstellung |
-| Unterhaltung | Streaming, Abbrechen, Rückfragen, Freigaben, dauerhafte Sitzungen |
-| Projektbindung | Sichtbare Zuordnung zur konkreten Solution und IDE-Instanz; kein stiller Zielwechsel |
-| Kontext | Projektstruktur, Code-Suche und POU-Inhalte über das Monorepo-MCP |
-| Dokumentation | Suche und Topic-Abruf mit Quellen über das Knowledge-MCP |
-| Schreiben | Deklaration und ST-Implementierung eines bestehenden Bausteins pro Änderungsauftrag |
-| Prüfung | Echte Build-Ausführung mit eindeutigem Abschluss und zugehörigen Diagnosen |
-| Review | Objektbezogener Diff, ausdrückliche Freigabe und Änderungsprotokoll |
-| Rücknahme | Eigene Änderung bei unverändertem Folgestand kontrolliert wiederherstellen |
-| Runtime | Optional vorhandene ADS-Diagnose verwenden, ausschließlich lesend |
+| Interface | Docked tool window, existing OpenChamber threads, and activity views |
+| Conversation | Streaming, cancellation, follow-up questions, approvals, and persistent sessions |
+| Project binding | Visible binding to the specific solution and IDE instance; no silent target switching |
+| Context | Project structure, code search, and POU contents through the monorepo MCP |
+| Documentation | Search and topic retrieval with sources through the knowledge MCP |
+| Writes | Declaration and ST implementation of one existing block per change request |
+| Validation | Real build execution with an unambiguous completion state and associated diagnostics |
+| Review | Object-level diff, explicit approval, and change log |
+| Rollback | Controlled restoration of the agent's change if the post-change state is unchanged |
+| Runtime | Optional use of existing ADS diagnostics, strictly read-only |
 
-Ein fortgesetzter Thread muss erneut validieren, ob seine IDE- und Projektbindung
-noch verfügbar ist. Die Fortsetzung eines Gesprächs bedeutet nicht automatisch
-die Wiederaufnahme eines abgebrochenen Schreibauftrags.
+A continued thread must revalidate whether its IDE and project binding is still
+available. Continuing a conversation does not automatically resume a cancelled
+write request.
 
-## Nicht im MVP
+## Out of Scope
 
-- Neue POUs, Methoden, Actions, Properties oder Interfaces erstellen.
-- Methoden-/Property-Inhalte bearbeiten oder mehrere Objekte in einem Auftrag
-  ändern.
-- Automatische Zusammenführung ungespeicherter Benutzeränderungen.
-- Download, Online Change, Login/Logout, PLC-Start/-Stop, Forcing oder
-  Runtime-Schreibzugriffe.
-- Safety-Projekte und automatische I/O-Konfiguration.
-- HMI-Generierung, HMI-Deployment oder HMI-Preview-Steuerung.
-- Eigene Implementierung von Modellrouter, allgemeinem Agent-Harness oder Chat.
-- Multi-run, Worktree-Automatisierung, Zeitplanung und Remote-Zugriff als
-  zugesicherte Produktfunktionen.
-- Unterstützung aller TwinCAT-/Visual-Studio-Versionen.
+- Creating new POUs, methods, actions, properties, or interfaces.
+- Editing method/property contents or changing multiple objects in one request.
+- Automatically merging unsaved user changes.
+- Downloads, online changes, login/logout, PLC start/stop, forcing, or runtime writes.
+- Safety projects and automatic I/O configuration.
+- HMI generation, deployment, or preview control.
+- A custom model router, general-purpose agent harness, or chat implementation.
+- Multi-run, worktree automation, scheduling, and remote access as guaranteed
+  product features.
+- Support for every TwinCAT/Visual Studio version.
 
-Vorhandene zusätzliche Upstream-Funktionen können ausgeblendet werden. Eine
-ausgeblendete Funktion ist jedoch nicht automatisch technisch gesperrt.
+Additional existing upstream features may be hidden. Hiding a feature does not
+automatically disable its underlying functionality.
 
-## Abnahmekriterien
+## Acceptance Criteria
 
-- [ ] Toolwindow läuft im festgelegten Shell-Host; Docking, Fokus und erneutes
-  Öffnen funktionieren ohne hängende IDE.
-- [ ] Thread bleibt nach Schließen und erneutem Öffnen verfügbar.
-- [ ] Geöffnete Solution und angesprochenes Projekt werden korrekt und sichtbar
-  zugeordnet, auch bei mehreren gleichzeitig laufenden IDE-Instanzen.
-- [ ] Projektwechsel invalidiert alte Schreibfreigaben und wird nicht als
-  stiller Wechsel des Zielprojekts behandelt.
-- [ ] Beide MCPs verbinden sich mit den festgelegten Versionen.
-- [ ] Der tatsächliche Dokumentationsinhalt aus `structuredContent` erreicht das
-  Modell; Quellen sind in der Antwort nachvollziehbar.
-- [ ] Der Agent findet und erklärt relevante Stellen im Testprojekt, ohne einen
-  vollständigen semantischen Aufrufgraphen vorzutäuschen.
-- [ ] Ein erlaubtes ST-Zielobjekt wird nach Freigabe korrekt geändert.
-- [ ] Ungespeicherte Zielobjekte und Änderungen seit dem Lesen blockieren die
-  Übernahme zuverlässig.
-- [ ] Ein echter Build liefert den korrekten Status und frische Diagnosen;
-  Erfolg und Fehler werden nicht aus alten IDE-Meldungen abgeleitet.
-- [ ] Ein bewusst eingebauter Compilerfehler erscheint als fehlgeschlagener Build
-  mit nachvollziehbarer Diagnose.
-- [ ] Eigene Änderung lässt sich bei unverändertem Folgestand zurücknehmen;
-  neuere Benutzeränderungen werden dabei nicht überschrieben.
-- [ ] Abbruch, Timeout oder Verbindungsabbruch führen nicht zu automatischem
-  Wiederholen einer möglicherweise bereits ausgeführten Änderung.
-- [ ] Direkte Datei- und Shellwerkzeuge umgehen die Engineering-Freigaben nicht.
-- [ ] Kein MVP-Ablauf aktiviert, lädt oder verändert eine Runtime.
+- [ ] The tool window runs in the selected shell host; docking, focus, and
+  reopening work without hanging the IDE.
+- [ ] The thread remains available after closing and reopening.
+- [ ] The open solution and target project are correctly and visibly bound,
+  including when multiple IDE instances are running concurrently.
+- [ ] Switching projects invalidates old write approvals and does not silently
+  change the target project.
+- [ ] Both MCPs connect using the selected versions.
+- [ ] Actual documentation content from `structuredContent` reaches the model;
+  sources are traceable in the response.
+- [ ] The agent finds and explains relevant parts of the test project without
+  pretending to have a complete semantic call graph.
+- [ ] An allowed ST target object is correctly modified after approval.
+- [ ] Unsaved target objects and changes made since reading reliably block the write.
+- [ ] A real build returns the correct status and fresh diagnostics; success and
+  failure are not inferred from old IDE messages.
+- [ ] A deliberately introduced compiler error is reported as a failed build
+  with a traceable diagnostic.
+- [ ] The agent's change can be rolled back if the post-change state is unchanged;
+  newer user changes are not overwritten.
+- [ ] Cancellation, timeouts, or disconnection do not automatically retry a
+  change that may already have been applied.
+- [ ] Direct file and shell tools cannot bypass engineering approvals.
+- [ ] No MVP workflow activates, downloads to, or modifies a runtime.
 
-## Fertigstellung
+## Completion
 
-Alle Kernkriterien werden auf einem synthetischen Testprojekt und danach auf
-einem geeigneten realen Projekt überprüft. Ergebnisse halten exakte Versionen,
-Testfall und beobachtetes Verhalten fest. Ein erfolgreicher Build beweist
-Kompilierbarkeit, nicht die funktionale Korrektheit oder Maschinensicherheit.
+All core criteria are verified against a synthetic test project and then against
+a suitable real project. Results record exact versions, the test case, and
+observed behavior. A successful build proves compilability, not functional
+correctness or machine safety.
