@@ -1,0 +1,6 @@
+{
+  "name": "twincat-assistant-upstream-runtime",
+  "private": true,
+  "version": "0.1.0-dev.1",
+  "dependencies": { "@openchamber/web": "2.1.1", "@opencode/cli": "2.0.23" }
+}
