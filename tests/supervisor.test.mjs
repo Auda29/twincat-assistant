@@ -5,12 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { supervise } from '../src/supervisor.mjs';
 
-test('supervision rejects duplicate starts and reaps a real owned child on cancellation', { skip: process.platform === 'win32' }, async () => {
+test('supervision rejects duplicate starts and reaps a real owned child on cancellation', async () => {
   const root = await mkdtemp(join(tmpdir(), 'tc-supervisor-'));
   const controller = new AbortController();
   let pid;
   try {
-    const running = supervise({ command: process.execPath, args: ['-e', 'setInterval(()=>{},1000)'], cwd: root, env: {} }, root, controller.signal, child => { pid = child.pid; });
+    const running = supervise({ command: process.execPath, args: ['-e', 'setInterval(()=>{},1000)'], cwd: root,
+      env: process.platform === 'win32' ? { SystemRoot: process.env.SystemRoot ?? 'C:\\Windows' } : {} }, root, controller.signal, child => { pid = child.pid; });
     for (let i = 0; i < 100 && !pid; i++) await new Promise(resolve => setTimeout(resolve, 10));
     assert.ok(pid, 'a real upstream-owned child must be started');
     await assert.rejects(supervise({ command: process.execPath, args: [], cwd: root, env: {} }, root, controller.signal), /already|lock/);

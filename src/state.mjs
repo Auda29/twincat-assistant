@@ -2,9 +2,11 @@ import { mkdir, open, readFile, lstat, rm } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
+import { readWindowsJson, secureWindowsDirectory } from './windows-native.mjs';
 
 export const MAX_SETTINGS_BYTES = 65536;
 export async function readJsonFile(path) {
+  if (process.platform === 'win32') return readWindowsJson(resolve(path));
   const metadata = await lstat(path);
   if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.size > MAX_SETTINGS_BYTES) {
     throw new Error('Expected a bounded regular settings file');
@@ -37,6 +39,7 @@ export async function initializeState(root, input) {
   // Do not adopt or overwrite an existing operator directory.
   await mkdir(paths.root, { mode: 0o700 });
   try {
+    if (process.platform === 'win32') await secureWindowsDirectory(paths.root);
     for (const directory of [dirname(paths.configPath), paths.home, paths.data, paths.cache, paths.state, paths.openchamber, paths.workspace]) await mkdir(directory, { mode: 0o700 });
     await exclusiveJson(paths.settingsPath, settings);
     await exclusiveJson(paths.configPath, config);

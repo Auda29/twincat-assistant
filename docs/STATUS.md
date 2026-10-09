@@ -9,7 +9,8 @@ Version: `0.1.0-dev.1`. This is a development foundation, not a TwinCAT release.
   HOME/XDG paths, restricted inherited environment, explicit source-code
   disclosure consent before provider access, and exact read-tool permissions.
 - Loopback-only, password-protected OpenChamber/OpenCode launch with pinned
-  version checks, duplicate-start locking and POSIX process-group cleanup.
+  version checks, duplicate-start locking, POSIX process-group cleanup and
+  Windows Job Object ownership through a native helper.
 - A bounded production MCP probe, exercised against both real pinned servers:
   modern documentation protocol and legacy saved-project engineering protocol.
 - An installable OpenChamber panel displaying host directory/session context.
@@ -21,6 +22,10 @@ Version: `0.1.0-dev.1`. This is a development foundation, not a TwinCAT release.
 - Authenticated, bounded, current-user named-pipe diagnostics. Only
   `get-context`, `get-status`, and `read-target` are exposed. The executable
   reports native engineering **unavailable**; domain writes are not on the wire.
+- A read-only Windows prototype: secure native JSON leaf reads, private state
+  DACLs, environment inventory, PID-selected ROT probe, shared DTE/Automation
+  Interface reader, and separate SDK 15/x86 and SDK 17/amd64 VSIX builds with
+  WPF/WebView2. See [native prototype](NATIVE_PROTOTYPE.md) for limits and evidence.
 
 ## Evidence and limits
 
@@ -44,22 +49,24 @@ asserts discovery of both configured servers. The exact commands are in
 ## CI boundary
 
 `Portable checks` runs the root audit, Node tests, production-panel browser
-contracts and the portable .NET runner on Linux. It does not clone private MCP
-repositories, validate the complete upstream runtime, or execute native Windows
-acceptance. Those checks are intentionally separate and must not be inferred
-from a green component job. See [security audit](SECURITY_AUDIT.md) for release
-blockers.
+contracts and the portable .NET runner on Linux. A separate Windows job builds
+the JSON/Job Object helper and exercises operator/process-tree regressions plus
+the real pinned runtime's authenticated bootstrap. Shared dirty-evidence tests
+run on both. CI does not install TwinCAT, build/load the vendor-dependent VSIXs,
+clone private MCP repositories, or validate unsaved editors/model answers. A
+green lifecycle job is not native acceptance. See
+[security audit](SECURITY_AUDIT.md) for release blockers.
 
 ## Not implemented / external acceptance required
 
-- Classic Visual Studio/TcXaeShell64 package, WPF tool window and WebView2 host.
-- Native project/object discovery, editor dirty-state and revision semantics.
+- Actual installation/docking acceptance in TcXaeShell and TcXaeShell64.
+- Reliable unsaved-editor/source/RDT correlation and revision acceptance. Live
+  ST reads succeeded on the running x86 shell; dirty state remained `unknown`.
 - Live monorepo engineering adapter, operator review integration, live apply or
   rollback, and project-bound compiler diagnostics.
 - A supplied Beckhoff corpus or a real provider conversation using both MCPs.
-- Windows process-tree supervision: `start` explicitly refuses Windows until
-  safe native cleanup is implemented and validated. Building the portable C#
-  components is not evidence of a working Windows product.
+- Native-to-MCP/session binding. The existing pipe executable and `doctor` remain
+  unconnected to the IDE reader and deliberately report native unavailability.
 - Full extension install/reload and chat persistence acceptance in OpenChamber.
 - Production storage retention, installer/update delivery, signing and release.
 

@@ -1,12 +1,14 @@
 # Native Windows acceptance gate
 
-No native host is included. Do not interpret this checklist as an installer.
-Record evidence for one selected host before implementing/releasing live writes.
+A read-only host prototype is included; it has not been installed/accepted in
+the native IDE. Do not interpret this checklist as an installer. See
+[prototype evidence](NATIVE_PROTOTYPE.md). Record evidence separately for **x86
+TcXaeShell and amd64 TcXaeShell64** before claiming support or enabling writes.
 
 ## Environment record
 
 - Windows version/build and user privileges.
-- TwinCAT XAE build, exact TcXaeShell64 executable/version, bitness and components.
+- TwinCAT XAE build, exact selected shell executable/version, bitness and components.
 - Classic Visual Studio SDK compatibility and supported VSIX/package registration.
 - Automation Interface installation/API version; WebView2 runtime/version.
 - .NET target for the in-process IDE package (separate from the portable .NET 8

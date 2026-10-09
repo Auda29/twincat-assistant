@@ -40,3 +40,37 @@ jobs:
         run: dotnet build engineering/EngineeringSafety.sln --no-restore --nologo -m:1 /p:UseSharedCompilation=false
       - name: Execute production-domain and real-pipe regression runner
         run: dotnet run --project engineering/tests/Engineering.Safety.Tests/Engineering.Safety.Tests.csproj --no-build --no-restore
+      - name: Execute shared dirty-evidence policy regressions (not IDE acceptance)
+        run: |
+          dotnet restore native/Tests/Native.Tests.csproj --locked-mode
+          dotnet run --project native/Tests/Native.Tests.csproj --configuration Release --no-restore
+  windows-lifecycle:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '8.0.425'
+      - name: Build locked Windows ownership and JSON helper
+        run: dotnet build native/WindowsHost/WindowsHost.csproj --configuration Release /p:RestoreLockedMode=true --nologo
+      - name: Install locked operator dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check Windows operator, JSON and owned process-tree regressions
+        run: npm test
+      - name: Execute shared dirty-evidence policy regressions (not IDE acceptance)
+        run: |
+          dotnet restore native/Tests/Native.Tests.csproj --locked-mode
+          dotnet run --project native/Tests/Native.Tests.csproj --configuration Release --no-restore
+      - name: Restore and run portable engineering regressions on real Windows pipes
+        run: |
+          dotnet restore engineering/EngineeringSafety.sln --locked-mode
+          dotnet run --project engineering/tests/Engineering.Safety.Tests/Engineering.Safety.Tests.csproj --no-restore
+      - name: Install pinned actual upstream runtime (no private MCP checkouts)
+        run: npm ci --prefix upstream --no-audit --no-fund
+      - name: Verify Windows authenticated runtime bootstrap and owner-death cleanup
+        run: node --test tests/integration/windows-runtime.test.mjs

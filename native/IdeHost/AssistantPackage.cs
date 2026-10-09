@@ -1,0 +1,83 @@
+using System;
+using System.ComponentModel.Design;
+using System.Runtime.InteropServices;
+using System.Threading;
+using Task = System.Threading.Tasks.Task;
+using EnvDTE;
+using Microsoft.VisualStudio;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+
+namespace TwinCatAssistant.Native
+{
+    [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+    [ProvideMenuResource("Menus.ctmenu", 1)]
+    [ProvideToolWindow(typeof(AssistantToolWindow))]
+    [Guid("4dcc0b19-7b34-497f-bf44-7f1f612b7afb")]
+    public sealed class AssistantPackage : AsyncPackage
+    {
+        protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
+        {
+            await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+#if HOST_X86
+            if (IntPtr.Size != 4) throw new InvalidOperationException("Use the 64-bit host package in this IDE.");
+#else
+            if (IntPtr.Size != 8) throw new InvalidOperationException("Use the 32-bit host package in this IDE.");
+#endif
+            var commands = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
+            if (commands == null) throw new InvalidOperationException("IDE command service unavailable.");
+            commands.AddCommand(new MenuCommand((sender, args) => {
+                JoinableTaskFactory.RunAsync(async () => {
+                    try
+                    {
+                        var window = await ShowToolWindowAsync(typeof(AssistantToolWindow), 0, true, DisposalToken);
+                        await JoinableTaskFactory.SwitchToMainThreadAsync(DisposalToken);
+                        var dte = await GetServiceAsync(typeof(SDTE)) as DTE;
+                        var rdt = await GetServiceAsync(typeof(SVsRunningDocumentTable)) as IVsRunningDocumentTable;
+                        ((AssistantControl)window.Content).Bind(dte, path => GetDirty(rdt, path));
+                    }
+                    catch { /* A failed toolwindow must not crash or mutate the IDE. */ }
+                }).FileAndForget("TwinCatAssistant/OpenToolWindow");
+            }, new CommandID(new Guid("bd34d6a6-75aa-4df3-9b1a-f3b341fc4544"), 0x0100)));
+        }
+
+        private static bool? GetDirty(IVsRunningDocumentTable table, string path)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (table == null) return null;
+            IVsHierarchy hierarchy;
+            uint itemId, cookie;
+            IntPtr data;
+            var hr = table.FindAndLockDocument((uint)_VSRDTFLAGS.RDT_NoLock, path, out hierarchy, out itemId, out data, out cookie);
+            if (ErrorHandler.Failed(hr) || data == IntPtr.Zero || cookie == 0)
+            {
+                if (data != IntPtr.Zero) Marshal.Release(data);
+                return null;
+            }
+            try
+            {
+                var document = Marshal.GetObjectForIUnknown(data) as IVsPersistDocData;
+                int dirty;
+                if (document == null || ErrorHandler.Failed(document.IsDocDataDirty(out dirty))) return null;
+                return dirty != 0;
+            }
+            finally { Marshal.Release(data); }
+        }
+    }
+
+    [Guid("20236295-d6fc-4a9a-ad7b-1d7505dc9d22")]
+    public sealed class AssistantToolWindow : ToolWindowPane
+    {
+        public AssistantToolWindow() : base(null)
+        {
+            Caption = "TwinCAT Assistant — read-only";
+            Content = new AssistantControl();
+        }
+        protected override void Dispose(bool disposing)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (disposing) (Content as AssistantControl)?.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+}
