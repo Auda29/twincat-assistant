@@ -1,6 +1,43 @@
 # Implementation status
 
-Version: `0.1.0-dev.1`. This is a development foundation, not a TwinCAT release.
+Updated: **2026-10-09**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
+`0.1.1`; last code baseline: `29b0b75`. These versions describe different
+components, not a TwinCAT product release.
+
+## Current position and next action
+
+- Foundation PR #1 is merged. Native PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
+  is still **draft**, not accepted as an MVP or production release.
+- Both VSIX variants build. Windows and Linux push/PR CI passed for `29b0b75`.
+  Latest local Node run: 31 passing tests, including two menu source contracts.
+- The x86 0.1.1 package is installed after coordinated shell closes/UAC approval.
+  The user confirms menu/open/dock/close/reopen. A local ST display is observed;
+  dirty state is `unknown`. This is not synthetic unsaved-editor acceptance.
+- The current manual Refresh/Read/dropdown UI is **diagnostic scaffolding**.
+  The user rejected it as the product workflow. The agreed next slice is
+  **automatic active-editor following with a compact context indicator**, not
+  expanding or paging the manual selector. This design is recorded, not coded.
+- Native WebView2/chat/provider acceptance, source/session/MCP transport and
+  reliable active/unsaved-editor correlation remain open. No live amd64 host
+  is installed for acceptance. All native writes/builds remain unavailable.
+
+The ordered next tasks and exit gates are in [Roadmap: next slice](ROADMAP.md#next-slice-m12-active-editor-following).
+
+## Known prototype limitations
+
+- The catalog stops at 200 ST targets. The user reproduced this partial inventory;
+  missing FBs in the selector do not indicate missing project objects. The read
+  status currently replaces the inventory warning. Active-object following must
+  not depend on this truncated catalog; an optional browser needs persistent
+  completeness status later.
+- Cold opening seemed slow. The user clarified that a second click may merely
+  have coincided with completion; neither a lost command nor acceptable latency
+  has been established. Measure it before changing the opening path.
+- Classic x86 shell rejects `/UpdateConfiguration`, even with exit code 0.
+  Approved refresh of the existing empty install marker triggered discovery;
+  the original menu also required a corrected VSCT parent and merge revision.
+- Actual WebView2 rendering, keyboard/focus, native session retention, two-IDE
+  isolation and same-path reopen behavior have not been fully accepted.
 
 ## Implemented
 
@@ -59,7 +96,9 @@ green lifecycle job is not native acceptance. See
 
 ## Not implemented / external acceptance required
 
-- Actual installation/docking acceptance in TcXaeShell and TcXaeShell64.
+- Complete x86 lifecycle/focus/resize/cold-start acceptance beyond the confirmed
+  smoke test; actual installation and all native acceptance in TcXaeShell64.
+- Automatic active-editor-first context and the chat-first host UX.
 - Reliable unsaved-editor/source/RDT correlation and revision acceptance. Live
   ST reads succeeded on the running x86 shell; dirty state remained `unknown`.
 - Live monorepo engineering adapter, operator review integration, live apply or

@@ -6,12 +6,16 @@ and evaluate real build results. The user experience follows OpenChamber's
 threads and agent activity views.
 
 **Status:** `0.1.0-dev.1` — local integration foundation plus a read-only native
-prototype, not the accepted TwinCAT MVP. Separate x86/amd64 IDE payloads build;
-live ST reads are verified on the running x86 shell. Docked installation and
-reliable unsaved-editor semantics remain unverified. The isolated operator CLI,
+prototype, not the accepted TwinCAT MVP. Both IDE payloads build; x86 prototype
+`0.1.1` is installed with user-confirmed menu/window/docking smoke checks and
+local ST display. Automatic active-editor following is the **next slice**, not
+implemented behavior; unsaved-editor, native chat and amd64 acceptance remain open.
+The isolated operator CLI,
 OpenChamber context panel, portable safety core and diagnostic pipe remain;
 live writes, native-to-MCP binding and compiler builds are unavailable.
 See [implementation status](docs/STATUS.md) for the exact verification boundary.
+The [roadmap](docs/ROADMAP.md#where-we-are-now) records current position, next
+tasks and separate read-only, agent-context, write and compiler milestones.
 
 ## Approach
 
@@ -34,9 +38,13 @@ See [implementation status](docs/STATUS.md) for the exact verification boundary.
 
 ## Initial MVP
 
-A persistent chat in one explicitly selected TwinCAT shell version that examines
+A persistent chat in explicitly tested 32-bit and 64-bit TwinCAT shell versions that examines
 the correct project, uses both MCPs, and can modify the declaration and ST
 implementation of an existing block after approval, then compile it.
+
+Normal use follows the active ST editor locally without manual refresh/read/block
+selection. Source disclosure requires consent. This is the target product;
+the current milestone remains strictly read-only and exposes no compiler action.
 
 No downloads, online changes, forcing, or runtime writes. A connected PLC is not
 required for the core workflow.

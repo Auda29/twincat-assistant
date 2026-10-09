@@ -43,6 +43,10 @@ and 500 saved-source files/directories. Large projects may produce a partial
 catalog. The prototype exposes top-level PROGRAM, FUNCTION_BLOCK and FUNCTION
 objects, not a complete member/method/action editor. COM and bounded filesystem
 work currently run on the IDE UI thread; latency acceptance remains open.
+The user reproduced the 200-target truncation in the installed UI. The read-status
+message currently replaces that warning. Neither the partial catalog nor paging
+it is the agreed primary interaction: active-object resolution must become
+independent of catalog completeness, with persistent context/completeness status.
 
 ## Chat and source boundary
 
@@ -59,6 +63,12 @@ not injected into the page, chat, model, or MCP. The native solution is **not**
 automatically attached to an OpenChamber session. Closing/switching a solution
 clears the local target selection and source display. Automatic native session
 binding and native-to-MCP transport are not implemented.
+
+The current Refresh/Read/dropdown controls are diagnostic scaffolding, not the
+accepted product UX. The next slice is automatic local active-editor following
+with a compact persistent binding/dirty-state indicator and chat as the primary
+surface. This behavior is not implemented yet; it must not automatically disclose
+source or silently retarget a session. See the [roadmap](ROADMAP.md#next-slice-m12-active-editor-following).
 
 The foundation still uses both existing MCP integrations unchanged: knowledge
 documentation and the monorepo's explicitly read-only saved-file backend.
@@ -119,7 +129,8 @@ particular Beckhoff shell accepts its VSIX installation target/prerequisites.
 TcXaeShell64 target registration, install/uninstall, dock/reopen, WebView2 loader
 resolution and restart coordination must be tested on the actual host. No
 running user project has been changed. A coordinated x86 development installation
-has reached extension discovery, but menu/tool-window acceptance remains pending.
+has passed a user-reported empty-solution menu/tool-window/docking smoke test;
+native editor and chat acceptance remain pending.
 
 ### x86 discovery and menu-loading findings
 
@@ -139,8 +150,12 @@ payload instead places the button directly in `IDG_VS_WNDO_OTRWNDWS1`, following
 the SDK's tool-window placement, and increments the menu-resource revision to 2
 for remerge. Source-contract regressions verify placement and matching command
 identity/resource names; they are not live-shell acceptance. Both corrected VSIX
-variants build, but installing the correction and verifying its menu, package
-initialization and docking are still pending. Do not overwrite a running host's
+variants build. The corrected x86 payload was installed with approval, preserving
+the independently verified original prototype folder outside the extension search
+path. The user confirms the menu is visible and the window opens, docks, closes
+and reopens with no solution loaded. The window reports the selected shell PID
+and zero ST targets. These are smoke-test observations, not editor/chat acceptance.
+Do not overwrite a running host's
 payload; review and preserve only the known prototype folder when updating it.
 The build script rebuilds the generated VSIX host outputs because the SDK's
 incremental manifest generation was observed retaining the previous identity
@@ -152,6 +167,11 @@ version. A successful compile alone does not establish the packaged version.
 - Installed WebView2 runtime: 154.0.4258.62. Node: 24.16.0.
 - Build tools: VS 2022 Build Tools 17.14; isolated, SHA-512-verified SDK 8.0.425.
 - Both VSIX variants compile/package. This does not prove installation or docking.
+- The corrected 0.1.1 x86 payload passes user-reported menu, window opening,
+  docking, closing and reopening checks without an open solution. Initial opening
+  appeared to need two clicks, but the user subsequently attributed this to slow
+  initialization. Cold-start duration and single-click behavior have not been
+  measured; do not claim either a lost command or verified startup latency.
 - Read-only ROT attachment to the existing shell succeeds. Nested-project
   discovery reaches the 200-target cap; declaration and implementation of one
   real ST object are read without outputting source. Dirty state is `unknown`.
@@ -168,7 +188,7 @@ version. A successful compile alone does not establish the packaged version.
   client's still-open handle; it still serves only one connection at a time.
 
 Still required: unsaved editor tracer on a synthetic project, exact source/RDT
-correlation, two-IDE and same-path reopen tests, real docked host installation,
+correlation, two-IDE and same-path reopen tests, measured cold-start behavior,
 WebView2 focus/navigation/retention checks, real MCP+chat/model-context acceptance,
 and the existing upstream vulnerability remediation. 64-bit live-host evidence
 is absent. Continue with [the acceptance checklist](WINDOWS_ACCEPTANCE.md).

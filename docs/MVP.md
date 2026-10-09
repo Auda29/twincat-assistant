@@ -3,9 +3,14 @@
 ## Current delivery boundary
 
 This document remains the native product acceptance contract. The local
-foundation in [status](STATUS.md) does not satisfy native docking, live IDE
-writes, dirty-editor handling, or real compiler acceptance. Portable component
+foundation in [status](STATUS.md) does not satisfy full dual-host/editor/chat,
+live IDE write, dirty-editor or real compiler acceptance. Portable component
 and synthetic upstream tests are supplementary evidence only.
+
+The current milestone is strictly **read-only M1**: x86 has passed a user-reported
+window/docking smoke test, not full native acceptance. Writes/builds described
+below are future M3/M4 product requirements, not permission to implement or run
+them now. See the [roadmap](ROADMAP.md) for the current scope and order.
 
 ## Goal
 
@@ -13,16 +18,41 @@ An agent in a docked TwinCAT tool window answers project questions, uses
 source-backed documentation, and modifies an existing ST block on request.
 Changes are reviewed, explicitly approved, and then checked with a real build.
 
-The core workflow does not require a connected PLC. Initially, exactly one
-specific TcXaeShell64 version will be supported. The TwinCAT build, shell version,
-and installed components will be documented before implementation; VS2022 remains
-a possible additional host, but is not a guaranteed MVP platform.
+The core workflow does not require a connected PLC. Both **TcXaeShell/x86 and
+TcXaeShell64/amd64** are required targets, each for explicitly tested versions and
+components, with separate acceptance evidence. The current live evidence covers
+only the x86 development host; no amd64 support is claimed yet. General-purpose
+VS2022 remains a possible additional host, not a guaranteed MVP platform.
+
+## Required User Experience
+
+- Reuse OpenChamber chat/threads as the primary surface, with compact persistent
+  indicators for the selected IDE/project, active POU, evidence freshness and
+  dirty/unknown state.
+- Opening or switching a supported ST editor automatically follows that POU
+  locally. Normal use requires no manual catalog loading, Refresh, Read locally
+  action or dropdown selection of the block already open in the editor.
+- Invalidate stale context on editor/solution changes and revalidate before using
+  delayed results. Unsupported or ambiguous editors must show an explicit unbound
+  state, not a guessed object or the previous object's source.
+- Automatic following does not imply permission to disclose source, persist it
+  in a thread, silently retarget a conversation or reuse a future write approval.
+  Attachment/transport remains governed by explicit consent and exact binding.
+- Keep catalog/search and connection diagnostics optional; a partial inventory
+  must be visibly labelled and cannot prevent following a valid active object.
+- Preserve supported COM threading and bounded/coalesced work so context updates
+  do not repeatedly scan the whole project or freeze the editor.
+
+This is the agreed product direction. The installed prototype still has manual
+diagnostic controls; none of the automatic-following criteria is marked complete.
 
 ## Example Workflow
 
 1. The user opens a solution and the Assistant tool window.
-2. The thread visibly displays its project binding.
-3. The user asks: "Explain the timeout handling in FB_Station."
+2. The thread visibly displays its project binding. The user opens FB_Station;
+   the compact local context indicator follows that active editor automatically.
+3. With source disclosure explicitly authorized, the user asks:
+   "Explain the timeout handling in this block."
 4. The agent searches and reads project code through the monorepo MCP and
    retrieves relevant documentation through the knowledge MCP when needed.
 5. The user requests: "Add a configurable timeout."
@@ -41,10 +71,10 @@ acceptance example, not a rigid user interface sequence.
 
 | Area | Minimum Scope |
 | --- | --- |
-| Interface | Docked tool window, existing OpenChamber threads, and activity views |
+| Interface | Chat-first docked window, existing OpenChamber threads/activity views, compact automatic editor context |
 | Conversation | Streaming, cancellation, follow-up questions, approvals, and persistent sessions |
 | Project binding | Visible binding to the specific solution and IDE instance; no silent target switching |
-| Context | Project structure, code search, and POU contents through the monorepo MCP |
+| Context | Exact automatic local active-POU following; authorized project structure/search/POU transport through the monorepo MCP |
 | Documentation | Search and topic retrieval with sources through the knowledge MCP |
 | Writes | Declaration and ST implementation of one existing block per change request |
 | Validation | Real build execution with an unambiguous completion state and associated diagnostics |
@@ -79,6 +109,11 @@ automatically disable its underlying functionality.
 - [ ] The thread remains available after closing and reopening.
 - [ ] The open solution and target project are correctly and visibly bound,
   including when multiple IDE instances are running concurrently.
+- [ ] Opening/switching an ST POU automatically updates its exact local context
+  without manual refresh/read/catalog selection; delayed results cannot overwrite
+  a newer binding and unsupported/no editor clears the previous context.
+- [ ] Unsaved active-editor content and uncertainty are represented correctly;
+  source is not disclosed or persisted merely by following the editor.
 - [ ] Switching projects invalidates old write approvals and does not silently
   change the target project.
 - [ ] Both MCPs connect using the selected versions.
