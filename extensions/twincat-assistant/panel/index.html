@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TwinCAT Assistant</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        background: #101318;
+        color: #e7ebf0;
+      }
+      body { margin: 0; padding: 16px; background: #101318; }
+      main { display: grid; gap: 12px; max-width: 720px; }
+      h1, h2, p { margin: 0; }
+      h1 { font-size: 18px; }
+      h2 { font-size: 13px; color: #b9c3d0; text-transform: uppercase; letter-spacing: .04em; }
+      section { border: 1px solid #303946; border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
+      .value { overflow-wrap: anywhere; white-space: pre-wrap; }
+      .blocked { color: #ffb4ab; }
+      .muted { color: #aab4c0; }
+      button { width: fit-content; border: 1px solid #61728a; border-radius: 6px; padding: 8px 12px; background: #28384d; color: #fff; cursor: pointer; }
+      button:disabled { cursor: not-allowed; opacity: .55; }
+      [role="status"] { min-height: 1.25em; }
+    </style>
+  </head>
+  <body>
+    <main aria-labelledby="title">
+      <h1 id="title">TwinCAT Assistant</h1>
+      <p class="muted">Verified OpenChamber context only. This panel does not claim a native TwinCAT IDE binding.</p>
+
+      <section aria-labelledby="context-heading">
+        <h2 id="context-heading">Current context</h2>
+        <p>Project directory: <span id="project" class="value">Waiting for host context…</span></p>
+        <p>Session: <span id="session" class="value">Waiting for host context…</span></p>
+        <p>Binding: <span id="binding" class="value">Waiting for host context…</span></p>
+        <p>Session activity: <span id="activity" class="value">Unknown</span></p>
+        <p id="host-connection" class="muted" role="status"></p>
+      </section>
+
+      <section aria-labelledby="readiness-heading">
+        <h2 id="readiness-heading">Engineering readiness</h2>
+        <p id="engineering" class="blocked" role="status">Waiting for host context…</p>
+        <p id="native-bridge" class="blocked" role="status">Not connected: native TwinCAT bridge unavailable.</p>
+        <p id="host-error" class="blocked" role="status"></p>
+      </section>
+
+      <section aria-labelledby="actions-heading">
+        <h2 id="actions-heading">Context action</h2>
+        <p class="muted">Attach the verified project and session context to the current OpenChamber composer. No files or IDE writes are performed.</p>
+        <button id="attach" type="button" disabled>Attach verified context</button>
+        <p id="operation" class="muted" role="status"></p>
+      </section>
+    </main>
+    <script src="main.js"></script>
+  </body>
+</html>

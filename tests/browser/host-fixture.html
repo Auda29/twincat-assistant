@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <iframe id="guest" title="OpenChamber guest"></iframe>
+    <script>
+      window.__host = {
+        state: {
+          directory: null,
+          session: null,
+          connection: { connected: true, account: "fixture" }
+        },
+        guest: null,
+        attach: null,
+        attachCount: 0,
+        pendingAttachResults: [],
+        mode: "ok"
+      };
+
+      const envelope = { channel: "openchamber.sdk", v: 1 };
+      const theme = {
+        mode: "dark",
+        tokens: {
+          background: "#101318", elevated: "#171b22", foreground: "#e7ebf0", muted: "#aab4c0",
+          subtle: "#7f8a99", border: "#303946", hover: "#202a37", selection: "#314663",
+          focus: "#7db4ff", primary: "#6ca7ff", mutedSurface: "#202832", elevatedForeground: "#e7ebf0",
+          active: "#3b506b", selectionForeground: "#ffffff", primaryForeground: "#101318",
+          primaryText: "#e7ebf0", successText: "#8ddba4", warningText: "#ffd479", errorText: "#ffb4ab",
+          infoText: "#9cc7ff", success: "#4ca66a", warning: "#c18f24", error: "#c85b5b", info: "#4c86c8",
+          font: "system-ui", mono: "monospace", radius: "6px"
+        }
+      };
+
+      function postReady() {
+        if (!window.__host.guest) return;
+        window.__host.guest.postMessage({
+          ...envelope,
+          type: "ready",
+          payload: {
+            theme,
+            locale: "en",
+            directory: window.__host.state.directory,
+            session: window.__host.state.session,
+            surface: "panel",
+            connection: window.__host.state.connection,
+            settings: {},
+            item: null
+          }
+        }, "*");
+      }
+
+      window.__setState = (patch) => {
+        window.__host.state = { ...window.__host.state, ...patch };
+        postReady();
+      };
+      window.__setDirectory = (directory) => {
+        window.__host.state.directory = directory;
+        if (!window.__host.guest) return;
+        window.__host.guest.postMessage({ ...envelope, type: "directory", payload: { directory } }, "*");
+      };
+      window.__setSession = (session) => {
+        window.__host.state.session = session;
+        if (!window.__host.guest) return;
+        window.__host.guest.postMessage({ ...envelope, type: "session", payload: { session } }, "*");
+      };
+      window.__setMode = (mode) => { window.__host.mode = mode; };
+      window.__releaseAttach = () => {
+        const pending = window.__host.pendingAttachResults.splice(0);
+        for (const sendResult of pending) sendResult();
+      };
+
+      window.addEventListener("message", (event) => {
+        const message = event.data;
+        if (!message || message.channel !== envelope.channel || message.v !== envelope.v) return;
+        window.__host.guest = event.source;
+        if (message.type === "hello") {
+          postReady();
+          return;
+        }
+        if (message.type === "attach") {
+          window.__host.attachCount += 1;
+          window.__host.attach = message.payload;
+          const sendResult = () => {
+            if (window.__host.mode === "delay-fail" || window.__host.mode === "fail") {
+              event.source.postMessage({ ...envelope, type: "result", id: message.id, ok: false, code: "DENIED", error: "Fixture refused attach." }, "*");
+            } else {
+              event.source.postMessage({ ...envelope, type: "result", id: message.id, ok: true }, "*");
+            }
+          };
+          if (window.__host.mode === "delay" || window.__host.mode === "delay-fail") {
+            window.__host.pendingAttachResults.push(sendResult);
+          } else {
+            sendResult();
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -5,9 +5,12 @@ projects, find relevant InfoSys documentation, make controlled ST code changes,
 and evaluate real build results. The user experience follows OpenChamber's
 threads and agent activity views.
 
-**Status:** Repository initialization and MVP planning. There is no runnable
-application, IDE extension, or implemented engineering bridge yet. The repository
-is initially private.
+**Status:** `0.1.0-dev.1` — runnable local integration foundation, not the native
+TwinCAT MVP. This checkout contains an isolated operator CLI, a read-only
+OpenChamber context panel, a portable C# engineering safety core, and an
+authenticated diagnostic named-pipe bridge. No TwinCAT IDE plugin or native
+engineering adapter is shipped; live writes and compiler builds are unavailable.
+See [implementation status](docs/STATUS.md) for the exact verification boundary.
 
 ## Approach
 
@@ -39,6 +42,11 @@ required for the core workflow.
 
 ## Documentation
 
+- [Implementation status and verification](docs/STATUS.md)
+- [Installation and local commands](docs/INSTALLATION.md)
+- [OpenChamber extension](docs/EXTENSION.md)
+- [Diagnostic bridge](docs/BRIDGE.md)
+- [Windows acceptance checklist](docs/WINDOWS_ACCEPTANCE.md)
 - [Documentation overview](docs/README.md)
 - [MVP: scope and acceptance](docs/MVP.md)
 - [Architecture and integration boundaries](docs/ARCHITECTURE.md)
@@ -47,9 +55,12 @@ required for the core workflow.
 
 ## Development and Licensing
 
-Build and installation instructions will follow the first technical prototype.
-The exact target IDE version and compatible upstream versions are still to be
-selected. No upstream code is included in the initial commit.
+Local development: `npm ci`, `npm run check`; see [installation](docs/INSTALLATION.md)
+for pinned upstream setup and the separate .NET and integration checks.
+OpenChamber `2.1.1`, OpenCode `2.0.23`, and the extension SDK `2.1.1` are
+lockfile-pinned. MCP revisions are recorded in the installation guide.
+Upstream source checkouts and all operator data remain outside tracked files.
+The exact native TwinCAT/TcXaeShell64 target is still to be selected.
 
 At the time of research, OpenChamber and OpenCode are licensed under MIT. When
 reusing their code, retain their copyright and license notices and review the

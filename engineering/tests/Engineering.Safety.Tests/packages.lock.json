@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "engineering.bridge": {
+        "type": "Project",
+        "dependencies": {
+          "Engineering.Safety": "[1.0.0, )"
+        }
+      },
+      "engineering.safety": {
+        "type": "Project"
+      }
+    }
+  }
+}

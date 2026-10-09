@@ -1,8 +1,20 @@
 # Implementation Roadmap
 
-All implementation milestones remain open. No delivery dates or effort estimates
-are committed yet. The sequence first reduces the risks of shell embedding and
-engineering access.
+The local integration foundation is implemented; the native milestones remain
+open. No delivery dates or effort estimates are committed. [Status](STATUS.md)
+separates portable component evidence from full MVP acceptance.
+
+## Completed local foundation (not native MVP acceptance)
+
+- [x] Isolated CLI/profile, version-gated loopback start and POSIX supervision.
+- [x] Real direct calls to modern knowledge and legacy saved-project MCPs using
+  synthetic fixtures and the production bounded client.
+- [x] Read-only context extension, reproducible bundle and browser SDK-contract tests.
+- [x] Portable proposal/approval/apply/rollback core and authenticated diagnostic pipe.
+- [x] Local build/test commands and native acceptance handoff.
+
+The full OpenChamber/model workflow and native host validation remain separate
+gates. No diagnostic fixture is a live TwinCAT engineering backend.
 
 ## M0: Repository and Target Environment
 

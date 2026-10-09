@@ -1,0 +1,23 @@
+{
+  "name": "twincat-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "openchamber": {
+    "apiVersion": 1,
+    "engines": { "openchamber": ">=2.1.1" },
+    "contributes": {
+      "panel": {
+        "id": "twincat-assistant",
+        "name": "TwinCAT Assistant",
+        "icon": "cpu",
+        "entry": "panel/index.html"
+      },
+      "attach": "panel",
+      "capabilities": [],
+      "tools": [
+        { "match": "knowledge_*", "name": "Knowledge", "output": "auto" },
+        { "match": "engineering_*", "name": "Engineering", "output": "auto" }
+      ]
+    }
+  }
+}
