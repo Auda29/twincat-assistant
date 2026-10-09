@@ -5,24 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>TwinCAT Assistant</title>
     <style>
+      /* Fallbacks only; main.mjs replaces them with the host theme tokens. */
       :root {
-        color-scheme: light dark;
-        font-family: system-ui, sans-serif;
-        background: #101318;
-        color: #e7ebf0;
+        color-scheme: dark;
+        --oc-background: #101318;
+        --oc-foreground: #e7ebf0;
+        --oc-muted: #aab4c0;
+        --oc-border: #303946;
+        --oc-primary: #6ca7ff;
+        --oc-primary-foreground: #101318;
+        --oc-hover: #202a37;
+        --oc-focus: #7db4ff;
+        --oc-warning-text: #ffd479;
+        --oc-error-text: #ffb4ab;
+        --oc-font: system-ui, sans-serif;
+        --oc-mono: ui-monospace, Consolas, monospace;
+        --oc-radius: 6px;
+        font-family: var(--oc-font);
+        background: var(--oc-background);
+        color: var(--oc-foreground);
       }
-      body { margin: 0; padding: 16px; background: #101318; }
+      body { margin: 0; padding: 16px; background: var(--oc-background); }
       main { display: grid; gap: 12px; max-width: 720px; }
       h1, h2, p { margin: 0; }
       h1 { font-size: 18px; }
-      h2 { font-size: 13px; color: #b9c3d0; text-transform: uppercase; letter-spacing: .04em; }
-      section { border: 1px solid #303946; border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
+      h2 { font-size: 13px; color: var(--oc-muted); text-transform: uppercase; letter-spacing: .04em; }
+      section { border: 1px solid var(--oc-border); border-radius: calc(var(--oc-radius) + 2px); padding: 12px; display: grid; gap: 8px; }
       .value { overflow-wrap: anywhere; white-space: pre-wrap; }
-      .blocked { color: #ffb4ab; }
-      .muted { color: #aab4c0; }
-      button { width: fit-content; border: 1px solid #61728a; border-radius: 6px; padding: 8px 12px; background: #28384d; color: #fff; cursor: pointer; }
-      button:disabled { cursor: not-allowed; opacity: .55; }
-      [role="status"] { min-height: 1.25em; }
+      .pending { color: var(--oc-warning-text); }
+      .error { color: var(--oc-error-text); }
+      .muted { color: var(--oc-muted); }
+      button { width: fit-content; border: 1px solid var(--oc-primary); border-radius: var(--oc-radius); padding: 8px 12px; background: var(--oc-primary); color: var(--oc-primary-foreground); font: inherit; cursor: pointer; }
+      button:hover:not(:disabled) { filter: brightness(1.1); }
+      button:focus-visible { outline: 2px solid var(--oc-focus); outline-offset: 2px; }
+      button:disabled { cursor: not-allowed; opacity: .5; background: transparent; border-color: var(--oc-border); color: var(--oc-muted); }
+      [role="status"]:empty { display: none; }
     </style>
   </head>
   <body>
@@ -41,9 +58,9 @@
 
       <section aria-labelledby="readiness-heading">
         <h2 id="readiness-heading">Engineering readiness</h2>
-        <p id="engineering" class="blocked" role="status">Waiting for host context…</p>
-        <p id="native-bridge" class="blocked" role="status">Not connected: native TwinCAT bridge unavailable.</p>
-        <p id="host-error" class="blocked" role="status"></p>
+        <p>Native bridge: <span id="native-bridge" class="pending" role="status">Not connected</span></p>
+        <p>Engineering: <span id="engineering" class="pending" role="status">Waiting for host context…</span></p>
+        <p id="host-error" class="error" role="status"></p>
       </section>
 
       <section aria-labelledby="actions-heading">

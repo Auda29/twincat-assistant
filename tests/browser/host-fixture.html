@@ -62,6 +62,11 @@
         if (!window.__host.guest) return;
         window.__host.guest.postMessage({ ...envelope, type: "session", payload: { session } }, "*");
       };
+      window.__setTheme = (mode, tokens) => {
+        theme.mode = mode;
+        Object.assign(theme.tokens, tokens);
+        postReady();
+      };
       window.__setMode = (mode) => { window.__host.mode = mode; };
       window.__releaseAttach = () => {
         const pending = window.__host.pendingAttachResults.splice(0);

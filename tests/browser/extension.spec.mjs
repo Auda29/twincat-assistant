@@ -14,7 +14,7 @@ async function openGuest(page) {
   await page.evaluate((documentText) => {
     document.querySelector('#guest').srcdoc = documentText;
   }, guestDocument);
-  await expect(page.frameLocator('#guest').locator('#native-bridge')).toHaveText('Not connected: native TwinCAT bridge unavailable.');
+  await expect(page.frameLocator('#guest').locator('#native-bridge')).toHaveText('Not connected');
 }
 
 async function setHostState(page, state) {
@@ -41,11 +41,23 @@ test('host contract renders long and hostile context as text and stays fail-clos
   const guest = page.frameLocator('#guest');
   await expect(guest.locator('#project')).toHaveText(longDirectory);
   await expect(guest.locator('#session')).toHaveText(hostileTitle);
-  await expect(guest.locator('#engineering')).toHaveText('Blocked: native TwinCAT bridge is not connected.');
+  await expect(guest.locator('#engineering')).toHaveText('Blocked until the native bridge connects');
   await expect(guest.locator('#attach')).toBeEnabled();
   expect(await page.locator('script').count()).toBe(1);
   expect(await guest.locator('script').count()).toBe(1);
   expect(await page.evaluate(() => window.__host.attach)).toBeNull();
+});
+
+test('panel adopts the host theme tokens instead of fixed colors', async ({ page }) => {
+  await openGuest(page);
+  const guest = page.frameLocator('#guest');
+  await page.evaluate(() => window.__setTheme('light', {
+    background: '#fafafa', foreground: '#111111', warningText: '#8a5a00',
+  }));
+  await expect(guest.locator('body')).toHaveCSS('background-color', 'rgb(250, 250, 250)');
+  await expect(guest.locator('#project')).toHaveCSS('color', 'rgb(17, 17, 17)');
+  await expect(guest.locator('#native-bridge')).toHaveCSS('color', 'rgb(138, 90, 0)');
+  await expect(guest.locator(':root')).toHaveCSS('color-scheme', 'light');
 });
 
 test('missing session disables attach and a later session switch rebinds current context', async ({ page }) => {
@@ -82,7 +94,7 @@ test('host attach refusal is visible and does not become engineering readiness',
   const guest = page.frameLocator('#guest');
   await guest.locator('#attach').click();
   await expect(guest.locator('#host-error')).toHaveText('Host error: Fixture refused attach.');
-  await expect(guest.locator('#engineering')).toHaveText('Blocked: native TwinCAT bridge is not connected.');
+  await expect(guest.locator('#engineering')).toHaveText('Blocked until the native bridge connects');
   await expect(guest.locator('#attach')).toBeDisabled();
 });
 

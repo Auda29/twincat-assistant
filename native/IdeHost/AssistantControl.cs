@@ -18,6 +18,7 @@ namespace TwinCatAssistant.Native
         private readonly TextBox _port = new TextBox { Text = "3123", Width = 70, Margin = new Thickness(4) };
         private readonly ComboBox _targets = new ComboBox { MinWidth = 180, Margin = new Thickness(4), DisplayMemberPath = "Name" };
         private readonly TextBox _source = new TextBox { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap,
+            FontFamily = new System.Windows.Media.FontFamily("Consolas, Courier New"),
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, Visibility = Visibility.Collapsed };
         private readonly WebView2 _browser = new WebView2();
         private readonly StackPanel _toolbar = new StackPanel();

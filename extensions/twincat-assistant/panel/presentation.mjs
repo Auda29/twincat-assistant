@@ -1,4 +1,4 @@
-const nativeBridgeMessage = 'Not connected: native TwinCAT bridge unavailable.';
+const nativeBridgeMessage = 'Not connected';
 
 function readDirectory(state) {
   const directory = state?.directory ?? state?.projectDirectory ?? null;
@@ -31,6 +31,35 @@ function activityLabel(phase) {
   return 'Unknown';
 }
 
+const themeVariables = {
+  background: '--oc-background',
+  foreground: '--oc-foreground',
+  muted: '--oc-muted',
+  border: '--oc-border',
+  primary: '--oc-primary',
+  primaryForeground: '--oc-primary-foreground',
+  hover: '--oc-hover',
+  focus: '--oc-focus',
+  warningText: '--oc-warning-text',
+  errorText: '--oc-error-text',
+  font: '--oc-font',
+  mono: '--oc-mono',
+  radius: '--oc-radius',
+};
+
+// Maps host theme tokens to CSS custom properties. Unknown, non-string or
+// oversized values are dropped so the stylesheet fallbacks stay in effect.
+export function themeProperties(theme) {
+  const tokens = theme?.tokens;
+  const properties = {};
+  if (!tokens || typeof tokens !== 'object') return properties;
+  for (const [token, variable] of Object.entries(themeVariables)) {
+    const value = tokens[token];
+    if (typeof value === 'string' && value.trim() && value.length <= 200) properties[variable] = value;
+  }
+  return properties;
+}
+
 export function initialContextState() {
   return {
     directory: null,
@@ -57,8 +86,8 @@ export function buildViewModel(state = initialContextState()) {
     bindingKey: verified ? `${directory}::${session.id}` : null,
     engineeringState: 'blocked',
     engineeringMessage: verified
-      ? 'Blocked: native TwinCAT bridge is not connected.'
-      : 'Blocked: verified project and session context are required.',
+      ? 'Blocked until the native bridge connects'
+      : 'Blocked: project and session context required',
     nativeBridgeMessage,
     hostConnectionMessage: state.connection?.connected === true
       ? 'OpenChamber host: connected.'

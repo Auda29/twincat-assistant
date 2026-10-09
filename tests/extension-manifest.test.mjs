@@ -35,5 +35,5 @@ test('production panel uses the SDK host boundary and safe text rendering', asyn
   assert.match(source, /host\.dispose/);
   assert.doesNotMatch(source, /innerHTML/);
   assert.doesNotMatch(source, /localStorage/);
-  assert.match(production, /native TwinCAT bridge unavailable/);
+  assert.match(production, /Native TwinCAT bridge: not connected/);
 });
