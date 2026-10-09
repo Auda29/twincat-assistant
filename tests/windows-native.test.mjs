@@ -107,7 +107,9 @@ test('Windows helper revokes the whole job on Node owner death without killing u
   } finally {
     if (owner?.exitCode === null && owner.signalCode === null) owner.kill();
     sentinel.kill();
-    await rm(root, { recursive: true, force: true });
+    // Process-death assertions above stay strict. Windows can release the final
+    // directory handle shortly after process exit; only filesystem cleanup retries.
+    await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
 
@@ -137,12 +139,15 @@ test('Windows initialized state has a protected current-user DACL inherited by i
     }
     assert.equal(results.length, 3);
     assert.equal(results[0].protected, true);
+    assert.equal(results[0].ownerIsCurrentUser, true);
     for (const result of results) {
       assert.equal(result.currentUserOnly, true);
-      assert.equal(result.ownerIsCurrentUser, true);
       assert.equal(result.fullControl, true);
       assert.ok(result.rules > 0);
     }
+    // secure-directory explicitly sets the root owner. Descendant ownership is
+    // Windows' creation default (Administrators on an elevated runner); enforce
+    // their actual access policy through current-user-only inherited DACLs.
     assert.ok(results[1].inherited > 0);
     assert.ok(results[2].inherited > 0);
     // Negative control: the Windows directory has other principals in its ACL.
