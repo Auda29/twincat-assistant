@@ -3,11 +3,12 @@
   <Extern href="stdidcmd.h" />
   <Extern href="vsshlids.h" />
   <Commands package="guidPackage">
-    <Groups><Group guid="guidCommands" id="AssistantGroup" priority="0x0600"><Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" /></Group></Groups>
-    <Buttons><Button guid="guidCommands" id="OpenAssistant" priority="0x0100" type="Button"><Parent guid="guidCommands" id="AssistantGroup" /><Strings><ButtonText>TwinCAT Assistant</ButtonText></Strings></Button></Buttons>
+    <!-- Other Windows already supplies a group. Place the button directly in it;
+         nesting another group here compiles but leaves the command invisible. -->
+    <Buttons><Button guid="guidCommands" id="OpenAssistant" priority="0x0100" type="Button"><Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" /><Strings><ButtonText>TwinCAT Assistant</ButtonText></Strings></Button></Buttons>
   </Commands>
   <Symbols>
     <GuidSymbol name="guidPackage" value="{4dcc0b19-7b34-497f-bf44-7f1f612b7afb}" />
-    <GuidSymbol name="guidCommands" value="{bd34d6a6-75aa-4df3-9b1a-f3b341fc4544}"><IDSymbol name="AssistantGroup" value="0x1020" /><IDSymbol name="OpenAssistant" value="0x0100" /></GuidSymbol>
+    <GuidSymbol name="guidCommands" value="{bd34d6a6-75aa-4df3-9b1a-f3b341fc4544}"><IDSymbol name="OpenAssistant" value="0x0100" /></GuidSymbol>
   </Symbols>
 </CommandTable>

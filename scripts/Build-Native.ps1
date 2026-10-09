@@ -32,7 +32,9 @@ try {
     if (-not $msbuild) { throw 'Visual Studio 2022 MSBuild (x64) is required for VSIX packaging.' }
     $hosts = if ($Architecture -eq 'Both') { @('X86', 'Amd64') } else { @($Architecture) }
     foreach ($hostArchitecture in $hosts) {
-        & $msbuild "native/IdeHost/$hostArchitecture/IdeHost.$hostArchitecture.csproj" /restore /p:RestoreLockedMode=true /p:Configuration=Release /v:minimal /nologo "/p:TwinCatInteropPath=$TwinCatInteropPath"
+        # VSSDK's incremental manifest generation can retain a previous identity
+        # version. Rebuild only these generated host outputs; never deploy them.
+        & $msbuild "native/IdeHost/$hostArchitecture/IdeHost.$hostArchitecture.csproj" /restore /t:Rebuild /p:RestoreLockedMode=true /p:Configuration=Release /v:minimal /nologo "/p:TwinCatInteropPath=$TwinCatInteropPath"
         if ($LASTEXITCODE -ne 0) { throw "$hostArchitecture host build failed." }
     }
 } finally {

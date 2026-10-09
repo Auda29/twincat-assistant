@@ -1,7 +1,8 @@
 # Native Windows acceptance gate
 
-A read-only host prototype is included; it has not been installed/accepted in
-the native IDE. Do not interpret this checklist as an installer. See
+A read-only host prototype is included. The x86 development payload has reached
+extension discovery, but native menu/tool-window/editor acceptance is still open;
+the amd64 payload has not been installed. Do not interpret this checklist as an installer. See
 [prototype evidence](NATIVE_PROTOTYPE.md). Record evidence separately for **x86
 TcXaeShell and amd64 TcXaeShell64** before claiming support or enabling writes.
 

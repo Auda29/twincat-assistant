@@ -118,7 +118,33 @@ Community SDK target as a build-time placeholder. Neither is proof that a
 particular Beckhoff shell accepts its VSIX installation target/prerequisites.
 TcXaeShell64 target registration, install/uninstall, dock/reopen, WebView2 loader
 resolution and restart coordination must be tested on the actual host. No
-extension files, IDE registry, or running user project were modified in this work.
+running user project has been changed. A coordinated x86 development installation
+has reached extension discovery, but menu/tool-window acceptance remains pending.
+
+### x86 discovery and menu-loading findings
+
+The selected VS15-based TcXaeShell discovers manually unpacked payloads in its
+application extension directory. Copying the original payload alone left its
+extension-list cache unchanged. With the shell closed and explicit operator/UAC
+approval, updating only the existing empty `extensions.configurationchanged`
+marker's last-write timestamp caused a subsequent logged startup to discover and
+enable the extension. Preserve marker contents and record the original timestamp;
+do not delete caches or reset settings. `/UpdateConfiguration` is **not supported**
+by this installed isolated shell: it reports an unknown switch even with exit code
+0. Do not treat that exit code as a successful refresh.
+
+Discovery did not make the original menu visible. `Commands.vsct` incorrectly
+nested a custom group inside the shell's existing Other Windows group. The 0.1.1
+payload instead places the button directly in `IDG_VS_WNDO_OTRWNDWS1`, following
+the SDK's tool-window placement, and increments the menu-resource revision to 2
+for remerge. Source-contract regressions verify placement and matching command
+identity/resource names; they are not live-shell acceptance. Both corrected VSIX
+variants build, but installing the correction and verifying its menu, package
+initialization and docking are still pending. Do not overwrite a running host's
+payload; review and preserve only the known prototype folder when updating it.
+The build script rebuilds the generated VSIX host outputs because the SDK's
+incremental manifest generation was observed retaining the previous identity
+version. A successful compile alone does not establish the packaged version.
 
 ## Sanitized local evidence (2026-10-09)
 
@@ -136,7 +162,7 @@ extension files, IDE registry, or running user project were modified in this wor
   login and isolated session creation. This test uses no customer project, MCP,
   corpus, provider credential or model call. Shutdown ownership is verified.
 - Twelve portable dirty-evidence regressions test policy rules only.
-- Local checks pass: 29 Node tests, 7 built-panel Chromium contracts, 34 portable
+- Local checks pass: 31 Node tests (including 2 menu source contracts), 7 built-panel Chromium contracts, 34 portable
   engineering regressions on Windows, and the separate real-runtime bootstrap.
   The Windows pipe server permits replacement OS instances after an expired
   client's still-open handle; it still serves only one connection at a time.
