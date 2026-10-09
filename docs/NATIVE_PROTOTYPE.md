@@ -12,6 +12,9 @@ installation, editor correctness, or production approval.
   read without write/delete sharing. This is a leaf-object check, not a promise
   that every ancestor is free of junctions. A newly created state root gets a
   protected current-user-only inheritable DACL before credentials are written.
+  Read-only `inspect-acl` diagnostics use raw SIDs, never account-name translation
+  or PowerShell. The ACL regression checks owner, full control, protected root,
+  file inheritance and a negative control without modifying the Windows directory.
 - Windows supervision uses an unnamed Job Object with
   `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`. The root starts suspended, joins the job,
   then resumes. Stop, root exit, stdin EOF, and helper termination revoke the

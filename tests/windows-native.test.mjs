@@ -7,6 +7,7 @@ import { supervise } from '../src/supervisor.mjs';
 import { spawn, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { initializeState } from '../src/state.mjs';
+import { windowsHelperPath } from '../src/windows-native.mjs';
 import { once } from 'node:events';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -121,25 +122,37 @@ test('Windows supervisor rejects missing executable and honors pre-start cancell
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('Windows initialized state has a protected current-user DACL inherited by its files', { skip: process.platform !== 'win32' }, async () => {
+test('Windows initialized state has a protected current-user DACL inherited by its files', { skip: process.platform !== 'win32', timeout: 15000 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'tc-acl-'));
   try {
     const paths = await initializeState(join(root, 'state'), {});
-    const script = `$sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value;
-      $results=foreach($path in @($env:TC_ACL_ROOT,(Join-Path $env:TC_ACL_ROOT 'settings.json'),(Join-Path $env:TC_ACL_ROOT 'config\\opencode.json'))) {
-        $acl=Get-Acl -LiteralPath $path;
-        [pscustomobject]@{protected=$acl.AreAccessRulesProtected;currentUserOnly=@($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | Where-Object {$_.IdentityReference.Value -ne $sid -or $_.AccessControlType -ne 'Allow'}).Count -eq 0;
-        rules=$acl.Access.Count; inherited=@($acl.Access | Where-Object {$_.IsInherited}).Count}
-      }; ConvertTo-Json -InputObject @($results) -Compress`;
-    const { stdout } = await promisify(execFile)('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
-      env: { SystemRoot: process.env.SystemRoot, TC_ACL_ROOT: paths.root }, windowsHide: true, timeout: 15000,
-    });
-    const results = JSON.parse(stdout);
+    const results = [];
+    const env = Object.fromEntries(['SystemRoot', 'WINDIR', 'DOTNET_ROOT', 'TEMP', 'TMP']
+      .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]));
+    for (const path of [paths.root, paths.settingsPath, paths.configPath]) {
+      const { stdout } = await promisify(execFile)(windowsHelperPath(), ['inspect-acl', path], {
+        env, windowsHide: true, timeout: 3000, maxBuffer: 4096, shell: false,
+      });
+      results.push(JSON.parse(stdout));
+    }
     assert.equal(results.length, 3);
     assert.equal(results[0].protected, true);
-    for (const result of results) { assert.equal(result.currentUserOnly, true); assert.ok(result.rules > 0); }
+    for (const result of results) {
+      assert.equal(result.currentUserOnly, true);
+      assert.equal(result.ownerIsCurrentUser, true);
+      assert.equal(result.fullControl, true);
+      assert.ok(result.rules > 0);
+    }
     assert.ok(results[1].inherited > 0);
     assert.ok(results[2].inherited > 0);
+    // Negative control: the Windows directory has other principals in its ACL.
+    // Reading it must not be mistaken for current-user-only state; never alter it.
+    const { stdout } = await promisify(execFile)(windowsHelperPath(), ['inspect-acl', process.env.SystemRoot], {
+      env, windowsHide: true, timeout: 3000, maxBuffer: 4096, shell: false,
+    });
+    const systemAcl = JSON.parse(stdout);
+    assert.ok(systemAcl.rules > 0);
+    assert.equal(systemAcl.currentUserOnly, false);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 

@@ -40,6 +40,29 @@ internal static class Program
                 info.SetAccessControl(acl);
                 return 0;
             }
+            if (args is ["inspect-acl", var aclPath])
+            {
+                if (!Path.IsPathFullyQualified(aclPath)) throw new IOException();
+                var attributes = File.GetAttributes(aclPath);
+                if ((attributes & FileAttributes.ReparsePoint) != 0) throw new IOException();
+                FileSystemSecurity acl = (attributes & FileAttributes.Directory) != 0
+                    ? new DirectoryInfo(aclPath).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner)
+                    : new FileInfo(aclPath).GetAccessControl(AccessControlSections.Access | AccessControlSections.Owner);
+                var sid = WindowsIdentity.GetCurrent().User ?? throw new IOException();
+                // Inspect raw SIDs only. NTAccount translation can contact a domain
+                // controller; no shell, account-name lookup or network is needed.
+                var rules = acl.GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<FileSystemAccessRule>().ToArray();
+                Console.WriteLine(JsonSerializer.Serialize(new {
+                    @protected = acl.AreAccessRulesProtected,
+                    currentUserOnly = rules.All(rule => rule.IdentityReference.Equals(sid) && rule.AccessControlType == AccessControlType.Allow),
+                    ownerIsCurrentUser = sid.Equals(acl.GetOwner(typeof(SecurityIdentifier))),
+                    fullControl = rules.Any(rule => rule.IdentityReference.Equals(sid) && rule.AccessControlType == AccessControlType.Allow
+                        && (rule.FileSystemRights & FileSystemRights.FullControl) == FileSystemRights.FullControl),
+                    rules = rules.Length,
+                    inherited = rules.Count(rule => rule.IsInherited),
+                }));
+                return 0;
+            }
             if (args is ["supervise"]) return await JobSupervisor.RunAsync();
             return 2;
         }
