@@ -53,7 +53,9 @@ internal static class Program
         {
             try
             {
-                await test();
+                // A synchronous Windows pipe stall must fail the fixture rather
+                // than hang the entire regression process indefinitely.
+                await Task.Run(test).WaitAsync(TimeSpan.FromSeconds(15));
                 Console.WriteLine($"PASS {test.Method.Name}");
             }
             catch (Exception error)
@@ -515,6 +517,7 @@ internal static class PipeTests
 
     public static async Task IdMismatchIsRejectedBeforeError()
     {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var pipeName = $"engineering-safety-{Guid.NewGuid():N}";
         await using var server = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
         var connected = server.WaitForConnectionAsync();
@@ -522,16 +525,18 @@ internal static class PipeTests
         await pipe.ConnectAsync(2000);
         await connected;
         var client = new AuthenticatedPipeClient(pipe, 8192);
-        await pipe.WriteAsync(Encoding.UTF8.GetBytes("{\"type\":\"hello\",\"protocol\":1,\"token\":\"test\"}\n"));
-        await pipe.FlushAsync();
-        _ = await PipeBridgeServer.ReadBoundedLineAsync(server, 8192, CancellationToken.None);
+        var hello = PipeBridgeServer.ReadBoundedLineAsync(server, 8192, timeout.Token);
+        await pipe.WriteAsync(Encoding.UTF8.GetBytes("{\"type\":\"hello\",\"protocol\":1,\"token\":\"test\"}\n"), timeout.Token);
+        _ = await hello;
+        var ack = PipeBridgeServer.ReadBoundedLineAsync(pipe, 8192, timeout.Token);
         await server.WriteAsync(Encoding.UTF8.GetBytes("{\"type\":\"hello-ack\",\"protocol\":1}\n"));
-        await server.FlushAsync();
-        _ = await PipeBridgeServer.ReadBoundedLineAsync(pipe, 8192, CancellationToken.None);
-        var request = client.RequestAsync("get-status", new { });
-        _ = await PipeBridgeServer.ReadBoundedLineAsync(server, 8192, CancellationToken.None);
+        _ = await ack;
+        // Start the server read before calling the real client, so this fixture
+        // remains concurrent like the production server on both platforms.
+        var incoming = PipeBridgeServer.ReadBoundedLineAsync(server, 8192, timeout.Token);
+        var request = client.RequestAsync("get-status", new { }, timeout.Token);
+        _ = await incoming;
         await server.WriteAsync(Encoding.UTF8.GetBytes("{\"id\":\"wrong\",\"error\":{\"code\":\"internal_error\",\"message\":\"x\"}}\n"));
-        await server.FlushAsync();
         await Check.ThrowsAsync<BridgeProtocolException>(() => request);
     }
 
@@ -554,12 +559,13 @@ internal static class PipeTests
 
     public static async Task IdlePeerDoesNotBlockNextPeer()
     {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         await using var server = TestServer.Create(readTimeout: TimeSpan.FromMilliseconds(100));
         await server.StartAsync();
         await using var idle = await RawClient.ConnectAsync(server.PipeName);
         await Task.Delay(TimeSpan.FromMilliseconds(300));
         await using var client = await AuthenticatedPipeClient.ConnectAsync(server.PipeName, server.Token, TimeSpan.FromSeconds(2));
-        var response = await client.RequestAsync("get-status", new { });
+        var response = await client.RequestAsync("get-status", new { }, timeout.Token);
         Check.Equal("ok-1", response.GetProperty("id").GetString());
         await server.StopAsync();
     }

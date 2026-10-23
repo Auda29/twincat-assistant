@@ -5,6 +5,7 @@ import {
   buildAttachRequest,
   buildViewModel,
   initialContextState,
+  themeProperties,
 } from '../extensions/twincat-assistant/panel/presentation.mjs';
 
 test('missing project or session fails closed and offers no attach action', () => {
@@ -14,8 +15,8 @@ test('missing project or session fails closed and offers no attach action', () =
   assert.equal(view.sessionLabel, 'No active session');
   assert.equal(view.bindingState, 'unbound');
   assert.equal(view.engineeringState, 'blocked');
-  assert.equal(view.engineeringMessage, 'Blocked: verified project and session context are required.');
-  assert.equal(view.nativeBridgeMessage, 'Not connected: native TwinCAT bridge unavailable.');
+  assert.equal(view.engineeringMessage, 'Blocked: project and session context required');
+  assert.equal(view.nativeBridgeMessage, 'Not connected');
   assert.equal(view.canAttach, false);
   assert.equal(buildAttachRequest(initialContextState()), null);
 });
@@ -33,8 +34,8 @@ test('verified host context remains read-only and attachable without claiming ID
   assert.equal(view.sessionLabel, state.session.title);
   assert.equal(view.bindingState, 'verified');
   assert.equal(view.engineeringState, 'blocked');
-  assert.equal(view.engineeringMessage, 'Blocked: native TwinCAT bridge is not connected.');
-  assert.equal(view.nativeBridgeMessage, 'Not connected: native TwinCAT bridge unavailable.');
+  assert.equal(view.engineeringMessage, 'Blocked until the native bridge connects');
+  assert.equal(view.nativeBridgeMessage, 'Not connected');
   assert.equal(view.sessionActivity, 'Completed');
   assert.equal(view.canAttach, true);
 
@@ -85,4 +86,21 @@ test('bridge and host errors are explicit without becoming readiness', () => {
   assert.equal(view.hostErrorMessage, 'Host unavailable');
   assert.equal(view.engineeringState, 'blocked');
   assert.equal(view.canAttach, false);
+});
+
+test('host theme tokens map to CSS properties and reject unusable values', () => {
+  assert.deepEqual(themeProperties(undefined), {});
+  assert.deepEqual(themeProperties({ mode: 'light', tokens: {
+    background: '#ffffff',
+    errorText: '#b3261e',
+    mono: 'Consolas, monospace',
+    muted: 42,
+    border: '   ',
+    primary: 'x'.repeat(201),
+    unknownToken: 'red',
+  } }), {
+    '--oc-background': '#ffffff',
+    '--oc-error-text': '#b3261e',
+    '--oc-mono': 'Consolas, monospace',
+  });
 });

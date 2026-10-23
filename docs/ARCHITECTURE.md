@@ -11,8 +11,10 @@ The local foundation reuses lockfile-pinned npm distributions: OpenChamber
 `2.1.1` and OpenCode `2.0.23`. MCP source commits and setup are recorded in
 [installation](INSTALLATION.md). No upstream fork, source vendor tree or
 submodule is committed. The architecture diagram below is the target native
-product, not the current executable topology. Current code is the external
-operator CLI, read-only context extension and portable diagnostic bridge.
+product, not the current executable topology. Current code includes the external
+operator CLI, read-only context extension, portable diagnostic bridge and a
+separate native WPF/WebView2 prototype. Its reader displays ST locally but is not
+connected to the diagnostic pipe, MCPs or sessions. See [Status](STATUS.md).
 
 ## Components
 
@@ -89,6 +91,27 @@ Implementation baseline and exact pins are recorded in [status](STATUS.md) and
 2. Add project context, navigation, and tool presentations.
 3. Use the OpenChamber extension SDK wherever it is sufficient.
 4. Build a more customized frontend host only when a demonstrated need arises.
+
+### Active-editor-first interaction (agreed, not implemented)
+
+OpenChamber chat remains the primary surface. The native layer should follow the
+selected IDE's active ST POU locally and display compact persistent binding,
+freshness and dirty/unknown indicators. Refresh/Read buttons and a manually loaded
+POU selector are prototype diagnostics, not prerequisites for normal interaction.
+
+Resolve the active object independently of a complete catalog. Subscribe to
+editor/solution lifecycle events, coalesce redundant updates, preserve supported
+COM threading and reject results from an obsolete binding. Unsupported/ambiguous
+editors and closed solutions clear old context; names or tab titles alone cannot
+establish identity. Unsaved-editor semantics require acceptance before claiming
+that an Automation Interface snapshot is the exact editor buffer.
+
+Automatic local following must not disclose/persist source or silently retarget
+a thread or future approval. Native-to-session/MCP transport remains a separate,
+authenticated integration under explicit disclosure consent. Optional project
+search/browsing must state completeness, but the 200-target prototype inventory
+must not gate access to the current editor. No new chat harness or duplicate
+TwinCAT MCP/tool catalog is introduced by this UX change.
 
 The VS Code extension is an architectural reference, not an extension that can
 be installed in Visual Studio. According to the research, the OpenChamber

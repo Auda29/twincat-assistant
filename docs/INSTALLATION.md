@@ -1,9 +1,11 @@
 # Local development and operator setup
 
 This is a development checkout, not a supported TwinCAT installer. Commands are
-run at the repository root. Linux operation is exercised; Windows operator
-commands are not enabled where native no-follow JSON reads are unavailable, and
-`start` additionally fails closed until process-tree supervision is validated.
+run at the repository root. Windows operator commands now require the built
+native helper for safe JSON reads and Job Object ownership. Build it before
+running `init`, `doctor`, tests, or `start` on Windows. See
+[native prototype](NATIVE_PROTOTYPE.md) for build commands and the separate
+32-/64-bit host targets. Native IDE installation acceptance remains open.
 
 ## Prerequisites and pinned dependencies
 

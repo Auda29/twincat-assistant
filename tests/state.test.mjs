@@ -23,8 +23,15 @@ test('bounded JSON reader rejects symlinks, directories, oversized and invalid U
   try {
     const path = join(parent, 'settings.json');
     await writeFile(path, '{}');
-    await symlink(path, join(parent, 'link.json'));
-    await assert.rejects(readJsonFile(join(parent, 'link.json')), /regular|file/);
+    try {
+      await symlink(path, join(parent, 'link.json'));
+      await assert.rejects(readJsonFile(join(parent, 'link.json')), /regular|file/);
+    } catch (error) {
+      if (process.platform !== 'win32' || error.code !== 'EPERM') throw error;
+      // Windows file symlinks need Developer Mode or elevation; junctions do not.
+      await symlink(parent, join(parent, 'link-directory'), 'junction');
+      await assert.rejects(readJsonFile(join(parent, 'link-directory')), /regular|file/);
+    }
     await assert.rejects(readJsonFile(parent), /regular|file/);
     await writeFile(path, Buffer.alloc(65537));
     await assert.rejects(readJsonFile(path), /bounded|large/);

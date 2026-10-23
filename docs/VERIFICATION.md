@@ -1,8 +1,13 @@
-# Verification record — local integration foundation
+# Historical verification record — local integration foundation
 
 All results below come from executed commands in the Linux development
 container. They do not establish native Windows/TwinCAT compatibility or a
 production security approval.
+
+This is the original Linux foundation snapshot, not the current roadmap/status.
+Later Windows/native results, updated CI and component versions are recorded in
+[Status](STATUS.md) and [Native prototype](NATIVE_PROTOTYPE.md). Do not reinterpret
+the historical counts or initial release-blocker wording as current acceptance.
 
 ## Component and upstream evidence
 

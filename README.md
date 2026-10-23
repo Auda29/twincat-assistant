@@ -5,12 +5,17 @@ projects, find relevant InfoSys documentation, make controlled ST code changes,
 and evaluate real build results. The user experience follows OpenChamber's
 threads and agent activity views.
 
-**Status:** `0.1.0-dev.1` — runnable local integration foundation, not the native
-TwinCAT MVP. This checkout contains an isolated operator CLI, a read-only
-OpenChamber context panel, a portable C# engineering safety core, and an
-authenticated diagnostic named-pipe bridge. No TwinCAT IDE plugin or native
-engineering adapter is shipped; live writes and compiler builds are unavailable.
+**Status:** `0.1.0-dev.1` — local integration foundation plus a read-only native
+prototype, not the accepted TwinCAT MVP. Both IDE payloads build; x86 prototype
+`0.1.1` is installed with user-confirmed menu/window/docking smoke checks and
+local ST display. Automatic active-editor following is the **next slice**, not
+implemented behavior; unsaved-editor, native chat and amd64 acceptance remain open.
+The isolated operator CLI,
+OpenChamber context panel, portable safety core and diagnostic pipe remain;
+live writes, native-to-MCP binding and compiler builds are unavailable.
 See [implementation status](docs/STATUS.md) for the exact verification boundary.
+The [roadmap](docs/ROADMAP.md#where-we-are-now) records current position, next
+tasks and separate read-only, agent-context, write and compiler milestones.
 
 ## Approach
 
@@ -33,9 +38,13 @@ See [implementation status](docs/STATUS.md) for the exact verification boundary.
 
 ## Initial MVP
 
-A persistent chat in one explicitly selected TwinCAT shell version that examines
+A persistent chat in explicitly tested 32-bit and 64-bit TwinCAT shell versions that examines
 the correct project, uses both MCPs, and can modify the declaration and ST
 implementation of an existing block after approval, then compile it.
+
+Normal use follows the active ST editor locally without manual refresh/read/block
+selection. Source disclosure requires consent. This is the target product;
+the current milestone remains strictly read-only and exposes no compiler action.
 
 No downloads, online changes, forcing, or runtime writes. A connected PLC is not
 required for the core workflow.
@@ -47,6 +56,7 @@ required for the core workflow.
 - [OpenChamber extension](docs/EXTENSION.md)
 - [Diagnostic bridge](docs/BRIDGE.md)
 - [Windows acceptance checklist](docs/WINDOWS_ACCEPTANCE.md)
+- [32-bit and 64-bit native prototype](docs/NATIVE_PROTOTYPE.md)
 - [Documentation overview](docs/README.md)
 - [MVP: scope and acceptance](docs/MVP.md)
 - [Architecture and integration boundaries](docs/ARCHITECTURE.md)
@@ -60,7 +70,8 @@ for pinned upstream setup and the separate .NET and integration checks.
 OpenChamber `2.1.1`, OpenCode `2.0.23`, and the extension SDK `2.1.1` are
 lockfile-pinned. MCP revisions are recorded in the installation guide.
 Upstream source checkouts and all operator data remain outside tracked files.
-The exact native TwinCAT/TcXaeShell64 target is still to be selected.
+TcXaeShell 15/x86 and TcXaeShell64/amd64 are separate acceptance targets; the
+installed x86 XAE build is 3.1.4024.78. No live amd64 host acceptance is claimed.
 
 At the time of research, OpenChamber and OpenCode are licensed under MIT. When
 reusing their code, retain their copyright and license notices and review the

@@ -1,0 +1,12 @@
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.WindowsDesktop" />
+  <PropertyGroup>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ShellPackageVersion>17.14.40264</ShellPackageVersion>
+    <DtePackageVersion>17.14.40260</DtePackageVersion>
+    <DefineConstants>$(DefineConstants);HOST_AMD64</DefineConstants>
+  </PropertyGroup>
+  <Import Project="../Host.props" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk.WindowsDesktop" />
+  <Import Project="$(VsSDKInstall)/Microsoft.VsSDK.targets" Condition="Exists('$(VsSDKInstall)/Microsoft.VsSDK.targets')" />
+</Project>

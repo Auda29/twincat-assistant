@@ -48,7 +48,10 @@ public sealed class PipeBridgeServer : IDisposable
         _disposeCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         while (!_disposeCancellation.IsCancellationRequested)
         {
-            await using var server = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
+            // Serve one peer at a time, but permit a replacement OS instance after
+            // an expired peer: on Windows its still-open client handle can keep
+            // the disconnected old instance alive after the server handle closes.
+            await using var server = new NamedPipeServerStream(pipeName, PipeDirection.InOut, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte,
                 PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly, _maxFrameBytes, _maxFrameBytes);
             try
             {
@@ -142,7 +145,8 @@ public sealed class PipeBridgeServer : IDisposable
         if (bytes.Length > _maxFrameBytes) throw new BridgeProtocolException("response exceeds frame limit");
         await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
         await stream.WriteAsync("\n"u8.ToArray(), cancellationToken).ConfigureAwait(false);
-        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        // Named pipes are unbuffered here. Windows FlushFileBuffers waits for
+        // the peer to drain and can block cancellation on a stalled peer.
     }
 
     private static bool SecureEquals(string left, string right) => CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(left), Encoding.UTF8.GetBytes(right));
@@ -242,7 +246,6 @@ public sealed class AuthenticatedPipeClient : IAsyncDisposable
         if (bytes.Length > _maxFrameBytes) throw new BridgeProtocolException("request exceeds frame limit");
         await _pipe.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
         await _pipe.WriteAsync("\n"u8.ToArray(), cancellationToken).ConfigureAwait(false);
-        await _pipe.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
     private async Task<JsonElement> ReadJsonAsync(CancellationToken cancellationToken)
     {

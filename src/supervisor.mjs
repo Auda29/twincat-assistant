@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { open, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
+import { superviseWindows } from './windows-native.mjs';
 
 function groupSignal(pid, signal) {
   if (!pid) return;
@@ -8,7 +9,6 @@ function groupSignal(pid, signal) {
   catch (error) { if (error.code !== 'ESRCH') throw error; }
 }
 export async function supervise(plan, root, signal, onStarted = () => {}) {
-  if (process.platform === 'win32') throw new Error('Windows process-tree supervision requires native validation; start is not enabled');
   if (signal?.aborted) return { cancelled: true };
   const lockPath = join(root, 'launcher.lock');
   let lock;
@@ -25,6 +25,7 @@ export async function supervise(plan, root, signal, onStarted = () => {}) {
     await lock.writeFile(JSON.stringify({ supervisorPid: process.pid }) + '\n');
     await lock.sync();
     if (signal?.aborted) return { cancelled: true };
+    if (process.platform === 'win32') return await superviseWindows(plan, signal, onStarted);
     child = spawn(plan.command, plan.args, { cwd: plan.cwd, env: plan.env, detached: true, shell: false, stdio: ['ignore', 'inherit', 'inherit'] });
     const completed = new Promise((resolve, reject) => {
       child.once('error', () => reject(new Error('Upstream process could not start')));

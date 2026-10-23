@@ -1,12 +1,22 @@
 # Native Windows acceptance gate
 
-No native host is included. Do not interpret this checklist as an installer.
-Record evidence for one selected host before implementing/releasing live writes.
+A read-only host prototype is included. The x86 development payload has passed a
+user-reported empty-solution menu/tool-window/docking smoke test, but native
+editor/chat acceptance and measured cold-start behavior are still open;
+the amd64 payload has not been installed. Do not interpret this checklist as an installer. See
+[prototype evidence](NATIVE_PROTOTYPE.md). Record evidence separately for **x86
+TcXaeShell and amd64 TcXaeShell64** before claiming support or enabling writes.
 
 ## Environment record
 
+Current x86 evidence: the user confirms the 0.1.1 menu is visible and its window
+opens, docks, closes and reopens with no solution loaded. A screenshot shows the
+selected shell PID and zero ST targets. Initial opening was perceived as slow;
+single-click cold-start behavior is not measured. This does not establish live
+editor, dirty-state, WebView2/chat or 64-bit acceptance.
+
 - Windows version/build and user privileges.
-- TwinCAT XAE build, exact TcXaeShell64 executable/version, bitness and components.
+- TwinCAT XAE build, exact selected shell executable/version, bitness and components.
 - Classic Visual Studio SDK compatibility and supported VSIX/package registration.
 - Automation Interface installation/API version; WebView2 runtime/version.
 - .NET target for the in-process IDE package (separate from the portable .NET 8
@@ -31,6 +41,21 @@ production PLC. Preserve declaration and implementation before/after each step.
 - Read both sections, object identity and a reliable revision.
 - Modify unsaved editor content: distinguish it from saved XML; known dirty or
   unknown dirty state must reject proposals and writes.
+- Follow the exact active POU automatically without Refresh/Read/dropdown steps;
+  do not require full catalog loading. Recheck identity before showing results.
+- Switch between two POUs, then non-ST/no editor; clear obsolete source and keep
+  binding/uncertainty visible. Repeat solution switch/close, same-path reopen and
+  multiple-IDE isolation. No source may enter chat/MCP/session transport merely
+  because an editor was activated.
+- Measure a cold single-click window opening; the reported initial delay is not
+  sufficient evidence of either a lost command or acceptable latency.
+
+## Future write/compiler tracer (M3/M4, not current authorization)
+
+The following items remain part of the eventual MVP gate, but must not be run
+as part of the current read-only editor acceptance. They require a separate scope
+decision, implemented approval enforcement and explicit operator authorization.
+
 - Review and approve exact content and baseline. Mutate the object between read
   and apply: reject without saving, merging or overwriting the user's changes.
 - Apply on the correct COM/IDE thread without blocking the UI. Inject first-

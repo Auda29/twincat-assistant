@@ -1,5 +1,5 @@
 import { connectHost } from '@openchamber/sdk';
-import { buildAttachRequest, buildViewModel, initialContextState } from './presentation.mjs';
+import { buildAttachRequest, buildViewModel, initialContextState, themeProperties } from './presentation.mjs';
 
 const elements = {
   project: document.getElementById('project'),
@@ -39,6 +39,12 @@ function render() {
   text(elements.hostError, view.hostErrorMessage ? `Host error: ${view.hostErrorMessage}` : '');
   text(elements.operation, operationMessage);
   elements.attach.disabled = !view.canAttach || pendingAttach !== null;
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  for (const [variable, value] of Object.entries(themeProperties(theme))) root.style.setProperty(variable, value);
+  if (theme?.mode === 'light' || theme?.mode === 'dark') root.style.colorScheme = theme.mode;
 }
 
 function errorMessage(error) {
@@ -92,12 +98,15 @@ function connect() {
     return;
   }
 
-  unsubscribers.push(host.onReady((context) => updateContext({
-    directory: context.directory,
-    session: context.session,
-    lifecycle: null,
-    connection: context.connection,
-  }, { authoritative: true })));
+  unsubscribers.push(host.onReady((context) => {
+    if (!disposed) applyTheme(context.theme);
+    updateContext({
+      directory: context.directory,
+      session: context.session,
+      lifecycle: null,
+      connection: context.connection,
+    }, { authoritative: true });
+  }));
   unsubscribers.push(host.onDirectory((directory) => updateContext({ directory })));
   unsubscribers.push(host.onSession((session) => updateContext({ session })));
   unsubscribers.push(host.onSessionLifecycle((lifecycle) => updateContext({ lifecycle })));
