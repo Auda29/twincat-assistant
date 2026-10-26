@@ -23,4 +23,5 @@ foreach (var (name, evidence, expected) in cases)
 }
 var activeCases = ActiveEditorTests.Run();
 var chatCases = ChatConnectionTests.Run();
-Console.WriteLine($"{cases.Length + activeCases + chatCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");
+var bindingCases = ChatBindingTests.Run();
+Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");

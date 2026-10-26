@@ -8,6 +8,8 @@ import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { inspectState } from '../../src/state.mjs';
+import { configureNativeModel } from '../../src/native-chat-model.mjs';
+import { consentProviders } from '../../src/embedded-chat.mjs';
 
 test('native owner starts pinned protected chat and stdin EOF stops its process tree', {
   skip: process.platform !== 'win32', timeout: 100000,
@@ -53,6 +55,29 @@ test('native owner starts pinned protected chat and stdin EOF stops its process 
     });
     assert.equal(login.status, 200);
     const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+    // Isolated fake credential: exercise catalog visibility without calling a model.
+    const providerHeaders = { cookie, 'content-type': 'application/json',
+      'x-opencode-directory': encodeURIComponent(join(root, 'state', 'workspace')), 'x-opencode-directory-encoding': 'uri' };
+    const integrationDeadline = Date.now() + 20000;
+    let registration;
+    while (Date.now() < integrationDeadline) {
+      const response = await fetch(`${origin}/api/integration`, { headers: providerHeaders });
+      if (response.ok) registration = (await response.json()).data;
+      if (registration?.some(item => item.id === 'openai')) break;
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    assert.ok(registration?.some(item => item.id === 'openai'), 'isolated provider integration did not become ready');
+    const connected = await fetch(`${origin}/api/integration/openai/connect/key`, {
+      method: 'POST', headers: providerHeaders, body: JSON.stringify({ key: 'synthetic-not-a-real-api-key' }),
+    });
+    assert.equal(connected.status, 204);
+    const integrations = (await (await fetch(`${origin}/api/integration`, { headers: providerHeaders })).json()).data;
+    const providers = (await (await fetch(`${origin}/api/provider`, { headers: providerHeaders })).json()).data;
+    const models = (await (await fetch(`${origin}/api/model`, { headers: providerHeaders })).json()).data;
+    assert.ok(integrations.some(item => item.id === 'openai' && item.connections.length > 0));
+    assert.ok(!providers.some(item => item.id === 'openai'), 'deny policy must still hide the provider before consent');
+    assert.equal(models.filter(item => item.providerID === 'openai').length, 0);
+    assert.ok(consentProviders(integrations).some(item => item.id === 'openai'), 'connected provider must be independently selectable for explicit consent');
     // Reproduce the pinned browser's environment bootstrap, not just its login.
     // It uses the legacy root on first load despite the relocated data root.
     for (const directory of [join(root, 'state', 'home', '.config', 'openchamber', 'chats'), join(root, 'state', 'openchamber', 'chats')]) {
@@ -68,6 +93,33 @@ test('native owner starts pinned protected chat and stdin EOF stops its process 
     assert.equal(status.nativeEngineering, 'unavailable');
     assert.equal(status.corpus, 'not_configured');
     assert.deepEqual(Object.keys(status.settings), []);
+    await configureNativeModel({ state: join(root, 'state'), provider: 'openai', acceptSourceDisclosure: true });
+    assert.equal((await inspectState(join(root, 'state'))).settings.model, undefined, 'provider consent must not invent a model');
+    assert.equal((await fetch(`${origin}/api/debug/location`, { method: 'DELETE', headers: providerHeaders })).status, 204);
+    const catalogDeadline = Date.now() + 20000;
+    let availableModels = [];
+    while (Date.now() < catalogDeadline) {
+      availableModels = (await (await fetch(`${origin}/api/model`, { headers: providerHeaders })).json()).data;
+      if (availableModels.some(model => model.providerID === 'openai' && model.enabled)) break;
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    assert.ok(availableModels.some(model => model.providerID === 'openai' && model.enabled), 'explicit provider-only consent must unlock the real upstream model catalog');
+    await configureNativeModel({ state: join(root, 'state'), model: 'openai/synthetic-test', acceptSourceDisclosure: true });
+    const directoryHeaders = { cookie, 'x-opencode-directory': encodeURIComponent(join(root, 'state', 'workspace')), 'x-opencode-directory-encoding': 'uri' };
+    const refresh = await fetch(`${origin}/api/debug/location`, { method: 'DELETE', headers: directoryHeaders });
+    assert.equal(refresh.status, 204, 'explicit model setup could not reload its isolated location');
+    const modelDeadline = Date.now() + 20000;
+    let runtimeConfig;
+    while (Date.now() < modelDeadline) {
+      const response = await fetch(`${origin}/api/config`, { headers: { cookie, 'x-opencode-directory': encodeURIComponent(join(root, 'state', 'workspace')), 'x-opencode-directory-encoding': 'uri' } });
+      const entries = await response.json();
+      runtimeConfig = Object.assign({}, ...entries.filter(entry => entry.info).map(entry => entry.info));
+      if (runtimeConfig.model && typeof runtimeConfig.model === 'object') runtimeConfig.model = runtimeConfig.model.providerID + '/' + runtimeConfig.model.model;
+      if (runtimeConfig.model === 'openai/synthetic-test') break;
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    assert.equal(runtimeConfig.model, 'openai/synthetic-test', 'running upstream did not adopt the explicitly consented model policy; keys=' + Object.keys(runtimeConfig).join(','));
+    assert.deepEqual(runtimeConfig.permissions[0], { action: '*', resource: '*', effect: 'deny' });
     assert.ok(!output.includes(password) && !errors.includes(password), 'credential leaked into launcher output');
     child.stdin.end(); // model the IDE/process owner closing its private control pipe
     await closed;

@@ -1,6 +1,7 @@
-import { mkdir, open, readFile, lstat, rm } from 'node:fs/promises';
+import { mkdir, open, readFile, lstat, rm, rename, unlink } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
 import { readWindowsJson, secureWindowsDirectory } from './windows-native.mjs';
 
@@ -75,7 +76,7 @@ export async function inspectState(root) {
       throw new Error('Engineering MCP configuration must be explicitly readOnly with no writeAllowlist');
     }
   }
-  return { configurationVerified: true, nativeEngineering: 'unavailable', corpus: settings.knowledge ? 'not_probed' : 'not_configured', modelCallsEnabled: settings.sourceCodeDisclosureAccepted === true && Boolean(settings.model), files, paths, settings };
+  return { configurationVerified: true, nativeEngineering: 'unavailable', corpus: settings.knowledge ? 'not_probed' : 'not_configured', modelCallsEnabled: settings.sourceCodeDisclosureAccepted === true && Boolean(settings.provider || settings.model), files, paths, settings };
 }
 
 export async function prepareChatWorkspace(root) {
@@ -99,6 +100,29 @@ export async function prepareChatWorkspace(root) {
       }
     }
   }
+  // OpenChamber otherwise asks for a generic repository on first login. Its
+  // default project is our empty private chat workspace, never the PLC folder.
+  // Existing operator projects and all other preferences are preserved.
+  const settingsPath = join(status.paths.openchamber, 'settings.json');
+  let preferences;
+  try { preferences = await readJsonFile(settingsPath); }
+  catch (error) {
+    if (!(await lstat(settingsPath).catch(failure => { if (failure.code === 'ENOENT') return null; throw failure; }))) preferences = {};
+    else throw error;
+  }
+  if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)
+      || (preferences.projects !== undefined && !Array.isArray(preferences.projects))) throw new Error('Invalid OpenChamber project preferences');
+  if (!preferences.projects?.length) {
+    const path = status.paths.workspace.replace(/\\/g, '/');
+    const id = 'path_' + Buffer.from(path).toString('base64url');
+    const value = { ...preferences, projects: [{ id, path, label: 'TwinCAT Assistant', addedAt: Date.now(), lastOpenedAt: Date.now() }],
+      activeProjectId: id, lastDirectory: path };
+    const temporary = join(status.paths.openchamber, '.workspace-' + randomUUID() + '.tmp');
+    try {
+      await exclusiveJson(temporary, value);
+      await rename(temporary, settingsPath);
+    } finally { await unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
+  }
   return status;
 }
 
@@ -119,7 +143,7 @@ export function runtimeEnvironment(root, input, inherited = process.env) {
     OPENCHAMBER_OPENCODE_HOSTNAME: '127.0.0.1',
   });
   const keys = { openai: 'OPENAI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', google: 'GOOGLE_GENERATIVE_AI_API_KEY' };
-  const key = settings.model && keys[settings.model.split('/')[0]];
+  const key = keys[settings.provider ?? settings.model?.split('/')[0]];
   if (settings.sourceCodeDisclosureAccepted === true && key && inherited[key] !== undefined) env[key] = inherited[key];
   return env;
 }

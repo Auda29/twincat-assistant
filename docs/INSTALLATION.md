@@ -6,6 +6,12 @@ native helper for safe JSON reads and Job Object ownership. Build it before
 running `init`, `doctor`, tests, or `start` on Windows. See
 [native prototype](NATIVE_PROTOTYPE.md) for build commands and the separate
 32-/64-bit host targets. Native IDE installation acceptance remains open.
+
+The 0.1.4 chat-integration candidate also requires the locked root and `upstream`
+Node dependencies. `Build-Native.ps1` verifies and embeds the adapter against the
+pinned OpenChamber assets before compiling. A mismatched distribution is refused.
+See [project chat setup and consent](CHAT_INTEGRATION.md) for the native workflow
+and `Test-ChatIntegration.ps1` for the actual WPF/WebView2/runtime fixture check.
 Candidate `0.1.2` and its active-editor verification boundary are documented in
 [M1.2](ACTIVE_EDITOR.md). The real compiled native view can be rendered with
 synthetic inputs using `powershell.exe -NoProfile -STA -File scripts/Test-NativeView.ps1`
@@ -121,8 +127,12 @@ arguments. The UI is at `http://127.0.0.1:3123`. The command stays in the foregr
 Ctrl+C stops the owned helper group. Never select a PLC project as the launch
 working directory; the launcher uses its empty isolated workspace.
 
-No model is enabled by default. An optional `model: "provider/model"` additionally
-requires `sourceCodeDisclosureAccepted: true`. Only the selected supported
+No model is enabled by default. Optional `provider: "openai"` allows explicit
+provider consent before choosing a model; optional `model: "provider/model"`
+also sets the default model. Both require `sourceCodeDisclosureAccepted: true`,
+and a provider/model pair must agree. The native Details selector follows this
+order because upstream hides denied providers even after sign-in.
+Only the selected supported
 provider environment key is forwarded (OpenAI, Anthropic or Google); other
 credentials and arbitrary OpenCode overrides are discarded. This consent is
 not evidence of successful model use or a provider's retention policy.

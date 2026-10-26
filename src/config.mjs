@@ -14,7 +14,7 @@ function absolute(value) {
   }
 }
 export function validateSettings(settings) {
-  object(settings, ['knowledge', 'engineering', 'model', 'sourceCodeDisclosureAccepted']);
+  object(settings, ['knowledge', 'engineering', 'provider', 'model', 'sourceCodeDisclosureAccepted']);
   if (settings.knowledge !== undefined) {
     object(settings.knowledge, ['executable', 'config']);
     absolute(settings.knowledge.executable);
@@ -31,6 +31,11 @@ export function validateSettings(settings) {
     if (typeof settings.model !== 'string' || !/^[a-zA-Z0-9_-]+\/[^\s\0]+$/.test(settings.model) || settings.sourceCodeDisclosureAccepted !== true) {
       throw new Error('Model settings require provider/model and explicit source code disclosure acceptance');
     }
+  }
+  if (settings.provider !== undefined && (typeof settings.provider !== 'string'
+      || !/^[a-zA-Z0-9_-]{1,80}$/.test(settings.provider) || settings.sourceCodeDisclosureAccepted !== true
+      || (settings.model && settings.model.split('/')[0] !== settings.provider))) {
+    throw new Error('Provider settings require an exact provider and explicit source code disclosure acceptance');
   }
   return structuredClone(settings);
 }
@@ -90,10 +95,9 @@ export function createOpenCodeConfig(settings = {}) {
     },
     mcp: { servers },
   };
-  if (settings.model) {
-    config.model = settings.model;
-    config.experimental.policies.push({ action: 'provider.use', resource: settings.model.split('/')[0], effect: 'allow' });
-  }
+  if (settings.model) config.model = settings.model;
+  const provider = settings.provider ?? settings.model?.split('/')[0];
+  if (provider) config.experimental.policies.push({ action: 'provider.use', resource: provider, effect: 'allow' });
   // Validate against the pinned upstream V2 contract, not a handwritten copy.
   Schema.decodeUnknownSync(Config.Info)(config);
   return config;

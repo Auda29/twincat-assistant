@@ -43,8 +43,10 @@ VS2022 remains a possible additional host, not a guaranteed MVP platform.
 - Preserve supported COM threading and bounded/coalesced work so context updates
   do not repeatedly scan the whole project or freeze the editor.
 
-This is the agreed product direction. The installed prototype still has manual
-diagnostic controls; none of the automatic-following criteria is marked complete.
+This is the agreed product direction. Core x86 automatic following is observed;
+extended acceptance remains open. Candidate 0.1.4 adds project-bound chat and
+explicit context attachment; see [its implementation boundary](CHAT_INTEGRATION.md).
+It does not close the unchecked full-product acceptance criteria below.
 
 ## Example Workflow
 

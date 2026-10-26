@@ -66,6 +66,9 @@ test('real pinned Windows runtime boots with protected UI, isolated session and 
       if (listening) await new Promise(resolve => setTimeout(resolve, 100));
     }
     assert.equal(listening, false, 'Owned upstream listener survived Node-owner death');
-    await rm(root, { recursive: true, force: true });
+    // Windows can release directory handles shortly after the owned listener
+    // exits. Retry only cleanup; the independent shutdown assertion above must
+    // still pass, and a persistent lock remains a test failure.
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 });

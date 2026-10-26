@@ -17,12 +17,20 @@ test('chat workspace prepares both fresh-profile roots and preserves existing ch
     const managed = join(paths.openchamber, 'chats');
     assert.ok((await lstat(legacy)).isDirectory());
     assert.ok((await lstat(managed)).isDirectory());
+    const preferencesPath = join(paths.openchamber, 'settings.json');
+    const preferences = JSON.parse(await readFile(preferencesPath, 'utf8'));
+    assert.equal(preferences.projects[0].path, paths.workspace.replace(/\\/g, '/'));
+    assert.equal(preferences.projects[0].label, 'TwinCAT Assistant');
     await writeFile(join(legacy, 'existing-chat.txt'), 'synthetic existing chat');
     await prepareChatWorkspace(root);
     assert.equal(await readFile(join(legacy, 'existing-chat.txt'), 'utf8'), 'synthetic existing chat');
     assert.deepEqual(await readFile(paths.configPath), policy);
     assert.deepEqual(await readFile(paths.settingsPath), settings);
     assert.equal((await inspectState(root)).modelCallsEnabled, false);
+    const existingPreferences = { projects: [{ id: 'operator-project', path: '/operator-selected' }], activeProjectId: 'operator-project', theme: 'dark' };
+    await writeFile(preferencesPath, JSON.stringify(existingPreferences));
+    await prepareChatWorkspace(root);
+    assert.deepEqual(JSON.parse(await readFile(preferencesPath, 'utf8')), existingPreferences);
   } finally { await rm(parent, { recursive: true, force: true }); }
 });
 

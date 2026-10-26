@@ -1,12 +1,52 @@
 # Implementation status
 
 Updated: **2026-10-26**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.3`, installed after operator coordination. Native changes are on
-`feat/active-editor-context`, based on merged baseline `24e5d48`.
+`0.1.5`, installed after operator coordination. Current native changes are on
+`feat/project-bound-chat`, stacked on `feat/active-editor-context` and merged
+baseline `24e5d48`.
 These versions describe different
 components, not a TwinCAT product release.
 
+Candidate **0.1.4** on `feat/project-bound-chat` implements the next chat-integration
+goal. It retains OpenChamber's chat, adds an exact persistent project/session
+binding, explicit POU composer attachments, provider consent and bounded
+reconnection. Local checks pass: 42 Node tests, 8 browser contracts, 69 native
+policy/context/chat checks, 21 WPF view checks, 20 compiled-control/WebView2/runtime
+integration checks and 3 Windows/native Node runtime checks. Both VSIX targets build
+without warnings/errors. These are synthetic/component checks, with no model call.
+The x86 update is installed with all 13 payload hashes verified and 0.1.3 backed
+up outside the extension search path. A normally launched `ContextChecks` host
+loads the command/tool window, resolves both same-name POUs distinctly and starts
+the local listener. Current Linux and Windows CI checks pass at `6310628`.
+The operator confirms the compact header, PLC_B project-chat binding and visible
+FB_Motor composer reference after an explicit attachment in the installed host,
+without submitting a message. The operator also confirms the PLC_A mismatch
+refusal and restored PLC_B assignment after switching back. The subsequent 0.1.5
+provider fix and real model response below complete the scoped x86 chat goal.
+Computer Use fails with
+`native pipe unavailable` / `os error 2`; component checks remain separate evidence.
+See [the integration contract](CHAT_INTEGRATION.md).
+
 ## Current position and next action
+
+- Candidate 0.1.5 fixes the reproduced provider/model consent deadlock in 0.1.4:
+  an authenticated provider hidden by `provider.use` deny can be explicitly
+  selected/granted before choosing a model. The operator's OpenAI sign-in is
+  preserved. It also fixes the wrong config-store export in the embedded adapter;
+  the strengthened fixture verifies the actual picker catalog without injecting
+  a synthetic model selection. Local checks pass: 44 Node, 8 browser, 69 native,
+  21 WPF view, 22 compiled-control/runtime and 3 Windows/native runtime checks.
+  Both VSIX variants build without warnings/errors. The unchanged Windows helper
+  was built to a separate local output because its current binary belongs to the
+  running chat. The x86 0.1.5 update is now installed with all 13 hashes verified
+  and 0.1.4 backed up outside extension discovery. Its Assistant command/window,
+  distinct PLC_A/PLC_B direct reads and chat listener pass the installed smoke.
+  Linux and Windows CI pass at `6902f0c`. The operator confirms that OpenAI is
+  visible in the new selector, explicit consent succeeds and a chat model can
+  be selected. The operator confirms the actual reply `bRun := TRUE;` after
+  explicitly attaching PLC_B/FB_Motor and asking for its assigned value. The
+  scoped x86 chat-integration goal is complete; this does not close the wider
+  native MVP, extended lifecycle, amd64 or MCP/corpus acceptance gates.
 
 - Foundation PR #1 and native foundation PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
   are merged. PR #2 merged on 2026-10-23; this is not native MVP acceptance.
@@ -56,9 +96,13 @@ components, not a TwinCAT product release.
   login, port-conflict refusal and owned shutdown are tested. Native source is
   not attached and a fresh profile has no model/provider enabled.
 - Installed x86 0.1.3 first-run password setup and display of the real OpenChamber
-  login page are user-confirmed. Real provider conversation/native session and
-  MCP binding remain open; this is not a complete chat/agent MVP acceptance.
-- Native WebView2/chat/provider acceptance, source/session/MCP transport and
+  login page are user-confirmed. The subsequent 0.1.5 core chat/provider flow is
+  accepted as recorded above. MCP binding remains open; this is not a complete
+  chat/agent MVP acceptance.
+- Installed 0.1.5 core chat/provider flow is accepted in `ContextChecks`;
+  native-to-MCP transport remains open. Local component tests also cover explicit
+  composer attachment and session binding.
+  Extended lifecycle and
   reliable active/unsaved-editor correlation remain open. No live amd64 host
   is installed for acceptance. All native writes/builds remain unavailable.
 
@@ -156,15 +200,16 @@ green lifecycle job is not native acceptance. See
   smoke test; actual installation and all native acceptance in TcXaeShell64.
 - Extended installed lifecycle/focus/responsiveness acceptance of the active-editor
   context and compact host UI beyond the observed x86 core flow. Native WebView2
-  first-run/login-page flow is observed; authenticated conversation/session and
-  provider/MCP acceptance remain open.
+  first-run/login-page and basic project-bound provider conversation are accepted
+  in the tested x86 flow. Wider lifecycle/provider combinations and MCP acceptance
+  remain open.
 - General unsaved-editor/source/RDT correlation and revision acceptance. The
   synthetic x86 test detected the unsaved comment as `known-dirty`; exact editor
   buffer semantics beyond that observed case remain unverified.
 - Live monorepo engineering adapter, operator review integration, live apply or
   rollback, and project-bound compiler diagnostics.
 - A supplied Beckhoff corpus or a real provider conversation using both MCPs.
-- Native-to-MCP/session binding. The existing pipe executable and `doctor` remain
+- Native-to-MCP context/session transport. The existing pipe executable and `doctor` remain
   unconnected to the IDE reader and deliberately report native unavailability.
 - Full extension install/reload and chat persistence acceptance in OpenChamber.
 - Production storage retention, installer/update delivery, signing and release.

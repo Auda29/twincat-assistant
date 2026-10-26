@@ -181,9 +181,9 @@ namespace TwinCatAssistant.Native
         }
         public void Dispose() { var stop = StopAsync(); }
         private void OnExited(object sender, EventArgs args) { if (!_stopping) Stopped?.Invoke(); }
-        private static async Task DrainAsync(StreamReader reader)
+        internal static async Task DrainAsync(StreamReader reader)
         { try { var buffer = new char[1024]; while (await reader.ReadAsync(buffer, 0, buffer.Length) > 0) { } } catch { } }
-        private static async Task<string> ReadReadyAsync(StreamReader reader)
+        internal static async Task<string> ReadReadyAsync(StreamReader reader)
         {
             var result = new StringBuilder();
             var one = new char[1];
@@ -195,7 +195,7 @@ namespace TwinCatAssistant.Native
             }
             throw new IOException("Local chat launcher exited before readiness.");
         }
-        private static string Quote(string argument)
+        internal static string Quote(string argument)
         {
             if (argument.IndexOf('"') >= 0 || argument.IndexOf('\0') >= 0 || argument.EndsWith("\\", StringComparison.Ordinal))
                 throw new ArgumentException("Invalid launcher path.");

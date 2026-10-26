@@ -46,6 +46,7 @@ namespace TwinCatAssistant.Native
         public string SourceNotice { get; set; }
         public DirtyAssessment Dirty { get; set; }
         public double ReadMilliseconds { get; set; }
+        public long ContextGeneration { get; set; }
     }
 
     // A generation changes even if the same path is closed and reopened. A read

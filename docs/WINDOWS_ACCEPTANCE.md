@@ -9,13 +9,26 @@ TcXaeShell and amd64 TcXaeShell64** before claiming support or enabling writes.
 
 Candidate `0.1.2` implements active-POU following and compact context with optional
 diagnostics. Both payloads build, and policy/context plus synthetic WPF checks
-pass. The x86 payload is now `0.1.2`, with verified installation/package loading
+pass. That x86 `0.1.2` payload had verified installation/package loading
 and a visible tool window. Full in-process lifecycle,
 frame/document, actual unsaved-buffer and responsiveness checks are pending.
 User screenshots confirm the real PLC_A/PLC_B header changes and unsaved-comment
 status. Seven live direct-reader lifecycle/isolation checks also pass. These
 are core x86 evidence, not completion of the full checklist.
 See [M1.2 evidence and next steps](ACTIVE_EDITOR.md).
+
+On 2026-10-26, x86 candidate 0.1.4 was installed after UAC confirmation, with all
+13 payload hashes verified and 0.1.3 backed up outside extension discovery.
+Its command/tool window opens in the normally launched `ContextChecks` solution;
+the direct reader distinguishes PLC_A/PLC_B and the local chat listener starts.
+Its compact chat/source UI acceptance below still requires operator observation:
+Computer Use fails with `native pipe unavailable` / `os error 2`.
+The operator subsequently confirms the compact header, PLC_B project-chat
+assignment and visible FB_Motor composer reference after the explicit attachment
+action, without submitting a message. The operator also confirms that the same
+PLC_B chat blocks attachment/input while PLC_A is active and restores its matching
+assignment after returning to PLC_B. Provider conversation acceptance follows
+below for the corrected 0.1.5 package.
 
 ## Environment record
 
@@ -79,6 +92,47 @@ decision, implemented approval enforcement and explicit operator authorization.
   exact solution/project/configuration correlation. Never activate/download.
 
 ## Chat and documentation tracer
+
+### Candidate 0.1.4: installed synthetic project
+
+Use only `ContextChecks`; no production PLC is connected. Record the installed
+payload hash/version separately from component-test results.
+
+- Open the Assistant: the chat starts automatically, its sidebar is collapsed,
+  and connection/model diagnostics remain under Details.
+- With PLC_A/FB_Motor active, create a project chat. Before clicking **POU an Chat
+  anhängen**, the composer contains no native source. After the click, inspect
+  the visible reference and its snapshot/unsaved-buffer caveat before sending.
+- Switch to PLC_B/FB_Motor: source attachment and sending in the PLC_A chat are
+  refused. Return to PLC_A and explicitly validate/rebind as needed.
+- Modify only synthetic ST without saving. Confirm the changed snapshot status;
+  do not treat it as universal proof of exact editor-buffer semantics.
+- Reload/reopen, select an existing thread and explicitly use its matching
+  project binding. No source is automatically reattached. Confirm the workspace
+  initialization message stays absent during repeated navigation.
+- If no ST editor is active, a general chat may be created without inventing
+  project context. Its POU attachment remains unavailable.
+- Provider configuration/consent and an actual provider conversation require
+  the operator's own UI actions. No password/API key is requested in chat.
+
+The compiled-control integration script covers these contracts with synthetic
+snapshots and no model call; it does not close this installed acceptance gate.
+
+Candidate 0.1.5 adds a provider-order regression: after sign-in, choose the
+authenticated provider in native Details and explicitly grant it before selecting
+a model in the normal chat picker. No model must be required to press that grant
+button. Sign-in alone must leave provider use denied. The real-control fixture
+checks this with an isolated fake credential and no provider/model call.
+The x86 update is installed with all 13 payload hashes verified, prior 0.1.4
+preserved outside extension discovery, and the installed ContextChecks smoke
+passing. This does not replace operator verification of the corrected workflow.
+The operator subsequently confirms OpenAI visibility, successful explicit grant
+and working model selection in 0.1.5. After explicitly attaching PLC_B/FB_Motor,
+the operator asks which value its implementation assigns to bRun and confirms
+the model's exact reply `bRun := TRUE;`. The scoped x86 chat goal is accepted;
+extended lifecycle/host and the full documentation/MCP gate remain separate.
+
+### Full documentation/MCP gate
 
 Install the real built extension; verify selected session and project survive
 reopen/rebind without stale attachment. Use an operator-provided validated

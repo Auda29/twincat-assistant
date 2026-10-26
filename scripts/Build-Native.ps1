@@ -12,6 +12,8 @@ $keys = @('DOTNET_ROOT', 'MSBuildSDKsPath', 'MSBuildEnableWorkloadResolver', 'DO
 $old = @{}
 foreach ($key in $keys) { $old[$key] = [Environment]::GetEnvironmentVariable($key, 'Process') }
 try {
+    & node scripts/build-embedded-chat.mjs
+    if ($LASTEXITCODE -ne 0) { throw 'Pinned embedded chat adapter build failed.' }
     $env:DOTNET_ROOT = [IO.Path]::GetFullPath($DotNetRoot)
     $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
     $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = '1'

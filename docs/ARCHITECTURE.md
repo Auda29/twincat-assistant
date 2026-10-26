@@ -92,7 +92,7 @@ Implementation baseline and exact pins are recorded in [status](STATUS.md) and
 3. Use the OpenChamber extension SDK wherever it is sufficient.
 4. Build a more customized frontend host only when a demonstrated need arises.
 
-### Active-editor-first interaction (agreed, not implemented)
+### Active-editor-first interaction
 
 OpenChamber chat remains the primary surface. The native layer should follow the
 selected IDE's active ST POU locally and display compact persistent binding,
@@ -112,6 +112,14 @@ authenticated integration under explicit disclosure consent. Optional project
 search/browsing must state completeness, but the 200-target prototype inventory
 must not gate access to the current editor. No new chat harness or duplicate
 TwinCAT MCP/tool catalog is introduced by this UX change.
+
+The 0.1.4 candidate now adds a native project/session binding and an explicitly
+staged POU composer reference. Its fixed-version adapter is required because the
+SDK cannot reshape the whole embedded surface. It reuses the existing app stores,
+verifies distributed asset hashes, and does not patch installed upstream files.
+See [the integration contract](CHAT_INTEGRATION.md) for transport, consent,
+storage and acceptance boundaries. This does not connect the native reader to
+the MCP engineering backend.
 
 The VS Code extension is an architectural reference, not an extension that can
 be installed in Visual Studio. According to the research, the OpenChamber
