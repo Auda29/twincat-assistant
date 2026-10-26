@@ -1,8 +1,9 @@
 # Implementation status
 
 Updated: **2026-10-26**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.3`, installed after operator coordination. Native changes are on
-`feat/active-editor-context`, based on merged baseline `24e5d48`.
+`0.1.4`, installed after operator coordination. Current native changes are on
+`feat/project-bound-chat`, stacked on `feat/active-editor-context` and merged
+baseline `24e5d48`.
 These versions describe different
 components, not a TwinCAT product release.
 
@@ -13,8 +14,13 @@ reconnection. Local checks pass: 42 Node tests, 8 browser contracts, 69 native
 policy/context/chat checks, 21 WPF view checks, 20 compiled-control/WebView2/runtime
 integration checks and 3 Windows/native Node runtime checks. Both VSIX targets build
 without warnings/errors. These are synthetic/component checks, with no model call.
-The installed host is still 0.1.3 until the
-coordinated update; do not confuse local candidate checks with installed acceptance.
+The x86 update is installed with all 13 payload hashes verified and 0.1.3 backed
+up outside the extension search path. A normally launched `ContextChecks` host
+loads the command/tool window, resolves both same-name POUs distinctly and starts
+the local listener. Current Linux and Windows CI checks pass at `6310628`.
+The visible chat/source flow still requires operator acceptance because Computer
+Use fails with `native pipe unavailable` / `os error 2`; component checks do not
+establish that installed acceptance.
 See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action

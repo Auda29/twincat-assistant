@@ -151,7 +151,13 @@ directory handles after its separate listener-shutdown assertion has passed.
 Persistent locks or a surviving listener still fail the test.
 
 Local UI renders cover narrow/medium/wide windows. Raw logs and screenshots stay
-in ignored `local-data`. The installed x86 host still needs final acceptance of
+in ignored `local-data`. The x86 0.1.4 update is installed after UAC confirmation;
+all 13 payload hashes match and 0.1.3 is preserved outside extension discovery.
+A normally launched `ContextChecks` host exposes the installed Assistant command,
+opens its tool window, resolves PLC_A/PLC_B distinctly and starts the chat listener.
+Linux and Windows CI checks pass at `6310628`. Native window automation still
+fails with `native pipe unavailable` / `os error 2`.
+The installed x86 host still needs final visual acceptance of
 this candidate using `ContextChecks`, including a real user-driven provider
 conversation. amd64 live installation, extended lifecycle/focus/responsiveness,
 general exact unsaved-buffer semantics, both real MCPs/corpus and native-to-MCP

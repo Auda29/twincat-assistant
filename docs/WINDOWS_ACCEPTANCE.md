@@ -9,13 +9,20 @@ TcXaeShell and amd64 TcXaeShell64** before claiming support or enabling writes.
 
 Candidate `0.1.2` implements active-POU following and compact context with optional
 diagnostics. Both payloads build, and policy/context plus synthetic WPF checks
-pass. The x86 payload is now `0.1.2`, with verified installation/package loading
+pass. That x86 `0.1.2` payload had verified installation/package loading
 and a visible tool window. Full in-process lifecycle,
 frame/document, actual unsaved-buffer and responsiveness checks are pending.
 User screenshots confirm the real PLC_A/PLC_B header changes and unsaved-comment
 status. Seven live direct-reader lifecycle/isolation checks also pass. These
 are core x86 evidence, not completion of the full checklist.
 See [M1.2 evidence and next steps](ACTIVE_EDITOR.md).
+
+On 2026-10-26, x86 candidate 0.1.4 was installed after UAC confirmation, with all
+13 payload hashes verified and 0.1.3 backed up outside extension discovery.
+Its command/tool window opens in the normally launched `ContextChecks` solution;
+the direct reader distinguishes PLC_A/PLC_B and the local chat listener starts.
+Its compact chat/source UI acceptance below still requires operator observation:
+Computer Use fails with `native pipe unavailable` / `os error 2`.
 
 ## Environment record
 
