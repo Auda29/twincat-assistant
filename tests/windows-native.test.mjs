@@ -171,9 +171,9 @@ test('Windows owned child receives only the launch plan environment, not inherit
     await writeFile(script, `import {writeFileSync} from 'node:fs';
       writeFileSync(${JSON.stringify(output)},JSON.stringify({selected:process.env.TC_SELECTED_CREDENTIAL,unrelated:process.env.TC_UNRELATED_CREDENTIAL,args:process.argv.slice(2)}));`);
     assert.equal((await supervise({ command: process.execPath, args: [script], cwd: root,
-      env: { SystemRoot: process.env.SystemRoot, TC_SELECTED_CREDENTIAL: 'synthetic-secret-on-stdin' } }, root)).code, 0);
+      env: { SystemRoot: process.env.SystemRoot, TC_SELECTED_CREDENTIAL: 'synthetic-secret-\u00e4\u03a9\u{1f512}-on-stdin' } }, root)).code, 0);
     const result = JSON.parse(await readFile(output, 'utf8'));
-    assert.equal(result.selected, 'synthetic-secret-on-stdin');
+    assert.equal(result.selected, 'synthetic-secret-\u00e4\u03a9\u{1f512}-on-stdin');
     assert.equal(result.unrelated, undefined);
     assert.deepEqual(result.args, []);
   } finally {

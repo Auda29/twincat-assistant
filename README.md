@@ -6,10 +6,16 @@ and evaluate real build results. The user experience follows OpenChamber's
 threads and agent activity views.
 
 **Status:** `0.1.0-dev.1` — local integration foundation plus a read-only native
-prototype, not the accepted TwinCAT MVP. Both IDE payloads build; x86 prototype
-`0.1.1` is installed with user-confirmed menu/window/docking smoke checks and
-local ST display. Automatic active-editor following is the **next slice**, not
-implemented behavior; unsaved-editor, native chat and amd64 acceptance remain open.
+prototype, not the accepted TwinCAT MVP. Both IDE payloads build. The earlier x86
+`0.1.1` passed user-confirmed menu/window/docking smoke checks and local ST display.
+Native `0.1.2` added automatic local active-POU following and
+a compact context display with optional diagnostics. Full host lifecycle,
+broader unsaved-buffer semantics, native chat and amd64 acceptance remain open. Source is labelled
+as an Automation Interface snapshot, not verified unsaved editor text.
+The x86 core flow is now checked: same-name POUs in two PLCs follow correctly,
+and a real unsaved editor comment produces the visible unsaved-changes status.
+Installed x86 candidate `0.1.3` adds protected local chat startup, first-run password
+setup and actual navigation/service error reporting. See [native chat](docs/NATIVE_CHAT.md).
 The isolated operator CLI,
 OpenChamber context panel, portable safety core and diagnostic pipe remain;
 live writes, native-to-MCP binding and compiler builds are unavailable.

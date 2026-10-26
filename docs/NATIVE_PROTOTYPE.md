@@ -43,16 +43,18 @@ and 500 saved-source files/directories. Large projects may produce a partial
 catalog. The prototype exposes top-level PROGRAM, FUNCTION_BLOCK and FUNCTION
 objects, not a complete member/method/action editor. COM and bounded filesystem
 work currently run on the IDE UI thread; latency acceptance remains open.
-The user reproduced the 200-target truncation in the installed UI. The read-status
-message currently replaces that warning. Neither the partial catalog nor paging
-it is the agreed primary interaction: active-object resolution must become
-independent of catalog completeness, with persistent context/completeness status.
+The user reproduced the 200-target truncation in installed `0.1.1`, where a read
+message replaces that warning. Candidate `0.1.2` keeps diagnostic completeness
+and read status separate, and its automatic active-object resolution is
+independent of catalog completeness.
 
 ## Chat and source boundary
 
 The tool window embeds the existing OpenChamber UI; it does not rebuild chat,
-authentication, sessions or agent orchestration. Start the reviewed launcher
-separately, select its port, and sign in through OpenChamber's own login.
+authentication, sessions or agent orchestration. Candidate `0.1.3` can start the
+reviewed launcher after one-time development setup and local password setup.
+The manual CLI remains available. Select the configured port and sign in through
+OpenChamber's own login; see [native chat](NATIVE_CHAT.md).
 Navigation/frame navigation is restricted to that exact `http://127.0.0.1:PORT`
 origin. External intercepted resource requests, popups, downloads and browser
 permission requests are blocked. Host objects and WebView messages are disabled.
@@ -64,11 +66,16 @@ automatically attached to an OpenChamber session. Closing/switching a solution
 clears the local target selection and source display. Automatic native session
 binding and native-to-MCP transport are not implemented.
 
-The current Refresh/Read/dropdown controls are diagnostic scaffolding, not the
-accepted product UX. The next slice is automatic local active-editor following
-with a compact persistent binding/dirty-state indicator and chat as the primary
-surface. This behavior is not implemented yet; it must not automatically disclose
-source or silently retarget a session. See the [roadmap](ROADMAP.md#next-slice-m12-active-editor-following).
+Prior `0.1.1` used manual Refresh/Read/dropdown controls. Installed x86 candidate `0.1.2`
+moves those controls under Diagnostics and adds automatic local active-POU
+following, a compact binding/dirty/provenance display and an optional local
+preview. The resolver uses the active document's exact ProjectItem, independently
+of catalog completeness. Source is labelled as an Automation Interface snapshot;
+unsaved editor-buffer text remains unverified. No source is automatically
+disclosed and no chat session is retargeted. The x86 core flow is user/screenshot
+verified for two same-name POUs and a real unsaved comment; seven live reader
+lifecycle/isolation checks pass. Extended host acceptance is still open.
+See [active editor evidence](ACTIVE_EDITOR.md).
 
 The foundation still uses both existing MCP integrations unchanged: knowledge
 documentation and the monorepo's explicitly read-only saved-file backend.
@@ -87,7 +94,8 @@ for `IVsPersistDocData.IsDocDataDirty` without opening/locking/saving it.
   RDT clean result, with no failed evidence.
 - `unknown`: missing identity, saved source, document correlation, or failed reads.
 
-These are prototype evidence rules, **not verified TwinCAT editor semantics**.
+These are prototype evidence rules with limited x86 case evidence, **not general
+proof of TwinCAT editor-buffer semantics**.
 Every state returns `WritesAllowed = false`. No proposals, builds, apply,
 rollback, ADS actions, activation, download, online changes or forcing are exposed.
 A saved XML read or a green policy regression cannot close unsaved-editor gates.

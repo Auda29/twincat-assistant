@@ -1,35 +1,76 @@
 # Implementation status
 
-Updated: **2026-10-09**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.1`; last code baseline: `29b0b75`. These versions describe different
+Updated: **2026-10-26**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
+`0.1.3`, installed after operator coordination. Native changes are on
+`feat/active-editor-context`, based on merged baseline `24e5d48`.
+These versions describe different
 components, not a TwinCAT product release.
 
 ## Current position and next action
 
-- Foundation PR #1 is merged. Native PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
-  is still **draft**, not accepted as an MVP or production release.
-- Both VSIX variants build. Windows and Linux push/PR CI passed for `29b0b75`.
-  Latest local Node run: 31 passing tests, including two menu source contracts.
-- The x86 0.1.1 package is installed after coordinated shell closes/UAC approval.
-  The user confirms menu/open/dock/close/reopen. A local ST display is observed;
-  dirty state is `unknown`. This is not synthetic unsaved-editor acceptance.
-- The current manual Refresh/Read/dropdown UI is **diagnostic scaffolding**.
-  The user rejected it as the product workflow. The agreed next slice is
-  **automatic active-editor following with a compact context indicator**, not
-  expanding or paging the manual selector. This design is recorded, not coded.
+- Foundation PR #1 and native foundation PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
+  are merged. PR #2 merged on 2026-10-23; this is not native MVP acceptance.
+- Both `0.1.3` VSIX variants build locally without warnings/errors. Current local
+  checks pass: 34 Node tests, 8 production-panel browser contracts, 49 native
+  policy/context/chat checks and 20 synthetic WPF view checks. Real native Node
+  transport and C# owner/credential checks also pass. Earlier CI evidence belongs
+  to the merged foundation. Check the workflow runs for the release commit for
+  its CI result; local results do not establish native acceptance.
+- The x86 0.1.3 package is installed after coordinated shell close/UAC approval.
+  All 13 files were verified and the old payload was preserved outside the
+  extension search path. Extension discovery/package load and a visible tool
+  window are observed. Earlier user-reported dock/reopen/local-ST smoke evidence
+  belongs to 0.1.1. Core active/dirty evidence below belongs to 0.1.2.
+- In the normally launched synthetic host, opening two same-name POUs through
+  the IDE command successfully exercises distinct direct-reader identities and
+  source content. User confirmation and screenshots show automatic PLC_A/PLC_B
+  header changes and `Changes: unsaved changes` after a real unsaved comment.
+  The external probe also sees `DocumentSaved = false`, `known-dirty` and the
+  changed Automation Interface snapshot in that case.
+- Seven additional live direct-reader checks pass: two actual IDE PIDs with the
+  same solution/POU, separate saved/unsaved contents, non-ST/no-editor rejection,
+  solution close and same-path reopen. The first IDE's user edit remained intact.
+  These checks do not prove all in-process display/lifecycle behavior.
+- Candidate `0.1.2` implements automatic active-POU following directly through
+  the document's TwinCAT ProjectItem, independently of the bounded catalog.
+  It checks the native document frame, solution, PLC project and object identity,
+  and rejects late reads across lifecycle generations. The native window shows
+  compact context/provenance/uncertainty; Refresh/Read/dropdown controls are now
+  under Diagnostics.
+- Candidate `0.1.3` fixes Connect chat navigating to a stopped service and claiming
+  success too early. It can start the protected pinned runtime from a configured
+  local profile, sets up a DPAPI-protected UI password in the native window, and
+  observes real navigation success/failure and service loss. Real runtime start,
+  login, port-conflict refusal and owned shutdown are tested. Native source is
+  not attached and a fresh profile has no model/provider enabled.
+- Installed x86 0.1.3 first-run password setup and display of the real OpenChamber
+  login page are user-confirmed. Real provider conversation/native session and
+  MCP binding remain open; this is not a complete chat/agent MVP acceptance.
 - Native WebView2/chat/provider acceptance, source/session/MCP transport and
   reliable active/unsaved-editor correlation remain open. No live amd64 host
   is installed for acceptance. All native writes/builds remain unavailable.
 
-The ordered next tasks and exit gates are in [Roadmap: next slice](ROADMAP.md#next-slice-m12-active-editor-following).
+The scoped M1.2 implementation and core x86 active/dirty display are verified.
+Extended in-process lifecycle, cold-start and large-object responsiveness checks
+remain open. Automated window control is unavailable; the user supplied the
+visual core evidence. A direct Automation Interface editor-open call crashed a
+test host; the later IDE-command route succeeds.
+See [active editor implementation and acceptance](ACTIVE_EDITOR.md)
+and [Roadmap: M1.2](ROADMAP.md#next-slice-m12-active-editor-following).
+For the new connection behavior and first-run setup, see [native chat](NATIVE_CHAT.md).
 
 ## Known prototype limitations
 
-- The catalog stops at 200 ST targets. The user reproduced this partial inventory;
-  missing FBs in the selector do not indicate missing project objects. The read
-  status currently replaces the inventory warning. Active-object following must
-  not depend on this truncated catalog; an optional browser needs persistent
-  completeness status later.
+- The diagnostic catalog still stops at 200 ST targets. Missing FBs in that
+  selector do not indicate missing objects. In `0.1.2`, its completeness warning
+  has a separate persistent status and manual reads do not replace active context.
+  Automatic following does not enumerate or depend on this catalog.
+- Automatic reads are Automation Interface snapshots. The current custom editor
+  did not expose an EnvDTE TextDocument; exact unsaved editor-buffer text is not
+  verified. Methods/actions and non-ST objects are visibly unbound.
+- COM reads and bounded saved-source correlation currently run on the IDE UI
+  thread. Active reads are coalesced at 180 ms with a 1-second fallback poll of
+  only the active node. Installed responsiveness/cold-start acceptance is open.
 - Cold opening seemed slow. The user clarified that a second click may merely
   have coincided with completion; neither a lost command nor acceptable latency
   has been established. Measure it before changing the opening path.
@@ -63,6 +104,9 @@ The ordered next tasks and exit gates are in [Roadmap: next slice](ROADMAP.md#ne
   DACLs, environment inventory, PID-selected ROT probe, shared DTE/Automation
   Interface reader, and separate SDK 15/x86 and SDK 17/amd64 VSIX builds with
   WPF/WebView2. See [native prototype](NATIVE_PROTOTYPE.md) for limits and evidence.
+- Active-document-first local ST reads, selection/RDT/document/solution event
+  subscriptions, generation-guarded publication and cleanup, plus a compact native
+  context view with a separate local preview and optional manual diagnostics.
 
 ## Evidence and limits
 
@@ -98,9 +142,13 @@ green lifecycle job is not native acceptance. See
 
 - Complete x86 lifecycle/focus/resize/cold-start acceptance beyond the confirmed
   smoke test; actual installation and all native acceptance in TcXaeShell64.
-- Automatic active-editor-first context and the chat-first host UX.
-- Reliable unsaved-editor/source/RDT correlation and revision acceptance. Live
-  ST reads succeeded on the running x86 shell; dirty state remained `unknown`.
+- Extended installed lifecycle/focus/responsiveness acceptance of the active-editor
+  context and compact host UI beyond the observed x86 core flow. Native WebView2
+  first-run/login-page flow is observed; authenticated conversation/session and
+  provider/MCP acceptance remain open.
+- General unsaved-editor/source/RDT correlation and revision acceptance. The
+  synthetic x86 test detected the unsaved comment as `known-dirty`; exact editor
+  buffer semantics beyond that observed case remain unverified.
 - Live monorepo engineering adapter, operator review integration, live apply or
   rollback, and project-bound compiler diagnostics.
 - A supplied Beckhoff corpus or a real provider conversation using both MCPs.

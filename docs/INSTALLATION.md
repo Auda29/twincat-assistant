@@ -6,6 +6,12 @@ native helper for safe JSON reads and Job Object ownership. Build it before
 running `init`, `doctor`, tests, or `start` on Windows. See
 [native prototype](NATIVE_PROTOTYPE.md) for build commands and the separate
 32-/64-bit host targets. Native IDE installation acceptance remains open.
+Candidate `0.1.2` and its active-editor verification boundary are documented in
+[M1.2](ACTIVE_EDITOR.md). The real compiled native view can be rendered with
+synthetic inputs using `powershell.exe -NoProfile -STA -File scripts/Test-NativeView.ps1`
+after building; that check does not attach to an IDE or initialize WebView2.
+Native candidate `0.1.3` can also start the protected local runtime from Connect
+chat after one-time [native chat configuration](NATIVE_CHAT.md#development-setup).
 
 ## Prerequisites and pinned dependencies
 

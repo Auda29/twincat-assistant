@@ -21,4 +21,6 @@ foreach (var (name, evidence, expected) in cases)
         throw new InvalidOperationException("Dirty assessment failed: " + name);
     Console.WriteLine("PASS " + name);
 }
-Console.WriteLine($"{cases.Length} native policy regressions passed (not live IDE/editor acceptance).");
+var activeCases = ActiveEditorTests.Run();
+var chatCases = ChatConnectionTests.Run();
+Console.WriteLine($"{cases.Length + activeCases + chatCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");

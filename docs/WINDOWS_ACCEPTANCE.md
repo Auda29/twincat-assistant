@@ -7,6 +7,16 @@ the amd64 payload has not been installed. Do not interpret this checklist as an 
 [prototype evidence](NATIVE_PROTOTYPE.md). Record evidence separately for **x86
 TcXaeShell and amd64 TcXaeShell64** before claiming support or enabling writes.
 
+Candidate `0.1.2` implements active-POU following and compact context with optional
+diagnostics. Both payloads build, and policy/context plus synthetic WPF checks
+pass. The x86 payload is now `0.1.2`, with verified installation/package loading
+and a visible tool window. Full in-process lifecycle,
+frame/document, actual unsaved-buffer and responsiveness checks are pending.
+User screenshots confirm the real PLC_A/PLC_B header changes and unsaved-comment
+status. Seven live direct-reader lifecycle/isolation checks also pass. These
+are core x86 evidence, not completion of the full checklist.
+See [M1.2 evidence and next steps](ACTIVE_EDITOR.md).
+
 ## Environment record
 
 Current x86 evidence: the user confirms the 0.1.1 menu is visible and its window

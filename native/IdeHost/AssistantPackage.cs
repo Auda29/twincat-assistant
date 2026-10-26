@@ -34,7 +34,8 @@ namespace TwinCatAssistant.Native
                         await JoinableTaskFactory.SwitchToMainThreadAsync(DisposalToken);
                         var dte = await GetServiceAsync(typeof(SDTE)) as DTE;
                         var rdt = await GetServiceAsync(typeof(SVsRunningDocumentTable)) as IVsRunningDocumentTable;
-                        ((AssistantControl)window.Content).Bind(dte, path => GetDirty(rdt, path));
+                        var selection = await GetServiceAsync(typeof(SVsShellMonitorSelection)) as IVsMonitorSelection;
+                        ((AssistantControl)window.Content).Bind(dte, selection, rdt, path => GetDirty(rdt, path));
                     }
                     catch { /* A failed toolwindow must not crash or mutate the IDE. */ }
                 }).FileAndForget("TwinCatAssistant/OpenToolWindow");
