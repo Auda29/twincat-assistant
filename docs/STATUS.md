@@ -20,8 +20,10 @@ loads the command/tool window, resolves both same-name POUs distinctly and start
 the local listener. Current Linux and Windows CI checks pass at `6310628`.
 The operator confirms the compact header, PLC_B project-chat binding and visible
 FB_Motor composer reference after an explicit attachment in the installed host,
-without submitting a message. Cross-project refusal/return and a real provider
-conversation still await acceptance. Computer Use fails with
+without submitting a message. The operator also confirms the PLC_A mismatch
+refusal and restored PLC_B assignment after switching back. A real provider
+conversation still awaits acceptance; model/disclosure consent is not configured.
+Computer Use fails with
 `native pipe unavailable` / `os error 2`; component checks remain separate evidence.
 See [the integration contract](CHAT_INTEGRATION.md).
 

@@ -161,8 +161,12 @@ The operator confirms all three first-flow checks in that installed host:
 compact native header, PLC_B project-chat binding, and a visible FB_Motor composer
 reference after **POU an Chat anhängen**, without submitting a message. This is
 live x86 visual evidence, separate from the synthetic component fixtures.
-Installed cross-project refusal/return and a real user-driven provider conversation
-still need acceptance. amd64 live installation, extended lifecycle/focus/responsiveness,
+The operator also confirms that switching to PLC_A with the PLC_B chat selected
+blocks source attachment and chat input, and returning to PLC_B restores its
+matching assignment. This confirms the installed project's visible refusal/return
+flow. A real user-driven provider conversation still needs acceptance; the
+operator profile currently has no model/disclosure grant.
+amd64 live installation, extended lifecycle/focus/responsiveness,
 general exact unsaved-buffer semantics, both real MCPs/corpus and native-to-MCP
 transport remain separate gates. No source-write, compiler, PLC/runtime or
 machine validation is claimed.
