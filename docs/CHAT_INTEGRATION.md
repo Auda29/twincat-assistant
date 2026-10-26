@@ -143,9 +143,12 @@ not pretend its snapshots come from a live IDE and never calls a model.
 
 Local verification on 2026-10-26: 42 Node tests, 8 browser contracts, 69 native
 policy/context/chat checks, 21 WPF view checks, 20 compiled-control integration
-checks and 2 native Node runtime checks pass. Both 0.1.4 VSIX targets build without
+checks and 3 Windows/native Node runtime checks pass. Both 0.1.4 VSIX targets build without
 warnings/errors. Composer references use a readable POU/project label plus a
 short identity digest; authorization still checks the full identity and revision.
+The Windows owner-death test allows bounded cleanup retries for temporary
+directory handles after its separate listener-shutdown assertion has passed.
+Persistent locks or a surviving listener still fail the test.
 
 Local UI renders cover narrow/medium/wide windows. Raw logs and screenshots stay
 in ignored `local-data`. The installed x86 host still needs final acceptance of

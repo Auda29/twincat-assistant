@@ -11,7 +11,7 @@ goal. It retains OpenChamber's chat, adds an exact persistent project/session
 binding, explicit POU composer attachments, provider consent and bounded
 reconnection. Local checks pass: 42 Node tests, 8 browser contracts, 69 native
 policy/context/chat checks, 21 WPF view checks, 20 compiled-control/WebView2/runtime
-integration checks and 2 native Node runtime checks. Both VSIX targets build
+integration checks and 3 Windows/native Node runtime checks. Both VSIX targets build
 without warnings/errors. These are synthetic/component checks, with no model call.
 The installed host is still 0.1.3 until the
 coordinated update; do not confuse local candidate checks with installed acceptance.
