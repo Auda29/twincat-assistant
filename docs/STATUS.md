@@ -41,8 +41,10 @@ See [the integration contract](CHAT_INTEGRATION.md).
   running chat. The x86 0.1.5 update is now installed with all 13 hashes verified
   and 0.1.4 backed up outside extension discovery. Its Assistant command/window,
   distinct PLC_A/PLC_B direct reads and chat listener pass the installed smoke.
-  Linux and Windows CI pass at `6902f0c`. Operator verification of the new
-  provider selector/model selection and a real model answer remain pending.
+  Linux and Windows CI pass at `6902f0c`. The operator confirms that OpenAI is
+  visible in the new selector, explicit consent succeeds and a chat model can
+  be selected. The actual model answer to an explicitly attached synthetic POU
+  remains the final pending chat acceptance step.
 
 - Foundation PR #1 and native foundation PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
   are merged. PR #2 merged on 2026-10-23; this is not native MVP acceptance.

@@ -126,6 +126,8 @@ OpenAI OAuth/model-answer acceptance remains pending.
 The x86 update is installed with all 13 payload hashes verified, prior 0.1.4
 preserved outside extension discovery, and the installed ContextChecks smoke
 passing. This does not replace operator verification of the corrected workflow.
+The operator subsequently confirms OpenAI visibility, successful explicit grant
+and working model selection in 0.1.5. An actual model answer is still pending.
 
 ### Full documentation/MCP gate
 
