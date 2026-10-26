@@ -1,8 +1,9 @@
 # Native chat connection, 0.1.3
 
-The next candidate, 0.1.4, adds the compact embedded view, exact project/session
-binding and explicit POU composer attachment described in
-[Chat integration](CHAT_INTEGRATION.md). The evidence below belongs to 0.1.3.
+The current candidate, 0.1.6, adds the selected compact context bar, automatic
+local sign-in, project-chat selection and provider enablement, plus optional
+automatic POU attachment described in [Chat integration](CHAT_INTEGRATION.md).
+The connection history and manual setup workflow below belong to 0.1.3.
 
 Updated 2026-10-26. This slice fixes `Connect chat` opening an unavailable local
 URL and reporting success before navigation completed. It adds a protected local

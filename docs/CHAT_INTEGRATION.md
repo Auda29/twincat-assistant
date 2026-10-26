@@ -1,44 +1,58 @@
-# Native project chat, candidate 0.1.5
+# Native project chat, candidate 0.1.6
 
-Updated 2026-10-26. This implements the next chat-integration goal on
-`feat/project-bound-chat`, based on the 0.1.3 follow-up branch. Installation and
-user acceptance of this candidate are separate from the local tests below.
+Updated 2026-10-26. The UI redesign is on `feat/assistant-ui-redesign`, based on
+the installed 0.1.5 chat integration. The operator selected mockup A, automatic
+provider enablement and an optional automatic attachment setting. Installation
+and live acceptance of this candidate are separate from the local tests below.
 
 ## User workflow
 
-The native window starts or reconnects the protected local chat when opened.
-First-run password setup and OpenChamber's own login remain. The compact header
-shows the active POU, PLC project, dirty evidence and snapshot uncertainty.
-Connection, model/provider setup and manual inventory live under **Details**;
-the local code preview is collapsed under **ST-Vorschau**.
+The native window starts or reconnects the protected local chat when opened and
+signs in using its DPAPI-protected local credential. A fresh profile generates
+that credential automatically. The page receives an HttpOnly session cookie,
+not the password. An existing credential is preserved.
 
-1. Open the intended ST POU and sign in to the local chat.
-2. Choose **Neuer Projektchat**. This creates a real OpenChamber session in the
-   isolated chat workspace and binds it to this IDE lifetime, solution and PLC
-   project. It does not transfer declaration or implementation.
-3. Alternatively, open a previous conversation through **Verlauf** and explicitly
-   choose **Chat zuordnen** if it needs revalidation. A conversation belonging to
-   another PLC project or another live IDE cannot be retargeted. A new host
-   lifetime requires an explicit bind, including after PID reuse.
-   Without an active POU, **Neuer Chat** starts a general conversation with no
-   native project context. It remains usable without an editor. Details also
-   offers **Neuer Chat ohne Projektkontext**. A general chat cannot attach native
-   source until the user explicitly assigns it to a project; opening an editor
-   alone never performs that assignment.
-4. Choose **POU an Chat anhängen** to stage the current snapshot as a visible
-   composer reference. This click authorizes its transfer into the local chat
-   composer. The text includes exact identity, revision, provenance and the
-   warning that the exact unsaved editor buffer is not verified. It is sent to
-   the selected provider only when the user submits the message.
-5. Sign in to a provider in OpenChamber's own provider settings. Under Details,
-   choose it in **Angemeldeten Anbieter freigeben**, then click **Anbieter für
-   freigegebene Inhalte zulassen**. This works before a model is selected.
-   Afterwards choose a model in the original chat picker. If a matching model
-   was already selected when granting consent, it is retained as the default;
-   provider-only consent invents no model and removes an obsolete other-provider
-   default. This is a provider-level policy, not a restriction to
-   one model ID. It preserves engineering/tool deny rules. No credential is
-   entered into or returned through the native integration.
+The single context bar shows the blue POU-kind badge, object name, PLC project
+and a compact source-state chip. Click the object name for the local ST preview
+and its editor-buffer uncertainty notice. History, **+**, **Anhängen** and the
+overflow menu are the remaining actions. At narrow widths the attach action
+becomes an icon and the status label collapses to its dot, with tooltips retained.
+The bar follows OpenChamber's light/dark palette. Native labels are German;
+OpenChamber defaults to German unless a language preference already exists.
+
+1. Open the intended ST POU. The host opens the newest known conversation for
+   that solution/PLC project or creates one in the isolated workspace. Switching
+   projects selects that project's conversation. Creating or binding a chat alone
+   transfers no source. A known same-project conversation can be revalidated for
+   a new host lifetime; another live IDE's ownership remains protected.
+2. Use history to read previous conversations, or **+** for a new project chat.
+   A chat belonging to another PLC remains read-only while that PLC is inactive.
+   Without an ST editor, **+** starts a general chat. The overflow menu also offers
+   **Neuer Chat ohne Projektkontext**. A general chat stays general when an editor
+   opens; **Anhängen** can explicitly bind it to that editor's project.
+3. Sign in to a provider through **Anbieter verbinden** or the overflow menu's
+   **Anbieter und Modelle verwalten** action. A connected provider is enabled
+   automatically, without a separate consent click. If several are connected,
+   the selected model's provider is preferred, otherwise the first connected
+   provider; an already enabled connected provider is retained. The overflow
+   menu permits switching among connected providers. Pick the model in the
+   original composer. Provider-only enablement invents no default model and
+   preserves engineering/tool deny rules. Provider credentials stay in
+   OpenChamber's settings and never enter the native selector.
+4. Choose **Anhängen** to stage the current snapshot as a visible composer
+   reference. Its text includes identity, revision, provenance and the warning
+   that the exact unsaved editor buffer is not verified. **Angehängt** confirms
+   the staged revision; **Aktualisieren** indicates a changed source revision.
+5. Optionally enable **Aktiven Baustein automatisch anhängen** in the overflow
+   menu. It defaults to off and persists as a boolean preference. While enabled,
+   a matching project chat stages the active POU and changed revisions
+   automatically. A failed attempt is not looped; removing the reference does
+   not immediately restage the same attempted revision. General and foreign
+   project chats do not receive automatic source attachments.
+
+Both attachment modes stage source locally. Only submitting the message sends
+it to the selected provider. Connection, port, model-policy readback and manual
+inventory are available under the overflow menu's **Diagnose anzeigen** action.
 
 The 0.1.4 provider/model ordering was a deadlock: the default `provider.use` deny
 also removes an authenticated provider and its models from the upstream catalog.
@@ -46,8 +60,8 @@ The operator reported this after OpenAI browser sign-in. An isolated real-runtim
 test reproduces a connected integration with no provider/models in that catalog.
 The 0.1.5 consent choices instead use public integration IDs/names, excluding MCP
 and web-search integrations. No connection IDs, account labels, keys or tokens
-are passed to the native selector. Consent still requires an explicit native
-click and a valid chat binding; signing in alone never grants model use.
+are passed to the native selector. In 0.1.6, connecting the provider authorizes
+automatic enablement once the host has a valid chat binding.
 The adapter also corrects the config-store export: `l` (`Be`) owns directory
 providers/model selection. `m` (`bs`) is the separate session-preference store.
 The old fixture wrote synthetic selection fields into that preference store and
@@ -55,13 +69,14 @@ therefore missed the incorrect mapping. The new compiled-control regression
 requires the real provider/model picker catalog to populate after consent and
 never injects a synthetic selection into either store.
 
-Following an editor never attaches source. Switching POU does not retarget the
-conversation; switching project or losing context disables attachments and
-blocks new prompt/command requests for a mismatched session. Existing history
-remains readable. Reconnection never replays an attachment or message.
-The header distinguishes the last staged snapshot from a subsequently changed
-active source revision. It does not claim that the composer snapshot updates
-automatically, or that a removed reference remains attached.
+With automatic attachment off, following an editor never attaches source.
+Switching POU within the same PLC keeps the conversation; switching PLC selects
+its conversation. Losing project context or selecting a foreign chat blocks
+new prompt/command requests for that session; history remains readable.
+Reconnection never replays a message. It does not replay source with automatic
+attachment off; when enabled, that preference authorizes staging the current
+snapshot again after the host restores a matching binding. The header reflects
+the actual composer reference and source revision.
 
 ## Reused upstream and adaptation
 
@@ -97,7 +112,9 @@ The native read is refreshed and revalidated after asynchronous browser reads;
 the revision includes the editor lifecycle generation for same-path reopen.
 
 Chat starts with the sidebar collapsed, generic starter chips and unrelated
-context surfaces hidden, and an invitation to start a native project chat. The
+context surfaces hidden. OpenChamber's duplicate top-bar history/new-chat controls
+are hidden because the native bar owns those actions. Without a selected chat,
+the page explains automatic project-chat startup and the general-chat **+**. The
 composer is inactive without a valid binding. Initial operator preferences point
 at the empty private workspace, preventing a generic project-folder onboarding
 dialog. Existing operator project preferences are preserved. The PLC project
@@ -105,14 +122,16 @@ directory is never selected as the general-purpose OpenChamber workspace.
 
 The visual direction follows Achromatic ledger, seed `685133378`, retaining the
 IDE/OpenChamber fonts and theme. Its identity is the exact POU/project context,
-not decorative branding. The chat occupies the remaining width; native controls
-wrap on narrow tool windows and code is shown only on request.
+not decorative branding. Mockup A adds the blue TwinCAT-style POU-kind badge and
+uses OpenChamber's live palette. The chat occupies the remaining width; the
+single native bar compacts at narrow widths and code is shown only on request.
 
 ## Native and storage boundaries
 
 The browser receives no general COM host object and WebView messages remain
-disabled. The host invokes a small adapter API itself. Only the explicit POU
-action serializes source into a browser call. Native prompt interception checks
+disabled. The host invokes a small adapter API itself. Only the native POU
+action or the operator-enabled automatic attachment setting serializes source
+into a browser call. Native prompt interception checks
 the current IDE/project/session binding independently of the composer UI.
 
 Known file, Git, source-control, terminal, shell, development-server and upstream
@@ -143,6 +162,10 @@ process-ownership rules still apply. Profile locks are never removed merely to
 make a retry succeed. A failed or uncertain session creation/model setup/source
 attachment is not automatically repeated.
 
+Native control input also accepts one leading UTF-8 BOM. This handles .NET
+Framework's redirected stdin when the Windows console input code page is 65001;
+the remaining JSON and request validation stay strict.
+
 ## Verification and remaining acceptance
 
 Run the root checks and build both native targets, then:
@@ -160,7 +183,18 @@ attachment, native project mismatch/shell refusal, provider-policy readback,
 workspace reload and owned runtime reconnection without source replay. It does
 not pretend its snapshots come from a live IDE and never calls a model.
 
-Local 0.1.5 verification on 2026-10-26: 44 Node tests, 8 browser contracts, 69 native
+Local 0.1.6 verification on 2026-10-26: 47 Node tests, 8 browser contracts, 76 native
+policy/context/chat checks, 26 WPF view checks, 31 compiled-control/WebView2/runtime
+checks and 2 native Node runtime checks pass. The compiled-control fixture covers
+automatic local sign-in, project creation/reopening, project mismatch refusal,
+provider enablement/readback, the overflow menu, preference persistence,
+changed-revision automatic attachment and dismissing its visible notice. Both
+0.1.6 VSIX targets build without warnings/errors. WPF
+renders cover 340, 520 and 900 pixels; embedded chat captures cover 390, 768 and
+1100 pixels. These use synthetic source and an isolated fake provider credential,
+with no provider/model call or live IDE acceptance of 0.1.6.
+
+Earlier 0.1.5 verification on 2026-10-26: 44 Node tests, 8 browser contracts, 69 native
 policy/context/chat checks, 21 WPF view checks, 22 compiled-control integration
 checks and 3 Windows/native Node runtime checks pass. Both 0.1.5 VSIX targets build without
 warnings/errors. Composer references use a readable POU/project label plus a

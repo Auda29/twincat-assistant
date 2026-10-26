@@ -56,6 +56,17 @@ namespace TwinCatAssistant.Native
             try { return Encoding.UTF8.GetString(bytes); }
             finally { Array.Clear(bytes, 0, bytes.Length); }
         }
+        // The local UI password only guards the loopback service against other
+        // local clients. The host signs in on the operator's behalf, so a
+        // random secret replaces a password the operator would have to type.
+        public void EnsureGenerated()
+        {
+            if (Exists) return;
+            var bytes = new byte[32];
+            using (var random = RandomNumberGenerator.Create()) random.GetBytes(bytes);
+            try { Save(Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')); }
+            finally { Array.Clear(bytes, 0, bytes.Length); }
+        }
         public void Save(string password)
         {
             if (string.IsNullOrWhiteSpace(password) || password.Length < 12 || password.Length > 1024 || password.IndexOf('\0') >= 0)
@@ -78,6 +89,101 @@ namespace TwinCatAssistant.Native
                 { file.Write(encrypted, 0, encrypted.Length); file.Flush(true); }
             }
             finally { Array.Clear(bytes, 0, bytes.Length); }
+        }
+    }
+
+    public sealed class NativeChatCookie
+    {
+        public string Name { get; set; }
+        public string Value { get; set; }
+        public int MaxAgeSeconds { get; set; }
+    }
+
+    // Native sign-in: the password goes from the DPAPI store straight to the
+    // loopback service. Only the resulting HttpOnly session cookie is handed
+    // to WebView2; page script never sees the password.
+    public static class NativeChatLogin
+    {
+        public static async Task<NativeChatCookie> SignInAsync(int port, string password)
+        {
+            var origin = "http://127.0.0.1:" + port;
+            using (var cancel = new CancellationTokenSource(5000))
+            using (var handler = new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false, UseCookies = false })
+            using (var client = new HttpClient(handler))
+            using (var request = new HttpRequestMessage(HttpMethod.Post, origin + "/auth/session"))
+            {
+                request.Headers.TryAddWithoutValidation("Origin", origin);
+                var body = Encoding.UTF8.GetBytes(new JavaScriptSerializer().Serialize(new { password }));
+                try
+                {
+                    request.Content = new ByteArrayContent(body);
+                    request.Content.Headers.TryAddWithoutValidation("Content-Type", "application/json");
+                    using (var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancel.Token))
+                    {
+                        if (response.StatusCode != HttpStatusCode.OK) throw new IOException("Local chat sign-in was rejected.");
+                        IEnumerable<string> cookies;
+                        if (!response.Headers.TryGetValues("Set-Cookie", out cookies)) throw new IOException("Local chat sign-in returned no session.");
+                        foreach (var header in cookies)
+                        {
+                            var cookie = Parse(header, port);
+                            if (cookie != null) return cookie;
+                        }
+                        throw new IOException("Local chat sign-in returned an unexpected session.");
+                    }
+                }
+                finally { Array.Clear(body, 0, body.Length); }
+            }
+        }
+        internal static NativeChatCookie Parse(string header, int port)
+        {
+            var parts = (header ?? "").Split(';');
+            var pair = parts[0].Split(new[] { '=' }, 2);
+            if (pair.Length != 2 || pair[0].Trim() != "oc_ui_session_" + port) return null;
+            var value = pair[1].Trim();
+            if (value.Length == 0 || value.Length > 4096 || !System.Text.RegularExpressions.Regex.IsMatch(value, @"\A[A-Za-z0-9._~+/=%-]+\z")) return null;
+            var maxAge = 43200;
+            foreach (var part in parts)
+            {
+                var attribute = part.Split(new[] { '=' }, 2);
+                if (attribute.Length == 2 && attribute[0].Trim().Equals("Max-Age", StringComparison.OrdinalIgnoreCase)
+                    && int.TryParse(attribute[1].Trim(), out var seconds) && seconds > 0) maxAge = Math.Min(seconds, 7 * 86400);
+            }
+            return new NativeChatCookie { Name = pair[0].Trim(), Value = value, MaxAgeSeconds = maxAge };
+        }
+    }
+
+    // Operator preferences of the native bar. Only booleans; no source or IDs.
+    public sealed class NativeChatPreferences
+    {
+        private readonly string _directory;
+        public NativeChatPreferences(string directory = null) { _directory = directory ?? NativeChatConfiguration.CredentialDirectory; }
+        private string FilePath { get { return Path.Combine(_directory, "preferences.json"); } }
+        public bool AutoAttach { get; set; }
+        public static NativeChatPreferences Load(string directory = null)
+        {
+            var result = new NativeChatPreferences(directory);
+            try
+            {
+                if (!File.Exists(result.FilePath)) return result;
+                var values = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(Encoding.UTF8.GetString(NativeChatFiles.Read(result.FilePath)));
+                result.AutoAttach = values != null && values.ContainsKey("autoAttach") && values["autoAttach"] is bool enabled && enabled;
+            }
+            catch { /* Unreadable preferences fall back to the explicit default. */ }
+            return result;
+        }
+        public void Save()
+        {
+            var directory = new DirectoryInfo(_directory);
+            directory.Create();
+            if ((directory.Attributes & FileAttributes.ReparsePoint) != 0) throw new IOException("Redirected preference directory rejected.");
+            var temporary = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".tmp");
+            try
+            {
+                File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(new { autoAttach = AutoAttach }), new UTF8Encoding(false));
+                if (File.Exists(FilePath)) File.Replace(temporary, FilePath, null);
+                else File.Move(temporary, FilePath);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
     }
 

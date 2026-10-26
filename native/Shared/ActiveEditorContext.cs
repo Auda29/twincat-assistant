@@ -83,6 +83,18 @@ namespace TwinCatAssistant.Native
         public string Source { get; private set; }
         public const string Disclosure = "Local context only. No source attached to chat.";
 
+        // Short POU kind for the context badge, taken from the declaration's
+        // leading keyword. Unknown declarations fall back to the generic "ST".
+        public static string Kind(string declaration)
+        {
+            var text = (declaration ?? "").TrimStart();
+            foreach (var pair in new[] { new[] { "FUNCTION_BLOCK", "FB" }, new[] { "FUNCTION", "FUN" }, new[] { "PROGRAM", "PRG" },
+                new[] { "METHOD", "METH" }, new[] { "PROPERTY", "PROP" }, new[] { "INTERFACE", "ITF" }, new[] { "TYPE", "DUT" } })
+                if (text.StartsWith(pair[0], StringComparison.OrdinalIgnoreCase)
+                    && (text.Length == pair[0].Length || !char.IsLetterOrDigit(text[pair[0].Length]) && text[pair[0].Length] != '_')) return pair[1];
+            return "ST";
+        }
+
         public static ActiveEditorPresentation From(ActiveEditorSnapshot snapshot, string unavailableReason = null)
         {
             if (snapshot?.Identity == null)

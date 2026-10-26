@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -6,73 +7,60 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using ShapePath = System.Windows.Shapes.Path;
 using System.Windows.Threading;
 using ThreadHelper = Microsoft.VisualStudio.Shell.ThreadHelper;
 
 namespace TwinCatAssistant.Native
 {
+    // Chat automation behind the native context bar. The operator only decides
+    // which POU state leaves the IDE (attach button or the auto-attach option)
+    // and when a message is sent; sign-in, project chat selection and provider
+    // enablement follow from the IDE context and OpenChamber's own settings.
     public sealed partial class AssistantControl
     {
         private readonly string _chatIdeInstance = Guid.NewGuid().ToString("N");
-        private readonly ChatBindingStore _chatBindings = new ChatBindingStore();
+        private ChatBindingStore _chatBindings = new ChatBindingStore();
         private ActiveEditorSnapshot _chatActive;
         private Func<ActiveEditorSnapshot> _chatSnapshotReader;
-        private Func<string> _chatWorkspace = () => Path.Combine(NativeChatConfiguration.Load().StateRoot, "workspace");
+        private Func<string> _chatWorkspace = () => System.IO.Path.Combine(NativeChatConfiguration.Load().StateRoot, "workspace");
         private Func<NativeChatConfiguration> _chatConfiguration = NativeChatConfiguration.Load;
         private string _chatBrowserProfile = null;
         private ChatSelection _chatSelection;
         private ChatContextBinding _chatBinding;
-        private bool _chatActionPending, _chatAdapterReady, _chatPolling, _autoConnectAttempted;
-        private readonly TextBlock _bindingStatus = new TextBlock { Text = "Chat wird vorbereitet.", TextWrapping = TextWrapping.Wrap, FontSize = 12 };
-        private Button _newChatButton, _bindChatButton, _attachPouButton;
-        private readonly TextBlock _modelStatus = new TextBlock { Text = "Modellzugang benötigt eine ausdrückliche Freigabe. Zugangsdaten werden nur in OpenChambers Anbieter-Einstellungen eingegeben.", TextWrapping = TextWrapping.Wrap, FontSize = 12 };
-        private Button _allowModelButton;
-        private readonly ComboBox _consentProvider = new ComboBox { MinWidth = 160, MaxWidth = 360,
-            HorizontalAlignment = HorizontalAlignment.Left, DisplayMemberPath = "name", SelectedValuePath = "id" };
-        private string _consentProviderKey;
-        private readonly TextBlock _selectedModel = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
-        private DispatcherTimer _chatReconnect;
-        private int _chatReconnectAttempts;
+        private bool _chatActionPending, _chatAdapterReady, _chatPolling, _autoConnectAttempted, _automating;
+        private readonly TextBlock _modelStatus = new TextBlock { Text = "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in OpenChambers Anbieter-Einstellungen eingegeben.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
+        private DispatcherTimer _chatReconnect, _automationKick, _noticeTimer;
+        private int _chatReconnectAttempts, _signInAttempts;
         private long _chatDocumentGeneration;
+        private string _autoProjectKey, _autoAttachedKey;
+        private readonly HashSet<string> _autoBindAttempted = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _consentAttempted = new HashSet<string>(StringComparer.Ordinal);
+        private string _noticeText, _noticeTone, _noticeActionLabel;
+        private Action _noticeAction;
 
-        private void AddModelConsentControls(Panel details)
+        private void InitializeChatIntegration()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            details.Children.Add(_modelStatus);
-            details.Children.Add(_selectedModel);
-            details.Children.Add(new TextBlock { Text = "Angemeldeten Anbieter freigeben (danach Modell im Chat wählen):", TextWrapping = TextWrapping.Wrap });
-            details.Children.Add(_consentProvider);
-            _consentProvider.SelectionChanged += (sender, args) => {
-                _allowModelButton.IsEnabled = !_chatActionPending && CanPromptCurrentChat() && _consentProvider.SelectedItem is ChatProviderChoice;
-            };
-            details.Children.Add(AsyncButton("Neuer Chat ohne Projektkontext", () => NewChatAsync(true)));
-            _allowModelButton = AsyncButton("Anbieter für freigegebene Inhalte zulassen", AllowSelectedModelAsync);
-            _allowModelButton.ToolTip = "Erlaubt dem hier ausgewählten angemeldeten Anbieter die Verarbeitung ausdrücklich angehängter Inhalte und deiner Nachrichten in diesem lokalen Profil. Die Freigabe benötigt noch keine Modellauswahl. PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt. Zugangsdaten werden hier nicht angefordert.";
-            details.Children.Add(_allowModelButton);
-            details.Children.Add(AsyncButton("Anbieter in OpenChamber einrichten", async () => {
-                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                if (_chatAdapterReady && !_disposed) await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat.openSettings()");
-            }));
-        }
-
-        private void AddChatIntegrationControls(Panel panel)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            var actions = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
-            _newChatButton = AsyncButton("Neuer Projektchat", NewProjectChatAsync);
-            _bindChatButton = AsyncButton("Chat zuordnen", BindCurrentChatAsync);
-            _attachPouButton = AsyncButton("POU an Chat anhängen", AttachActivePouAsync);
-            _attachPouButton.ToolTip = "Gibt den aktuellen POU-Snapshot für den Composer dieser Unterhaltung frei. Erst Absenden übermittelt ihn an das gewählte Modell. Kein automatisches Speichern oder Ändern des PLC-Projekts.";
-            actions.Children.Add(_newChatButton); actions.Children.Add(_bindChatButton); actions.Children.Add(_attachPouButton);
-            actions.Children.Add(AsyncButton("Verlauf", async () => {
-                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                if (_chatAdapterReady && !_disposed) await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat.toggleChats()");
-            }));
-            panel.Children.Add(actions); panel.Children.Add(_bindingStatus);
             Loaded += OnChatLoaded;
             _chatReconnect = new DispatcherTimer(DispatcherPriority.Background);
             _chatReconnect.Tick += ReconnectChat;
-            RenderChatBinding();
+            _automationKick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(400) };
+            _automationKick.Tick += OnAutomationKick;
+            _noticeTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(8) };
+            _noticeTimer.Tick += (sender, args) => { _noticeTimer.Stop(); if (_noticeTone != "error") DismissNotice(); };
+        }
+
+        private void DisposeChatIntegration()
+        {
+            _chatReconnect?.Stop();
+            if (_chatReconnect != null) _chatReconnect.Tick -= ReconnectChat;
+            _automationKick?.Stop();
+            if (_automationKick != null) _automationKick.Tick -= OnAutomationKick;
+            _noticeTimer?.Stop();
+            Loaded -= OnChatLoaded;
         }
 
         private void ScheduleChatReconnect()
@@ -81,10 +69,10 @@ namespace TwinCatAssistant.Native
             if (_disposed || _chatReconnect.IsEnabled || _chatReconnectAttempts >= 3) return;
             _chatReconnect.Interval = TimeSpan.FromSeconds(new[] { 2, 5, 15 }[_chatReconnectAttempts++]);
             _chatReconnect.Start();
-            _bindingStatus.Text = "Chat-Verbindung unterbrochen. Erneute Verbindung wird versucht; Quelltext wird nicht erneut angehängt.";
+            RenderChatBinding();
         }
 
-#pragma warning disable VSTHRD100 // Dispatcher timer event boundary.
+#pragma warning disable VSTHRD100 // Dispatcher timer and WPF event boundaries.
         private async void ReconnectChat(object sender, EventArgs args)
         {
             try
@@ -97,16 +85,35 @@ namespace TwinCatAssistant.Native
             }
             catch { if (!_disposed) ScheduleChatReconnect(); }
         }
-#pragma warning restore VSTHRD100
 
-#pragma warning disable VSTHRD100 // WPF event boundary.
         private async void OnChatLoaded(object sender, RoutedEventArgs args)
         {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_autoConnectAttempted || _disposed) return;
             _autoConnectAttempted = true;
-            try { await ConnectAsync(); } catch { if (!_disposed) _bindingStatus.Text = "Chat nicht erreichbar. Erneut verbinden über Details."; }
+            try { await ConnectAsync(); } catch { if (!_disposed) RenderChatBinding(); }
+        }
+
+        private async void OnAutomationKick(object sender, EventArgs args)
+        {
+            try
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                _automationKick.Stop();
+                if (!_disposed && _chatAdapterReady) await PollChatSelectionAsync();
+            }
+            catch { }
         }
 #pragma warning restore VSTHRD100
+
+        // Editor changes react within a fraction of a second instead of waiting
+        // for the next health poll.
+        private void KickAutomation()
+        {
+            if (_automationKick == null || _disposed || !_chatAdapterReady) return;
+            _automationKick.Stop();
+            _automationKick.Start();
+        }
 
         private async Task InitializeChatAdapterAsync(long generation)
         {
@@ -126,7 +133,7 @@ namespace TwinCatAssistant.Native
                 if (_disposed || generation != _chatConnection.Generation) return;
                 await PollChatSelectionAsync();
             }
-            catch { if (!_disposed && generation == _chatConnection.Generation) _bindingStatus.Text = "Chat-Integration nicht verfügbar. Version und Verbindung in Details prüfen."; }
+            catch { if (!_disposed && generation == _chatConnection.Generation) Notify("Chat-Integration nicht verfügbar. Version und Verbindung unter Diagnose prüfen.", "error"); }
         }
 
         private async Task<ChatSelection> ReadChatSelectionAsync()
@@ -151,10 +158,10 @@ namespace TwinCatAssistant.Native
                 var selection = await ReadChatSelectionAsync();
                 if (_disposed || generation != _chatConnection.Generation) return;
                 _chatSelection = selection; _chatAdapterReady = selection?.ready == true;
-                _chatBinding = selection?.IsSelected == true ? _chatBindings.Read(_origin.AbsoluteUri, selection.sessionId) : null;
-                var permitted = CanPromptCurrentChat();
-                var permission = permitted ? new { sessionId = selection.sessionId, selection.epoch, selection.documentId, contextKey = _chatBinding.IsGeneral ? "general" : ChatContextPolicy.Revision(_chatActive) } : null;
-                await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat?.permit(" + new JavaScriptSerializer().Serialize(permission) + ")");
+                if (selection?.theme != null) ApplyTheme(selection.theme);
+                try { _chatBinding = selection?.IsSelected == true ? _chatBindings.Read(_origin.AbsoluteUri, selection.sessionId) : null; }
+                catch { _chatBinding = null; }
+                await PermitCurrentChatAsync();
                 if (!_disposed && generation == _chatConnection.Generation) RenderChatBinding();
             }
             catch
@@ -163,6 +170,82 @@ namespace TwinCatAssistant.Native
                 { _chatAdapterReady = false; _chatSelection = null; _chatBinding = null; RenderChatBinding(); }
             }
             finally { _chatPolling = false; }
+            if (!_disposed && generation == _chatConnection.Generation) await RunAutomationAsync();
+        }
+
+        private async Task PermitCurrentChatAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var selection = _chatSelection;
+            var permission = CanPromptCurrentChat() ? new { sessionId = selection.sessionId, selection.epoch, selection.documentId,
+                contextKey = _chatBinding.IsGeneral ? "general" : ChatContextPolicy.Revision(_chatActive) } : null;
+            await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat?.permit(" + new JavaScriptSerializer().Serialize(permission) + ")");
+        }
+
+        // One pass of automatic steps. Each step is attempted at most once per
+        // context so a failure is reported instead of retried in a loop.
+        private async Task RunAutomationAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (_automating || _disposed || _chatActionPending || !_chatAdapterReady || _chatSelection == null || _origin == null) return;
+            _automating = true;
+            try
+            {
+                if (_chatSelection.authenticated != true) { await SignInAgainAsync(); return; }
+                _signInAttempts = 0;
+                var identity = _chatActive?.Identity;
+                var selected = _chatSelection.IsSelected;
+                if (identity != null)
+                {
+                    var key = identity.SolutionFile + "\0" + identity.ProjectFile + "\0" + _chatDocumentGeneration;
+                    var generalChat = _chatBinding?.IsGeneral == true && CanPromptCurrentChat();
+                    if (key != _autoProjectKey)
+                    {
+                        // Opening or switching to a PLC project selects its newest
+                        // conversation. A deliberately used general chat stays open.
+                        _autoProjectKey = key;
+                        if (!HasCurrentChatBinding() && !generalChat) { await OpenProjectChatAsync(); return; }
+                    }
+                    else if (selected && !HasCurrentChatBinding() && !generalChat
+                        && (_chatBinding == null || _chatBinding.IsGeneral || _chatBinding.SameProject(identity))
+                        && _autoBindAttempted.Add(_chatSelection.sessionId + "\0" + key))
+                    {
+                        // A conversation opened from the history: adopt unbound and
+                        // same-project chats; general chats stay general.
+                        if (_chatBinding?.IsGeneral == true) await BindGeneralAsync();
+                        else await BindCurrentChatAsync();
+                        return;
+                    }
+                }
+                else if (selected && !CanPromptCurrentChat() && (_chatBinding == null || _chatBinding.IsGeneral)
+                    && _autoBindAttempted.Add(_chatSelection.sessionId + "\0general"))
+                {
+                    await BindGeneralAsync();
+                    return;
+                }
+                var provider = ChatContextPolicy.ProviderToEnable(_chatSelection);
+                if (provider != null && CanPromptCurrentChat() && _consentAttempted.Add(provider)) { await AllowProviderAsync(provider); return; }
+                if (_chatPreferences.AutoAttach && HasCurrentChatBinding() && _chatActive != null)
+                {
+                    var revision = ChatContextPolicy.Revision(_chatActive);
+                    var attempt = _chatSelection.sessionId + "\0" + revision;
+                    if (revision != _chatSelection.attachedRevision && attempt != _autoAttachedKey)
+                    {
+                        _autoAttachedKey = attempt;
+                        await AttachActivePouAsync();
+                    }
+                }
+            }
+            catch { }
+            finally { _automating = false; }
+        }
+
+        private async Task SignInAgainAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (_signInAttempts >= 3 || _origin == null) return;
+            _signInAttempts++;
+            if (await SignInBrowserAsync(_origin.Port) && !_disposed) _browser.CoreWebView2.Reload();
         }
 
         private bool HasCurrentChatBinding()
@@ -177,43 +260,198 @@ namespace TwinCatAssistant.Native
                     _origin?.AbsoluteUri, _chatSelection.sessionId) == true);
         }
 
+        private string ProjectName(string projectFile) { return string.IsNullOrEmpty(projectFile) ? "" : System.IO.Path.GetFileNameWithoutExtension(projectFile); }
+
         private void RenderChatBinding()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_newChatButton == null) return;
-            var available = !_disposed && !_chatActionPending && _chatAdapterReady && _chatSelection?.authenticated == true;
-            _newChatButton.Content = _chatActive?.Identity == null ? "Neuer Chat" : "Neuer Projektchat";
-            _newChatButton.IsEnabled = available;
-            _bindChatButton.Content = _chatActive?.Identity == null ? "Chat verwenden" : "Chat zuordnen";
-            _bindChatButton.IsEnabled = available && _chatSelection?.IsSelected == true && !HasCurrentChatBinding()
-                && (_chatActive?.Identity != null || !CanPromptCurrentChat());
-            _attachPouButton.IsEnabled = available && HasCurrentChatBinding();
-            var choices = _chatSelection?.providers ?? new ChatProviderChoice[0];
-            var choiceKey = string.Join("\0", choices.Select(choice => choice.id + ":" + choice.name));
-            if (_consentProviderKey != choiceKey)
+            if (_attachPouButton == null || _disposed) return;
+            var ready = !_chatActionPending && _chatAdapterReady && _chatSelection?.authenticated == true;
+            var identity = _chatActive?.Identity;
+            var foreign = _chatSelection?.IsSelected == true && _chatBinding != null && !_chatBinding.IsGeneral
+                && identity != null && !_chatBinding.SameProject(identity);
+            _historyButton.IsEnabled = ready;
+            _newChatButton.IsEnabled = ready;
+            _newChatButton.ToolTip = identity == null ? "Neuer allgemeiner Chat" : "Neuer Chat für " + ProjectName(identity.ProjectFile);
+            // Attach button: the one explicit disclosure action.
+            var revision = ChatContextPolicy.Revision(_chatActive);
+            var attachedCurrent = revision != null && _chatSelection?.attachedRevision == revision && HasCurrentChatBinding();
+            var title = _chatActive == null ? null : _chatActive.ObjectName + " / " + ProjectName(identity.ProjectFile);
+            var stale = !attachedCurrent && title != null && _chatSelection?.attachedObject == title && HasCurrentChatBinding();
+            _attachPouButton.IsEnabled = ready && identity != null && !foreign && !attachedCurrent && _chatSelection?.IsSelected == true;
+            _attachLabel.Text = attachedCurrent ? "Angehängt" : stale ? "Aktualisieren" : "Anhängen";
+            _attachIcon.Data = AssistantTheme.Icon(attachedCurrent ? "check" : stale ? "refresh" : "attach");
+            _attachPouButton.ToolTip = identity == null ? _attachLabel.Text + ": Öffne einen ST-Baustein, um ihn anzuhängen."
+                : attachedCurrent ? "Angehängt: Dieser Stand von " + _chatActive.ObjectName + " ist bereits im Chat."
+                : _attachLabel.Text + ": Gibt den aktuellen Stand von " + _chatActive.ObjectName + " für die nächste Nachricht frei. Erst Absenden überträgt ihn an das Modell. Das PLC-Projekt wird nicht verändert.";
+            // Status chip.
+            string status, tone;
+            // The chip describes the POU context; connection problems use the banner.
+            if (identity == null) { status = "Allgemeiner Chat"; tone = "Neutral"; }
+            else if (foreign) { status = "Chat aus " + ProjectName(_chatBinding.ProjectFile); tone = "Error"; }
+            else if (stale) { status = "Seit Anhang geändert"; tone = "Warning"; }
+            else if (_chatActive.Dirty?.State == "known-dirty") { status = "Ungespeichert"; tone = "Warning"; }
+            else if (_chatActive.Dirty?.State == "known-clean") { status = "Gespeichert"; tone = "Success"; }
+            else { status = "Stand unbekannt"; tone = "Neutral"; }
+            if (_statusText.Text != status) _statusText.Text = status;
+            _statusChip.Visibility = identity == null && _chatBinding?.IsGeneral != true ? Visibility.Collapsed : Visibility.Visible;
+            _statusChip.SetResourceReference(Border.BackgroundProperty, "Tc." + tone + "Surface");
+            _statusDot.SetResourceReference(Shape.FillProperty, "Tc." + tone);
+            _statusText.SetResourceReference(TextBlock.ForegroundProperty, tone == "Neutral" ? "Tc.Muted" : "Tc." + tone);
+            _statusChip.ToolTip = _chatActive?.SourceNotice == null ? status : status + Environment.NewLine + _chatActive.SourceNotice;
+            // Model provider status lives in Diagnose.
+            var allowed = _chatSelection?.allowedProviders ?? new string[0];
+            var connected = _chatSelection?.providers ?? new ChatProviderChoice[0];
+            if (!_chatActionPending)
+                _modelStatus.Text = connected.Length == 0 ? "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in OpenChambers Anbieter-Einstellungen eingegeben."
+                    : "Modellanbieter: " + string.Join(", ", connected.Select(choice => choice.name + (allowed.Contains(choice.id) ? " (freigegeben)" : "")))
+                        + (string.IsNullOrEmpty(_chatSelection?.model) ? ". Modell im Chat wählen." : ". Modell: " + _chatSelection.model + ".")
+                        + " PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.";
+            RenderBanner(ready, identity, foreign);
+        }
+
+        private void RenderBanner(bool ready, ActiveEditorIdentity identity, bool foreign)
+        {
+            string text = null, tone = "Neutral", action = null;
+            Action command = null;
+            var dismissable = false;
+            if (_setupMissing) { text = "Der lokale Chat ist noch nicht eingerichtet. Configure-NativeChat.ps1 ausführen."; tone = "Error"; action = "Diagnose"; command = ShowDiagnostics; }
+            else if (_chatConnection.Phase == "failed")
             {
-                var priorProvider = _consentProvider.SelectedValue as string;
-                _consentProviderKey = choiceKey;
-                _consentProvider.ItemsSource = choices;
-                _consentProvider.SelectedValue = priorProvider;
-                if (_consentProvider.SelectedIndex < 0 && choices.Length > 0) _consentProvider.SelectedIndex = 0;
+                text = _chatReconnect?.IsEnabled == true ? "Verbindung zum lokalen Chat unterbrochen. Neuer Versuch läuft …" : "Verbindung zum lokalen Chat unterbrochen.";
+                tone = "Error"; action = "Neu verbinden"; command = Reconnect;
             }
-            _consentProvider.IsEnabled = available && !_chatActionPending;
-            if (_allowModelButton != null) _allowModelButton.IsEnabled = available && CanPromptCurrentChat() && _consentProvider.SelectedItem is ChatProviderChoice;
-            _selectedModel.Text = string.IsNullOrEmpty(_chatSelection?.model) ? "Noch kein Modell im Chat ausgewählt." : "Ausgewählt: " + _chatSelection.model;
-            if (_chatActionPending) return;
-            if (_chatConnection.Phase == "failed") _bindingStatus.Text = "Chat nicht verbunden. Verbindung unter Details prüfen.";
-            else if (!_chatAdapterReady) _bindingStatus.Text = "Chat wird vorbereitet. Nach dem Start bitte anmelden.";
-            else if (_chatSelection?.authenticated != true) _bindingStatus.Text = "Bitte im lokalen Chat anmelden. Quelltext bleibt lokal.";
-            else if (CanPromptCurrentChat() && _chatBinding.IsGeneral) _bindingStatus.Text = "Allgemeiner Chat. Kein nativer Projekt- oder POU-Kontext freigegeben.";
-            else if (_chatActive == null) _bindingStatus.Text = "Kein aktiver ST-Baustein. Ein allgemeiner Chat ist ohne POU-Kontext möglich.";
-            else if (_chatSelection?.IsSelected != true) _bindingStatus.Text = "Neuen Projektchat starten oder eine Unterhaltung aus dem Verlauf öffnen.";
-            else if (!HasCurrentChatBinding()) _bindingStatus.Text = _chatBinding == null
-                ? "Diese Unterhaltung ist keinem TwinCAT-Projekt zugeordnet."
-                : "Diese Unterhaltung gehört zu einem anderen Projekt oder einer anderen IDE. Keine Kontextübernahme.";
-            else _bindingStatus.Text = "Chat für " + Path.GetFileNameWithoutExtension(_chatActive.Identity.ProjectFile)
-                + " zugeordnet. " + (_chatSelection.attachedObject == null ? "Quelltext bleibt lokal." : "Letzte Kontextübergabe: " + _chatSelection.attachedObject
-                    + (_chatSelection.attachedRevision == ChatContextPolicy.Revision(_chatActive) ? "." : ". Aktiver Stand abweichend; kein neuer Quelltext übertragen."));
+            else if (_noticeText != null) { text = _noticeText; tone = _noticeTone == "error" ? "Error" : _noticeTone == "warning" ? "Warning" : "Neutral"; action = _noticeActionLabel; command = _noticeAction; dismissable = true; }
+            else if (foreign)
+            {
+                text = "Diese Unterhaltung gehört zu " + ProjectName(_chatBinding.ProjectFile) + " und ist hier nur lesbar.";
+                tone = "Error"; action = "Neuer Chat für " + ProjectName(identity.ProjectFile); command = () => RunAction(() => NewChatAsync(false));
+            }
+            else if (ready && identity == null && _chatSelection?.IsSelected == true && _chatBinding != null && !_chatBinding.IsGeneral)
+            {
+                text = "Dieser Projektchat gehört zu " + ProjectName(_chatBinding.ProjectFile) + ". Öffne einen Baustein daraus, um weiterzuschreiben.";
+                action = "Allgemeiner Chat"; command = () => RunAction(() => NewChatAsync(true));
+            }
+            else if (ready && _chatSelection?.IsSelected == true && identity != null && !HasCurrentChatBinding() && _chatBinding != null
+                && !_chatBinding.IsGeneral && _chatBinding.SameProject(identity))
+            {
+                text = "Diese Unterhaltung ist in einer anderen TwinCAT-Instanz geöffnet.";
+                tone = "Warning"; action = "Neuer Projektchat"; command = () => RunAction(() => NewChatAsync(false));
+            }
+            else if (ready && (_chatSelection.providers?.Length ?? 0) == 0)
+            {
+                text = "Noch kein Modellanbieter verbunden. Zugangsdaten gibst du nur in OpenChamber ein.";
+                action = "Anbieter verbinden"; command = () => RunAction(OpenProviderSettingsAsync);
+            }
+            _banner.Visibility = text == null ? Visibility.Collapsed : Visibility.Visible;
+            if (text == null) return;
+            if (_bannerText.Text != text) _bannerText.Text = text;
+            _banner.SetResourceReference(Border.BackgroundProperty, "Tc." + tone + "Surface");
+            _bannerAction.Content = action;
+            _bannerAction.Visibility = action == null ? Visibility.Collapsed : Visibility.Visible;
+            _bannerCommand = command;
+            _bannerDismiss.Visibility = dismissable ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void Notify(string text, string tone = "info", string actionLabel = null, Action action = null)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_disposed) return;
+            _noticeText = text; _noticeTone = tone; _noticeActionLabel = actionLabel; _noticeAction = action;
+            _noticeTimer.Stop();
+            if (tone != "error") _noticeTimer.Start();
+            RenderChatBinding();
+        }
+        private void DismissNotice()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            _noticeText = null; _noticeAction = null; _noticeActionLabel = null;
+            RenderChatBinding();
+        }
+
+#pragma warning disable VSTHRD100 // UI command boundary; exceptions never leave it.
+        private async void RunAction(Func<Task> action) { try { await action(); } catch { } }
+#pragma warning restore VSTHRD100
+        private void Reconnect() { _chatReconnectAttempts = 0; _chatReconnect?.Stop(); RunAction(ConnectAsync); }
+        private void ShowDiagnostics() { _diagnostics.Visibility = Visibility.Visible; _menuPopup.IsOpen = false; }
+
+        private void ToggleMenu()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            _previewPopup.IsOpen = false;
+            if (_menuPopup.IsOpen || JustClosed(_menuClosedAt)) { _menuPopup.IsOpen = false; return; }
+            _menuItems.Children.Clear();
+            var ready = _chatAdapterReady && _chatSelection?.authenticated == true && !_chatActionPending;
+            MenuRow("Neuer Chat ohne Projektkontext", ready, () => NewChatAsync(true));
+            MenuRow("Aktiven Baustein automatisch anhängen", true, ToggleAutoAttachAsync, _chatPreferences.AutoAttach);
+            var providers = _chatSelection?.providers ?? new ChatProviderChoice[0];
+            if (providers.Length > 1)
+            {
+                MenuSeparator("Modellanbieter");
+                foreach (var provider in providers)
+                {
+                    var id = provider.id;
+                    MenuRow(provider.name, ready && CanPromptCurrentChat(), () => AllowProviderAsync(id), _chatSelection.allowedProviders?.Contains(id) == true);
+                }
+            }
+            MenuRow("Anbieter und Modelle verwalten …", ready, OpenProviderSettingsAsync);
+            MenuSeparator(null);
+            MenuRow("Neu verbinden", !_connecting, () => { Reconnect(); return Task.CompletedTask; });
+            MenuRow(_diagnostics.Visibility == Visibility.Visible ? "Diagnose ausblenden" : "Diagnose anzeigen", true, () => {
+                _diagnostics.Visibility = _diagnostics.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+                return Task.CompletedTask;
+            });
+            _menuPopup.IsOpen = true;
+        }
+
+        private void MenuRow(string label, bool enabled, Func<Task> action, bool? check = null)
+        {
+            var mark = new ShapePath { Data = AssistantTheme.Icon("check"), Width = 16, Height = 16, StrokeThickness = 1.6, Margin = new Thickness(0, 0, 8, 0),
+                StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round,
+                Visibility = check == true ? Visibility.Visible : check == false ? Visibility.Hidden : Visibility.Collapsed };
+            mark.SetResourceReference(Shape.StrokeProperty, "Tc.Primary");
+            var text = new TextBlock { Text = label, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+            text.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Foreground");
+            var row = AsyncButton(null, async () => { _menuPopup.IsOpen = false; await action(); });
+            row.SetResourceReference(StyleProperty, "Tc.MenuRow");
+            row.Margin = new Thickness(0);
+            row.Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { mark, text } };
+            row.IsEnabled = enabled;
+            _menuItems.Children.Add(row);
+        }
+
+        private void MenuSeparator(string heading)
+        {
+            var line = new Border { Height = 1, Margin = new Thickness(4, 4, 4, heading == null ? 4 : 2) };
+            line.SetResourceReference(Border.BackgroundProperty, "Tc.Border");
+            _menuItems.Children.Add(line);
+            if (heading == null) return;
+            var text = new TextBlock { Text = heading, FontSize = 11, Margin = new Thickness(10, 4, 10, 2) };
+            text.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
+            _menuItems.Children.Add(text);
+        }
+
+        private async Task ToggleAutoAttachAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            _chatPreferences.AutoAttach = !_chatPreferences.AutoAttach;
+            try { _chatPreferences.Save(); } catch { Notify("Einstellung konnte nicht gespeichert werden; sie gilt bis zum Schließen der IDE.", "warning"); }
+            _autoAttachedKey = null;
+            if (_chatPreferences.AutoAttach) Notify("Der aktive Baustein wird jetzt automatisch angehängt, sobald er sich ändert. Erst Absenden überträgt ihn.");
+            else Notify("Automatisches Anhängen ist aus. Bausteine nur noch über Anhängen freigeben.");
+            await PollChatSelectionAsync();
+        }
+
+        private async Task OpenHistoryAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (_chatAdapterReady && !_disposed) await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat.toggleChats()");
+        }
+
+        private async Task OpenProviderSettingsAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (_chatAdapterReady && !_disposed) await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat.openSettings()");
         }
 
         private ActiveEditorSnapshot FreshChatSnapshot()
@@ -226,6 +464,78 @@ namespace TwinCatAssistant.Native
 
         private Task NewProjectChatAsync() { return NewChatAsync(false); }
 
+        // Reopen the newest conversation this project already has; only create
+        // a new one when none exists or it is held by another live IDE.
+        private async Task OpenProjectChatAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var snapshot = _chatSnapshotReader?.Invoke();
+            if (snapshot?.Identity == null || _chatActionPending) return;
+            HashSet<string> known;
+            try { known = _chatBindings.SessionsForProject(_origin.AbsoluteUri, snapshot.Identity); }
+            catch { known = new HashSet<string>(); }
+            if (known.Count > 0)
+            {
+                _chatActionPending = true; RenderChatBinding();
+                try
+                {
+                    // Upstream may still be loading its session list right after startup.
+                    for (var attempt = 0; attempt < 4 && !_disposed; attempt++)
+                    {
+                        var latest = (await ReadRecentSessionsAsync()).FirstOrDefault(entry => known.Contains(entry.id));
+                        if (latest != null)
+                        {
+                            if (await SelectSessionAsync(latest.id))
+                            {
+                                try { await BindSelectionAsync(FreshChatSnapshot()); return; }
+                                catch (InvalidOperationException) { break; }
+                            }
+                            break;
+                        }
+                        await Task.Delay(500);
+                    }
+                }
+                finally { _chatActionPending = false; if (!_disposed) await PollChatSelectionStateAsync(); }
+            }
+            if (!_disposed) await NewChatAsync(false);
+        }
+
+        private async Task PollChatSelectionStateAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var selection = await ReadChatSelectionAsync();
+            if (_disposed || selection == null) return;
+            _chatSelection = selection;
+            try { _chatBinding = selection.IsSelected ? _chatBindings.Read(_origin.AbsoluteUri, selection.sessionId) : null; } catch { _chatBinding = null; }
+            await PermitCurrentChatAsync();
+            RenderChatBinding();
+        }
+
+        private async Task<ChatSessionEntry[]> ReadRecentSessionsAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var serializer = new JavaScriptSerializer();
+            var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.__twinCatChat.recentSessions("
+                + serializer.Serialize(_chatWorkspace()) + "))");
+            if (raw == null || raw.Length > 40000) return new ChatSessionEntry[0];
+            return serializer.Deserialize<ChatSessionEntry[]>(serializer.Deserialize<string>(raw)) ?? new ChatSessionEntry[0];
+        }
+
+        private async Task<bool> SelectSessionAsync(string sessionId)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (!ChatSelection.ValidSession(sessionId)) return false;
+            await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat.selectSession(" + new JavaScriptSerializer().Serialize(sessionId) + ")");
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (!_disposed && DateTime.UtcNow < deadline)
+            {
+                var selection = await ReadChatSelectionAsync();
+                if (selection?.IsSelected == true && selection.sessionId == sessionId) { _chatSelection = selection; return true; }
+                await Task.Delay(150);
+            }
+            return false;
+        }
+
         private async Task NewChatAsync(bool general)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -235,7 +545,7 @@ namespace TwinCatAssistant.Native
             {
                 var snapshot = general ? null : _chatSnapshotReader?.Invoke();
                 var identity = snapshot?.Identity;
-                var options = new { title = identity == null ? "Allgemeiner TwinCAT-Chat" : Path.GetFileNameWithoutExtension(identity.ProjectFile) + " / " + snapshot.ObjectName,
+                var options = new { title = identity == null ? "Allgemeiner TwinCAT-Chat" : System.IO.Path.GetFileNameWithoutExtension(identity.ProjectFile) + " / " + snapshot.ObjectName,
                     directory = _chatWorkspace() };
                 var serializer = new JavaScriptSerializer();
                 // ExecuteScriptAsync does not await a JS promise. Poll a narrow,
@@ -266,9 +576,11 @@ namespace TwinCatAssistant.Native
                     if (!identity.Equals(current.Identity) || current.ContextGeneration != snapshot.ContextGeneration) throw new InvalidOperationException("Editor gewechselt. Der neue Chat wurde nicht zugeordnet.");
                     await BindSelectionAsync(current);
                 }
+                _noticeText = null;
             }
-            catch (Exception error) { if (!_disposed) _bindingStatus.Text = error is InvalidOperationException ? error.Message : "Projektchat konnte nicht angelegt werden. Bitte Verbindung prüfen."; }
-            finally { _chatActionPending = false; if (!_disposed) { _newChatButton.IsEnabled = _chatAdapterReady; _bindChatButton.IsEnabled = _chatSelection?.IsSelected == true; } }
+            catch (Exception error) { if (!_disposed) Notify(error is InvalidOperationException ? error.Message : "Chat konnte nicht angelegt werden. Verbindung prüfen.", "error"); }
+            finally { _chatActionPending = false; }
+            if (!_disposed) await PollChatSelectionAsync();
         }
 
         private async Task BindSelectionAsync(ActiveEditorSnapshot snapshot)
@@ -281,7 +593,6 @@ namespace TwinCatAssistant.Native
             var binding = ChatContextBinding.Create(fresh.Identity, _chatIdeInstance, _origin.AbsoluteUri, selected.sessionId);
             _chatBindings.Bind(binding);
             _chatSelection = selected; _chatBinding = binding;
-            _bindingStatus.Text = "Projektchat zugeordnet. Quelltext bleibt lokal, bis du ihn anhängst.";
         }
 
         private async Task BindCurrentChatAsync()
@@ -293,17 +604,52 @@ namespace TwinCatAssistant.Native
             {
                 var snapshot = _chatSnapshotReader?.Invoke();
                 if (snapshot?.Identity != null) await BindSelectionAsync(snapshot);
-                else
-                {
-                    var selection = await ReadChatSelectionAsync();
-                    if (selection?.IsSelected != true) throw new InvalidOperationException("Zuerst eine Unterhaltung öffnen.");
-                    var binding = ChatContextBinding.CreateGeneral(_chatIdeInstance, System.Diagnostics.Process.GetCurrentProcess().Id, _origin.AbsoluteUri, selection.sessionId);
-                    _chatBindings.Bind(binding); _chatSelection = selection; _chatBinding = binding;
-                }
+                else await BindGeneralCoreAsync();
             }
-            catch (Exception error) { if (!_disposed) _bindingStatus.Text = error is InvalidOperationException ? error.Message : "Chat-Zuordnung nicht verfügbar."; }
+            catch (InvalidOperationException) { /* Banner explains foreign or busy chats. */ }
+            catch { Notify("Chat-Zuordnung nicht verfügbar.", "error"); }
             finally { _chatActionPending = false; }
             await PollChatSelectionAsync();
+        }
+
+        private async Task BindGeneralAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (_chatActionPending) return;
+            _chatActionPending = true; RenderChatBinding();
+            try { await BindGeneralCoreAsync(); }
+            catch { /* A chat bound to a project is never made general. */ }
+            finally { _chatActionPending = false; }
+            await PollChatSelectionAsync();
+        }
+
+        private async Task BindGeneralCoreAsync()
+        {
+            var selection = await ReadChatSelectionAsync();
+            if (selection?.IsSelected != true) throw new InvalidOperationException("Zuerst eine Unterhaltung öffnen.");
+            var binding = ChatContextBinding.CreateGeneral(_chatIdeInstance, System.Diagnostics.Process.GetCurrentProcess().Id, _origin.AbsoluteUri, selection.sessionId);
+            _chatBindings.Bind(binding); _chatSelection = selection; _chatBinding = binding;
+        }
+
+        // Attach click: a general or unbound conversation becomes this
+        // project's chat first, then the current snapshot is staged.
+        private async Task AttachClickAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (_chatActionPending || !_chatAdapterReady || _chatActive?.Identity == null) return;
+            if (!HasCurrentChatBinding())
+            {
+                if (_chatSelection?.IsSelected != true) { await NewChatAsync(false); }
+                else if (_chatBinding == null || _chatBinding.IsGeneral || _chatBinding.SameProject(_chatActive.Identity))
+                {
+                    _chatActionPending = true; RenderChatBinding();
+                    try { await BindSelectionAsync(FreshChatSnapshot()); }
+                    catch (Exception error) { Notify(error is InvalidOperationException ? error.Message : "Chat-Zuordnung nicht verfügbar.", "error"); return; }
+                    finally { _chatActionPending = false; }
+                    await PollChatSelectionAsync();
+                }
+            }
+            if (HasCurrentChatBinding()) await AttachActivePouAsync();
         }
 
         private async Task AttachActivePouAsync()
@@ -319,8 +665,8 @@ namespace TwinCatAssistant.Native
                 var selection = await ReadChatSelectionAsync();
                 if (selection?.IsSelected != true || !_chatBinding.Matches(snapshot.Identity, _chatIdeInstance, _origin.AbsoluteUri, selection.sessionId))
                     throw new InvalidOperationException("Chat-Zuordnung geändert. Kein Quelltext angehängt.");
-                // The native click is the disclosure action. Revalidate after the
-                // asynchronous browser read before serializing any source.
+                // The native click (or the operator's auto-attach setting) is the
+                // disclosure action. Revalidate after the asynchronous browser read.
                 if (ChatContextPolicy.Revision(FreshChatSnapshot()) != revision)
                     throw new InvalidOperationException("Der Baustein wurde geändert. Bitte den aktuellen Stand erneut anhängen.");
                 if (_disposed || documentGeneration != _chatDocumentGeneration)
@@ -328,34 +674,37 @@ namespace TwinCatAssistant.Native
                 var serializer = new JavaScriptSerializer();
                 var request = new { sessionId = selection.sessionId, selection.epoch, selection.documentId, contextKey = revision,
                     item = new { providerId = "twincat-assistant", id = ChatContextPolicy.ReferenceId(snapshot),
-                        title = snapshot.ObjectName + " / " + Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile),
+                        title = snapshot.ObjectName + " / " + System.IO.Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile),
                         url = _origin.AbsoluteUri, text = ChatContextPolicy.AttachmentText(snapshot),
                         data = new { revision, sourceKind = snapshot.SourceKind, dirty = snapshot.Dirty?.State } } };
                 var permission = new { request.sessionId, request.epoch, request.documentId, request.contextKey };
                 var outcome = await _browser.CoreWebView2.ExecuteScriptAsync("(()=>{try{if(!window.__twinCatChat.permit(" + serializer.Serialize(permission)
                     + "))return false;window.__twinCatChat.attach(" + serializer.Serialize(request) + ");return true;}catch{return false;}})()");
                 if (outcome != "true") throw new InvalidOperationException("Unterhaltung gewechselt oder Anhang noch nicht verarbeitet. Kein neuer Anhang bestätigt.");
-                _bindingStatus.Text = snapshot.ObjectName + " als Snapshot im Composer bereit. Erst Absenden übermittelt ihn an das gewählte Modell.";
+                _noticeText = null;
             }
-            catch (Exception error) { if (!_disposed) _bindingStatus.Text = error is InvalidOperationException ? error.Message : "Kontext konnte nicht angehängt werden. Keine automatische Wiederholung."; }
+            catch (Exception error) { if (!_disposed) Notify(error is InvalidOperationException ? error.Message : "Kontext konnte nicht angehängt werden. Keine automatische Wiederholung.", "error"); }
             finally { _chatActionPending = false; }
+            if (!_disposed) await PollChatSelectionAsync();
         }
 
-        private async Task AllowSelectedModelAsync()
+        // Enables exactly one connected provider for explicitly attached content.
+        // Runs automatically once a provider is connected in OpenChamber; the
+        // menu offers it for switching between several connected providers.
+        private async Task AllowProviderAsync(string provider)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_chatActionPending || !CanPromptCurrentChat()) return;
             _chatActionPending = true; RenderChatBinding();
             try
             {
-                var provider = (_consentProvider.SelectedItem as ChatProviderChoice)?.id;
                 var selection = await ReadChatSelectionAsync();
                 if (selection?.IsSelected != true || string.IsNullOrEmpty(provider) || selection.providers?.Any(choice => choice.id == provider) != true
                     || (!(_chatBinding.IsGeneral && _chatBinding.MatchesGeneral(_chatIdeInstance, System.Diagnostics.Process.GetCurrentProcess().Id, _origin.AbsoluteUri, selection.sessionId))
                         && !_chatBinding.Matches(FreshChatSnapshot().Identity, _chatIdeInstance, _origin.AbsoluteUri, selection.sessionId)))
-                    throw new InvalidOperationException("Projektchat zuordnen und einen angemeldeten Anbieter auswählen, bevor du ihn freigibst.");
+                    throw new InvalidOperationException("Chat-Auswahl geändert.");
                 var model = selection.model?.StartsWith(provider + "/", StringComparison.Ordinal) == true ? selection.model : null;
-                _modelStatus.Text = "Anbieterfreigabe wird geprüft ...";
+                _modelStatus.Text = "Modellanbieter " + provider + " wird freigegeben …";
                 await NativeModelConsent.ConfigureAsync(_chatConfiguration(), provider, model);
                 var serializer = new JavaScriptSerializer();
                 var expected = new { selection.sessionId, selection.epoch, selection.documentId };
@@ -372,12 +721,21 @@ namespace TwinCatAssistant.Native
                 }
                 if (_disposed) return;
                 if (!confirmed) throw new InvalidOperationException("Model policy readback failed.");
-                _modelStatus.Text = "Anbieter " + provider + " ist für ausdrücklich freigegebene Inhalte in diesem lokalen Profil zugelassen. "
-                    + (model == null ? "Jetzt das Modell im Chat auswählen." : "Gewähltes Standardmodell: " + model + ".")
-                    + " PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.";
+                _modelStatus.Text = "Modellanbieter " + provider + " ist für ausdrücklich angehängte Inhalte zugelassen. "
+                    + (model == null ? "Modell im Chat wählen." : "Standardmodell: " + model + ".") + " PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.";
             }
-            catch { if (!_disposed) _modelStatus.Text = "Anbieterfreigabe konnte nicht bestätigt werden. Profil, Verbindung und Anbieterauswahl prüfen; keine automatische Wiederholung."; }
+            catch
+            {
+                if (!_disposed)
+                {
+                    _modelStatus.Text = "Freigabe des Modellanbieters konnte nicht bestätigt werden.";
+                    var retry = provider;
+                    Notify("Der Modellanbieter " + provider + " konnte nicht freigegeben werden.", "error", "Erneut versuchen",
+                        () => { _consentAttempted.Remove(retry); DismissNotice(); RunAction(() => AllowProviderAsync(retry)); });
+                }
+            }
             finally { _chatActionPending = false; }
+            if (!_disposed) await PollChatSelectionStateAsync();
         }
     }
 }

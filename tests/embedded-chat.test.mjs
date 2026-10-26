@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createChatAdapter, consentProviders } from '../src/embedded-chat.mjs';
+import { allowedProviders, createChatAdapter, consentProviders } from '../src/embedded-chat.mjs';
 
 function store(initial) {
   let value = initial;
@@ -70,4 +70,31 @@ test('new project chat uses upstream session creation without submitting any sou
   const state = await adapter.newChat({ title: 'PLC_A / FB_Motor', directory: '/isolated' });
   assert.equal(state.sessionId, 'session-two');
   assert.equal(input.getState().pendingGuestIssue, null);
+});
+
+test('effective policy readback exposes only explicitly allowed provider IDs', () => {
+  const entries = [{ info: { experimental: { policies: [{ action: 'provider.use', resource: '*', effect: 'deny' },
+    { action: 'provider.use', resource: 'openai', effect: 'allow' }, { action: 'provider.use', resource: 'bad id', effect: 'allow' },
+    { action: '*', resource: '*', effect: 'deny' }] }, provider: { openai: { options: { apiKey: 'private-key' } } } } }, { info: {} }];
+  assert.deepEqual(allowedProviders(entries), ['openai']);
+  assert.deepEqual(allowedProviders(null), []);
+});
+
+test('native host can reopen the newest known conversation by metadata only', () => {
+  const { adapter, sessions, input } = fixture();
+  let requested;
+  sessions.getState().getSessionsByDirectory = directory => {
+    requested = directory;
+    return [{ id: 'old', time: { updated: 1 }, title: 'private title' }, { id: 'bad id!', time: { updated: 9 } }, { id: 'new', time: { updated: 5 } }];
+  };
+  sessions.getState().setCurrentSession = id => sessions.set({ currentSessionId: id });
+  assert.deepEqual(adapter.recentSessions(String.raw`C:\state\workspace`), [{ id: 'new', updated: 5 }, { id: 'old', updated: 1 }]);
+  assert.equal(requested, 'C:/state/workspace');
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'one' };
+  adapter.permit(expected); adapter.attach({ ...expected, item });
+  assert.equal(adapter.selectSession('not valid!'), false);
+  assert.equal(adapter.selectSession('old'), true);
+  assert.equal(adapter.state().sessionId, 'old');
+  assert.equal(input.getState().pendingGuestIssue, null, 'switching conversations drops the staged native reference');
+  assert.equal(adapter.permit(expected), false);
 });

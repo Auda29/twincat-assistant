@@ -28,6 +28,16 @@ internal static class ChatBindingTests
         Check(revision != ChatContextPolicy.Revision(snapshot), "same-path reopen invalidates pending disclosure even with unchanged source");
         Check(ChatContextPolicy.AttachmentText(snapshot).Contains("Unsaved editor text is not verified"), "chat payload preserves editor-buffer uncertainty");
         Check(ChatContextPolicy.ReferenceId(snapshot).StartsWith("FB_Motor@PLC_A#") && ChatContextPolicy.ReferenceId(snapshot).Length <= 128, "composer chip starts with the POU/project name instead of an opaque hash");
+        ChatProviderChoice Provider(string id) => new ChatProviderChoice { id = id, name = id };
+        Check(ChatContextPolicy.ProviderToEnable(new ChatSelection { providers = new ChatProviderChoice[0] }) == null, "no provider is enabled before one is connected in OpenChamber");
+        Check(ChatContextPolicy.ProviderToEnable(new ChatSelection { providers = new[] { Provider("openai") } }) == "openai", "the single connected provider is enabled automatically");
+        Check(ChatContextPolicy.ProviderToEnable(new ChatSelection { providers = new[] { Provider("anthropic"), Provider("openai") }, allowedProviders = new[] { "openai" } }) == null, "an enabled connected provider is never switched automatically");
+        Check(ChatContextPolicy.ProviderToEnable(new ChatSelection { providers = new[] { Provider("anthropic"), Provider("openai") }, model = "openai/gpt-x" }) == "openai", "the provider of the chosen model is preferred");
+        Check(ChatContextPolicy.ProviderToEnable(new ChatSelection { providers = new[] { Provider("openai") }, allowedProviders = new[] { "disconnected" } }) == "openai", "a disconnected enabled provider is replaced by a connected one");
+        Check(ChatContextPolicy.ProviderToEnable(new ChatSelection { providers = new[] { Provider("bad id!") } }) == null, "provider IDs outside the policy alphabet are ignored");
+        Check(ActiveEditorPresentation.Kind("FUNCTION_BLOCK FB_Motor") == "FB" && ActiveEditorPresentation.Kind("  FUNCTION F_Add : INT") == "FUN"
+            && ActiveEditorPresentation.Kind("PROGRAM MAIN") == "PRG" && ActiveEditorPresentation.Kind("FUNCTION_BLOCKX") == "ST"
+            && ActiveEditorPresentation.Kind(null) == "ST", "context badge derives the POU kind from the declaration keyword");
         snapshot.Implementation = new string('x', 16000);
         var refused = false;
         try { ChatContextPolicy.AttachmentText(snapshot); } catch (InvalidOperationException) { refused = true; }
