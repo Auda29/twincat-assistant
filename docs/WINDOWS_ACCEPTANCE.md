@@ -27,7 +27,8 @@ The operator subsequently confirms the compact header, PLC_B project-chat
 assignment and visible FB_Motor composer reference after the explicit attachment
 action, without submitting a message. The operator also confirms that the same
 PLC_B chat blocks attachment/input while PLC_A is active and restores its matching
-assignment after returning to PLC_B. A provider conversation remains unconfirmed.
+assignment after returning to PLC_B. Provider conversation acceptance follows
+below for the corrected 0.1.5 package.
 
 ## Environment record
 
@@ -121,13 +122,15 @@ Candidate 0.1.5 adds a provider-order regression: after sign-in, choose the
 authenticated provider in native Details and explicitly grant it before selecting
 a model in the normal chat picker. No model must be required to press that grant
 button. Sign-in alone must leave provider use denied. The real-control fixture
-checks this with an isolated fake credential and no provider/model call; installed
-OpenAI OAuth/model-answer acceptance remains pending.
+checks this with an isolated fake credential and no provider/model call.
 The x86 update is installed with all 13 payload hashes verified, prior 0.1.4
 preserved outside extension discovery, and the installed ContextChecks smoke
 passing. This does not replace operator verification of the corrected workflow.
 The operator subsequently confirms OpenAI visibility, successful explicit grant
-and working model selection in 0.1.5. An actual model answer is still pending.
+and working model selection in 0.1.5. After explicitly attaching PLC_B/FB_Motor,
+the operator asks which value its implementation assigns to bRun and confirms
+the model's exact reply `bRun := TRUE;`. The scoped x86 chat goal is accepted;
+extended lifecycle/host and the full documentation/MCP gate remain separate.
 
 ### Full documentation/MCP gate
 

@@ -196,7 +196,12 @@ tool window, distinct POU reads and local chat listener pass the smoke. The
 OpenAI account store was not read or changed by installation. Linux and Windows
 CI pass at `6902f0c`. The operator confirms that the installed 0.1.5 selector shows
 OpenAI, the explicit grant succeeds and model selection works. The actual answer
-to the explicitly attached synthetic FB_Motor remains open.
+to the explicitly attached synthetic PLC_B/FB_Motor is also user-confirmed:
+the prompt asking which value the implementation assigns to bRun returned exactly
+`bRun := TRUE;`. This closes the scoped x86 chat-integration goal: compact UI,
+project/session binding, explicit POU disclosure and the actual model response.
+Start/reconnect and no-replay invariants are separately covered by the compiled
+control/runtime regression; this one answer is not broad provider/model validation.
 amd64 live installation, extended lifecycle/focus/responsiveness,
 general exact unsaved-buffer semantics, both real MCPs/corpus and native-to-MCP
 transport remain separate gates. No source-write, compiler, PLC/runtime or

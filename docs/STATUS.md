@@ -21,8 +21,8 @@ the local listener. Current Linux and Windows CI checks pass at `6310628`.
 The operator confirms the compact header, PLC_B project-chat binding and visible
 FB_Motor composer reference after an explicit attachment in the installed host,
 without submitting a message. The operator also confirms the PLC_A mismatch
-refusal and restored PLC_B assignment after switching back. A real provider
-conversation still awaits acceptance; model/disclosure consent is not configured.
+refusal and restored PLC_B assignment after switching back. The subsequent 0.1.5
+provider fix and real model response below complete the scoped x86 chat goal.
 Computer Use fails with
 `native pipe unavailable` / `os error 2`; component checks remain separate evidence.
 See [the integration contract](CHAT_INTEGRATION.md).
@@ -43,8 +43,10 @@ See [the integration contract](CHAT_INTEGRATION.md).
   distinct PLC_A/PLC_B direct reads and chat listener pass the installed smoke.
   Linux and Windows CI pass at `6902f0c`. The operator confirms that OpenAI is
   visible in the new selector, explicit consent succeeds and a chat model can
-  be selected. The actual model answer to an explicitly attached synthetic POU
-  remains the final pending chat acceptance step.
+  be selected. The operator confirms the actual reply `bRun := TRUE;` after
+  explicitly attaching PLC_B/FB_Motor and asking for its assigned value. The
+  scoped x86 chat-integration goal is complete; this does not close the wider
+  native MVP, extended lifecycle, amd64 or MCP/corpus acceptance gates.
 
 - Foundation PR #1 and native foundation PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
   are merged. PR #2 merged on 2026-10-23; this is not native MVP acceptance.
@@ -94,10 +96,12 @@ See [the integration contract](CHAT_INTEGRATION.md).
   login, port-conflict refusal and owned shutdown are tested. Native source is
   not attached and a fresh profile has no model/provider enabled.
 - Installed x86 0.1.3 first-run password setup and display of the real OpenChamber
-  login page are user-confirmed. Real provider conversation/native session and
-  MCP binding remain open; this is not a complete chat/agent MVP acceptance.
-- Installed 0.1.4 chat/provider acceptance and native-to-MCP transport remain open;
-  local candidate tests cover explicit composer attachment and session binding.
+  login page are user-confirmed. The subsequent 0.1.5 core chat/provider flow is
+  accepted as recorded above. MCP binding remains open; this is not a complete
+  chat/agent MVP acceptance.
+- Installed 0.1.5 core chat/provider flow is accepted in `ContextChecks`;
+  native-to-MCP transport remains open. Local component tests also cover explicit
+  composer attachment and session binding.
   Extended lifecycle and
   reliable active/unsaved-editor correlation remain open. No live amd64 host
   is installed for acceptance. All native writes/builds remain unavailable.
@@ -196,15 +200,16 @@ green lifecycle job is not native acceptance. See
   smoke test; actual installation and all native acceptance in TcXaeShell64.
 - Extended installed lifecycle/focus/responsiveness acceptance of the active-editor
   context and compact host UI beyond the observed x86 core flow. Native WebView2
-  first-run/login-page flow is observed; authenticated conversation/session and
-  provider/MCP acceptance remain open.
+  first-run/login-page and basic project-bound provider conversation are accepted
+  in the tested x86 flow. Wider lifecycle/provider combinations and MCP acceptance
+  remain open.
 - General unsaved-editor/source/RDT correlation and revision acceptance. The
   synthetic x86 test detected the unsaved comment as `known-dirty`; exact editor
   buffer semantics beyond that observed case remain unverified.
 - Live monorepo engineering adapter, operator review integration, live apply or
   rollback, and project-bound compiler diagnostics.
 - A supplied Beckhoff corpus or a real provider conversation using both MCPs.
-- Native-to-MCP/session binding. The existing pipe executable and `doctor` remain
+- Native-to-MCP context/session transport. The existing pipe executable and `doctor` remain
   unconnected to the IDE reader and deliberately report native unavailability.
 - Full extension install/reload and chat persistence acceptance in OpenChamber.
 - Production storage retention, installer/update delivery, signing and release.

@@ -10,7 +10,7 @@ prototype, not the accepted TwinCAT MVP. Both IDE payloads build. The earlier x8
 `0.1.1` passed user-confirmed menu/window/docking smoke checks and local ST display.
 Native `0.1.2` added automatic local active-POU following and
 a compact context display with optional diagnostics. Full host lifecycle,
-broader unsaved-buffer semantics, native chat and amd64 acceptance remain open. Source is labelled
+broader unsaved-buffer semantics, extended chat lifecycle and amd64 acceptance remain open. Source is labelled
 as an Automation Interface snapshot, not verified unsaved editor text.
 The x86 core flow is now checked: same-name POUs in two PLCs follow correctly,
 and a real unsaved editor comment produces the visible unsaved-changes status.
@@ -21,9 +21,12 @@ attachments, a general chat without POU context, provider consent and bounded
 reconnection. It reuses the existing OpenChamber chat through a hash-verified
 version-specific adapter. See [chat integration](docs/CHAT_INTEGRATION.md) for
 the candidate's tests and installed acceptance boundary.
-Candidate `0.1.5` corrects provider setup: explicitly allow an authenticated
+Installed x86 `0.1.5` corrects provider setup: explicitly allow an authenticated
 provider under Details first, then choose a model in the existing chat picker.
 This avoids a default-deny catalog hiding a successfully signed-in provider.
+The scoped x86 chat goal is accepted in `ContextChecks`: project refusal/return,
+explicit POU reference, provider/model setup and the correct actual model reply
+are user-confirmed. Wider native MVP and MCP gates remain open.
 The isolated operator CLI,
 OpenChamber context panel, portable safety core and diagnostic pipe remain;
 live writes, native-to-MCP binding and compiler builds are unavailable.
