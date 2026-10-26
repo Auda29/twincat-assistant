@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Last reconciled: **2026-10-09**. [Status](STATUS.md) is the current implementation
+Last reconciled: **2026-10-26**. [Status](STATUS.md) is the current implementation
 snapshot; this document defines the order of work and milestone exit gates.
 [MVP](MVP.md) describes the eventual product, not the permissions of the current
 prototype. No delivery dates or effort estimates are committed.
@@ -10,17 +10,16 @@ prototype. No delivery dates or effort estimates are committed.
 | Track | State | Evidence / next gate |
 | --- | --- | --- |
 | Integration foundation | Merged in PR #1 | Local CLI, reused upstreams, both MCP fixture integrations and portable safety components; not native MVP acceptance |
-| Native read-only prototype | Draft PR [#2](https://github.com/Auda29/twincat-assistant/pull/2), code baseline `29b0b75` | Windows/Linux CI green; both VSIX variants build; x86 0.1.1 installed |
+| Native read-only prototype | PR [#2](https://github.com/Auda29/twincat-assistant/pull/2) merged on 2026-10-23 | Foundation merged; x86 0.1.2 installed; both 0.1.2 payloads build locally |
 | x86 shell smoke test | Passed, user-reported | Menu, opening, docking, closing/reopening; local ST display observed |
-| Active-editor-first UX | **Next implementation slice; not implemented** | Follow the active POU without manual refresh/read/selection; exact identity and unsaved-state acceptance required |
-| Native chat and model context | Open | Real embedded WebView2/login/session/provider/MCP acceptance still required |
+| Active-editor-first UX | Implemented in 0.1.2; core x86 flow verified | User/screenshot evidence for same-name PLC_A/PLC_B following and unsaved status; 7 live reader lifecycle/isolation checks; extended host acceptance remains open |
+| Native chat and model context | Protected startup/error handling implemented in 0.1.3; acceptance open | Real WebView2/login/session/provider/MCP acceptance still required |
 | amd64 shell acceptance | Blocked | No installed TcXaeShell64 is available for live validation |
 | Live source writes / compiler | Outside the current milestone | Future M3/M4 work; no authorization to implement or invoke these now; runtime control remains excluded |
 
-PR #2 stays draft while native acceptance is incomplete. Green CI or the x86
-smoke test alone is not a merge/release gate. Supporting one host does not prove
-the other; narrowing a milestone or merging a partial foundation requires an
-explicit scope decision.
+PR #2 merged the native foundation. Native MVP/release acceptance remains open.
+Green CI or the x86 smoke test does not establish that acceptance. Supporting
+one host does not prove the other.
 
 ## Decisions recorded on 2026-10-09
 
@@ -43,7 +42,12 @@ explicit scope decision.
 
 ## Next slice: M1.2 active-editor following
 
-Implement and test in this order:
+Implementation is present in candidate `0.1.2`, which is installed in x86.
+The user confirms active following and unsaved-change status in the real native
+window. Seven live direct-reader lifecycle/isolation checks also pass. Extended
+host lifecycle, cold-start/responsiveness and amd64 acceptance remain open.
+See [implementation/evidence](ACTIVE_EDITOR.md).
+The slice is assessed against these requirements:
 
 1. Resolve the selected IDE, solution, PLC project and active ST POU exactly.
    Names or tab titles alone are insufficient; unsupported/ambiguous editors
@@ -103,8 +107,25 @@ with actual embedded chat and reliable evidence boundaries on both architectures
 - [x] M1.1/x86: display a manually selected ST object locally. This does not prove
   active-editor binding or unsaved-text correctness.
 - [ ] M1.2: implement and accept active-editor-first local context, as specified above.
+- [x] M1.2 implementation: direct active-POU binding, lifecycle invalidation,
+  provenance/uncertainty and compact UI with optional diagnostics.
+- [x] M1.2 x86 delivery: install candidate 0.1.2 with verified files and preserve
+  the old payload; observe extension/package loading and a visible tool window.
+- [x] M1.2 core x86 acceptance: observed PLC_A/PLC_B automatic header following
+  and unsaved-comment status; live reader isolation, unsupported/no editor,
+  solution close and same-path reopen checks.
+- [ ] M1.2 extended acceptance: verify display clearing through all solution/
+  window lifecycle cases, focus, cold-start and large-object responsiveness;
+  establish broader actual unsaved-buffer semantics before claiming those.
 - [ ] M1.3: load the real authenticated OpenChamber UI in native WebView2; test
   focus, resize, safe navigation, connection errors and close/reopen behavior.
+- [x] M1.3 connection implementation: protected native runtime start/reuse,
+  current-user encrypted local password, real readiness/navigation/error states
+  and owned shutdown. Real transport/credential checks pass; installed WebView
+  login and full conversation acceptance remain separate.
+- [x] M1.3 x86 first-run/login-page smoke: user confirms local password setup and
+  the real OpenChamber login page in the installed 0.1.3 window. Authenticated
+  conversation and the wider focus/lifecycle matrix remain open.
 - [ ] Complete the x86 synthetic-editor, lifecycle and identity acceptance record.
 - [ ] Validate amd64 installation targets and repeat the host/editor/WebView2
   acceptance separately in a real TcXaeShell64.

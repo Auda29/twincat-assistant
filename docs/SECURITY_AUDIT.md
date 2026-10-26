@@ -3,7 +3,28 @@
 This development foundation is **not production-approved**. Component tests and
 an npm audit do not prove the safety of an IDE/runtime integration.
 
-## Audit baseline
+## Current release audit, 2026-10-26
+
+The root audit found a high-severity Zod collection-validation denial of service,
+[GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
+The root lockfile now selects `zod 4.6.7`, within the existing dependency ranges.
+The repeat root audit reports zero advisories, and the root checks are rerun for
+this lockfile change.
+
+The unchanged pinned upstream graph currently reports five affected packages:
+two critical and three high, including propagated findings. These are
+`simple-git`, `@simple-git/argv-parser`, `@openchamber/web`, `body-parser` and
+`zod`. In addition to the Git advisories below, this includes
+[GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828), a
+compressed-body denial of service in `body-parser`, and the Zod advisory above.
+Audit counts can change as the registry updates its advisory data; they are
+not evidence that the installed upstream graph was remediated.
+
+`native-v0.1.3` is a source-only development prerelease. The upstream findings
+remain blockers for production approval. No security exception or clean
+upstream audit is claimed.
+
+## Earlier audit baseline
 
 Reproduction:
 
@@ -44,8 +65,9 @@ The requested module 'simple-git' does not provide an export named 'default'
 
 The incompatible override was removed; a fresh `npm ci --prefix upstream`
 restored the original graph and both integration checks passed. No silently
-patched node_modules or compatibility shim is shipped. The original **six
-affected packages remain a release blocker**, including the critical Git issues.
+patched node_modules or compatibility shim is shipped. The unresolved upstream
+findings remain release blockers, including the critical Git issues. The current
+registry counts are recorded above.
 A reviewed OpenChamber migration to the new API is required separately.
 
 ## Local trust model and reviewed limitations

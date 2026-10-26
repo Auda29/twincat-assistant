@@ -6,5 +6,10 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
-  <ItemGroup><Compile Include="../Shared/DirtyEvidence.cs" Link="DirtyEvidence.cs" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/DirtyEvidence.cs" Link="DirtyEvidence.cs" />
+    <Compile Include="../Shared/ActiveEditorContext.cs" Link="ActiveEditorContext.cs" />
+    <Compile Include="../Shared/ActivePouSource.cs" Link="ActivePouSource.cs" />
+    <Compile Include="../Shared/ChatConnectionState.cs" Link="ChatConnectionState.cs" />
+  </ItemGroup>
 </Project>

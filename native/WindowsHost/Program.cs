@@ -102,7 +102,11 @@ internal static class JobSupervisor
     public static async Task<int> RunAsync()
     {
         // The launch plan (including credentials) travels over stdin, never a command line or file.
-        var line = await ReadControlAsync();
+        // Node writes UTF-8 regardless of the Windows/OEM console code page.
+        // Retain one reader so a buffered stop command is not lost between reads.
+        using var input = new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false, true),
+            detectEncodingFromByteOrderMarks: false, bufferSize: 4096, leaveOpen: true);
+        var line = await ReadControlAsync(input);
         var plan = JsonSerializer.Deserialize<LaunchPlan>(line, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
             ?? throw new IOException();
         if (!Path.IsPathFullyQualified(plan.Command) || !File.Exists(plan.Command) ||
@@ -154,9 +158,8 @@ internal static class JobSupervisor
                 if (!Native.GetExitCodeProcess(process.Process, out var code)) throw new IOException();
                 return unchecked((int)code);
             });
-            // Console.In is a synchronized TextReader whose ReadAsync can block synchronously.
-            // Keep that read off the exit-monitor path so normal child exit is observed.
-            var control = Task.Run(ReadControlAsync);
+            // Keep control input independent of the normal child-exit monitor.
+            var control = Task.Run(() => ReadControlAsync(input));
             var completed = await Task.WhenAny(exit, control);
             if (completed == control)
             {
@@ -183,9 +186,8 @@ internal static class JobSupervisor
         }
     }
 
-    private static async Task<string> ReadControlAsync()
+    private static async Task<string> ReadControlAsync(TextReader input)
     {
-        var input = Console.In;
         var result = new StringBuilder();
         var one = new char[1];
         while (await input.ReadAsync(one) != 0)

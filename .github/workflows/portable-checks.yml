@@ -73,4 +73,4 @@ jobs:
       - name: Install pinned actual upstream runtime (no private MCP checkouts)
         run: npm ci --prefix upstream --no-audit --no-fund
       - name: Verify Windows authenticated runtime bootstrap and owner-death cleanup
-        run: node --test tests/integration/windows-runtime.test.mjs
+        run: node --test tests/integration/windows-runtime.test.mjs tests/integration/native-chat.test.mjs

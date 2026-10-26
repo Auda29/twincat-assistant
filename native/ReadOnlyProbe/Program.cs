@@ -18,9 +18,35 @@ internal static class Program
                 return 0;
             }
             int pid;
-            if (args.Length != 2 || (args[0] != "--pid" && args[0] != "--projects") || !int.TryParse(args[1], out pid)) return 2;
+            if (args.Length != 2 || (args[0] != "--pid" && args[0] != "--projects" && args[0] != "--editor") || !int.TryParse(args[1], out pid)) return 2;
             var selected = running.SingleOrDefault(ide => ide.ProcessId == pid);
             if (selected == null) throw new InvalidOperationException("The selected IDE is not accessible in this user/elevation context.");
+            if (args[0] == "--editor")
+            {
+                var document = selected.Dte.ActiveDocument;
+                var projectItem = document?.ProjectItem;
+                var item = projectItem?.Object as TCatSysManagerLib.ITcSmTreeItem;
+                object text = null;
+                try { text = document?.Object("TextDocument"); } catch { }
+                ActiveEditorSnapshot snapshot = null;
+                string activeError = null;
+                var activeReader = new NativeActiveEditorReader(selected.Dte, pid, null);
+                try { snapshot = activeReader.Read(activeReader.Capture()); }
+                catch (InvalidOperationException error) { activeError = error.Message; }
+                Console.WriteLine(json.Serialize(new {
+                    selected.ProcessId, hasDocument = document != null,
+                    document = document?.FullName, project = projectItem?.ContainingProject?.FullName,
+                    hasTreeItem = item != null, treePath = item?.PathName,
+                    hasTextDocument = text is EnvDTE.TextDocument,
+                    documentSaved = document?.Saved,
+                    activeRead = snapshot == null ? null : new {
+                        snapshot.Identity, snapshot.ObjectName, snapshot.SourceKind, snapshot.SourceNotice,
+                        declarationCharacters = snapshot.Declaration.Length, implementationCharacters = snapshot.Implementation.Length,
+                        snapshot.Dirty, snapshot.ReadMilliseconds
+                    }, activeError
+                }));
+                return 0;
+            }
             if (args[0] == "--projects")
             {
                 var projects = new System.Collections.Generic.List<object>();

@@ -77,6 +77,31 @@ export async function inspectState(root) {
   }
   return { configurationVerified: true, nativeEngineering: 'unavailable', corpus: settings.knowledge ? 'not_probed' : 'not_configured', modelCallsEnabled: settings.sourceCodeDisclosureAccepted === true && Boolean(settings.model), files, paths, settings };
 }
+
+export async function prepareChatWorkspace(root) {
+  const status = await inspectState(root);
+  // The pinned UI bootstraps its legacy chats location even with a relocated
+  // OPENCHAMBER_DATA_DIR. Both roots must exist before the first browser login.
+  // Walk one component at a time so an existing file or redirected directory
+  // fails before any descendant is created. Existing chats are never replaced.
+  for (const [base, segments] of [
+    [status.paths.home, ['.config', 'openchamber', 'chats']],
+    [status.paths.openchamber, ['chats']],
+  ]) {
+    let directory = base;
+    for (const segment of segments) {
+      directory = join(directory, segment);
+      try { await mkdir(directory, { mode: 0o700 }); }
+      catch (error) { if (error.code !== 'EEXIST') throw error; }
+      const metadata = await lstat(directory);
+      if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+        throw new Error('Chat workspace must contain regular directories, not files or redirected directories');
+      }
+    }
+  }
+  return status;
+}
+
 export function runtimeEnvironment(root, input, inherited = process.env) {
   const settings = validateSettings(input);
   const paths = statePaths(root);
