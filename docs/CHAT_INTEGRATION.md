@@ -194,6 +194,13 @@ renders cover 340, 520 and 900 pixels; embedded chat captures cover 390, 768 and
 1100 pixels. These use synthetic source and an isolated fake provider credential,
 with no provider/model call or live IDE acceptance of 0.1.6.
 
+The x86 0.1.6 package was then installed with the IDE closed after operator
+authorization. All 13 installed payload hashes match the built package; 0.1.5
+is preserved outside extension discovery. The existing empty extension marker
+retains its contents and only its timestamp was refreshed. The IDE has not been
+reopened for this update, so this establishes installation integrity rather than
+live startup, UI or model acceptance.
+
 Earlier 0.1.5 verification on 2026-10-26: 44 Node tests, 8 browser contracts, 69 native
 policy/context/chat checks, 21 WPF view checks, 22 compiled-control integration
 checks and 3 Windows/native Node runtime checks pass. Both 0.1.5 VSIX targets build without

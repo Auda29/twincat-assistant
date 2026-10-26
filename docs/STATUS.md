@@ -1,7 +1,7 @@
 # Implementation status
 
 Updated: **2026-10-26**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.5`, installed after operator coordination. The current UI candidate is
+`0.1.6`, installed after operator coordination. The current UI candidate is
 `0.1.6` on `feat/assistant-ui-redesign`, based on the project-bound chat work.
 These versions describe different
 components, not a TwinCAT product release.
@@ -35,8 +35,11 @@ See [the integration contract](CHAT_INTEGRATION.md).
   persisted setting, off by default; provider transfer still requires submitting
   a message. Local checks pass: 47 Node, 8 browser, 76 native policy/context/chat,
   26 WPF view, 31 compiled-control/WebView2/runtime and 2 native Node runtime
-  checks. Synthetic fixtures make no model call. Installation and live IDE
-  acceptance of this UI candidate are still open. See [the current
+  checks. Synthetic fixtures make no model call. The x86 package is installed
+  with all 13 payload hashes verified; 0.1.5 is preserved outside extension
+  discovery. Only the existing empty extension marker's timestamp was refreshed.
+  The IDE stayed closed, so startup and live UI acceptance of this candidate
+  remain open. See [the current
   workflow](CHAT_INTEGRATION.md).
 
 - Candidate 0.1.5 fixes the reproduced provider/model consent deadlock in 0.1.4:

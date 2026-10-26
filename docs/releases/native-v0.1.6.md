@@ -41,8 +41,10 @@ Local checks on 2026-10-26 pass:
 
 The native fixtures use synthetic source, private temporary profiles and a fake
 provider credential. They make no model call. WPF renders cover 340, 520 and
-900 pixels; embedded-chat captures cover 390, 768 and 1100 pixels. Live IDE
-installation and acceptance of 0.1.6 remain open. These results do not establish
+900 pixels; embedded-chat captures cover 390, 768 and 1100 pixels. The x86 package
+is installed with all 13 payload hashes verified and 0.1.5 preserved outside
+extension discovery. The IDE remained closed for the update; startup and live
+UI acceptance of 0.1.6 remain open. These results do not establish
 TwinCAT compiler, simulation, PLC/runtime or machine validation.
 
 ## Distribution

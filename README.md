@@ -26,8 +26,10 @@ with the selected compact context bar, follows OpenChamber's palette and opens
 project conversations automatically. Connected providers are enabled without
 a separate consent click. Automatic POU attachment is an optional setting in
 the overflow menu; submitting the message still controls provider transfer.
-This candidate has local component verification and is not installed yet.
-Installed x86 `0.1.5` corrects provider setup: explicitly allow an authenticated
+The x86 candidate is installed with all 13 payload hashes verified and 0.1.5
+preserved outside extension discovery. The IDE was closed for installation;
+live UI acceptance of 0.1.6 is still open.
+Earlier x86 `0.1.5` corrected provider setup: explicitly allow an authenticated
 provider under Details first, then choose a model in the existing chat picker.
 This avoids a default-deny catalog hiding a successfully signed-in provider.
 The scoped x86 chat goal is accepted in `ContextChecks`: project refusal/return,
