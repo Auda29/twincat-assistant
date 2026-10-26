@@ -176,7 +176,7 @@ Policy verification polls bounded readbacks while the config watcher settles;
 the consent write and location mutation are not replayed.
 
 Local UI renders cover narrow/medium/wide windows. Raw logs and screenshots stay
-in ignored `local-data`. The x86 0.1.4 update is installed after UAC confirmation;
+in ignored `local-data`. The x86 0.1.4 update was installed after UAC confirmation;
 all 13 payload hashes match and 0.1.3 is preserved outside extension discovery.
 A normally launched `ContextChecks` host exposes the installed Assistant command,
 opens its tool window, resolves PLC_A/PLC_B distinctly and starts the chat listener.
@@ -186,11 +186,16 @@ The operator confirms all three first-flow checks in that installed host:
 compact native header, PLC_B project-chat binding, and a visible FB_Motor composer
 reference after **POU an Chat anhängen**, without submitting a message. This is
 live x86 visual evidence, separate from the synthetic component fixtures.
-The operator also confirms that switching to PLC_A with the PLC_B chat selected
+For 0.1.4, the operator also confirms that switching to PLC_A with the PLC_B chat selected
 blocks source attachment and chat input, and returning to PLC_B restores its
 matching assignment. This confirms the installed project's visible refusal/return
-flow. A real user-driven provider conversation still needs acceptance; the
-operator profile currently has no model/disclosure grant.
+flow. The x86 0.1.5 update is subsequently installed with 13 payload hashes
+verified and 0.1.4 preserved outside extension discovery. The saved synthetic
+host was closed for the update, then normally reopened. Its installed command,
+tool window, distinct POU reads and local chat listener pass the smoke. The
+OpenAI account store was not read or changed by installation. Linux and Windows
+CI pass at `6902f0c`. Operator acceptance of the new provider grant/model picker
+and an actual provider answer remains open.
 amd64 live installation, extended lifecycle/focus/responsiveness,
 general exact unsaved-buffer semantics, both real MCPs/corpus and native-to-MCP
 transport remain separate gates. No source-write, compiler, PLC/runtime or

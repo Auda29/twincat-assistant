@@ -1,7 +1,7 @@
 # Implementation status
 
 Updated: **2026-10-26**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.4`, installed after operator coordination. Current native changes are on
+`0.1.5`, installed after operator coordination. Current native changes are on
 `feat/project-bound-chat`, stacked on `feat/active-editor-context` and merged
 baseline `24e5d48`.
 These versions describe different
@@ -38,8 +38,11 @@ See [the integration contract](CHAT_INTEGRATION.md).
   21 WPF view, 22 compiled-control/runtime and 3 Windows/native runtime checks.
   Both VSIX variants build without warnings/errors. The unchanged Windows helper
   was built to a separate local output because its current binary belongs to the
-  running chat. The installed host remains 0.1.4 until the coordinated update is
-  verified; no actual provider answer has been accepted yet.
+  running chat. The x86 0.1.5 update is now installed with all 13 hashes verified
+  and 0.1.4 backed up outside extension discovery. Its Assistant command/window,
+  distinct PLC_A/PLC_B direct reads and chat listener pass the installed smoke.
+  Linux and Windows CI pass at `6902f0c`. Operator verification of the new
+  provider selector/model selection and a real model answer remain pending.
 
 - Foundation PR #1 and native foundation PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
   are merged. PR #2 merged on 2026-10-23; this is not native MVP acceptance.
