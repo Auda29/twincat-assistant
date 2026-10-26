@@ -23,6 +23,10 @@ Its command/tool window opens in the normally launched `ContextChecks` solution;
 the direct reader distinguishes PLC_A/PLC_B and the local chat listener starts.
 Its compact chat/source UI acceptance below still requires operator observation:
 Computer Use fails with `native pipe unavailable` / `os error 2`.
+The operator subsequently confirms the compact header, PLC_B project-chat
+assignment and visible FB_Motor composer reference after the explicit attachment
+action, without submitting a message. Cross-project refusal/return and provider
+conversation have not yet been confirmed in the installed host.
 
 ## Environment record
 

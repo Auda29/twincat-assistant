@@ -18,9 +18,11 @@ The x86 update is installed with all 13 payload hashes verified and 0.1.3 backed
 up outside the extension search path. A normally launched `ContextChecks` host
 loads the command/tool window, resolves both same-name POUs distinctly and starts
 the local listener. Current Linux and Windows CI checks pass at `6310628`.
-The visible chat/source flow still requires operator acceptance because Computer
-Use fails with `native pipe unavailable` / `os error 2`; component checks do not
-establish that installed acceptance.
+The operator confirms the compact header, PLC_B project-chat binding and visible
+FB_Motor composer reference after an explicit attachment in the installed host,
+without submitting a message. Cross-project refusal/return and a real provider
+conversation still await acceptance. Computer Use fails with
+`native pipe unavailable` / `os error 2`; component checks remain separate evidence.
 See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action

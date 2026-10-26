@@ -157,9 +157,12 @@ A normally launched `ContextChecks` host exposes the installed Assistant command
 opens its tool window, resolves PLC_A/PLC_B distinctly and starts the chat listener.
 Linux and Windows CI checks pass at `6310628`. Native window automation still
 fails with `native pipe unavailable` / `os error 2`.
-The installed x86 host still needs final visual acceptance of
-this candidate using `ContextChecks`, including a real user-driven provider
-conversation. amd64 live installation, extended lifecycle/focus/responsiveness,
+The operator confirms all three first-flow checks in that installed host:
+compact native header, PLC_B project-chat binding, and a visible FB_Motor composer
+reference after **POU an Chat anhängen**, without submitting a message. This is
+live x86 visual evidence, separate from the synthetic component fixtures.
+Installed cross-project refusal/return and a real user-driven provider conversation
+still need acceptance. amd64 live installation, extended lifecycle/focus/responsiveness,
 general exact unsaved-buffer semantics, both real MCPs/corpus and native-to-MCP
 transport remain separate gates. No source-write, compiler, PLC/runtime or
 machine validation is claimed.
