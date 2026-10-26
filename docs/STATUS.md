@@ -6,6 +6,17 @@ Updated: **2026-10-26**. Operator package: `0.1.0-dev.1`; installed x86 prototyp
 These versions describe different
 components, not a TwinCAT product release.
 
+Candidate **0.1.4** on `feat/project-bound-chat` implements the next chat-integration
+goal. It retains OpenChamber's chat, adds an exact persistent project/session
+binding, explicit POU composer attachments, provider consent and bounded
+reconnection. Local checks pass: 42 Node tests, 8 browser contracts, 69 native
+policy/context/chat checks, 21 WPF view checks, 20 compiled-control/WebView2/runtime
+integration checks and 2 native Node runtime checks. Both VSIX targets build
+without warnings/errors. These are synthetic/component checks, with no model call.
+The installed host is still 0.1.3 until the
+coordinated update; do not confuse local candidate checks with installed acceptance.
+See [the integration contract](CHAT_INTEGRATION.md).
+
 ## Current position and next action
 
 - Foundation PR #1 and native foundation PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
@@ -58,7 +69,9 @@ components, not a TwinCAT product release.
 - Installed x86 0.1.3 first-run password setup and display of the real OpenChamber
   login page are user-confirmed. Real provider conversation/native session and
   MCP binding remain open; this is not a complete chat/agent MVP acceptance.
-- Native WebView2/chat/provider acceptance, source/session/MCP transport and
+- Installed 0.1.4 chat/provider acceptance and native-to-MCP transport remain open;
+  local candidate tests cover explicit composer attachment and session binding.
+  Extended lifecycle and
   reliable active/unsaved-editor correlation remain open. No live amd64 host
   is installed for acceptance. All native writes/builds remain unavailable.
 

@@ -6,6 +6,12 @@ native helper for safe JSON reads and Job Object ownership. Build it before
 running `init`, `doctor`, tests, or `start` on Windows. See
 [native prototype](NATIVE_PROTOTYPE.md) for build commands and the separate
 32-/64-bit host targets. Native IDE installation acceptance remains open.
+
+The 0.1.4 chat-integration candidate also requires the locked root and `upstream`
+Node dependencies. `Build-Native.ps1` verifies and embeds the adapter against the
+pinned OpenChamber assets before compiling. A mismatched distribution is refused.
+See [project chat setup and consent](CHAT_INTEGRATION.md) for the native workflow
+and `Test-ChatIntegration.ps1` for the actual WPF/WebView2/runtime fixture check.
 Candidate `0.1.2` and its active-editor verification boundary are documented in
 [M1.2](ACTIVE_EDITOR.md). The real compiled native view can be rendered with
 synthetic inputs using `powershell.exe -NoProfile -STA -File scripts/Test-NativeView.ps1`

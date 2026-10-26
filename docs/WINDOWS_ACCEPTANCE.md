@@ -80,6 +80,33 @@ decision, implemented approval enforcement and explicit operator authorization.
 
 ## Chat and documentation tracer
 
+### Candidate 0.1.4: installed synthetic project
+
+Use only `ContextChecks`; no production PLC is connected. Record the installed
+payload hash/version separately from component-test results.
+
+- Open the Assistant: the chat starts automatically, its sidebar is collapsed,
+  and connection/model diagnostics remain under Details.
+- With PLC_A/FB_Motor active, create a project chat. Before clicking **POU an Chat
+  anhängen**, the composer contains no native source. After the click, inspect
+  the visible reference and its snapshot/unsaved-buffer caveat before sending.
+- Switch to PLC_B/FB_Motor: source attachment and sending in the PLC_A chat are
+  refused. Return to PLC_A and explicitly validate/rebind as needed.
+- Modify only synthetic ST without saving. Confirm the changed snapshot status;
+  do not treat it as universal proof of exact editor-buffer semantics.
+- Reload/reopen, select an existing thread and explicitly use its matching
+  project binding. No source is automatically reattached. Confirm the workspace
+  initialization message stays absent during repeated navigation.
+- If no ST editor is active, a general chat may be created without inventing
+  project context. Its POU attachment remains unavailable.
+- Provider configuration/consent and an actual provider conversation require
+  the operator's own UI actions. No password/API key is requested in chat.
+
+The compiled-control integration script covers these contracts with synthetic
+snapshots and no model call; it does not close this installed acceptance gate.
+
+### Full documentation/MCP gate
+
 Install the real built extension; verify selected session and project survive
 reopen/rebind without stale attachment. Use an operator-provided validated
 corpus and explicitly approved provider. Confirm full `structuredContent` and

@@ -29,11 +29,14 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Security" />
     <Reference Include="TCatSysManagerLib"><HintPath>$(TwinCatInteropPath)</HintPath><Private>true</Private><EmbedInteropTypes>false</EmbedInteropTypes></Reference>
-    <Compile Include="../AssistantPackage.cs;../AssistantControl.cs;../ActiveEditorTracker.cs;../NativeChatRuntime.cs;../../Shared/ChatConnectionState.cs;../../Shared/NativeProjectReader.cs;../../Shared/DirtyEvidence.cs;../../Shared/ActiveEditorContext.cs;../../Shared/ActivePouSource.cs;../../Shared/NativeActiveEditorReader.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../AssistantPackage.cs;../AssistantControl.cs;../ActiveEditorTracker.cs;../NativeChatRuntime.cs;../ChatIntegration.cs;../ChatBindingStore.cs;../../Shared/ChatContextBinding.cs;../../Shared/ChatConnectionState.cs;../../Shared/NativeProjectReader.cs;../../Shared/DirtyEvidence.cs;../../Shared/ActiveEditorContext.cs;../../Shared/ActivePouSource.cs;../../Shared/NativeActiveEditorReader.cs" Link="Shared/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../obj/EmbeddedChat.js" LogicalName="TwinCatAssistant.EmbeddedChat.js" />
+    <Compile Include="../NativeModelConsent.cs" Link="Shared/NativeModelConsent.cs" />
     <VSCTCompile Include="../Commands.vsct"><ResourceName>Menus.ctmenu</ResourceName></VSCTCompile>
     <None Include="source.extension.vsixmanifest"><SubType>Designer</SubType></None>
   </ItemGroup>
   <Target Name="RequireTwinCatInterop" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(MSBuildThisFileDirectory)obj/EmbeddedChat.js')" Text="Build the pinned embedded adapter with node scripts/build-embedded-chat.mjs or use scripts/Build-Native.ps1 first." />
     <Error Condition="!Exists('$(TwinCatInteropPath)')" Text="Select the installed TwinCAT interop assembly with /p:TwinCatInteropPath=...; no vendor assembly is committed." />
   </Target>
 </Project>

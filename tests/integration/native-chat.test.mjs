@@ -8,6 +8,7 @@ import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { inspectState } from '../../src/state.mjs';
+import { configureNativeModel } from '../../src/native-chat-model.mjs';
 
 test('native owner starts pinned protected chat and stdin EOF stops its process tree', {
   skip: process.platform !== 'win32', timeout: 100000,
@@ -68,6 +69,22 @@ test('native owner starts pinned protected chat and stdin EOF stops its process 
     assert.equal(status.nativeEngineering, 'unavailable');
     assert.equal(status.corpus, 'not_configured');
     assert.deepEqual(Object.keys(status.settings), []);
+    await configureNativeModel({ state: join(root, 'state'), model: 'openai/synthetic-test', acceptSourceDisclosure: true });
+    const directoryHeaders = { cookie, 'x-opencode-directory': encodeURIComponent(join(root, 'state', 'workspace')), 'x-opencode-directory-encoding': 'uri' };
+    const refresh = await fetch(`${origin}/api/debug/location`, { method: 'DELETE', headers: directoryHeaders });
+    assert.equal(refresh.status, 204, 'explicit model setup could not reload its isolated location');
+    const modelDeadline = Date.now() + 20000;
+    let runtimeConfig;
+    while (Date.now() < modelDeadline) {
+      const response = await fetch(`${origin}/api/config`, { headers: { cookie, 'x-opencode-directory': encodeURIComponent(join(root, 'state', 'workspace')), 'x-opencode-directory-encoding': 'uri' } });
+      const entries = await response.json();
+      runtimeConfig = Object.assign({}, ...entries.filter(entry => entry.info).map(entry => entry.info));
+      if (runtimeConfig.model && typeof runtimeConfig.model === 'object') runtimeConfig.model = runtimeConfig.model.providerID + '/' + runtimeConfig.model.model;
+      if (runtimeConfig.model === 'openai/synthetic-test') break;
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    assert.equal(runtimeConfig.model, 'openai/synthetic-test', 'running upstream did not adopt the explicitly consented model policy; keys=' + Object.keys(runtimeConfig).join(','));
+    assert.deepEqual(runtimeConfig.permissions[0], { action: '*', resource: '*', effect: 'deny' });
     assert.ok(!output.includes(password) && !errors.includes(password), 'credential leaked into launcher output');
     child.stdin.end(); // model the IDE/process owner closing its private control pipe
     await closed;

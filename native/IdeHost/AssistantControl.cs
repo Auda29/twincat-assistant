@@ -14,9 +14,10 @@ using Microsoft.Web.WebView2.Wpf;
 
 namespace TwinCatAssistant.Native
 {
-    // OpenChamber owns chat/auth/session/model behavior. This host never injects
-    // source into chat, adds a generic COM bridge, or handles model credentials.
-    public sealed class AssistantControl : UserControl, IDisposable
+    // OpenChamber owns chat/auth/session/model behavior. Native source enters
+    // the composer only through an explicit, exact-session attachment action.
+    // No generic COM bridge or model credential handler is exposed.
+    public sealed partial class AssistantControl : UserControl, IDisposable
     {
         private readonly TextBlock _objectName = new TextBlock { FontSize = 14, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
         private readonly TextBlock _scope = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
@@ -60,17 +61,17 @@ namespace TwinCatAssistant.Native
             DockPanel.SetDock(_toolbar, Dock.Top);
             SetResourceReference(BackgroundProperty, EnvironmentColors.ToolWindowBackgroundBrushKey);
             SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
-            _toolbar.Margin = new Thickness(10);
-            _toolbar.Children.Add(_objectName);
-            _toolbar.Children.Add(_scope);
+            _toolbar.Margin = new Thickness(8, 6, 8, 4);
+            var identityRow = new WrapPanel();
+            _objectName.FontSize = 13;
+            _scope.FontSize = 12; _scope.Margin = new Thickness(8, 2, 0, 0);
+            identityRow.Children.Add(_objectName); identityRow.Children.Add(_scope);
+            _toolbar.Children.Add(identityRow);
+            _evidence.FontSize = 12; _evidence.Margin = new Thickness(0, 3, 0, 0);
             _toolbar.Children.Add(_evidence);
-            _toolbar.Children.Add(_sourceNotice);
-            _toolbar.Children.Add(new TextBlock { Text = ActiveEditorPresentation.Disclosure,
-                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 8) });
+            AddChatIntegrationControls(_toolbar);
             var connection = new WrapPanel();
             connection.Children.Add(AsyncButton("Connect chat", ConnectAsync));
-            _toolbar.Children.Add(connection);
-            _toolbar.Children.Add(_chatStatus);
             _chatSetup.Children.Add(new TextBlock { Text = "Choose a local chat password (at least 12 characters). Use the same password in OpenChamber's login.", TextWrapping = TextWrapping.Wrap });
             _chatSetup.Children.Add(_chatPassword);
             _chatSetup.Children.Add(new TextBlock { Text = "Confirm password", TextWrapping = TextWrapping.Wrap });
@@ -79,6 +80,10 @@ namespace TwinCatAssistant.Native
             _chatSetup.Children.Add(AsyncButton("Start local chat", ConnectAsync));
             _toolbar.Children.Add(_chatSetup);
             var diagnostics = new StackPanel { Margin = new Thickness(0, 6, 0, 0) };
+            diagnostics.Children.Add(connection);
+            diagnostics.Children.Add(_chatStatus);
+            diagnostics.Children.Add(_sourceNotice);
+            AddModelConsentControls(diagnostics);
             var row = new WrapPanel();
             row.Children.Add(new TextBlock { Text = "OpenChamber port:", VerticalAlignment = VerticalAlignment.Center });
             row.Children.Add(_port);
@@ -89,13 +94,13 @@ namespace TwinCatAssistant.Native
             diagnostics.Children.Add(_inventoryStatus);
             diagnostics.Children.Add(_diagnosticStatus);
             diagnostics.Children.Add(_diagnosticSource);
-            _toolbar.Children.Add(ThemedExpander("Diagnostics", diagnostics, new Thickness(0, 8, 0, 0)));
+            _toolbar.Children.Add(ThemedExpander("Details", diagnostics, new Thickness(0, 4, 0, 0)));
             dock.Children.Add(_toolbar);
             var grid = new Grid();
             grid.RowDefinitions.Add(new RowDefinition());
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             _source.MaxHeight = 220;
-            var sourcePreview = ThemedExpander("Local ST preview", _source, new Thickness(10, 0, 10, 6));
+            var sourcePreview = ThemedExpander("ST-Vorschau", _source, new Thickness(8, 0, 8, 4));
             Grid.SetRow(sourcePreview, 1);
             grid.Children.Add(_browser);
             grid.Children.Add(sourcePreview);
@@ -152,16 +157,23 @@ namespace TwinCatAssistant.Native
             _reader = new NativeProjectReader(dte, Process.GetCurrentProcess().Id, dirty);
             try { _tracker = new ActiveEditorTracker(dte, selection, rdt, dirty, RenderContext); }
             catch { RenderContext(null, "Native editor services are unavailable. Reopen the tool window to retry."); }
+            _chatSnapshotReader = () => _tracker?.ReadForChat();
         }
 
         private void RenderContext(ActiveEditorSnapshot snapshot, string reason)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            _chatActive = snapshot;
+            RenderChatBinding();
             if (_disposed) return;
             var view = ActiveEditorPresentation.From(snapshot, reason);
-            if (_objectName.Text != view.Title) _objectName.Text = view.Title;
+            var title = snapshot == null ? "Kein aktiver ST-Baustein" : view.Title;
+            if (_objectName.Text != title) _objectName.Text = title;
             if (_scope.Text != view.Scope) _scope.Text = view.Scope;
-            if (_evidence.Text != view.Evidence) _evidence.Text = view.Evidence;
+            var evidence = snapshot == null ? "Änderungen unbekannt. Kein Quellkontext freigegeben."
+                : (snapshot.Dirty?.State == "known-dirty" ? "Ungespeicherte Änderungen" : snapshot.Dirty?.State == "known-clean" ? "Gespeichert" : "Änderungsstand unbekannt")
+                    + ". Snapshot; ungespeicherter Editorinhalt nicht verifiziert.";
+            if (_evidence.Text != evidence) _evidence.Text = evidence;
             var notice = snapshot == null ? view.Detail : "Unsaved editor text is not verified.";
             if (_sourceNotice.Text != notice) _sourceNotice.Text = notice;
             _sourceNotice.ToolTip = view.Detail;
@@ -243,7 +255,7 @@ namespace TwinCatAssistant.Native
                     }
                     if (_disposed) return;
                     NativeChatConfiguration config;
-                    try { config = NativeChatConfiguration.Load(); }
+                    try { config = _chatConfiguration(); }
                     catch
                     {
                         _diagnosticStatus.Text = "Native chat setup: run scripts/Configure-NativeChat.ps1 with the repository, Node and .NET SDK paths. Config: " + NativeChatConfiguration.ConfigurationPath;
@@ -295,7 +307,7 @@ namespace TwinCatAssistant.Native
                 _browser.Visibility = Visibility.Visible;
                 if (_browser.CoreWebView2 == null)
                 {
-                    var profile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    var profile = _chatBrowserProfile ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                         "TwinCatAssistant", "WebView2", Process.GetCurrentProcess().Id.ToString());
                     var environment = await CoreWebView2Environment.CreateAsync(null, profile);
                     if (_disposed) return;
@@ -321,6 +333,17 @@ namespace TwinCatAssistant.Native
                     _browser.CoreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
                     _browser.CoreWebView2.WebResourceRequested += (sender, args) => {
                         if (!AllowedResource(args.Request.Uri)) args.Response = environment.CreateWebResourceResponse(null, 403, "Blocked external request", "");
+                        else if (ChatContextPolicy.BlocksMutatingFeature(args.Request.Method, new Uri(args.Request.Uri)))
+                        {
+                            var bytes = System.Text.Encoding.UTF8.GetBytes("{\"code\":\"TWINCAT_READ_ONLY\",\"error\":\"Datei-, Git-, Terminal- und Update-Aktionen sind im eingebetteten TwinCAT-Chat gesperrt.\"}");
+                            args.Response = environment.CreateWebResourceResponse(new MemoryStream(bytes), 403, "TwinCAT read-only chat", "Content-Type: application/json; charset=utf-8");
+                        }
+                        else if (ChatContextPolicy.IsPromptRequest(args.Request.Method, new Uri(args.Request.Uri), out var session)
+                            && (!CanPromptCurrentChat() || session != _chatSelection.sessionId))
+                        {
+                            var bytes = System.Text.Encoding.UTF8.GetBytes("{\"code\":\"TWINCAT_CONTEXT_UNBOUND\",\"error\":\"Diese Unterhaltung ist nicht dem aktiven TwinCAT-Projekt zugeordnet. Projektchat öffnen oder Chat zuordnen.\"}");
+                            args.Response = environment.CreateWebResourceResponse(new MemoryStream(bytes), 403, "TwinCAT chat binding required", "Content-Type: application/json; charset=utf-8");
+                        }
                     };
                 }
                 _origin = origin;
@@ -343,23 +366,42 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed || !ReferenceEquals(sender, _browser.CoreWebView2) || !Allowed(args.Uri)) { args.Cancel = true; return; }
+            _chatDocumentGeneration++;
+            _chatAdapterReady = false; _chatSelection = null; _chatBinding = null;
+            RenderChatBinding();
             _navigationGeneration = _chatConnection.Generation;
             _chatConnection.Navigating(args.NavigationId);
             ShowChatStatus();
         }
-        private void OnChatNavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs args)
+#pragma warning disable VSTHRD100 // WebView2 navigation event handler.
+        private async void OnChatNavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs args)
         {
-            ThreadHelper.ThrowIfNotOnUIThread();
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_disposed || !ReferenceEquals(sender, _browser.CoreWebView2) || _navigationGeneration != _chatConnection.Generation) return;
             _chatConnection.Completed(args.NavigationId, args.IsSuccess, args.HttpStatusCode, args.WebErrorStatus.ToString());
             ShowChatStatus();
+            if (args.IsSuccess && args.NavigationId == _chatConnection.NavigationId && args.HttpStatusCode >= 200 && args.HttpStatusCode < 400)
+            {
+                _chatReconnectAttempts = 0;
+                _chatReconnect.Stop();
+                await InitializeChatAdapterAsync(_chatConnection.Generation);
+            }
         }
+#pragma warning restore VSTHRD100
         private void ShowChatStatus()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
-            _chatStatus.Text = _chatConnection.Message;
-            if (_chatConnection.Phase == "failed") _browser.Visibility = Visibility.Collapsed;
+            _chatStatus.Text = !_chatAdapterReady ? _chatConnection.Message
+                : _chatSelection?.authenticated == true ? "Lokaler Chat verbunden. Projekt- und Kontextstatus stehen in der nativen Leiste."
+                : "Lokaler Chat verbunden. Anmeldung in OpenChamber erforderlich.";
+            _chatStatus.Visibility = Visibility.Visible;
+            if (_chatConnection.Phase == "failed")
+            {
+                _browser.Visibility = Visibility.Collapsed;
+                _chatAdapterReady = false; _chatSelection = null; _chatBinding = null;
+                RenderChatBinding();
+            }
         }
 #pragma warning disable VSTHRD100 // WPF timer callback; exceptions stay inside the UI boundary.
         private async void OnChatServiceStopped(NativeChatSession session)
@@ -370,6 +412,7 @@ namespace TwinCatAssistant.Native
                 if (_disposed || _chatSession != session) return;
                 _chatConnection.Fail(_chatConnection.Generation, "The local chat service stopped. Press Connect chat to restart it.");
                 ShowChatStatus();
+                ScheduleChatReconnect();
             }
             catch { /* The dispatcher may already be shutting down. */ }
         }
@@ -388,6 +431,12 @@ namespace TwinCatAssistant.Native
                         _chatConnection.Fail(generation, "The local chat service is no longer reachable. Press Connect chat to reconnect.");
                         ShowChatStatus();
                         _chatHealth.Stop();
+                        ScheduleChatReconnect();
+                    }
+                    else if (!_disposed && generation == _chatConnection.Generation)
+                    {
+                        await PollChatSelectionAsync();
+                        ShowChatStatus();
                     }
                 }
                 finally { _checkingChatHealth = false; }
@@ -419,11 +468,15 @@ namespace TwinCatAssistant.Native
             _chatConnection.Dispose();
             _chatHealth.Stop();
             _chatHealth.Tick -= CheckChatHealth;
+            _chatReconnect?.Stop();
+            if (_chatReconnect != null) _chatReconnect.Tick -= ReconnectChat;
+            Loaded -= OnChatLoaded;
             _chatPassword.Clear(); _chatPasswordConfirmation.Clear();
             _chatSession?.Dispose();
             _chatSession = null;
             _tracker?.Dispose();
             _tracker = null;
+            _chatSnapshotReader = null;
             if (_solutionEvents != null) { _solutionEvents.Opened -= Invalidate; _solutionEvents.AfterClosing -= Invalidate; }
             _reader = null;
             _boundDte = null;

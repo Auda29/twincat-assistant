@@ -13,7 +13,7 @@ prototype. No delivery dates or effort estimates are committed.
 | Native read-only prototype | PR [#2](https://github.com/Auda29/twincat-assistant/pull/2) merged on 2026-10-23 | Foundation merged; x86 0.1.2 installed; both 0.1.2 payloads build locally |
 | x86 shell smoke test | Passed, user-reported | Menu, opening, docking, closing/reopening; local ST display observed |
 | Active-editor-first UX | Implemented in 0.1.2; core x86 flow verified | User/screenshot evidence for same-name PLC_A/PLC_B following and unsaved status; 7 live reader lifecycle/isolation checks; extended host acceptance remains open |
-| Native chat and model context | Protected startup/error handling implemented in 0.1.3; acceptance open | Real WebView2/login/session/provider/MCP acceptance still required |
+| Native chat and model context | Project-bound chat and explicit POU composer attachment implemented in candidate 0.1.4 | Local WPF/WebView2/runtime checks; installed candidate/provider/MCP acceptance remains open |
 | amd64 shell acceptance | Blocked | No installed TcXaeShell64 is available for live validation |
 | Live source writes / compiler | Outside the current milestone | Future M3/M4 work; no authorization to implement or invoke these now; runtime control remains excluded |
 
@@ -142,6 +142,12 @@ presented as shell compatibility.
 
 **Outcome:** The reused chat/agent workflow can use the correct native context and
 both existing MCPs under an explicitly authorized disclosure policy, still read-only.
+
+The current chat-integration goal delivers candidate 0.1.4: a compact native host,
+persistent exact IDE/project/session binding, explicit POU composer snapshots,
+provider consent and bounded reconnect. See [implementation and evidence](CHAT_INTEGRATION.md).
+The native-to-MCP backend, real corpus and complete M2 acceptance remain separate;
+the composer attachment does not pretend to implement those adapters.
 
 - [ ] Start the local agent infrastructure or connect to a compatible running
   instance; avoid unintended duplicate starts.

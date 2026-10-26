@@ -83,7 +83,7 @@ try {
     $taskSnapshot.Dirty = $taskDirty
     $taskRender.Invoke($taskControl,[object[]]@($taskSnapshot,$null))
     Assert-View ((Get-ViewField '_objectName').Text -eq 'FB_Motor') 'active object is visible'
-    Assert-View ((Get-ViewField '_evidence').Text.Contains('unknown')) 'unknown dirty state remains explicit'
+    Assert-View ((Get-ViewField '_evidence').Text.Contains('unbekannt')) 'unknown dirty state remains explicit'
     Assert-View ((Get-ViewField '_sourceNotice').Text.Contains('not verified')) 'editor buffer uncertainty remains visible'
     Assert-View ((Get-ViewField '_source').Text.Contains('bRun := FALSE;')) 'local preview receives the active source'
     Save-View 'active-light'
@@ -94,7 +94,7 @@ try {
         -not (Get-ViewField '_source').Text.Contains('unrelated')) 'manual diagnostics and chat status do not replace active context'
     $taskDirty.State = 'known-dirty'
     $taskRender.Invoke($taskControl,[object[]]@($taskSnapshot,$null))
-    Assert-View ((Get-ViewField '_evidence').Text.Contains('unsaved changes')) 'dirty state is visible'
+    Assert-View ((Get-ViewField '_evidence').Text.Contains('Ungespeicherte')) 'dirty state is visible'
     $taskControl.Background = [Windows.Media.Brushes]::Black
     $taskControl.Foreground = [Windows.Media.Brushes]::White
     Save-View 'dirty-dark'
@@ -115,7 +115,8 @@ try {
     $taskChatState.Completed(42,$false,0,'ConnectionRefused')
     $taskShowChat = $taskControl.GetType().GetMethod('ShowChatStatus', $taskFlags)
     $taskShowChat.Invoke($taskControl,@())
-    Assert-View ((Get-ViewField '_chatStatus').Text.Contains('ConnectionRefused')) 'navigation failure is visible in the real native status control'
+    Assert-View ((Get-ViewField '_chatStatus').Text.Contains('ConnectionRefused')) 'navigation failure is available in the real native diagnostics'
+    Assert-View ((Get-ViewField '_bindingStatus').Text.Contains('Chat nicht verbunden')) 'connection failure stays visible above the chat'
     Assert-View ((Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Collapsed) 'failed browser error page is hidden'
     Assert-View ((Get-ViewField '_source').Text -eq '') 'chat error does not attach or restore native source'
     Save-View 'chat-refused-dark'

@@ -85,6 +85,14 @@ namespace TwinCatAssistant.Native
             if (!_closing) _debounce.Start();
         }
 
+        internal ActiveEditorSnapshot ReadForChat()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_disposed || _closing || _reading) return null;
+            ReadNow();
+            return _publication.Current;
+        }
+
         private void ReadNow()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -102,6 +110,7 @@ namespace TwinCatAssistant.Native
                 }
                 var watch = Stopwatch.StartNew();
                 var result = _reader.Read(active);
+                result.ContextGeneration = generation;
                 LastReadMilliseconds = watch.Elapsed.TotalMilliseconds;
                 MaxReadMilliseconds = Math.Max(MaxReadMilliseconds, LastReadMilliseconds);
                 var current = CaptureCurrentFrame();
