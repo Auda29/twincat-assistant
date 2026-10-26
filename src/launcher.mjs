@@ -1,14 +1,14 @@
 import { isAbsolute } from 'node:path';
 import { lstat } from 'node:fs/promises';
-import { inspectState, runtimeEnvironment } from './state.mjs';
+import { prepareChatWorkspace, runtimeEnvironment } from './state.mjs';
 
 export async function prepareLaunch(root, options, inherited = process.env) {
   if (typeof inherited.OPENCHAMBER_UI_PASSWORD !== 'string' || !inherited.OPENCHAMBER_UI_PASSWORD.trim()) throw new Error('A UI password must be supplied through OPENCHAMBER_UI_PASSWORD');
-  const status = await inspectState(root);
   if (!Number.isInteger(options.port) || options.port < 1024 || options.port > 65535) throw new Error('Invalid loopback port');
   for (const path of [options.openchamber, options.opencode]) {
     if (typeof path !== 'string' || !isAbsolute(path) || !(await lstat(path)).isFile()) throw new Error('Select absolute upstream executable files');
   }
+  const status = await prepareChatWorkspace(root);
   const env = runtimeEnvironment(root, status.settings, inherited);
   env.OPENCODE_BINARY = options.opencode;
   env.OPENCHAMBER_UI_PASSWORD = inherited.OPENCHAMBER_UI_PASSWORD;

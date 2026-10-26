@@ -52,6 +52,17 @@ test('native owner starts pinned protected chat and stdin EOF stops its process 
       method: 'POST', headers: { 'content-type': 'application/json', origin }, body: JSON.stringify({ password }),
     });
     assert.equal(login.status, 200);
+    const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+    // Reproduce the pinned browser's environment bootstrap, not just its login.
+    // It uses the legacy root on first load despite the relocated data root.
+    for (const directory of [join(root, 'state', 'home', '.config', 'openchamber', 'chats'), join(root, 'state', 'openchamber', 'chats')]) {
+      const headers = { cookie, 'x-opencode-directory': encodeURIComponent(directory), 'x-opencode-directory-encoding': 'uri' };
+      for (const endpoint of ['/api/config', '/api/location', '/api/form', '/api/permission/request']) {
+        const response = await fetch(`${origin}${endpoint}`, { headers, signal: AbortSignal.timeout(20000) });
+        assert.equal(response.status, 200, `${endpoint} could not initialize the isolated chat workspace`);
+        await response.arrayBuffer();
+      }
+    }
     const status = await inspectState(join(root, 'state'));
     assert.equal(status.modelCallsEnabled, false);
     assert.equal(status.nativeEngineering, 'unavailable');

@@ -11,11 +11,17 @@ components, not a TwinCAT product release.
 - Foundation PR #1 and native foundation PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
   are merged. PR #2 merged on 2026-10-23; this is not native MVP acceptance.
 - Both `0.1.3` VSIX variants build locally without warnings/errors. Current local
-  checks pass: 34 Node tests, 8 production-panel browser contracts, 49 native
+  checks pass: 36 Node tests, 8 production-panel browser contracts, 49 native
   policy/context/chat checks and 20 synthetic WPF view checks. Real native Node
   transport and C# owner/credential checks also pass. Earlier CI evidence belongs
   to the merged foundation. Check the workflow runs for the release commit for
   its CI result; local results do not establish native acceptance.
+- A source follow-up to `native-v0.1.3` fixes first-login workspace initialization:
+  the launcher prepares both isolated chat roots before startup. A synthetic
+  authenticated browser reproduced the missing-directory error and confirmed
+  its removal after repair; real-runtime regressions cover the directory-scoped
+  bootstrap reads. The running operator profile is repaired; native retry
+  confirmation remains pending. See [native chat](NATIVE_CHAT.md#workspace-initialization-follow-up).
 - The x86 0.1.3 package is installed after coordinated shell close/UAC approval.
   All 13 files were verified and the old payload was preserved outside the
   extension search path. Extension discovery/package load and a visible tool

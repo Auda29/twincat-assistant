@@ -12,6 +12,31 @@ OpenChamber login page appears inside the installed x86 window. This establishes
 the connection/login-page flow; an authenticated model conversation is a separate
 acceptance step.
 
+## Workspace initialization follow-up
+
+After the `native-v0.1.3` source tag was published, the user reached the
+authenticated UI and reported `Could not initialize workspace` in the chats
+sidebar. This was reproduced with a separate synthetic first-run profile.
+The pinned browser bootstraps the legacy chat directory under the isolated
+`home/.config/openchamber/chats` even when `OPENCHAMBER_DATA_DIR` relocates the
+managed root. The directory did not exist, so directory-scoped config/location
+and pending form/permission reads returned HTTP 404 `LocationNotFoundError`.
+
+The launcher now prepares both that legacy directory and `openchamber/chats`
+before starting the runtime, including for existing profiles. Each component
+must be a regular directory; files and symbolic links/junctions are rejected.
+Existing chats, policy, settings and credentials are preserved. This is a Node
+startup change and does not require a new VSIX. The published source tag remains
+unchanged; this correction is a follow-up on the PR branch.
+
+The same repair was applied to the running operator profile without restarting
+the IDE or reading its credential. Press **try again** in the chats sidebar to
+retry initialization. In the synthetic browser, this removed the message and
+the workspace requests succeeded. Native confirmation of that retry is pending.
+The real-runtime integration now checks config, location, forms and permission
+reads against both chat roots after login, rather than stopping at login HTTP
+200. Root checks pass with 36 Node tests and 8 browser contracts.
+
 ## Normal use
 
 1. Press **Connect chat**. The host checks the configured loopback port for the

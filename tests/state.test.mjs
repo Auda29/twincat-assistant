@@ -1,9 +1,48 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, readFile, rm, writeFile, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile, symlink, lstat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { initializeState, inspectState, runtimeEnvironment, readJsonFile } from '../src/state.mjs';
+import { initializeState, inspectState, prepareChatWorkspace, runtimeEnvironment, readJsonFile } from '../src/state.mjs';
+
+test('chat workspace prepares both fresh-profile roots and preserves existing chats and policy on repeat', async () => {
+  const parent = await mkdtemp(join(tmpdir(), 'tc-chat-workspace-'));
+  try {
+    const root = join(parent, 'runtime');
+    const paths = await initializeState(root, {});
+    const policy = await readFile(paths.configPath);
+    const settings = await readFile(paths.settingsPath);
+    await prepareChatWorkspace(root);
+    const legacy = join(paths.home, '.config', 'openchamber', 'chats');
+    const managed = join(paths.openchamber, 'chats');
+    assert.ok((await lstat(legacy)).isDirectory());
+    assert.ok((await lstat(managed)).isDirectory());
+    await writeFile(join(legacy, 'existing-chat.txt'), 'synthetic existing chat');
+    await prepareChatWorkspace(root);
+    assert.equal(await readFile(join(legacy, 'existing-chat.txt'), 'utf8'), 'synthetic existing chat');
+    assert.deepEqual(await readFile(paths.configPath), policy);
+    assert.deepEqual(await readFile(paths.settingsPath), settings);
+    assert.equal((await inspectState(root)).modelCallsEnabled, false);
+  } finally { await rm(parent, { recursive: true, force: true }); }
+});
+
+test('chat workspace refuses redirected parents and conflicting files without creating descendants', async () => {
+  const parent = await mkdtemp(join(tmpdir(), 'tc-chat-redirect-'));
+  try {
+    const root = join(parent, 'runtime');
+    const paths = await initializeState(root, {});
+    const outside = join(parent, 'outside');
+    await mkdir(outside);
+    const config = join(paths.home, '.config');
+    await symlink(outside, config, process.platform === 'win32' ? 'junction' : 'dir');
+    await assert.rejects(prepareChatWorkspace(root), /redirected/);
+    await assert.rejects(lstat(join(outside, 'openchamber')), { code: 'ENOENT' });
+    await rm(config);
+    await writeFile(config, 'existing file');
+    await assert.rejects(prepareChatWorkspace(root), /regular directories/);
+    assert.equal(await readFile(config, 'utf8'), 'existing file');
+  } finally { await rm(parent, { recursive: true, force: true }); }
+});
 
 test('runtime environment isolates user state and never forwards unrelated credentials or config injections', () => {
   const env = runtimeEnvironment('/absolute/runtime', {}, { PATH: '/bin', HOME: '/real/home', GITHUB_TOKEN: 'private-test-value', OPENCODE_CONFIG_CONTENT: '{unsafe}', OPENAI_API_KEY: 'private-test-value' });
