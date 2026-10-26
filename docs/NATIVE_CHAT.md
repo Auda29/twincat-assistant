@@ -30,9 +30,11 @@ startup change and does not require a new VSIX. The published source tag remains
 unchanged; this correction is a follow-up on the PR branch.
 
 The same repair was applied to the running operator profile without restarting
-the IDE or reading its credential. Press **try again** in the chats sidebar to
-retry initialization. In the synthetic browser, this removed the message and
-the workspace requests succeeded. Native confirmation of that retry is pending.
+the IDE or reading its credential. On 2026-10-26, the user confirmed that pressing
+**try again** in the installed x86 Assistant removed the workspace error. The
+synthetic browser also removed the message and its workspace requests succeeded.
+This confirms workspace initialization; a provider/model conversation remains a
+separate acceptance step.
 The real-runtime integration now checks config, location, forms and permission
 reads against both chat roots after login, rather than stopping at login HTTP
 200. Root checks pass with 36 Node tests and 8 browser contracts.

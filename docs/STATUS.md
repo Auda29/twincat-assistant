@@ -20,8 +20,9 @@ components, not a TwinCAT product release.
   the launcher prepares both isolated chat roots before startup. A synthetic
   authenticated browser reproduced the missing-directory error and confirmed
   its removal after repair; real-runtime regressions cover the directory-scoped
-  bootstrap reads. The running operator profile is repaired; native retry
-  confirmation remains pending. See [native chat](NATIVE_CHAT.md#workspace-initialization-follow-up).
+  bootstrap reads. After repair of the running operator profile, the user
+  confirmed that **try again** removed the error in the installed x86 Assistant
+  on 2026-10-26. See [native chat](NATIVE_CHAT.md#workspace-initialization-follow-up).
 - The x86 0.1.3 package is installed after coordinated shell close/UAC approval.
   All 13 files were verified and the old payload was preserved outside the
   extension search path. Extension discovery/package load and a visible tool
