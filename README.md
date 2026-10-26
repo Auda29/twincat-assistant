@@ -21,6 +21,12 @@ attachments, a general chat without POU context, provider consent and bounded
 reconnection. It reuses the existing OpenChamber chat through a hash-verified
 version-specific adapter. See [chat integration](docs/CHAT_INTEGRATION.md) for
 the candidate's tests and installed acceptance boundary.
+Current candidate `0.1.6` on `feat/assistant-ui-redesign` replaces the upper UI
+with the selected compact context bar, follows OpenChamber's palette and opens
+project conversations automatically. Connected providers are enabled without
+a separate consent click. Automatic POU attachment is an optional setting in
+the overflow menu; submitting the message still controls provider transfer.
+This candidate has local component verification and is not installed yet.
 Installed x86 `0.1.5` corrects provider setup: explicitly allow an authenticated
 provider under Details first, then choose a model in the existing chat picker.
 This avoids a default-deny catalog hiding a successfully signed-in provider.

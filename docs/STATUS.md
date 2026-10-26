@@ -1,9 +1,8 @@
 # Implementation status
 
 Updated: **2026-10-26**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.5`, installed after operator coordination. Current native changes are on
-`feat/project-bound-chat`, stacked on `feat/active-editor-context` and merged
-baseline `24e5d48`.
+`0.1.5`, installed after operator coordination. The current UI candidate is
+`0.1.6` on `feat/assistant-ui-redesign`, based on the project-bound chat work.
 These versions describe different
 components, not a TwinCAT product release.
 
@@ -28,6 +27,17 @@ Computer Use fails with
 See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action
+
+- Candidate 0.1.6 implements the selected mockup A. One native context bar follows
+  OpenChamber's palette, with ST preview on the POU name and diagnostics in the
+  overflow menu. Local sign-in, project-chat creation/reopening and connected
+  provider enablement are automatic. Automatic POU attachment is an optional,
+  persisted setting, off by default; provider transfer still requires submitting
+  a message. Local checks pass: 47 Node, 8 browser, 76 native policy/context/chat,
+  26 WPF view, 31 compiled-control/WebView2/runtime and 2 native Node runtime
+  checks. Synthetic fixtures make no model call. Installation and live IDE
+  acceptance of this UI candidate are still open. See [the current
+  workflow](CHAT_INTEGRATION.md).
 
 - Candidate 0.1.5 fixes the reproduced provider/model consent deadlock in 0.1.4:
   an authenticated provider hidden by `provider.use` deny can be explicitly

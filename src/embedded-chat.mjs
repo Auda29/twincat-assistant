@@ -17,7 +17,42 @@ export function consentProviders(integrations, webSearch = [], visible = []) {
     .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 32);
 }
 
-export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, providers = () => [], permissionChanged = () => {}, authenticated = () => true, documentId = crypto.randomUUID() }) {
+// The effective upstream config is the authority for which provider the native
+// consent enabled. Only plain provider IDs leave this function.
+export function allowedProviders(entries) {
+  const policies = (Array.isArray(entries) ? entries : []).flatMap(entry => entry?.info?.experimental?.policies ?? []);
+  return [...new Set(policies.filter(rule => rule?.action === 'provider.use' && rule.effect === 'allow'
+    && typeof rule.resource === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(rule.resource)).map(rule => rule.resource))].slice(0, 8);
+}
+
+const SESSION_ID = /^[a-zA-Z0-9_:-]{1,160}$/;
+
+// Native context bar colors follow the live OpenChamber theme. Values are
+// normalized to #rrggbb through a canvas so any CSS color syntax works.
+const THEME_VARIABLES = Object.freeze({ background: '--background', foreground: '--foreground', muted: '--muted-foreground',
+  border: '--border', surface: '--surface-elevated', primary: '--primary', primaryForeground: '--primary-foreground',
+  error: '--status-error', warning: '--status-warning', success: '--status-success' });
+let themeCanvas = null;
+export function readTheme(scope) {
+  try {
+    themeCanvas ??= scope.document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    const root = scope.getComputedStyle(scope.document.documentElement);
+    const result = { dark: scope.document.documentElement.classList.contains('dark') };
+    for (const [key, variable] of Object.entries(THEME_VARIABLES)) {
+      const value = root.getPropertyValue(variable).trim();
+      if (!value) return null;
+      themeCanvas.clearRect(0, 0, 1, 1);
+      themeCanvas.fillStyle = '#000';
+      themeCanvas.fillStyle = value;
+      themeCanvas.fillRect(0, 0, 1, 1);
+      const [r, g, b] = themeCanvas.getImageData(0, 0, 1, 1).data;
+      result[key] = '#' + [r, g, b].map(part => part.toString(16).padStart(2, '0')).join('');
+    }
+    return result;
+  } catch { return null; }
+}
+
+export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, providers = () => [], allowed = () => [], theme = () => null, permissionChanged = () => {}, authenticated = () => true, documentId = crypto.randomUUID() }) {
   for (const store of [ui, sessions, input]) {
     if (typeof store?.getState !== 'function' || typeof store?.subscribe !== 'function') throw new Error('Incompatible chat store');
   }
@@ -50,9 +85,9 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
     const value = sessions.getState();
     const model = config?.getState();
     return { version: 1, ready: true, authenticated: authenticated(), documentId, sessionId: value.currentSessionId ?? null,
-      directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(),
+      directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(),
       model: model?.currentProviderId && model?.currentModelId ? model.currentProviderId + '/' + model.currentModelId : null,
-      attachedObject: attachment?.title ?? null, attachedRevision: attachment?.revision ?? null };
+      attachedObject: attachment?.title ?? null, attachedRevision: attachment?.revision ?? null, theme: theme() };
   };
   const matches = expected => expected && expected.documentId === documentId && expected.sessionId && expected.sessionId === selected && expected.epoch === epoch;
   return Object.freeze({
@@ -80,6 +115,20 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
         if (!result?.id) throw new Error('Chat creation failed');
         return state();
       } finally { creating = false; }
+    },
+    // Metadata only: lets the native host reopen the newest conversation it
+    // already bound to a PLC project instead of creating a new one.
+    recentSessions(directory) {
+      if (typeof directory !== 'string' || !directory || directory.length > 2048) return [];
+      const list = sessions.getState().getSessionsByDirectory?.(directory.replace(/\\/g, '/')) ?? [];
+      return (Array.isArray(list) ? list : []).filter(item => typeof item?.id === 'string' && SESSION_ID.test(item.id))
+        .map(item => ({ id: item.id, updated: Number(item.time?.updated) || 0 }))
+        .sort((a, b) => b.updated - a.updated).slice(0, 200);
+    },
+    selectSession(id) {
+      if (typeof id !== 'string' || !SESSION_ID.test(id) || typeof sessions.getState().setCurrentSession !== 'function') return false;
+      if (selected !== id) sessions.getState().setCurrentSession(id);
+      return sessions.getState().currentSessionId === id;
     },
     toggleChats() { ui.getState().toggleSidebar(); },
     openSettings() { ui.getState().setSettingsPage('providers'); ui.getState().setSettingsDialogOpen(true); },
@@ -109,8 +158,12 @@ export async function installEmbeddedChat(scope = window) {
   const base = await import(/* @vite-ignore */ new URL(EMBEDDED_ASSETS[0].path, scope.location.origin).href);
   const chat = await import(/* @vite-ignore */ new URL(EMBEDDED_ASSETS[1].path, scope.location.origin).href);
   if (typeof chat.l?.getState().loadProviders !== 'function') throw new Error('Incompatible provider config store');
+  // OpenChamber ships a German dictionary. Use it unless the operator already
+  // chose a language in OpenChamber's own settings.
+  try { if (!scope.localStorage.getItem('openchamber.i18n.v1')) chat.df?.getState().setLocale?.('de'); } catch { /* storage unavailable */ }
   let signedIn = false;
   let connectedProviders = [];
+  let enabledProviders = [];
   let refreshingAuthentication = false;
   const refreshAuthentication = async () => {
     if (refreshingAuthentication) return;
@@ -118,9 +171,9 @@ export async function installEmbeddedChat(scope = window) {
     try {
       try { signedIn = (await scope.fetch('/auth/session', { redirect: 'error', signal: AbortSignal.timeout(1500) })).ok; }
       catch { signedIn = false; }
-      if (!signedIn) { connectedProviders = []; return; }
+      if (!signedIn) { connectedProviders = []; enabledProviders = []; return; }
       const directory = chat.z.getState().currentSessionDirectory ?? chat.l.getState().activeDirectoryKey;
-      if (typeof directory !== 'string' || !/^(?:[a-z]:[\\/]|\/)/i.test(directory)) { connectedProviders = []; return; }
+      if (typeof directory !== 'string' || !/^(?:[a-z]:[\\/]|\/)/i.test(directory)) { connectedProviders = []; enabledProviders = []; return; }
       const headers = { 'x-opencode-directory': encodeURIComponent(directory), 'x-opencode-directory-encoding': 'uri' };
       const read = async path => {
         const response = await scope.fetch(path, { headers, redirect: 'error', signal: AbortSignal.timeout(3000) });
@@ -130,9 +183,10 @@ export async function installEmbeddedChat(scope = window) {
         if (!Array.isArray(items) || items.length > 1000) throw new Error('Invalid provider metadata');
         return items;
       };
-      const [integrations, search] = await Promise.all([read('/api/integration'), read('/api/websearch/provider')]);
+      const [integrations, search, effective] = await Promise.all([read('/api/integration'), read('/api/websearch/provider'), read('/api/config')]);
       connectedProviders = consentProviders(integrations, search, chat.l.getState().providers ?? []);
-    } catch { connectedProviders = []; }
+      enabledProviders = allowedProviders(effective);
+    } catch { connectedProviders = []; enabledProviders = []; }
     finally { refreshingAuthentication = false; }
   };
   await refreshAuthentication();
@@ -164,12 +218,16 @@ export async function installEmbeddedChat(scope = window) {
     for (const form of scope.document.querySelectorAll('form:has([data-testid="chat-input"])')) form.inert = !composerAllowed;
   };
   const adapter = createChatAdapter({ ui: base.u, sessions: chat.z, input: chat.du, config: chat.l, reloadPolicy,
-    providers: () => connectedProviders,
+    providers: () => connectedProviders, allowed: () => enabledProviders, theme: () => readTheme(scope),
     permissionChanged: allowed => { composerAllowed = allowed; markComposer(); }, authenticated: () => signedIn });
   Object.defineProperty(scope, '__twinCatChat', { value: adapter, configurable: false, writable: false });
   scope.document.documentElement.dataset.twincatEmbedded = 'true';
   const style = scope.document.createElement('style');
+  // The native context bar replaces OpenChamber's top bar: its new-chat and
+  // session buttons would create conversations without a PLC binding.
   style.textContent = `html[data-twincat-embedded] .oc-draft-starters{display:none}
+    html[data-twincat-embedded] .main-content-safe-area > .absolute.left-0.top-0.z-30,
+    html[data-twincat-embedded] header.header-safe-area{display:none}
     html[data-twincat-chat-selection="empty"] .oc-draft-center h1,
     html[data-twincat-chat-selection="empty"] form:has([data-testid="chat-input"]){display:none}
     .tc-chat-intro{max-width:28rem;font:inherit;font-size:14px;line-height:1.6;color:var(--muted-foreground);text-wrap:balance}`;
@@ -181,7 +239,7 @@ export async function installEmbeddedChat(scope = window) {
     if (empty && !empty.querySelector('.tc-chat-intro')) {
       const intro = scope.document.createElement('p');
       intro.className = 'tc-chat-intro';
-      intro.textContent = 'Starte oben einen Projektchat für den aktiven ST-Baustein oder öffne eine zugeordnete Unterhaltung im Verlauf.';
+      intro.textContent = 'Öffne einen ST-Baustein, dann startet der passende Projektchat automatisch. Mit + oben beginnt ein allgemeiner Chat.';
       empty.append(intro);
     }
   };

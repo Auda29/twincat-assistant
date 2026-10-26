@@ -83,9 +83,13 @@ try {
     $taskSnapshot.Dirty = $taskDirty
     $taskRender.Invoke($taskControl,[object[]]@($taskSnapshot,$null))
     Assert-View ((Get-ViewField '_objectName').Text -eq 'FB_Motor') 'active object is visible'
-    Assert-View ((Get-ViewField '_evidence').Text.Contains('unbekannt')) 'unknown dirty state remains explicit'
-    Assert-View ((Get-ViewField '_sourceNotice').Text.Contains('not verified')) 'editor buffer uncertainty remains visible'
+    Assert-View ((Get-ViewField '_kindText').Text -eq 'FB' -and (Get-ViewField '_scope').Text -eq 'PLC_A') 'POU kind and PLC project are shown in the context bar'
+    Assert-View ((Get-ViewField '_statusText').Text.Contains('unbekannt')) 'unknown dirty state remains explicit'
+    Assert-View ((Get-ViewField '_sourceNotice').Text.Contains('nicht verifiziert')) 'editor buffer uncertainty remains visible'
     Assert-View ((Get-ViewField '_source').Text.Contains('bRun := FALSE;')) 'local preview receives the active source'
+    Assert-View ((Get-ViewField '_banner').Visibility -eq [Windows.Visibility]::Collapsed) 'no banner is shown while nothing needs attention'
+    Assert-View ((Get-ViewField '_diagnostics').Visibility -eq [Windows.Visibility]::Collapsed) 'diagnostics stay hidden by default'
+    Assert-View (-not (Get-ViewField '_attachPouButton').IsEnabled) 'attach stays disabled before the chat is ready'
     Save-View 'active-light'
 
     (Get-ViewField '_diagnosticSource').Text = 'unrelated manual diagnostic source'
@@ -94,18 +98,23 @@ try {
         -not (Get-ViewField '_source').Text.Contains('unrelated')) 'manual diagnostics and chat status do not replace active context'
     $taskDirty.State = 'known-dirty'
     $taskRender.Invoke($taskControl,[object[]]@($taskSnapshot,$null))
-    Assert-View ((Get-ViewField '_evidence').Text.Contains('Ungespeicherte')) 'dirty state is visible'
-    $taskControl.Background = [Windows.Media.Brushes]::Black
-    $taskControl.Foreground = [Windows.Media.Brushes]::White
+    Assert-View ((Get-ViewField '_statusText').Text -eq 'Ungespeichert') 'dirty state is visible'
+    $taskTheme = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ChatTheme'))
+    $taskTheme.dark = $true; $taskTheme.background = '#1c1c1a'; $taskTheme.foreground = '#e6e4df'; $taskTheme.muted = '#a3a097'
+    $taskTheme.border = '#383733'; $taskTheme.surface = '#252522'; $taskTheme.primary = '#d2733a'; $taskTheme.primaryForeground = '#ffffff'
+    $taskTheme.error = '#e0796f'; $taskTheme.warning = '#d6b25e'; $taskTheme.success = '#8fbf6a'
+    $taskControl.GetType().GetMethod('ApplyTheme', $taskFlags).Invoke($taskControl,[object[]]@($taskTheme))
+    Assert-View ((Get-ViewField '_strip').Background.ToString() -eq '#FF1C1C1A') 'context bar follows the live OpenChamber palette'
+    $taskTheme.background = 'red'
+    $taskControl.GetType().GetMethod('ApplyTheme', $taskFlags).Invoke($taskControl,[object[]]@($taskTheme))
+    Assert-View ((Get-ViewField '_strip').Background.ToString() -eq '#FF1C1C1A') 'invalid theme colors are ignored'
     Save-View 'dirty-dark'
-    $taskExpander = @((Get-ViewField '_toolbar').Children | Where-Object { $_ -is [Windows.Controls.Expander] })[0]
-    Assert-View ($taskExpander.Foreground.ToString() -eq '#FFFFFFFF') 'diagnostic header follows the dark host foreground'
 
     $taskRender.Invoke($taskControl,[object[]]@($null,'Unsupported editor'))
     Assert-View ((Get-ViewField '_source').Text -eq '' -and
         (Get-ViewField '_source').Visibility -eq [Windows.Visibility]::Collapsed) 'unbinding clears and hides old source'
-    Assert-View ((Get-ViewField '_objectName').ToolTip -eq $null -and
-        (Get-ViewField '_evidence').ToolTip -eq $null) 'unbinding clears old identity tooltips'
+    Assert-View ((Get-ViewField '_pouButton').ToolTip -eq 'Unsupported editor' -and
+        (Get-ViewField '_kindBadge').Visibility -eq [Windows.Visibility]::Collapsed) 'unbinding clears old identity details'
     Save-View 'unsupported-dark'
     $taskChatState = Get-ViewField '_chatConnection'
     $taskChatGeneration = $taskChatState.Begin()
@@ -116,16 +125,14 @@ try {
     $taskShowChat = $taskControl.GetType().GetMethod('ShowChatStatus', $taskFlags)
     $taskShowChat.Invoke($taskControl,@())
     Assert-View ((Get-ViewField '_chatStatus').Text.Contains('ConnectionRefused')) 'navigation failure is available in the real native diagnostics'
-    Assert-View ((Get-ViewField '_bindingStatus').Text.Contains('Chat nicht verbunden')) 'connection failure stays visible above the chat'
+    Assert-View ((Get-ViewField '_banner').Visibility -eq [Windows.Visibility]::Visible -and
+        (Get-ViewField '_bannerText').Text.Contains('Verbindung')) 'connection failure stays visible above the chat'
     Assert-View ((Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Collapsed) 'failed browser error page is hidden'
     Assert-View ((Get-ViewField '_source').Text -eq '') 'chat error does not attach or restore native source'
     Save-View 'chat-refused-dark'
-    $taskControl.Background = [Windows.Media.Brushes]::White
-    $taskControl.Foreground = [Windows.Media.Brushes]::Black
-    (Get-ViewField '_chatSetup').Visibility = [Windows.Visibility]::Visible
-    $taskChatState.Fail($taskChatState.Generation,'Set up your local chat password below, then press Start local chat.')
-    $taskShowChat.Invoke($taskControl,@())
-    Save-View 'chat-password-setup-light'
+    $taskRender.Invoke($taskControl,[object[]]@($taskSnapshot,$null))
+    (Get-ViewField '_diagnostics').Visibility = [Windows.Visibility]::Visible
+    Save-View 'diagnostics-dark'
     $taskControl.GetType().GetField('_origin',$taskFlags).SetValue($taskControl,[Uri]'http://127.0.0.1:3123/')
     $taskAllowResource = $taskControl.GetType().GetMethod('AllowedResource',$taskFlags)
     $taskAllowNavigation = $taskControl.GetType().GetMethod('Allowed',$taskFlags)

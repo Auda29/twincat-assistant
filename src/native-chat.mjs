@@ -16,6 +16,13 @@ export function validateNativeChatRequest(value) {
   return value;
 }
 
+// .NET Framework's redirected StandardInput writes a UTF-8 preamble when the
+// owner's console input code page is UTF-8 (65001, including Windows' system-wide
+// UTF-8 option). Accept exactly one leading BOM; the JSON itself stays strict.
+export function parseNativeChatRequest(line) {
+  return validateNativeChatRequest(JSON.parse(typeof line === 'string' && line.startsWith('﻿') ? line.slice(1) : line));
+}
+
 export async function isProtectedChatReady(origin, signal) {
   try {
     const response = await fetch(new URL('/auth/session', origin), {
@@ -107,7 +114,7 @@ async function main() {
     received = true;
     work = (async () => {
       try {
-        const request = validateNativeChatRequest(JSON.parse(line));
+        const request = parseNativeChatRequest(line);
         await startNativeChat(request, controller.signal, value => process.stdout.write(JSON.stringify(value) + '\n'));
       } catch {
         process.stdout.write('{"status":"failed"}\n');

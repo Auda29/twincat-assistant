@@ -26,7 +26,7 @@ internal static class ChatConnectionTests
         state.Completed(20, true, 500, "Unknown");
         Check(!state.PageLoaded, "HTTP error cannot become success");
         state.Begin(); state.Navigating(30); state.Completed(30, true, 200, "Unknown");
-        Check(state.PageLoaded && state.Message.Contains("Sign in"), "successful load asks for login without claiming authentication");
+        Check(state.PageLoaded && state.Message.Contains("Anmeldung"), "successful load announces automatic sign-in without claiming authentication");
         state.Fail(state.Generation, "service stopped");
         state.Completed(30, true, 200, "Unknown");
         Check(!state.PageLoaded, "late completion cannot revive a stopped service");

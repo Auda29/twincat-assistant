@@ -65,7 +65,17 @@ function Wait-JS([string]$Code,[int]$Seconds=25) {
     Write-Output ('CATALOG METADATA '+(JS 'JSON.stringify(window.__fixtureCatalogDetails?.())'))
     throw ('Embedded chat did not reach expected condition: '+$Code)
 }
-function Set-Snapshot([string]$Project) {
+function Wait-Native([scriptblock]$Condition,[string]$Name,[int]$Seconds=40) {
+    $taskDeadline = [DateTime]::UtcNow.AddSeconds($Seconds)
+    do {
+        Invoke-Chat 'PollChatSelectionAsync'
+        if (& $Condition) { return }
+        Pump 250
+    } while ([DateTime]::UtcNow -lt $taskDeadline)
+    Write-Output ('BANNER '+(Field '_bannerText').Text+' | STATUS '+(Field '_chatStatus').Text+' | MODEL '+(Field '_modelStatus').Text)
+    throw ('Native automation did not reach: '+$Name)
+}
+function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; // synthetic context fixture') {
     $global:taskIntegrationSnapshot = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorSnapshot'))
     $taskIdentityType = $taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorIdentity')
     $taskIdentityConstructor = $taskIdentityType.GetConstructor([type[]]@([int],[string],[string],[string],[string]))
@@ -74,7 +84,7 @@ function Set-Snapshot([string]$Project) {
         [string](Join-Path $taskRoot ($Project+'/FB_Motor.TcPOU')),[string]('TIPC/'+$Project+'/POUs/FB_Motor')))
     $global:taskIntegrationSnapshot.ObjectName = 'FB_Motor'
     $global:taskIntegrationSnapshot.Declaration = 'FUNCTION_BLOCK FB_Motor'
-    $global:taskIntegrationSnapshot.Implementation = 'bRun := TRUE; // synthetic context fixture'
+    $global:taskIntegrationSnapshot.Implementation = $Implementation
     $global:taskIntegrationSnapshot.SourceKind = 'Automation Interface snapshot'
     $taskControl.GetType().GetMethod('RenderContext',$taskFlags).Invoke($taskControl,[object[]]@($global:taskIntegrationSnapshot,$null))
 }
@@ -110,33 +120,23 @@ try {
     $taskStartupDeadline = [DateTime]::UtcNow.AddSeconds(30)
     do { Pump 100; $taskBrowser=Field '_browser' } while (-not $taskBrowser.CoreWebView2 -and [DateTime]::UtcNow -lt $taskStartupDeadline)
     Assert-Integration ($taskBrowser.CoreWebView2 -and (Field '_autoConnectAttempted')) 'opening the native window connects chat without a separate connect click'
-    Wait-JS "window.__twinCatInstall==='ready'"
-    Assert-Integration (-not (Field '_newChatButton').IsEnabled) 'project chat stays disabled before protected login'
-    $taskSerializer = New-Object Web.Script.Serialization.JavaScriptSerializer
-    $taskPasswordJson = $taskSerializer.Serialize($taskPassword)
-    JS ("window.__fixtureLogin=null;fetch('/auth/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:"+$taskPasswordJson+"})}).then(r=>window.__fixtureLogin=r.status)") | Out-Null
-    Wait-JS 'window.__fixtureLogin===200'
-    $taskBrowser.CoreWebView2.Reload()
     Wait-JS "window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated"
-    Invoke-Chat 'PollChatSelectionAsync'
-    Assert-Integration (Field '_newChatButton').IsEnabled 'authenticated pinned chat adapter is usable'
-    Invoke-Chat 'NewProjectChatAsync'
-    Invoke-Chat 'PollChatSelectionAsync'
-    if (-not (Field '_attachPouButton').IsEnabled) { Write-Output ('STATUS '+(Field '_bindingStatus').Text) }
-    Assert-Integration (Field '_attachPouButton').IsEnabled 'new upstream session is bound to the exact native project'
+    Assert-Integration ((JS 'document.body.innerText.includes("Unlock OpenChamber")') -eq 'false') 'native sign-in authenticates without showing the password screen'
+    Wait-Native { (Field '_attachPouButton').IsEnabled } 'automatic project chat for PLC_A'
+    Assert-Integration (Field '_attachPouButton').IsEnabled 'opening a POU creates and binds its project chat automatically'
     $taskFirstSession = (Field '_chatSelection').sessionId
+    Assert-Integration ((JS '(()=>{const h=document.querySelector("header.header-safe-area");const c=document.querySelector(".main-content-safe-area > .absolute.left-0.top-0.z-30");return !!h && getComputedStyle(h).display==="none" && (!c || getComputedStyle(c).display==="none")})()') -eq 'true') 'OpenChamber top bar with unbound new-chat buttons is hidden'
     Assert-Integration ((JS 'document.body.innerText.includes("synthetic context fixture")') -eq 'false') 'opening and binding a chat do not disclose source'
-    Invoke-Chat 'AttachActivePouAsync'; Pump 800
+    Invoke-Chat 'AttachClickAsync'; Pump 800
     Assert-Integration ((JS 'document.body.innerText.includes("FB_Motor / PLC_A")') -eq 'true') 'explicit native attach produces a real upstream composer chip'
+    Invoke-Chat 'PollChatSelectionAsync'
+    Assert-Integration ((Field '_attachLabel').Text.StartsWith('Angeh') -and -not (Field '_attachPouButton').IsEnabled) 'attach button reports the staged revision'
     Assert-Integration ((JS '[...document.querySelectorAll("[role=dialog]")].some(e=>e.innerText.includes("Add project directory"))') -eq 'false') 'private chat workspace avoids the generic first-run project picker'
+    Assert-Integration ((Field '_bannerText').Text.Contains('Modellanbieter') -and (Field '_banner').Visibility -eq [Windows.Visibility]::Visible) 'missing provider is explained with one action'
     JS "window.__fixtureProviderConnected=false;fetch('/api/integration/openai/connect/key',{method:'POST',headers:{'content-type':'application/json','x-opencode-directory':encodeURIComponent(window.__twinCatChat.state().directory),'x-opencode-directory-encoding':'uri'},body:JSON.stringify({key:'synthetic-not-a-real-api-key'})}).then(r=>window.__fixtureProviderConnected=r.status===204)" | Out-Null
     Wait-JS 'window.__fixtureProviderConnected'
-    Wait-JS "window.__twinCatChat.state().providers.some(p=>p.id==='openai')"
-    Invoke-Chat 'PollChatSelectionAsync'
-    Assert-Integration ((Field '_allowModelButton').IsEnabled -and -not (Field '_chatSelection').model) 'connected provider can be explicitly allowed before any model is selected'
-    Invoke-Chat 'AllowSelectedModelAsync'
-    if (-not (Field '_modelStatus').Text.Contains('zugelassen')) { Write-Output ('CONSENT METADATA '+(JS 'JSON.stringify({phase:window.__twinCatPolicy,state:window.__twinCatChat?.state()})')) }
-    Assert-Integration ((Field '_modelStatus').Text.Contains('zugelassen')) 'explicit native model consent is adopted and read back by the running upstream'
+    Wait-Native { @((Field '_chatSelection').allowedProviders) -contains 'openai' } 'automatic provider enablement' 60
+    Assert-Integration ((Field '_modelStatus').Text.Contains('(freigegeben)') -and (Field '_banner').Visibility -ne [Windows.Visibility]::Visible) 'connecting a provider in OpenChamber enables it automatically and is read back'
     JS "import('/assets/useAppFontEffects-DC1U1Z6i.js').then(m=>{window.__fixtureCatalog=()=>m.l.getState().providers.map(p=>({id:p.id,count:p.models.length}));window.__fixtureCatalogDetails=()=>({active:m.l.getState().activeDirectoryKey,selected:window.__twinCatChat.state().directory,providers:window.__fixtureCatalog(),snapshots:Object.entries(m.l.getState().directoryScoped).map(([key,v])=>({key,providers:v.providers.map(p=>p.id)}))});})" | Out-Null
     Wait-JS "window.__fixtureCatalog?.().some(p=>p.id==='openai' && p.count>0)"
     Assert-Integration ((JS "window.__fixtureCatalog().some(p=>p.id==='openai' && p.count>0)") -eq 'true') 'real upstream model picker catalog is populated after provider-only consent'
@@ -145,15 +145,25 @@ try {
     Assert-Integration ((JS 'window.__fixtureShell') -eq '"TWINCAT_READ_ONLY"') 'native host blocks the direct shell route even while the project chat is bound'
     $taskBindings = @(Get-ChildItem (Join-Path $taskRoot 'bindings') -Filter '*.json')
     Assert-Integration ($taskBindings.Count -eq 1 -and -not (Get-Content $taskBindings[0].FullName -Raw).Contains('synthetic context fixture')) 'persistent thread binding contains metadata but no source'
-    Set-Snapshot 'PLC_B'; Invoke-Chat 'PollChatSelectionAsync'
-    Assert-Integration (-not (Field '_attachPouButton').IsEnabled) 'switching PLC projects blocks source attachment to the old chat'
+    Set-Snapshot 'PLC_B'
+    Wait-Native { (Field '_chatSelection').sessionId -ne $taskFirstSession -and (Field '_attachPouButton').IsEnabled } 'automatic switch to a PLC_B chat'
+    Assert-Integration ((Field '_chatBinding').ProjectFile.EndsWith('PLC_B.plcproj')) 'switching PLC projects opens a separate chat for the new project'
     JS ("window.__fixturePrompt=null;fetch('/api/session/"+$taskFirstSession+"/message',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(r=>window.__fixturePrompt=r.status)") | Out-Null
     Wait-JS 'window.__fixturePrompt!==null'
     Assert-Integration ((JS 'window.__fixturePrompt') -eq '403') 'native network boundary blocks prompts for a mismatched project'
-    Invoke-Chat 'BindCurrentChatAsync'
-    Assert-Integration (-not (Field '_attachPouButton').IsEnabled) 'an existing project thread cannot be silently rebound to another PLC'
-    Set-Snapshot 'PLC_A'; Invoke-Chat 'PollChatSelectionAsync'
-    Assert-Integration (Field '_attachPouButton').IsEnabled 'returning to the exact project revalidates its persisted binding'
+    $taskSecondSession = (Field '_chatSelection').sessionId
+    $taskSelectionJson = (New-Object Web.Script.Serialization.JavaScriptSerializer).Serialize($taskFirstSession)
+    JS ("window.__twinCatChat.selectSession("+$taskSelectionJson+")") | Out-Null
+    Pump 800; Invoke-Chat 'PollChatSelectionAsync'; Invoke-Chat 'BindCurrentChatAsync'
+    Assert-Integration (-not (Field '_attachPouButton').IsEnabled -and (Field '_chatSelection').sessionId -eq $taskFirstSession) 'an existing project thread cannot be silently rebound to another PLC'
+    Assert-Integration ((Field '_bannerText').Text.Contains('PLC_A') -and (Field '_statusText').Text.Contains('PLC_A')) 'a foreign project chat is explained as read-only'
+    Set-Snapshot 'PLC_A'
+    Wait-Native { (Field '_chatSelection').sessionId -eq $taskFirstSession -and (Field '_chatBinding').ProjectFile.EndsWith('PLC_A.plcproj') } 'return to PLC_A chat'
+    Set-Snapshot 'PLC_B'
+    Wait-Native { (Field '_chatSelection').sessionId -eq $taskSecondSession } 'reopen newest PLC_B chat'
+    Assert-Integration (@(Get-ChildItem (Join-Path $taskRoot 'bindings') -Filter '*.json').Count -eq 2) 'returning to a project reopens its newest conversation instead of creating another'
+    Set-Snapshot 'PLC_A'
+    Wait-Native { (Field '_chatSelection').sessionId -eq $taskFirstSession } 'reopen PLC_A chat'
     $taskBrowser.CoreWebView2.Reload()
     Wait-JS "window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated"
     Pump 1500; Invoke-Chat 'PollChatSelectionAsync'
@@ -167,9 +177,35 @@ try {
         if ($taskOwnedRuntime -and $taskOwnedRuntime.IsRunning -and (Field '_chatAdapterReady')) { break }
     } while ([DateTime]::UtcNow -lt $taskReconnectDeadline)
     Assert-Integration ($taskOwnedRuntime -and $taskOwnedRuntime.IsRunning) 'native host automatically restarts a lost protected runtime'
-    Wait-JS ("window.__twinCatInstall==='ready' && window.__twinCatChat.state().documentId!=="+$taskPreviousDocument)
+    Wait-JS ("window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated && window.__twinCatChat.state().documentId!=="+$taskPreviousDocument)
     Invoke-Chat 'PollChatSelectionAsync'
     Assert-Integration ((JS 'window.__twinCatChat.state().attachedObject===null') -eq 'true') 'reconnection does not replay source disclosure'
+    $taskPreferencesType = $taskAssembly.GetType('TwinCatAssistant.Native.NativeChatPreferences')
+    $taskPreferences = $taskPreferencesType.GetConstructor([type[]]@([string])).Invoke([object[]]@([string](Join-Path $taskRoot 'preferences')))
+    Set-Field '_chatPreferences' $taskPreferences
+    Assert-Integration (-not $taskPreferences.AutoAttach) 'automatic attachment is off in a fresh preference profile'
+    (Field '_moreButton').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+    Pump 100
+    Assert-Integration (Field '_menuPopup').IsOpen 'the native overflow button opens its menu'
+    $taskAutoOption = @((Field '_menuItems').Children | Where-Object {
+        $_ -is [Windows.Controls.Button] -and $_.Content.Children[-1].Text.StartsWith('Aktiven Baustein automatisch')
+    })
+    if ($taskAutoOption.Count -ne 1) { throw 'The native menu must expose exactly one automatic attachment option.' }
+    $taskAutoOption[0].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+    Wait-Native { (JS 'window.__twinCatChat.state().attachedObject') -eq '"FB_Motor / PLC_A"' } 'auto-attach of the active POU'
+    $taskSavedPreferences = $taskPreferencesType.GetMethod('Load').Invoke($null,[object[]]@([string](Join-Path $taskRoot 'preferences')))
+    Assert-Integration ($taskPreferences.AutoAttach -and $taskSavedPreferences.AutoAttach) 'the real menu action enables and persists automatic attachment'
+    Assert-Integration ((JS 'document.body.innerText.includes("FB_Motor / PLC_A")') -eq 'true') 'auto-attach stages the active POU when the operator enabled it'
+    $taskAutoRevision = JS 'window.__twinCatChat.state().attachedRevision'
+    Set-Snapshot 'PLC_A' 'bRun := FALSE; // edited synthetic fixture'
+    Wait-Native { (JS 'window.__twinCatChat.state().attachedRevision') -ne $taskAutoRevision } 'auto-attach of a changed revision'
+    Assert-Integration $true 'auto-attach restages a changed POU revision'
+    Invoke-Chat 'ToggleAutoAttachAsync'
+    Assert-Integration (-not $taskPreferences.AutoAttach -and (Field '_banner').Visibility -eq [Windows.Visibility]::Visible -and
+        (Field '_bannerText').Text.Contains('ist aus')) 'turning automatic attachment off shows its visible confirmation'
+    (Field '_bannerDismiss').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+    Pump 100
+    Assert-Integration ((Field '_noticeText') -eq $null -and (Field '_banner').Visibility -eq [Windows.Visibility]::Collapsed) 'the native dismiss button clears a visible notice'
     $global:taskIntegrationSnapshot = $null
     $taskControl.GetType().GetMethod('RenderContext',$taskFlags).Invoke($taskControl,[object[]]@($null,'Synthetic no-editor state'))
     Invoke-Chat 'NewProjectChatAsync'; Invoke-Chat 'PollChatSelectionAsync'
@@ -177,10 +213,8 @@ try {
     Assert-Integration ($taskControl.GetType().GetMethod('CanPromptCurrentChat',$taskFlags).Invoke($taskControl,@())) 'general chat accepts normal conversation without a project wizard'
     Assert-Integration (-not (Field '_attachPouButton').IsEnabled) 'general chat does not authorize native source disclosure'
     Set-Snapshot 'PLC_A'
-    $taskSelectionJson = $taskSerializer.Serialize($taskFirstSession)
-    JS ("window.__fixtureRestore=false;import('/assets/useAppFontEffects-DC1U1Z6i.js').then(m=>{m.z.getState().setCurrentSession("+$taskSelectionJson+");window.__fixtureRestore=true;})") | Out-Null
-    Wait-JS 'window.__fixtureRestore'
-    Invoke-Chat 'PollChatSelectionAsync'; Invoke-Chat 'AttachActivePouAsync'; Pump 500
+    JS ("window.__twinCatChat.selectSession("+$taskSelectionJson+")") | Out-Null
+    Pump 800; Invoke-Chat 'PollChatSelectionAsync'; Invoke-Chat 'AttachClickAsync'; Pump 500
     $taskEvidence = Join-Path $taskRepo 'local-data/chat-integration-views'
     [IO.Directory]::CreateDirectory($taskEvidence) | Out-Null
     foreach ($taskWidth in @(390,768,1100)) {

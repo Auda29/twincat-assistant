@@ -11,6 +11,25 @@ namespace TwinCatAssistant.Native
         public string id { get; set; }
         public string name { get; set; }
     }
+    public sealed class ChatTheme
+    {
+        public bool dark { get; set; }
+        public string background { get; set; }
+        public string foreground { get; set; }
+        public string muted { get; set; }
+        public string border { get; set; }
+        public string surface { get; set; }
+        public string primary { get; set; }
+        public string primaryForeground { get; set; }
+        public string error { get; set; }
+        public string warning { get; set; }
+        public string success { get; set; }
+    }
+    public sealed class ChatSessionEntry
+    {
+        public string id { get; set; }
+        public double updated { get; set; }
+    }
     public sealed class ChatSelection
     {
         public int version;
@@ -25,6 +44,8 @@ namespace TwinCatAssistant.Native
         public string attachedRevision;
         public string model;
         public ChatProviderChoice[] providers;
+        public string[] allowedProviders;
+        public ChatTheme theme;
         public bool IsSelected { get { return version == 1 && ready && authenticated && ValidSession(sessionId) && Guid.TryParse(documentId, out _) && epoch >= 0; } }
         public static bool ValidSession(string value) { return value != null && Regex.IsMatch(value, @"\A[a-zA-Z0-9_:-]{1,160}\z"); }
     }
@@ -114,6 +135,21 @@ namespace TwinCatAssistant.Native
             // authorization always uses full identity and the full revision.
             return name.Substring(0, Math.Min(name.Length, 24)) + "@" + project.Substring(0, Math.Min(project.Length, 24))
                 + "#" + Hash(snapshot.Identity.DocumentMoniker + "\0" + snapshot.Identity.TreePath).Substring(0, 16);
+        }
+        // Connecting a provider in OpenChamber is the operator's consent. Enable
+        // exactly one connected provider when none of them is enabled yet,
+        // preferring the provider of the model already chosen in the composer.
+        public static string ProviderToEnable(ChatSelection selection)
+        {
+            var connected = new System.Collections.Generic.List<string>();
+            foreach (var choice in selection?.providers ?? new ChatProviderChoice[0])
+                if (choice?.id != null && Regex.IsMatch(choice.id, @"\A[a-zA-Z0-9_-]{1,80}\z") && !connected.Contains(choice.id)) connected.Add(choice.id);
+            if (connected.Count == 0) return null;
+            foreach (var allowed in selection.allowedProviders ?? new string[0])
+                if (connected.Contains(allowed)) return null;
+            var slash = selection.model?.IndexOf('/') ?? -1;
+            var modelProvider = slash > 0 ? selection.model.Substring(0, slash) : null;
+            return modelProvider != null && connected.Contains(modelProvider) ? modelProvider : connected[0];
         }
         public static bool IsPromptRequest(string method, Uri uri, out string sessionId)
         {

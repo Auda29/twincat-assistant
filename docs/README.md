@@ -12,9 +12,10 @@ object selector. Native editor/chat and amd64 acceptance remain open.
 - [Native Windows acceptance](WINDOWS_ACCEPTANCE.md)
 - [Active editor implementation and acceptance](ACTIVE_EDITOR.md)
 - [Native chat start and connection](NATIVE_CHAT.md)
-- [Project-bound native chat integration, 0.1.4 candidate](CHAT_INTEGRATION.md)
+- [Project-bound native chat and compact UI, 0.1.6 candidate](CHAT_INTEGRATION.md)
 - [Dependency audit and release blockers](SECURITY_AUDIT.md)
 - [Native 0.1.3 preview release notes](releases/native-v0.1.3.md)
+- [Native 0.1.6 preview release notes](releases/native-v0.1.6.md)
 - [Executed verification and review findings](VERIFICATION.md)
 
 | Document | Contents |
