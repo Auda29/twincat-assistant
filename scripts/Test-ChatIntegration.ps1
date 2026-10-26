@@ -62,7 +62,8 @@ function JS([string]$Code) { Await-Task ($taskBrowser.CoreWebView2.ExecuteScript
 function Wait-JS([string]$Code,[int]$Seconds=25) {
     $taskDeadline = [DateTime]::UtcNow.AddSeconds($Seconds)
     do { if ((JS $Code) -eq 'true') { return }; Pump 100 } while ([DateTime]::UtcNow -lt $taskDeadline)
-    throw 'Embedded chat did not reach the expected state'
+    Write-Output ('CATALOG METADATA '+(JS 'JSON.stringify(window.__fixtureCatalogDetails?.())'))
+    throw ('Embedded chat did not reach expected condition: '+$Code)
 }
 function Set-Snapshot([string]$Project) {
     $global:taskIntegrationSnapshot = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorSnapshot'))
@@ -128,11 +129,17 @@ try {
     Invoke-Chat 'AttachActivePouAsync'; Pump 800
     Assert-Integration ((JS 'document.body.innerText.includes("FB_Motor / PLC_A")') -eq 'true') 'explicit native attach produces a real upstream composer chip'
     Assert-Integration ((JS '[...document.querySelectorAll("[role=dialog]")].some(e=>e.innerText.includes("Add project directory"))') -eq 'false') 'private chat workspace avoids the generic first-run project picker'
-    JS "window.__fixtureModelSelected=false;import('/assets/useAppFontEffects-DC1U1Z6i.js').then(m=>{m.m.setState({currentProviderId:'openai',currentModelId:'synthetic-test'});window.__fixtureModelSelected=true;})" | Out-Null
-    Wait-JS 'window.__fixtureModelSelected'
+    JS "window.__fixtureProviderConnected=false;fetch('/api/integration/openai/connect/key',{method:'POST',headers:{'content-type':'application/json','x-opencode-directory':encodeURIComponent(window.__twinCatChat.state().directory),'x-opencode-directory-encoding':'uri'},body:JSON.stringify({key:'synthetic-not-a-real-api-key'})}).then(r=>window.__fixtureProviderConnected=r.status===204)" | Out-Null
+    Wait-JS 'window.__fixtureProviderConnected'
+    Wait-JS "window.__twinCatChat.state().providers.some(p=>p.id==='openai')"
     Invoke-Chat 'PollChatSelectionAsync'
+    Assert-Integration ((Field '_allowModelButton').IsEnabled -and -not (Field '_chatSelection').model) 'connected provider can be explicitly allowed before any model is selected'
     Invoke-Chat 'AllowSelectedModelAsync'
+    if (-not (Field '_modelStatus').Text.Contains('zugelassen')) { Write-Output ('CONSENT METADATA '+(JS 'JSON.stringify({phase:window.__twinCatPolicy,state:window.__twinCatChat?.state()})')) }
     Assert-Integration ((Field '_modelStatus').Text.Contains('zugelassen')) 'explicit native model consent is adopted and read back by the running upstream'
+    JS "import('/assets/useAppFontEffects-DC1U1Z6i.js').then(m=>{window.__fixtureCatalog=()=>m.l.getState().providers.map(p=>({id:p.id,count:p.models.length}));window.__fixtureCatalogDetails=()=>({active:m.l.getState().activeDirectoryKey,selected:window.__twinCatChat.state().directory,providers:window.__fixtureCatalog(),snapshots:Object.entries(m.l.getState().directoryScoped).map(([key,v])=>({key,providers:v.providers.map(p=>p.id)}))});})" | Out-Null
+    Wait-JS "window.__fixtureCatalog?.().some(p=>p.id==='openai' && p.count>0)"
+    Assert-Integration ((JS "window.__fixtureCatalog().some(p=>p.id==='openai' && p.count>0)") -eq 'true') 'real upstream model picker catalog is populated after provider-only consent'
     JS ("window.__fixtureShell=null;fetch('/api/session/"+$taskFirstSession+"/shell',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(r=>r.json()).then(r=>window.__fixtureShell=r.code)") | Out-Null
     Wait-JS 'window.__fixtureShell!==null'
     Assert-Integration ((JS 'window.__fixtureShell') -eq '"TWINCAT_READ_ONLY"') 'native host blocks the direct shell route even while the project chat is bound'

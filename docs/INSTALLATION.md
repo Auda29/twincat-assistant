@@ -127,8 +127,12 @@ arguments. The UI is at `http://127.0.0.1:3123`. The command stays in the foregr
 Ctrl+C stops the owned helper group. Never select a PLC project as the launch
 working directory; the launcher uses its empty isolated workspace.
 
-No model is enabled by default. An optional `model: "provider/model"` additionally
-requires `sourceCodeDisclosureAccepted: true`. Only the selected supported
+No model is enabled by default. Optional `provider: "openai"` allows explicit
+provider consent before choosing a model; optional `model: "provider/model"`
+also sets the default model. Both require `sourceCodeDisclosureAccepted: true`,
+and a provider/model pair must agree. The native Details selector follows this
+order because upstream hides denied providers even after sign-in.
+Only the selected supported
 provider environment key is forwarded (OpenAI, Anthropic or Google); other
 credentials and arbitrary OpenCode overrides are discarded. This consent is
 not evidence of successful model use or a provider's retention policy.

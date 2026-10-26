@@ -1,4 +1,4 @@
-# Native project chat, candidate 0.1.4
+# Native project chat, candidate 0.1.5
 
 Updated 2026-10-26. This implements the next chat-integration goal on
 `feat/project-bound-chat`, based on the 0.1.3 follow-up branch. Installation and
@@ -30,12 +30,30 @@ the local code preview is collapsed under **ST-Vorschau**.
    composer. The text includes exact identity, revision, provenance and the
    warning that the exact unsaved editor buffer is not verified. It is sent to
    the selected provider only when the user submits the message.
-5. Configure a provider in OpenChamber's own provider settings and select a model
-   in its composer. **Anbieter für freigegebene Inhalte zulassen** under Details
-   explicitly enables that provider for this local operator profile and sets the
-   selected default model. This is a provider-level policy, not a restriction to
+5. Sign in to a provider in OpenChamber's own provider settings. Under Details,
+   choose it in **Angemeldeten Anbieter freigeben**, then click **Anbieter für
+   freigegebene Inhalte zulassen**. This works before a model is selected.
+   Afterwards choose a model in the original chat picker. If a matching model
+   was already selected when granting consent, it is retained as the default;
+   provider-only consent invents no model and removes an obsolete other-provider
+   default. This is a provider-level policy, not a restriction to
    one model ID. It preserves engineering/tool deny rules. No credential is
    entered into or returned through the native integration.
+
+The 0.1.4 provider/model ordering was a deadlock: the default `provider.use` deny
+also removes an authenticated provider and its models from the upstream catalog.
+The operator reported this after OpenAI browser sign-in. An isolated real-runtime
+test reproduces a connected integration with no provider/models in that catalog.
+The 0.1.5 consent choices instead use public integration IDs/names, excluding MCP
+and web-search integrations. No connection IDs, account labels, keys or tokens
+are passed to the native selector. Consent still requires an explicit native
+click and a valid chat binding; signing in alone never grants model use.
+The adapter also corrects the config-store export: `l` (`Be`) owns directory
+providers/model selection. `m` (`bs`) is the separate session-preference store.
+The old fixture wrote synthetic selection fields into that preference store and
+therefore missed the incorrect mapping. The new compiled-control regression
+requires the real provider/model picker catalog to populate after consent and
+never injects a synthetic selection into either store.
 
 Following an editor never attaches source. Switching POU does not retarget the
 conversation; switching project or losing context disables attachments and
@@ -63,7 +81,7 @@ tag is `e302062e3be0686986594fddabdafd8a97c129e5`. Its mapping is:
 | `index-rxO-w0yQ.js` | `u` | `useUIStore` |
 | `useAppFontEffects-DC1U1Z6i.js` | `z` | `useSessionUIStore` |
 | Same asset | `du` | `useInputStore` |
-| Same asset | `m` | `useConfigStore` |
+| Same asset | `l` | `useConfigStore` |
 
 Both assets are verified by SHA-256 during the build and again in the browser
 before importing them. A changed version fails closed. `build-embedded-chat.mjs`
@@ -110,7 +128,8 @@ files; binding writes serialize across IDEs and replace files atomically. Source
 text is not stored in those records. Original session references/history are
 managed by OpenChamber after the user's attachment/submission actions.
 
-`native-chat-model.mjs` accepts only the trusted state path, provider/model ID and
+`native-chat-model.mjs` accepts only the trusted state path, exact provider ID,
+optional matching provider/model ID and
 explicit disclosure acceptance over bounded UTF-8 stdin. It verifies the original
 policy, changes the selected provider/default model and preserves deny rules.
 The native host then reloads the isolated OpenCode location through the existing
@@ -141,14 +160,20 @@ attachment, native project mismatch/shell refusal, provider-policy readback,
 workspace reload and owned runtime reconnection without source replay. It does
 not pretend its snapshots come from a live IDE and never calls a model.
 
-Local verification on 2026-10-26: 42 Node tests, 8 browser contracts, 69 native
-policy/context/chat checks, 21 WPF view checks, 20 compiled-control integration
-checks and 3 Windows/native Node runtime checks pass. Both 0.1.4 VSIX targets build without
+Local 0.1.5 verification on 2026-10-26: 44 Node tests, 8 browser contracts, 69 native
+policy/context/chat checks, 21 WPF view checks, 22 compiled-control integration
+checks and 3 Windows/native Node runtime checks pass. Both 0.1.5 VSIX targets build without
 warnings/errors. Composer references use a readable POU/project label plus a
 short identity digest; authorization still checks the full identity and revision.
 The Windows owner-death test allows bounded cleanup retries for temporary
 directory handles after its separate listener-shutdown assertion has passed.
 Persistent locks or a surviving listener still fail the test.
+The provider regression uses an isolated fake API credential, verifies that deny
+hides the connected provider/models, grants only that provider explicitly, and
+checks both the real upstream catalog and the actual UI config-store catalog.
+It makes no provider request/model call and does not inspect the user's credential.
+Policy verification polls bounded readbacks while the config watcher settles;
+the consent write and location mutation are not replayed.
 
 Local UI renders cover narrow/medium/wide windows. Raw logs and screenshots stay
 in ignored `local-data`. The x86 0.1.4 update is installed after UAC confirmation;

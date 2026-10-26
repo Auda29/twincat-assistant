@@ -6,7 +6,18 @@ export const EMBEDDED_ASSETS = Object.freeze([
   { path: '/assets/useAppFontEffects-DC1U1Z6i.js', sha256: '1a29973e760c994a97a8a64d29c24bdcfbc4f358d9c29919f07efeac0e40ff63' },
 ]);
 
-export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, permissionChanged = () => {}, authenticated = () => true, documentId = crypto.randomUUID() }) {
+// Integrations remain visible even when provider.use hides the model catalog.
+// Project only public labels/IDs; never pass accounts, methods or credentials to native code.
+export function consentProviders(integrations, webSearch = [], visible = []) {
+  const excluded = new Set(webSearch.map(item => item.id));
+  const candidates = [...integrations.filter(item => item.connections?.length > 0), ...visible];
+  return [...new Map(candidates.filter(item => typeof item.id === 'string'
+    && /^[a-zA-Z0-9_-]{1,80}$/.test(item.id) && !item.id.startsWith('mcp_') && !excluded.has(item.id))
+    .map(item => [item.id, { id: item.id, name: typeof item.name === 'string' ? item.name.slice(0, 80) : item.id }])).values()]
+    .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 32);
+}
+
+export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, providers = () => [], permissionChanged = () => {}, authenticated = () => true, documentId = crypto.randomUUID() }) {
   for (const store of [ui, sessions, input]) {
     if (typeof store?.getState !== 'function' || typeof store?.subscribe !== 'function') throw new Error('Incompatible chat store');
   }
@@ -39,7 +50,7 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
     const value = sessions.getState();
     const model = config?.getState();
     return { version: 1, ready: true, authenticated: authenticated(), documentId, sessionId: value.currentSessionId ?? null,
-      directory: value.currentSessionDirectory ?? null, epoch, creating,
+      directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(),
       model: model?.currentProviderId && model?.currentModelId ? model.currentProviderId + '/' + model.currentModelId : null,
       attachedObject: attachment?.title ?? null, attachedRevision: attachment?.revision ?? null };
   };
@@ -72,9 +83,11 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
     },
     toggleChats() { ui.getState().toggleSidebar(); },
     openSettings() { ui.getState().setSettingsPage('providers'); ui.getState().setSettingsDialogOpen(true); },
-    async refreshPolicy(expected, model) {
+    async refreshPolicy(expected, provider, model = null) {
       if (!matches(expected) || typeof reloadPolicy !== 'function') throw new Error('Chat selection changed');
-      await reloadPolicy(sessions.getState().currentSessionDirectory, model);
+      const directory = sessions.getState().currentSessionDirectory;
+      await reloadPolicy(directory, provider, model);
+      await config?.getState().loadProviders?.({ directory, fresh: true, source: 'twincat:provider-consent' });
       if (!matches(expected)) throw new Error('Chat selection changed');
       return true;
     },
@@ -95,33 +108,63 @@ export async function installEmbeddedChat(scope = window) {
   }
   const base = await import(/* @vite-ignore */ new URL(EMBEDDED_ASSETS[0].path, scope.location.origin).href);
   const chat = await import(/* @vite-ignore */ new URL(EMBEDDED_ASSETS[1].path, scope.location.origin).href);
+  if (typeof chat.l?.getState().loadProviders !== 'function') throw new Error('Incompatible provider config store');
   let signedIn = false;
+  let connectedProviders = [];
+  let refreshingAuthentication = false;
   const refreshAuthentication = async () => {
-    try { signedIn = (await scope.fetch('/auth/session', { redirect: 'error', signal: AbortSignal.timeout(1500) })).ok; }
-    catch { signedIn = false; }
+    if (refreshingAuthentication) return;
+    refreshingAuthentication = true;
+    try {
+      try { signedIn = (await scope.fetch('/auth/session', { redirect: 'error', signal: AbortSignal.timeout(1500) })).ok; }
+      catch { signedIn = false; }
+      if (!signedIn) { connectedProviders = []; return; }
+      const directory = chat.z.getState().currentSessionDirectory ?? chat.l.getState().activeDirectoryKey;
+      if (typeof directory !== 'string' || !/^(?:[a-z]:[\\/]|\/)/i.test(directory)) { connectedProviders = []; return; }
+      const headers = { 'x-opencode-directory': encodeURIComponent(directory), 'x-opencode-directory-encoding': 'uri' };
+      const read = async path => {
+        const response = await scope.fetch(path, { headers, redirect: 'error', signal: AbortSignal.timeout(3000) });
+        if (!response.ok) throw new Error('Provider metadata unavailable');
+        const value = await response.json();
+        const items = value.data ?? value;
+        if (!Array.isArray(items) || items.length > 1000) throw new Error('Invalid provider metadata');
+        return items;
+      };
+      const [integrations, search] = await Promise.all([read('/api/integration'), read('/api/websearch/provider')]);
+      connectedProviders = consentProviders(integrations, search, chat.l.getState().providers ?? []);
+    } catch { connectedProviders = []; }
+    finally { refreshingAuthentication = false; }
   };
   await refreshAuthentication();
   const authTimer = scope.setInterval(refreshAuthentication, 3000);
   scope.addEventListener('pagehide', () => scope.clearInterval(authTimer), { once: true });
-  const reloadPolicy = async (directory, model) => {
+  const reloadPolicy = async (directory, provider, model) => {
     if (!directory) throw new Error('No isolated chat workspace');
     const headers = { 'x-opencode-directory': encodeURIComponent(directory), 'x-opencode-directory-encoding': 'uri' };
     const refresh = await scope.fetch('/api/debug/location', { method: 'DELETE', headers, signal: AbortSignal.timeout(5000) });
     if (refresh.status !== 204) throw new Error('Model policy reload failed');
-    const response = await scope.fetch('/api/config', { headers, signal: AbortSignal.timeout(10000) });
-    if (!response.ok) throw new Error('Model policy readback failed');
-    const entries = await response.json();
-    const info = Object.assign({}, ...entries.filter(entry => entry.info).map(entry => entry.info));
-    const effectiveModel = typeof info.model === 'string' ? info.model : info.model?.providerID + '/' + info.model?.model;
-    if (effectiveModel !== model || !info.permissions?.some(rule => rule.action === '*' && rule.resource === '*' && rule.effect === 'deny')) {
-      throw new Error('Model policy not confirmed');
-    }
+    // Config watchers/location rebuilds can briefly return the previous policy.
+    // Retry only bounded reads, never the consent write or location mutation.
+    const deadline = Date.now() + 10000;
+    do {
+      const response = await scope.fetch('/api/config', { headers, signal: AbortSignal.timeout(Math.min(3000, Math.max(1, deadline - Date.now()))) });
+      if (!response.ok) throw new Error('Model policy readback failed');
+      const entries = await response.json();
+      const info = Object.assign({}, ...entries.filter(entry => entry.info).map(entry => entry.info));
+      const effectiveModel = typeof info.model === 'string' ? info.model : info.model?.providerID + '/' + info.model?.model;
+      if ((!model || effectiveModel === model)
+          && info.experimental?.policies?.some(rule => rule.action === 'provider.use' && rule.resource === provider && rule.effect === 'allow')
+          && info.permissions?.some(rule => rule.action === '*' && rule.resource === '*' && rule.effect === 'deny')) return;
+      await new Promise(resolve => scope.setTimeout(resolve, 250));
+    } while (Date.now() < deadline);
+    throw new Error('Model policy not confirmed');
   };
   let composerAllowed = false;
   const markComposer = () => {
     for (const form of scope.document.querySelectorAll('form:has([data-testid="chat-input"])')) form.inert = !composerAllowed;
   };
-  const adapter = createChatAdapter({ ui: base.u, sessions: chat.z, input: chat.du, config: chat.m, reloadPolicy,
+  const adapter = createChatAdapter({ ui: base.u, sessions: chat.z, input: chat.du, config: chat.l, reloadPolicy,
+    providers: () => connectedProviders,
     permissionChanged: allowed => { composerAllowed = allowed; markComposer(); }, authenticated: () => signedIn });
   Object.defineProperty(scope, '__twinCatChat', { value: adapter, configurable: false, writable: false });
   scope.document.documentElement.dataset.twincatEmbedded = 'true';

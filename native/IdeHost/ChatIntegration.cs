@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -26,6 +27,9 @@ namespace TwinCatAssistant.Native
         private Button _newChatButton, _bindChatButton, _attachPouButton;
         private readonly TextBlock _modelStatus = new TextBlock { Text = "Modellzugang benötigt eine ausdrückliche Freigabe. Zugangsdaten werden nur in OpenChambers Anbieter-Einstellungen eingegeben.", TextWrapping = TextWrapping.Wrap, FontSize = 12 };
         private Button _allowModelButton;
+        private readonly ComboBox _consentProvider = new ComboBox { MinWidth = 160, MaxWidth = 360,
+            HorizontalAlignment = HorizontalAlignment.Left, DisplayMemberPath = "name", SelectedValuePath = "id" };
+        private string _consentProviderKey;
         private readonly TextBlock _selectedModel = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
         private DispatcherTimer _chatReconnect;
         private int _chatReconnectAttempts;
@@ -36,9 +40,14 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             details.Children.Add(_modelStatus);
             details.Children.Add(_selectedModel);
+            details.Children.Add(new TextBlock { Text = "Angemeldeten Anbieter freigeben (danach Modell im Chat wählen):", TextWrapping = TextWrapping.Wrap });
+            details.Children.Add(_consentProvider);
+            _consentProvider.SelectionChanged += (sender, args) => {
+                _allowModelButton.IsEnabled = !_chatActionPending && CanPromptCurrentChat() && _consentProvider.SelectedItem is ChatProviderChoice;
+            };
             details.Children.Add(AsyncButton("Neuer Chat ohne Projektkontext", () => NewChatAsync(true)));
             _allowModelButton = AsyncButton("Anbieter für freigegebene Inhalte zulassen", AllowSelectedModelAsync);
-            _allowModelButton.ToolTip = "Erlaubt dem ausgewählten Anbieter die Verarbeitung ausdrücklich angehängter Inhalte und deiner Nachrichten in diesem lokalen Profil. PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt. Zugangsdaten werden hier nicht angefordert.";
+            _allowModelButton.ToolTip = "Erlaubt dem hier ausgewählten angemeldeten Anbieter die Verarbeitung ausdrücklich angehängter Inhalte und deiner Nachrichten in diesem lokalen Profil. Die Freigabe benötigt noch keine Modellauswahl. PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt. Zugangsdaten werden hier nicht angefordert.";
             details.Children.Add(_allowModelButton);
             details.Children.Add(AsyncButton("Anbieter in OpenChamber einrichten", async () => {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -179,7 +188,18 @@ namespace TwinCatAssistant.Native
             _bindChatButton.IsEnabled = available && _chatSelection?.IsSelected == true && !HasCurrentChatBinding()
                 && (_chatActive?.Identity != null || !CanPromptCurrentChat());
             _attachPouButton.IsEnabled = available && HasCurrentChatBinding();
-            if (_allowModelButton != null) _allowModelButton.IsEnabled = available && CanPromptCurrentChat() && !string.IsNullOrWhiteSpace(_chatSelection?.model);
+            var choices = _chatSelection?.providers ?? new ChatProviderChoice[0];
+            var choiceKey = string.Join("\0", choices.Select(choice => choice.id + ":" + choice.name));
+            if (_consentProviderKey != choiceKey)
+            {
+                var priorProvider = _consentProvider.SelectedValue as string;
+                _consentProviderKey = choiceKey;
+                _consentProvider.ItemsSource = choices;
+                _consentProvider.SelectedValue = priorProvider;
+                if (_consentProvider.SelectedIndex < 0 && choices.Length > 0) _consentProvider.SelectedIndex = 0;
+            }
+            _consentProvider.IsEnabled = available && !_chatActionPending;
+            if (_allowModelButton != null) _allowModelButton.IsEnabled = available && CanPromptCurrentChat() && _consentProvider.SelectedItem is ChatProviderChoice;
             _selectedModel.Text = string.IsNullOrEmpty(_chatSelection?.model) ? "Noch kein Modell im Chat ausgewählt." : "Ausgewählt: " + _chatSelection.model;
             if (_chatActionPending) return;
             if (_chatConnection.Phase == "failed") _bindingStatus.Text = "Chat nicht verbunden. Verbindung unter Details prüfen.";
@@ -328,17 +348,19 @@ namespace TwinCatAssistant.Native
             _chatActionPending = true; RenderChatBinding();
             try
             {
+                var provider = (_consentProvider.SelectedItem as ChatProviderChoice)?.id;
                 var selection = await ReadChatSelectionAsync();
-                if (selection?.IsSelected != true || string.IsNullOrEmpty(selection.model)
+                if (selection?.IsSelected != true || string.IsNullOrEmpty(provider) || selection.providers?.Any(choice => choice.id == provider) != true
                     || (!(_chatBinding.IsGeneral && _chatBinding.MatchesGeneral(_chatIdeInstance, System.Diagnostics.Process.GetCurrentProcess().Id, _origin.AbsoluteUri, selection.sessionId))
                         && !_chatBinding.Matches(FreshChatSnapshot().Identity, _chatIdeInstance, _origin.AbsoluteUri, selection.sessionId)))
-                    throw new InvalidOperationException("Projektchat zuordnen und ein Modell auswählen, bevor du es freigibst.");
-                _modelStatus.Text = "Modellfreigabe wird geprüft ...";
-                await NativeModelConsent.ConfigureAsync(_chatConfiguration(), selection.model);
+                    throw new InvalidOperationException("Projektchat zuordnen und einen angemeldeten Anbieter auswählen, bevor du ihn freigibst.");
+                var model = selection.model?.StartsWith(provider + "/", StringComparison.Ordinal) == true ? selection.model : null;
+                _modelStatus.Text = "Anbieterfreigabe wird geprüft ...";
+                await NativeModelConsent.ConfigureAsync(_chatConfiguration(), provider, model);
                 var serializer = new JavaScriptSerializer();
                 var expected = new { selection.sessionId, selection.epoch, selection.documentId };
                 await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatPolicy='pending';window.__twinCatChat.refreshPolicy(" + serializer.Serialize(expected)
-                    + "," + serializer.Serialize(selection.model) + ").then(()=>window.__twinCatPolicy='ready',()=>window.__twinCatPolicy='failed');");
+                    + "," + serializer.Serialize(provider) + "," + serializer.Serialize(model) + ").then(()=>window.__twinCatPolicy='ready',()=>window.__twinCatPolicy='failed');");
                 var deadline = DateTime.UtcNow.AddSeconds(20);
                 bool confirmed = false;
                 while (!_disposed && DateTime.UtcNow < deadline)
@@ -350,9 +372,11 @@ namespace TwinCatAssistant.Native
                 }
                 if (_disposed) return;
                 if (!confirmed) throw new InvalidOperationException("Model policy readback failed.");
-                _modelStatus.Text = "Anbieter " + selection.model.Split('/')[0] + " ist für ausdrücklich freigegebene Inhalte in diesem lokalen Profil zugelassen. Gewähltes Standardmodell: " + selection.model + ". PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.";
+                _modelStatus.Text = "Anbieter " + provider + " ist für ausdrücklich freigegebene Inhalte in diesem lokalen Profil zugelassen. "
+                    + (model == null ? "Jetzt das Modell im Chat auswählen." : "Gewähltes Standardmodell: " + model + ".")
+                    + " PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.";
             }
-            catch { if (!_disposed) _modelStatus.Text = "Modellfreigabe konnte nicht bestätigt werden. Profil und Modellauswahl prüfen; keine automatische Wiederholung."; }
+            catch { if (!_disposed) _modelStatus.Text = "Anbieterfreigabe konnte nicht bestätigt werden. Profil, Verbindung und Anbieterauswahl prüfen; keine automatische Wiederholung."; }
             finally { _chatActionPending = false; }
         }
     }

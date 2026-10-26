@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="TwinCatAssistant.Native.Amd64" Version="0.1.4" Language="en-US" Publisher="Auda29" />
+    <Identity Id="TwinCatAssistant.Native.Amd64" Version="0.1.5" Language="en-US" Publisher="Auda29" />
     <DisplayName>TwinCAT Assistant (64-bit prototype)</DisplayName>
     <Description xml:space="preserve">Read-only native OpenChamber host. TcXaeShell64 installation target and live editor acceptance require validation on that host.</Description>
   </Metadata>

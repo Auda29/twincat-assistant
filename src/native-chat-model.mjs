@@ -6,9 +6,12 @@ import { inspectState } from './state.mjs';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
 
 export function validateModelConsent(value) {
-  if (!value || Object.keys(value).some(key => !['state', 'model', 'acceptSourceDisclosure'].includes(key))
+  if (!value || Object.keys(value).some(key => !['state', 'provider', 'model', 'acceptSourceDisclosure'].includes(key))
       || typeof value.state !== 'string' || !isAbsolute(value.state) || value.state.length > 2048 || value.state.includes('\0')
-      || typeof value.model !== 'string' || value.model.length > 240 || !/^[a-zA-Z0-9_-]+\/[^\s\0]+$/.test(value.model)
+      || (!value.provider && !value.model)
+      || (value.provider !== undefined && (typeof value.provider !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(value.provider)))
+      || (value.model !== undefined && (typeof value.model !== 'string' || value.model.length > 240 || !/^[a-zA-Z0-9_-]+\/[^\s\0]+$/.test(value.model)))
+      || (value.provider && value.model && value.provider !== value.model.split('/')[0])
       || value.acceptSourceDisclosure !== true) throw new Error('Explicit model and source disclosure consent required');
   return value;
 }
@@ -31,7 +34,11 @@ export async function configureNativeModel(input) {
     // Recheck under the exclusive writer lock. A crash between the two atomic
     // replacements leaves a policy mismatch, which the launcher rejects.
     const current = await inspectState(request.state);
-    const settings = validateSettings({ ...current.settings, model: request.model, sourceCodeDisclosureAccepted: true });
+    const provider = request.provider ?? request.model.split('/')[0];
+    const next = { ...current.settings, provider, sourceCodeDisclosureAccepted: true };
+    if (request.model) next.model = request.model;
+    else if (next.model?.split('/')[0] !== provider) delete next.model;
+    const settings = validateSettings(next);
     await atomicJson(current.paths.configPath, createOpenCodeConfig(settings));
     await atomicJson(current.paths.settingsPath, settings);
     const verified = await inspectState(request.state);

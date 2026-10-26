@@ -119,6 +119,13 @@ snapshots and no model call; it does not close this installed acceptance gate.
 
 ### Full documentation/MCP gate
 
+Candidate 0.1.5 adds a provider-order regression: after sign-in, choose the
+authenticated provider in native Details and explicitly grant it before selecting
+a model in the normal chat picker. No model must be required to press that grant
+button. Sign-in alone must leave provider use denied. The real-control fixture
+checks this with an isolated fake credential and no provider/model call; installed
+OpenAI OAuth/model-answer acceptance remains pending.
+
 Install the real built extension; verify selected session and project survive
 reopen/rebind without stale attachment. Use an operator-provided validated
 corpus and explicitly approved provider. Confirm full `structuredContent` and

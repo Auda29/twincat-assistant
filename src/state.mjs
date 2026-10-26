@@ -76,7 +76,7 @@ export async function inspectState(root) {
       throw new Error('Engineering MCP configuration must be explicitly readOnly with no writeAllowlist');
     }
   }
-  return { configurationVerified: true, nativeEngineering: 'unavailable', corpus: settings.knowledge ? 'not_probed' : 'not_configured', modelCallsEnabled: settings.sourceCodeDisclosureAccepted === true && Boolean(settings.model), files, paths, settings };
+  return { configurationVerified: true, nativeEngineering: 'unavailable', corpus: settings.knowledge ? 'not_probed' : 'not_configured', modelCallsEnabled: settings.sourceCodeDisclosureAccepted === true && Boolean(settings.provider || settings.model), files, paths, settings };
 }
 
 export async function prepareChatWorkspace(root) {
@@ -143,7 +143,7 @@ export function runtimeEnvironment(root, input, inherited = process.env) {
     OPENCHAMBER_OPENCODE_HOSTNAME: '127.0.0.1',
   });
   const keys = { openai: 'OPENAI_API_KEY', anthropic: 'ANTHROPIC_API_KEY', google: 'GOOGLE_GENERATIVE_AI_API_KEY' };
-  const key = settings.model && keys[settings.model.split('/')[0]];
+  const key = keys[settings.provider ?? settings.model?.split('/')[0]];
   if (settings.sourceCodeDisclosureAccepted === true && key && inherited[key] !== undefined) env[key] = inherited[key];
   return env;
 }

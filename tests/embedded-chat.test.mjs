@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createChatAdapter } from '../src/embedded-chat.mjs';
+import { createChatAdapter, consentProviders } from '../src/embedded-chat.mjs';
 
 function store(initial) {
   let value = initial;
@@ -20,6 +20,13 @@ function fixture() {
   return { ui, sessions, input, adapter: createChatAdapter({ ui, sessions, input, documentId: 'fixture-document' }) };
 }
 const item = { providerId: 'twincat-assistant', id: 'snapshot-one', title: 'FB_Motor / PLC_A', url: 'http://127.0.0.1:3123/', text: 'synthetic ST snapshot' };
+
+test('consent choices retain connected providers hidden by policy and expose no account data', () => {
+  const connected = id => ({ id, name: id, connections: [{ type: 'credential', id: 'private-account', label: 'private-user' }], methods: ['private-method'] });
+  const choices = consentProviders([connected('openai'), connected('mcp_private'), connected('search'), { id: 'not-connected', connections: [] }], [{ id: 'search' }]);
+  assert.deepEqual(choices, [{ id: 'openai', name: 'openai' }]);
+  assert.ok(!JSON.stringify(choices).includes('private'));
+});
 
 test('embedded adapter stages explicit context only for the exact permitted selection and never prompts', () => {
   const { adapter, input, ui } = fixture();

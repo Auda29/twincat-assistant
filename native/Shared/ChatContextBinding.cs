@@ -6,6 +6,11 @@ using System.IO;
 
 namespace TwinCatAssistant.Native
 {
+    public sealed class ChatProviderChoice
+    {
+        public string id { get; set; }
+        public string name { get; set; }
+    }
     public sealed class ChatSelection
     {
         public int version;
@@ -19,6 +24,7 @@ namespace TwinCatAssistant.Native
         public string attachedObject;
         public string attachedRevision;
         public string model;
+        public ChatProviderChoice[] providers;
         public bool IsSelected { get { return version == 1 && ready && authenticated && ValidSession(sessionId) && Guid.TryParse(documentId, out _) && epoch >= 0; } }
         public static bool ValidSession(string value) { return value != null && Regex.IsMatch(value, @"\A[a-zA-Z0-9_:-]{1,160}\z"); }
     }

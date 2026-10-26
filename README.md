@@ -14,13 +14,16 @@ broader unsaved-buffer semantics, native chat and amd64 acceptance remain open. 
 as an Automation Interface snapshot, not verified unsaved editor text.
 The x86 core flow is now checked: same-name POUs in two PLCs follow correctly,
 and a real unsaved editor comment produces the visible unsaved-changes status.
-Installed x86 candidate `0.1.3` adds protected local chat startup, first-run password
+Native `0.1.3` adds protected local chat startup, first-run password
 setup and actual navigation/service error reporting. See [native chat](docs/NATIVE_CHAT.md).
 Candidate `0.1.4` adds a compact project-bound chat, explicit POU composer
 attachments, a general chat without POU context, provider consent and bounded
 reconnection. It reuses the existing OpenChamber chat through a hash-verified
 version-specific adapter. See [chat integration](docs/CHAT_INTEGRATION.md) for
 the candidate's tests and installed acceptance boundary.
+Candidate `0.1.5` corrects provider setup: explicitly allow an authenticated
+provider under Details first, then choose a model in the existing chat picker.
+This avoids a default-deny catalog hiding a successfully signed-in provider.
 The isolated operator CLI,
 OpenChamber context panel, portable safety core and diagnostic pipe remain;
 live writes, native-to-MCP binding and compiler builds are unavailable.

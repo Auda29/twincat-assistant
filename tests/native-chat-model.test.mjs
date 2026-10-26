@@ -12,6 +12,23 @@ test('model setup requires explicit consent and refuses payloads containing cred
   for (const patch of [{ acceptSourceDisclosure: false }, { model: '' }, { password: 'not-accepted' }, { source: 'not-accepted' }]) {
     assert.throws(() => validateModelConsent({ ...value, ...patch }));
   }
+  for (const patch of [{ provider: '*' }, { provider: 'anthropic' }, { provider: '../openai' }]) assert.throws(() => validateModelConsent({ ...value, ...patch }));
+});
+
+test('provider-only consent unlocks only the chosen provider without inventing a model', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tc-provider-consent-'));
+  try {
+    const state = join(root, 'state');
+    const paths = await initializeState(state, { model: 'anthropic/old-model', sourceCodeDisclosureAccepted: true });
+    await configureNativeModel({ state, provider: 'openai', acceptSourceDisclosure: true });
+    const status = await inspectState(state);
+    assert.equal(status.modelCallsEnabled, true);
+    assert.equal(status.settings.provider, 'openai');
+    assert.equal(status.settings.model, undefined);
+    const config = JSON.parse(await readFile(paths.configPath));
+    assert.deepEqual(config.experimental.policies.filter(p => p.action === 'provider.use' && p.effect === 'allow'), [{ action: 'provider.use', resource: 'openai', effect: 'allow' }]);
+    assert.deepEqual(config.permissions[0], { action: '*', resource: '*', effect: 'deny' });
+  } finally { await rm(root, { recursive: true, force: true }); }
 });
 
 test('model consent updates only a verified isolated profile and keeps all engineering permissions denied', async () => {

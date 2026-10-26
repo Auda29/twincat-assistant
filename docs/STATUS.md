@@ -29,6 +29,18 @@ See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action
 
+- Candidate 0.1.5 fixes the reproduced provider/model consent deadlock in 0.1.4:
+  an authenticated provider hidden by `provider.use` deny can be explicitly
+  selected/granted before choosing a model. The operator's OpenAI sign-in is
+  preserved. It also fixes the wrong config-store export in the embedded adapter;
+  the strengthened fixture verifies the actual picker catalog without injecting
+  a synthetic model selection. Local checks pass: 44 Node, 8 browser, 69 native,
+  21 WPF view, 22 compiled-control/runtime and 3 Windows/native runtime checks.
+  Both VSIX variants build without warnings/errors. The unchanged Windows helper
+  was built to a separate local output because its current binary belongs to the
+  running chat. The installed host remains 0.1.4 until the coordinated update is
+  verified; no actual provider answer has been accepted yet.
+
 - Foundation PR #1 and native foundation PR [#2](https://github.com/Auda29/twincat-assistant/pull/2)
   are merged. PR #2 merged on 2026-10-23; this is not native MVP acceptance.
 - Both `0.1.3` VSIX variants build locally without warnings/errors. Current local
