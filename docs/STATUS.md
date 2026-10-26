@@ -16,13 +16,18 @@ components, not a TwinCAT product release.
   transport and C# owner/credential checks also pass. Earlier CI evidence belongs
   to the merged foundation. Check the workflow runs for the release commit for
   its CI result; local results do not establish native acceptance.
-- A source follow-up to `native-v0.1.3` fixes first-login workspace initialization:
+- A source follow-up to `native-v0.1.3` addresses missing first-login chat roots:
   the launcher prepares both isolated chat roots before startup. A synthetic
   authenticated browser reproduced the missing-directory error and confirmed
   its removal after repair; real-runtime regressions cover the directory-scoped
   bootstrap reads. After repair of the running operator profile, the user
   confirmed that **try again** removed the error in the installed x86 Assistant
-  on 2026-10-26. See [native chat](NATIVE_CHAT.md#workspace-initialization-follow-up).
+  on 2026-10-26, but subsequently reported its recurrence with both roots still
+  present. A full page reload with **Connect chat** then kept the message absent
+  for about a minute according to the user. Real WPF/WebView2 synthetic checks
+  also pass across three full page loads. The precise recurrence request was not
+  captured; extended lifecycle acceptance remains open. See
+  [native chat](NATIVE_CHAT.md#workspace-initialization-follow-up).
 - The x86 0.1.3 package is installed after coordinated shell close/UAC approval.
   All 13 files were verified and the old payload was preserved outside the
   extension search path. Extension discovery/package load and a visible tool

@@ -33,8 +33,23 @@ The same repair was applied to the running operator profile without restarting
 the IDE or reading its credential. On 2026-10-26, the user confirmed that pressing
 **try again** in the installed x86 Assistant removed the workspace error. The
 synthetic browser also removed the message and its workspace requests succeeded.
-This confirms workspace initialization; a provider/model conversation remains a
-separate acceptance step.
+The user subsequently reported the same error again while both directories
+still existed. That retry therefore established only temporary recovery.
+After pressing **Connect chat** to reload the entire embedded page, the user
+confirmed on 2026-10-26 that the message remained absent for about a minute.
+For an already-running page that first initialized before directory repair,
+use **Connect chat** after the repair rather than relying on the sidebar retry.
+No restart, password reset or VSIX replacement was needed for this recovery.
+
+Additional local tests exercised the real compiled WPF control and WebView2,
+including protected synthetic login and three full page loads. A separate
+synthetic runtime outside the repository reproduced missing-directory HTTP
+404s before late repair; subsequent full page loads had no required workspace
+bootstrap failures. Expected optional Git-repository HTTP 422s were separate.
+The exact failed request behind the user's recurrence was not captured, so a
+retained browser initialization failure is an inference, not a proven upstream
+root cause. Extended lifecycle acceptance and a provider/model conversation
+remain open.
 The real-runtime integration now checks config, location, forms and permission
 reads against both chat roots after login, rather than stopping at login HTTP
 200. Root checks pass with 36 Node tests and 8 browser contracts.
