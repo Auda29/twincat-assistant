@@ -22,6 +22,7 @@ namespace TwinCatAssistant.Native
         public string RepositoryRoot { get; set; }
         public string StateRoot { get; set; }
         public string DotNetRoot { get; set; }
+        public string McpSettingsPath { get; set; }
         public static string ConfigurationPath { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TwinCatAssistant", "native-chat.json"); } }
         public static string CredentialDirectory { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TwinCatAssistant", "native-chat"); } }
 
@@ -33,6 +34,9 @@ namespace TwinCatAssistant.Native
         }
         public void Validate()
         {
+            if (!string.IsNullOrEmpty(McpSettingsPath) && (!Path.IsPathRooted(McpSettingsPath)
+                || McpSettingsPath.Length > 2048 || !File.Exists(McpSettingsPath)))
+                throw new InvalidOperationException("Configure an absolute native MCP settings file.");
             foreach (var value in new[] { NodePath, RepositoryRoot, StateRoot, DotNetRoot })
                 if (string.IsNullOrWhiteSpace(value) || value.Length > 2048 || !Path.IsPathRooted(value)
                     || !string.Equals(Path.GetFullPath(value), value, StringComparison.OrdinalIgnoreCase))
@@ -219,7 +223,8 @@ namespace TwinCatAssistant.Native
             // Upstream logs are deliberately drained without displaying them or
             // retaining credentials/URLs in an IDE error message.
             var drain = DrainAsync(_process.StandardError);
-            var request = new { state = config.StateRoot, port, password };
+            var request = new Dictionary<string, object> { { "state", config.StateRoot }, { "port", port }, { "password", password } };
+            if (!string.IsNullOrEmpty(config.McpSettingsPath)) request.Add("mcpConfig", config.McpSettingsPath);
             try
             {
                 // A GUI .NET Framework process may use an ANSI/OEM encoding for
@@ -289,14 +294,14 @@ namespace TwinCatAssistant.Native
         private void OnExited(object sender, EventArgs args) { if (!_stopping) Stopped?.Invoke(); }
         internal static async Task DrainAsync(StreamReader reader)
         { try { var buffer = new char[1024]; while (await reader.ReadAsync(buffer, 0, buffer.Length) > 0) { } } catch { } }
-        internal static async Task<string> ReadReadyAsync(StreamReader reader)
+        internal static async Task<string> ReadReadyAsync(StreamReader reader, int limit = 4096)
         {
             var result = new StringBuilder();
             var one = new char[1];
             while (await reader.ReadAsync(one, 0, 1) > 0)
             {
                 if (one[0] == '\n') return result.ToString();
-                if (result.Length >= 4096) throw new IOException("Invalid local chat response.");
+                if (result.Length >= limit) throw new IOException("Invalid local chat response.");
                 result.Append(one[0]);
             }
             throw new IOException("Local chat launcher exited before readiness.");

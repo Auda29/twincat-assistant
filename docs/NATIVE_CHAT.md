@@ -1,8 +1,9 @@
 # Native chat connection, 0.1.3
 
-The current candidate, 0.1.6, adds the selected compact context bar, automatic
+Version 0.1.6 adds the selected compact context bar, automatic
 local sign-in, project-chat selection and provider enablement, plus optional
 automatic POU attachment described in [Chat integration](CHAT_INTEGRATION.md).
+Candidate 0.1.8 adds [native MCP setup and project workspaces](NATIVE_MCP.md).
 The connection history and manual setup workflow below belong to 0.1.3.
 
 Updated 2026-10-26. This slice fixes `Connect chat` opening an unavailable local

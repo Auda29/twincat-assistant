@@ -1,5 +1,10 @@
 # Native project chat, candidate 0.1.6
 
+Candidate 0.1.8 extends this flow with both read-only MCPs and project identity
+independent of supported POU attachments. See [Native MCP integration](NATIVE_MCP.md)
+for the current setup, saved-file disclosure boundary and missing-corpus state.
+The 0.1.6 evidence and limitations below describe that earlier slice.
+
 Updated 2026-10-26. The UI redesign is on `feat/assistant-ui-redesign`, based on
 the installed 0.1.5 chat integration. The operator selected mockup A, automatic
 provider enablement and an optional automatic attachment setting. Installation

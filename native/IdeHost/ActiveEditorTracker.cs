@@ -14,6 +14,8 @@ namespace TwinCatAssistant.Native
         private readonly IVsMonitorSelection _selection;
         private readonly IVsRunningDocumentTable _rdt;
         private readonly Action<ActiveEditorSnapshot, string> _render;
+        private readonly Action<NativeProjectIdentity, string> _renderProject;
+        internal NativeProjectIdentity Project { get; private set; }
         private readonly ActiveEditorPublication _publication = new ActiveEditorPublication();
         private readonly DispatcherTimer _debounce, _poll;
         private Events _events;
@@ -26,13 +28,15 @@ namespace TwinCatAssistant.Native
         internal double MaxReadMilliseconds { get; private set; }
 
         internal ActiveEditorTracker(DTE dte, IVsMonitorSelection selection, IVsRunningDocumentTable rdt,
-            Func<string, bool?> dirty, Action<ActiveEditorSnapshot, string> render)
+            Func<string, bool?> dirty, Action<ActiveEditorSnapshot, string> render,
+            Action<NativeProjectIdentity, string> renderProject = null)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _reader = new NativeActiveEditorReader(dte, System.Diagnostics.Process.GetCurrentProcess().Id, dirty);
             _selection = selection;
             _rdt = rdt;
             _render = render;
+            _renderProject = renderProject;
             _debounce = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(180) };
             _debounce.Tick += OnDebounce;
             // Custom TwinCAT editors may not emit DTE text events, especially
@@ -80,6 +84,8 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
             _publication.Invalidate();
+            Project = null;
+            _renderProject?.Invoke(null, reason);
             _render(null, reason);
             _debounce.Stop();
             if (!_closing) _debounce.Start();
@@ -93,6 +99,16 @@ namespace TwinCatAssistant.Native
             return _publication.Current;
         }
 
+        internal NativeProjectIdentity ReadProjectForChat()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_disposed || _closing) return null;
+            try { Project = _reader.CaptureProject(); _renderProject?.Invoke(Project, null); }
+            catch (Exception error) { Project = null; _renderProject?.Invoke(null,
+                error is InvalidOperationException ? error.Message : "PLC project context is unavailable."); }
+            return Project;
+        }
+
         private void ReadNow()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -101,6 +117,7 @@ namespace TwinCatAssistant.Native
             var generation = _publication.Generation;
             try
             {
+                ReadProjectForChat();
                 var active = CaptureCurrentFrame();
                 if (_publication.Current != null && !_publication.Current.Identity.Equals(active.Identity))
                 {

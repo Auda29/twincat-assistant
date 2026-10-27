@@ -30,6 +30,11 @@ namespace TwinCatAssistant.Native
         public string id { get; set; }
         public double updated { get; set; }
     }
+    public sealed class ChatMcpStatus
+    {
+        public string name { get; set; }
+        public string status { get; set; }
+    }
     public sealed class ChatSelection
     {
         public int version;
@@ -46,6 +51,7 @@ namespace TwinCatAssistant.Native
         public ChatProviderChoice[] providers;
         public string[] allowedProviders;
         public ChatTheme theme;
+        public ChatMcpStatus[] mcp;
         public bool IsSelected { get { return version == 1 && ready && authenticated && ValidSession(sessionId) && Guid.TryParse(documentId, out _) && epoch >= 0; } }
         public static bool ValidSession(string value) { return value != null && Regex.IsMatch(value, @"\A[a-zA-Z0-9_:-]{1,160}\z"); }
     }
@@ -62,6 +68,10 @@ namespace TwinCatAssistant.Native
         public bool IsGeneral { get; set; }
 
         public bool SameProject(ActiveEditorIdentity identity)
+        {
+            return SameProjectContext(identity?.ProjectIdentity);
+        }
+        public bool SameProjectContext(NativeProjectIdentity identity)
         {
             return Version == 1 && !IsGeneral && identity != null
                 && string.Equals(SolutionFile, identity.SolutionFile, StringComparison.OrdinalIgnoreCase)
@@ -80,10 +90,18 @@ namespace TwinCatAssistant.Native
         }
         public bool Matches(ActiveEditorIdentity identity, string instanceId, string origin, string sessionId)
         {
-            return SameProject(identity) && IdeProcessId == identity.IdeProcessId
+            return MatchesProject(identity?.ProjectIdentity, instanceId, origin, sessionId);
+        }
+        public bool MatchesProject(NativeProjectIdentity identity, string instanceId, string origin, string sessionId)
+        {
+            return SameProjectContext(identity) && IdeProcessId == identity.IdeProcessId
                 && IdeInstanceId == instanceId && Origin == origin && SessionId == sessionId && ChatSelection.ValidSession(sessionId);
         }
         public static ChatContextBinding Create(ActiveEditorIdentity identity, string instanceId, string origin, string sessionId)
+        {
+            return CreateProject(identity?.ProjectIdentity, instanceId, origin, sessionId);
+        }
+        public static ChatContextBinding CreateProject(NativeProjectIdentity identity, string instanceId, string origin, string sessionId)
         {
             if (identity == null) throw new InvalidOperationException("An exact project identity is required.");
             ValidateSession(identity.IdeProcessId, instanceId, origin, sessionId);

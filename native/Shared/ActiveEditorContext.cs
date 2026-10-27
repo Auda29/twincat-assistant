@@ -11,6 +11,7 @@ namespace TwinCatAssistant.Native
         public string ProjectFile { get; }
         public string DocumentMoniker { get; }
         public string TreePath { get; }
+        public NativeProjectIdentity ProjectIdentity { get { return new NativeProjectIdentity(IdeProcessId, SolutionFile, ProjectFile); } }
 
         public ActiveEditorIdentity(int pid, string solution, string project, string moniker, string treePath)
         {

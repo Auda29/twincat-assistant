@@ -16,6 +16,8 @@
     <TwinCatInteropPath Condition="'$(TwinCatInteropPath)' == ''">C:\TwinCAT\3.1\Components\TcBlockDiagram\Common\TCatSysManagerLib.dll</TwinCatInteropPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../Shared/NativeProjectIdentity.cs" Link="Shared/NativeProjectIdentity.cs" />
+    <Compile Include="../NativeMcpProject.cs" Link="Shared/NativeMcpProject.cs" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
     <PackageReference Include="Microsoft.VisualStudio.Shell.15.0" Version="$(ShellPackageVersion)" ExcludeAssets="runtime" />
     <PackageReference Include="EnvDTE" Version="$(DtePackageVersion)" ExcludeAssets="runtime" />

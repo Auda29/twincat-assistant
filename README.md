@@ -21,18 +21,23 @@ attachments, a general chat without POU context, provider consent and bounded
 reconnection. It reuses the existing OpenChamber chat through a hash-verified
 version-specific adapter. See [chat integration](docs/CHAT_INTEGRATION.md) for
 the candidate's tests and installed acceptance boundary.
-Current candidate `0.1.6` on `feat/assistant-ui-redesign` replaces the upper UI
+Released `0.1.6` replaces the upper UI
 with the selected compact context bar, follows OpenChamber's palette and opens
 project conversations automatically. Connected providers are enabled without
 a separate consent click. Automatic POU attachment is an optional setting in
 the overflow menu; submitting the message still controls provider transfer.
 The x86 candidate is installed with all 13 payload hashes verified and 0.1.5
 preserved outside extension discovery. The IDE was closed for installation;
-live UI acceptance of 0.1.6 is still open.
+broader UI and lifecycle acceptance remain open.
 Local x86 fix `0.1.7` binds editor tracking when the IDE restores a docked
 Assistant window without invoking its menu command. It is installed with all
 13 payload hashes verified and 0.1.6 preserved outside extension discovery.
 Automatic restoration after restarting the installed IDE still needs acceptance.
+Current candidate `0.1.8` connects both existing MCPs to project chats, using
+separate private workspaces for each saved PLC project. Project identity remains
+available with a DUT or unsupported source editor; general chats have no
+engineering server. No documentation corpus is configured yet. See
+[native MCP setup and verification](docs/NATIVE_MCP.md). This candidate is not installed.
 Earlier x86 `0.1.5` corrected provider setup: explicitly allow an authenticated
 provider under Details first, then choose a model in the existing chat picker.
 This avoids a default-deny catalog hiding a successfully signed-in provider.
@@ -41,7 +46,7 @@ explicit POU reference, provider/model setup and the correct actual model reply
 are user-confirmed. Wider native MVP and MCP gates remain open.
 The isolated operator CLI,
 OpenChamber context panel, portable safety core and diagnostic pipe remain;
-live writes, native-to-MCP binding and compiler builds are unavailable.
+live writes and compiler builds are unavailable.
 See [implementation status](docs/STATUS.md) for the exact verification boundary.
 The [roadmap](docs/ROADMAP.md#where-we-are-now) records current position, next
 tasks and separate read-only, agent-context, write and compiler milestones.
@@ -86,6 +91,7 @@ required for the core workflow.
 - [Diagnostic bridge](docs/BRIDGE.md)
 - [Windows acceptance checklist](docs/WINDOWS_ACCEPTANCE.md)
 - [32-bit and 64-bit native prototype](docs/NATIVE_PROTOTYPE.md)
+- [Native Knowledge and TwinCAT MCP setup](docs/NATIVE_MCP.md)
 - [Documentation overview](docs/README.md)
 - [MVP: scope and acceptance](docs/MVP.md)
 - [Architecture and integration boundaries](docs/ARCHITECTURE.md)

@@ -9,8 +9,10 @@ import { isProtectedChatReady, parseNativeChatRequest, validateNativeChatRequest
 test('native chat request requires an explicit isolated state, port and bounded password', () => {
   const request = { state: join(tmpdir(), 'synthetic-native-chat'), port: 3123, password: 'synthetic-password-only' };
   assert.equal(validateNativeChatRequest(request), request);
+  assert.equal(validateNativeChatRequest({ ...request, mcpConfig: join(tmpdir(),'native-mcp.json') }).mcpConfig, join(tmpdir(),'native-mcp.json'));
   for (const change of [{ state: 'relative' }, { state: request.state + '\0' }, { state: request.state + 'a'.repeat(2049) }, { port: 80 }, { port: 70000 }, { password: '' },
-    { password: ' '.repeat(12) }, { password: 'a'.repeat(1025) }, { password: 'a'.repeat(12) + '\0' }, { provider: 'not-allowed' }])
+    { password: ' '.repeat(12) }, { password: 'a'.repeat(1025) }, { password: 'a'.repeat(12) + '\0' }, { provider: 'not-allowed' },
+    { mcpConfig:'relative.json' }, {mcpConfig:{command:'anything'}}, {mcpConfig:request.state+'\0'}])
     assert.throws(() => validateNativeChatRequest({ ...request, ...change }));
 });
 

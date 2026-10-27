@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$DotNetRoot)
+param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath)
 $ErrorActionPreference = 'Stop'
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'Run with powershell.exe -NoProfile -STA.' }
 # Actual built host + WebView2 + pinned runtime. Only the editor snapshots and
@@ -39,7 +39,10 @@ $taskContextField.SetValue($null,$taskContext)
 $taskFlags = [Reflection.BindingFlags]'Instance,NonPublic'
 $taskCount = 0
 function Assert-Integration([bool]$Condition,[string]$Name) {
-    if (-not $Condition) { throw "Chat integration failed: $Name" }
+    if (-not $Condition) {
+        Write-Output ('NATIVE phase='+(Field '_chatConnection').Phase+' pending='+(Field '_chatActionPending')+' automating='+(Field '_automating')+' polling='+(Field '_chatPolling')+' model='+(Field '_modelStatus').Text+' banner='+(Field '_bannerText').Text)
+        throw "Chat integration failed: $Name"
+    }
     $script:taskCount++; Write-Output "PASS $Name"
 }
 function Pump([int]$Milliseconds) {
@@ -86,12 +89,22 @@ function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; //
     $global:taskIntegrationSnapshot.Declaration = 'FUNCTION_BLOCK FB_Motor'
     $global:taskIntegrationSnapshot.Implementation = $Implementation
     $global:taskIntegrationSnapshot.SourceKind = 'Automation Interface snapshot'
+    $global:taskIntegrationProject = $global:taskIntegrationSnapshot.Identity.ProjectIdentity
+    [IO.Directory]::CreateDirectory((Join-Path $taskRoot $Project)) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $taskRoot 'ContextChecks.sln'),'Synthetic fixture solution')
+    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'.plcproj')),('<Project><ItemGroup><Compile Include="'+$Project+'/FB_Motor.TcPOU" /></ItemGroup></Project>'))
+    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'/FB_Motor.TcPOU')),('<TcPlcObject><POU Name="FB_Motor" Id="{7317284c-267c-4963-959d-8629b64f2090}"><Declaration><![CDATA[FUNCTION_BLOCK FB_Motor]]></Declaration><Implementation><ST><![CDATA['+$Implementation+']]></ST></Implementation></POU></TcPlcObject>'))
     $taskControl.GetType().GetMethod('RenderContext',$taskFlags).Invoke($taskControl,[object[]]@($global:taskIntegrationSnapshot,$null))
 }
 $taskConfig = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatConfiguration'))
 $taskConfig.NodePath = (Get-Command node -ErrorAction Stop).Source
 $taskConfig.RepositoryRoot = $taskRepo; $taskConfig.DotNetRoot = [IO.Path]::GetFullPath($DotNetRoot)
 $taskConfig.StateRoot = Join-Path $taskRoot 'state'
+$taskMissingCorpus = $false
+if ($McpSettingsPath) {
+    $taskConfig.McpSettingsPath = [IO.Path]::GetFullPath($McpSettingsPath)
+    $taskMissingCorpus = -not (Get-Content -LiteralPath $McpSettingsPath -Raw | ConvertFrom-Json).knowledge.config
+}
 $taskListener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
 $taskListener.Start(); $taskPort = $taskListener.LocalEndpoint.Port; $taskListener.Stop()
 $taskPassword = 'synthetic-' + [Guid]::NewGuid().ToString('N')
@@ -100,6 +113,8 @@ $taskControl = $null; $taskWindow = $null
 try {
     Await-Task ($taskSession.StartAsync($taskConfig,$taskPort,$taskPassword)) | Out-Null
     $taskControl = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.AssistantControl'))
+    $taskInitialPreferences = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatPreferences'),[object[]]@([string](Join-Path $taskRoot 'initial-preferences')))
+    Set-Field '_chatPreferences' $taskInitialPreferences
     Set-Field '_chatBrowserProfile' (Join-Path $taskRoot 'browser')
     $taskStoreType = $taskAssembly.GetType('TwinCatAssistant.Native.ChatBindingStore')
     Set-Field '_chatBindings' ($taskStoreType.GetConstructor([type[]]@([string])).Invoke([object[]]@([string](Join-Path $taskRoot 'bindings'))))
@@ -111,6 +126,7 @@ try {
     $taskCredentials.Save($taskPassword)
     Set-Field '_chatCredentials' $taskCredentials
     Set-Field '_chatSnapshotReader' ([Func[TwinCatAssistant.Native.ActiveEditorSnapshot]]{ return $global:taskIntegrationSnapshot })
+    Set-Field '_chatProjectReader' ([Func[TwinCatAssistant.Native.NativeProjectIdentity]]{ return $global:taskIntegrationProject })
     (Field '_port').Text = [string]$taskPort
     Set-Snapshot 'PLC_A'
     $taskWindow = New-Object Windows.Window
@@ -124,6 +140,10 @@ try {
     Assert-Integration ((JS 'document.body.innerText.includes("Unlock OpenChamber")') -eq 'false') 'native sign-in authenticates without showing the password screen'
     Wait-Native { (Field '_attachPouButton').IsEnabled } 'automatic project chat for PLC_A'
     Assert-Integration (Field '_attachPouButton').IsEnabled 'opening a POU creates and binds its project chat automatically'
+    if ($McpSettingsPath) {
+        Wait-JS "window.__twinCatChat.state().mcp.filter(s=>s.status==='connected').length===2" 45
+        Assert-Integration ((Field '_chatSelection').directory.Replace('\','/').Contains('/projects/')) 'native project chat uses its isolated MCP workspace'
+    }
     $taskFirstSession = (Field '_chatSelection').sessionId
     Assert-Integration ((JS '(()=>{const h=document.querySelector("header.header-safe-area");const c=document.querySelector(".main-content-safe-area > .absolute.left-0.top-0.z-30");return !!h && getComputedStyle(h).display==="none" && (!c || getComputedStyle(c).display==="none")})()') -eq 'true') 'OpenChamber top bar with unbound new-chat buttons is hidden'
     Assert-Integration ((JS 'document.body.innerText.includes("synthetic context fixture")') -eq 'false') 'opening and binding a chat do not disclose source'
@@ -135,8 +155,11 @@ try {
     Assert-Integration ((Field '_bannerText').Text.Contains('Modellanbieter') -and (Field '_banner').Visibility -eq [Windows.Visibility]::Visible) 'missing provider is explained with one action'
     JS "window.__fixtureProviderConnected=false;fetch('/api/integration/openai/connect/key',{method:'POST',headers:{'content-type':'application/json','x-opencode-directory':encodeURIComponent(window.__twinCatChat.state().directory),'x-opencode-directory-encoding':'uri'},body:JSON.stringify({key:'synthetic-not-a-real-api-key'})}).then(r=>window.__fixtureProviderConnected=r.status===204)" | Out-Null
     Wait-JS 'window.__fixtureProviderConnected'
-    Wait-Native { @((Field '_chatSelection').allowedProviders) -contains 'openai' } 'automatic provider enablement' 60
-    Assert-Integration ((Field '_modelStatus').Text.Contains('(freigegeben)') -and (Field '_banner').Visibility -ne [Windows.Visibility]::Visible) 'connecting a provider in OpenChamber enables it automatically and is read back'
+    Wait-Native { @((Field '_chatSelection').allowedProviders) -contains 'openai' -and -not (Field '_chatActionPending') -and (Field '_modelStatus').Text.Contains('(freigegeben)') } 'automatic provider enablement' 60
+    Assert-Integration ((Field '_modelStatus').Text.Contains('(freigegeben)') -and ((Field '_banner').Visibility -ne [Windows.Visibility]::Visible -or -not (Field '_bannerText').Text.Contains('Noch kein Modellanbieter'))) 'connecting a provider in OpenChamber enables it automatically and is read back'
+    if ($taskMissingCorpus) {
+        Assert-Integration ((Field '_banner').Visibility -eq [Windows.Visibility]::Visible -and (Field '_bannerText').Text.Contains('kein Dokumentationskorpus')) 'an unconfigured corpus is explained without blocking saved-project tools'
+    }
     JS "import('/assets/useAppFontEffects-DC1U1Z6i.js').then(m=>{window.__fixtureCatalog=()=>m.l.getState().providers.map(p=>({id:p.id,count:p.models.length}));window.__fixtureCatalogDetails=()=>({active:m.l.getState().activeDirectoryKey,selected:window.__twinCatChat.state().directory,providers:window.__fixtureCatalog(),snapshots:Object.entries(m.l.getState().directoryScoped).map(([key,v])=>({key,providers:v.providers.map(p=>p.id)}))});})" | Out-Null
     Wait-JS "window.__fixtureCatalog?.().some(p=>p.id==='openai' && p.count>0)"
     Assert-Integration ((JS "window.__fixtureCatalog().some(p=>p.id==='openai' && p.count>0)") -eq 'true') 'real upstream model picker catalog is populated after provider-only consent'
@@ -168,14 +191,21 @@ try {
     Wait-JS "window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated"
     Pump 1500; Invoke-Chat 'PollChatSelectionAsync'
     Assert-Integration ((JS 'document.body.innerText.includes("Could not initialize workspace")') -eq 'false') 'full page reload keeps the prepared workspace available'
+    Wait-Native { -not (Field '_chatActionPending') -and -not (Field '_automating') -and $taskControl.GetType().GetMethod('CanPromptCurrentChat',$taskFlags).Invoke($taskControl,@()) } 'restored native binding before service-loss check'
     $taskPreviousDocument = JS 'window.__twinCatChat.state().documentId'
     Await-Task ($taskSession.StopAsync()) | Out-Null
-    $taskReconnectDeadline = [DateTime]::UtcNow.AddSeconds(40)
+    # Include the launcher's existing 65-second startup budget, health detection
+    # and reconnect delay; a 40-second test deadline can expire during startup.
+    $taskReconnectDeadline = [DateTime]::UtcNow.AddSeconds(90)
     do {
         Pump 200
         $taskOwnedRuntime = Field '_chatSession'
         if ($taskOwnedRuntime -and $taskOwnedRuntime.IsRunning -and (Field '_chatAdapterReady')) { break }
     } while ([DateTime]::UtcNow -lt $taskReconnectDeadline)
+    if (-not $taskOwnedRuntime -or -not $taskOwnedRuntime.IsRunning) {
+        Write-Output ('RECONNECT phase='+(Field '_chatConnection').Phase+' attempts='+(Field '_chatReconnectAttempts')+' connecting='+(Field '_connecting')+' health='+(Field '_chatHealth').IsEnabled+' adapter='+(Field '_chatAdapterReady'))
+        Write-Output ('STATUS '+(Field '_chatStatus').Text+' | BANNER '+(Field '_bannerText').Text)
+    }
     Assert-Integration ($taskOwnedRuntime -and $taskOwnedRuntime.IsRunning) 'native host automatically restarts a lost protected runtime'
     Wait-JS ("window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated && window.__twinCatChat.state().documentId!=="+$taskPreviousDocument)
     Invoke-Chat 'PollChatSelectionAsync'
@@ -205,13 +235,25 @@ try {
         (Field '_bannerText').Text.Contains('ist aus')) 'turning automatic attachment off shows its visible confirmation'
     (Field '_bannerDismiss').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
     Pump 100
-    Assert-Integration ((Field '_noticeText') -eq $null -and (Field '_banner').Visibility -eq [Windows.Visibility]::Collapsed) 'the native dismiss button clears a visible notice'
+    Assert-Integration ((Field '_noticeText') -eq $null -and ((Field '_banner').Visibility -eq [Windows.Visibility]::Collapsed -or ($taskMissingCorpus -and (Field '_bannerText').Text.Contains('kein Dokumentationskorpus')))) 'the native dismiss button clears a visible notice'
     $global:taskIntegrationSnapshot = $null
+    $taskControl.GetType().GetMethod('RenderContext',$taskFlags).Invoke($taskControl,[object[]]@($null,'Synthetic unsupported editor'))
+    Invoke-Chat 'PollChatSelectionAsync'
+    Assert-Integration ($taskControl.GetType().GetMethod('CanPromptCurrentChat',$taskFlags).Invoke($taskControl,@()) -and -not (Field '_attachPouButton').IsEnabled) 'project chat stays usable without a supported POU editor while native source attachment stays disabled'
+    Assert-Integration ((Field '_objectName').Text -eq 'PLC_A') 'project identity stays visible for a DUT or another unsupported editor'
+    $global:taskIntegrationProject = $null
+    $taskControl.GetType().GetMethod('RenderProjectContext',$taskFlags).Invoke($taskControl,[object[]]@($null,'Synthetic no-project state'))
     $taskControl.GetType().GetMethod('RenderContext',$taskFlags).Invoke($taskControl,[object[]]@($null,'Synthetic no-editor state'))
+    Invoke-Chat 'BindCurrentChatAsync'
+    Assert-Integration (-not (Field '_chatBinding').IsGeneral -and -not $taskControl.GetType().GetMethod('CanPromptCurrentChat',$taskFlags).Invoke($taskControl,@())) 'a project conversation cannot become general when its project is closed'
     Invoke-Chat 'NewProjectChatAsync'; Invoke-Chat 'PollChatSelectionAsync'
     Assert-Integration ((Field '_chatBinding').IsGeneral) 'a general chat can be started without any active ST editor'
     Assert-Integration ($taskControl.GetType().GetMethod('CanPromptCurrentChat',$taskFlags).Invoke($taskControl,@())) 'general chat accepts normal conversation without a project wizard'
     Assert-Integration (-not (Field '_attachPouButton').IsEnabled) 'general chat does not authorize native source disclosure'
+    if ($McpSettingsPath) {
+        Wait-JS "window.__twinCatChat.state().mcp.some(s=>s.name==='knowledge') && !window.__twinCatChat.state().mcp.some(s=>s.name==='engineering')"
+        Assert-Integration $true 'a general chat has Knowledge tools and no engineering server'
+    }
     Set-Snapshot 'PLC_A'
     JS ("window.__twinCatChat.selectSession("+$taskSelectionJson+")") | Out-Null
     Pump 800; Invoke-Chat 'PollChatSelectionAsync'; Invoke-Chat 'AttachClickAsync'; Pump 500
