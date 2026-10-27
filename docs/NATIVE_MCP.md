@@ -1,9 +1,9 @@
 # Native read-only MCP integration
 
-Candidate **0.1.8** connects the existing Knowledge and TwinCAT MCP servers to
+Preview release **0.1.8** connects the existing Knowledge and TwinCAT MCP servers to
 the native OpenChamber/OpenCode chat. It also includes the 0.1.7 docked-window
-editor-binding fix. The installed operator payload is still 0.1.7; this change
-does not install or release an update.
+editor-binding fix. The installed operator payload is still 0.1.7. See the
+[source-only release notes](releases/native-v0.1.8.md).
 
 ## Setup
 

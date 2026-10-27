@@ -1,8 +1,8 @@
 # Implementation status
 
 Updated: **2026-10-27**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.7`, installed after operator coordination. Current candidate `0.1.8` on
-`feat/native-mcp-project-context` includes the docked-window binding fix and
+`0.1.7`, installed after operator coordination. Preview release `0.1.8`
+includes the docked-window binding fix and
 read-only native MCP integration, based on the released 0.1.6 UI redesign.
 These versions describe different
 components, not a TwinCAT product release.
@@ -29,7 +29,7 @@ See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action
 
-- Candidate 0.1.8 connects the existing Knowledge and TwinCAT MCPs to native
+- Preview release 0.1.8 connects the existing Knowledge and TwinCAT MCPs to native
   project chats. Project identity is independent of supported POU attachment;
   each exact saved PLC project gets a private immutable OpenCode workspace.
   General chats have Knowledge tools only. The operator has no documentation
@@ -40,9 +40,11 @@ See [the integration contract](CHAT_INTEGRATION.md).
   reconnection and project-only context without making a model call. Local
   checks pass: 51 Node tests, 8 browser contracts, 80 native shared checks,
   28 WPF view checks and 37 compiled-control/runtime checks without a corpus;
-  both VSIX targets build without warnings/errors. This
-  candidate is not installed or released. Actual corpus/installed IDE acceptance
-  remains open. See [setup, boundaries and checks](NATIVE_MCP.md).
+  both VSIX targets build without warnings/errors. Linux and Windows CI pass for
+  the implementation. Distribution is source-only; the installed x86 payload
+  remains 0.1.7. Actual corpus/installed IDE acceptance remains open. See
+  [setup, boundaries and checks](NATIVE_MCP.md) and
+  [release notes](releases/native-v0.1.8.md).
 
 - Candidate 0.1.7 on `fix/restored-editor-binding` binds native editor services
   when the shell restores its docked Assistant pane. Version 0.1.6 only bound
