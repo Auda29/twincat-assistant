@@ -29,6 +29,10 @@ the overflow menu; submitting the message still controls provider transfer.
 The x86 candidate is installed with all 13 payload hashes verified and 0.1.5
 preserved outside extension discovery. The IDE was closed for installation;
 live UI acceptance of 0.1.6 is still open.
+Local x86 fix `0.1.7` binds editor tracking when the IDE restores a docked
+Assistant window without invoking its menu command. It is installed with all
+13 payload hashes verified and 0.1.6 preserved outside extension discovery.
+Automatic restoration after restarting the installed IDE still needs acceptance.
 Earlier x86 `0.1.5` corrected provider setup: explicitly allow an authenticated
 provider under Details first, then choose a model in the existing chat picker.
 This avoids a default-deny catalog hiding a successfully signed-in provider.

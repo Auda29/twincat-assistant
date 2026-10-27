@@ -28,6 +28,6 @@ test('corrected native menu retains its resource name and advances the merge rev
   assert.ok(revision >= 2, 'an installed version-1 menu must be eligible for remerge');
   assert.match(await source('Host.props'), /<ResourceName>Menus\.ctmenu<\/ResourceName>/);
   for (const architecture of ['X86', 'Amd64']) {
-    assert.match(await source(`${architecture}/source.extension.vsixmanifest`), /<Identity\b[^>]*\bVersion="0\.1\.6"/);
+    assert.match(await source(`${architecture}/source.extension.vsixmanifest`), /<Identity\b[^>]*\bVersion="0\.1\.7"/);
   }
 });

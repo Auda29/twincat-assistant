@@ -1,8 +1,8 @@
 # Implementation status
 
 Updated: **2026-10-26**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.6`, installed after operator coordination. The current UI candidate is
-`0.1.6` on `feat/assistant-ui-redesign`, based on the project-bound chat work.
+`0.1.7`, installed after operator coordination. The current follow-up is on
+`fix/restored-editor-binding`, based on the released 0.1.6 UI redesign.
 These versions describe different
 components, not a TwinCAT product release.
 
@@ -27,6 +27,21 @@ Computer Use fails with
 See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action
+
+- Candidate 0.1.7 on `fix/restored-editor-binding` binds native editor services
+  when the shell restores its docked Assistant pane. Version 0.1.6 only bound
+  those services through the menu command, so automatic chat startup could leave
+  the pane without a tracker despite a readable active ST POU. Both 0.1.7 host
+  packages build without warnings/errors. Local checks pass: 47 Node tests,
+  8 browser contracts, 28 WPF view checks and 31 compiled-control/runtime checks.
+  The new compiled-pane regression
+  reproduces the omission in installed 0.1.6 and passes in 0.1.7; missing-service
+  binding also clears stale local source. The operator confirms that rerunning
+  the existing Assistant menu command restores the active FB in installed 0.1.6.
+  The x86 0.1.7 fix is then installed with all 13 payload hashes verified and
+  0.1.6 preserved outside extension discovery. Automatic restoration after
+  restarting the installed IDE still needs acceptance. See
+  [active-editor details](ACTIVE_EDITOR.md).
 
 - Candidate 0.1.6 implements the selected mockup A. One native context bar follows
   OpenChamber's palette, with ST preview on the POU name and diagnostics in the

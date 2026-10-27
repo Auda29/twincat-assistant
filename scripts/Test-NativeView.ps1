@@ -66,6 +66,13 @@ try {
     $taskRender = $taskControl.GetType().GetMethod('RenderContext', $taskFlags)
     Assert-View ((Get-ViewField '_source').Text -eq '') 'unbound control starts without source'
     Assert-View ((Get-ViewField '_reader') -eq $null) 'constructing the view does not scan the catalog'
+    $taskRestoredPane = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.AssistantToolWindow'))
+    try {
+        $taskRestoredPane.OnToolWindowCreated()
+        $taskRestoredControl = $taskRestoredPane.Content
+        $taskRestoredButton = $taskRestoredControl.GetType().GetField('_pouButton',$taskFlags).GetValue($taskRestoredControl)
+        Assert-View ($taskRestoredButton.ToolTip.Contains('IDE-Editorbindung')) 'restored pane attempts editor binding without the menu command and reports unavailable services'
+    } finally { $taskRestoredPane.Dispose() }
     Save-View 'empty-light'
 
     $taskIdentity = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorIdentity'),
@@ -109,6 +116,9 @@ try {
     $taskControl.GetType().GetMethod('ApplyTheme', $taskFlags).Invoke($taskControl,[object[]]@($taskTheme))
     Assert-View ((Get-ViewField '_strip').Background.ToString() -eq '#FF1C1C1A') 'invalid theme colors are ignored'
     Save-View 'dirty-dark'
+
+    $taskControl.Bind($null,$null,$null,$null)
+    Assert-View ((Get-ViewField '_source').Text -eq '' -and (Get-ViewField '_pouButton').ToolTip.Contains('IDE-Editorbindung')) 'missing IDE binding clears old source instead of preserving stale context'
 
     $taskRender.Invoke($taskControl,[object[]]@($null,'Unsupported editor'))
     Assert-View ((Get-ViewField '_source').Text -eq '' -and

@@ -316,7 +316,18 @@ namespace TwinCatAssistant.Native
         public void Bind(DTE dte, IVsMonitorSelection selection, IVsRunningDocumentTable rdt, Func<string, bool?> dirty)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_disposed || dte == null) return;
+            if (_disposed) return;
+            if (dte == null)
+            {
+                _tracker?.Dispose();
+                _tracker = null;
+                _reader?.Invalidate();
+                _reader = null;
+                _boundDte = null;
+                _chatSnapshotReader = null;
+                RenderContext(null, "Die IDE-Editorbindung fehlt. TwinCAT Assistant erneut über das Menü öffnen.");
+                return;
+            }
             if (_boundDte == dte && _tracker != null) return;
             _tracker?.Dispose();
             _tracker = null;
