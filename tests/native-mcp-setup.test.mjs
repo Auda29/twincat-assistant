@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, realpath, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -23,7 +23,8 @@ test('native MCP setup preserves host paths and refuses to replace its own host 
     const configured=JSON.parse(await readFile(host,'utf8'));
     const {McpSettingsPath,...unchanged}=configured;
     assert.deepEqual(unchanged,original);
-    assert.deepEqual(JSON.parse(await readFile(McpSettingsPath,'utf8')),{knowledge:{executable},engineering:{entrypoint}});
+    assert.deepEqual(JSON.parse(await readFile(McpSettingsPath,'utf8')),
+      {knowledge:{executable:await realpath(executable)},engineering:{entrypoint:await realpath(entrypoint)}});
     await assert.rejects(capture('powershell.exe',[...args,'-McpSettingsPath',host],options));
     assert.deepEqual(JSON.parse(await readFile(host,'utf8')),configured);
     const unrelated=join(directory,'unrelated.json'); await writeFile(unrelated,'{"other":"retain"}');

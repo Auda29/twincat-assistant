@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, writeFile, readFile, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, realpath, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { prepareNativeProject, readNativeMcpSettings } from '../src/native-mcp.mjs';
@@ -30,7 +30,7 @@ test('native MCP project locations isolate two PLCs and retain provider policy a
       assert.equal(await readFile(project, 'utf8'), '<Project/>');
       assert.deepEqual(await readFile(join(projects.at(-1).workspace, 'engineering.json'), 'utf8').then(JSON.parse), {
         targetAmsNetId: '127.0.0.1.1.1', readOnly: true, writeAllowlist: [],
-        engineering: { enabled: true, backend: 'configuredProjectFiles', projectFiles: [{ path: process.platform==='win32' ? project.toLowerCase() : project, type: 'plc' }] },
+        engineering: { enabled: true, backend: 'configuredProjectFiles', projectFiles: [{ path: process.platform==='win32' ? (await realpath(project)).toLowerCase() : await realpath(project), type: 'plc' }] },
       });
     }
     assert.notEqual(projects[0].workspace, projects[1].workspace);
