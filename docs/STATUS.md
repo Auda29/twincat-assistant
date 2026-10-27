@@ -1,8 +1,9 @@
 # Implementation status
 
-Updated: **2026-10-26**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.6`, installed after operator coordination. The current UI candidate is
-`0.1.6` on `feat/assistant-ui-redesign`, based on the project-bound chat work.
+Updated: **2026-10-27**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
+`0.1.7`, installed after operator coordination. Preview release `0.1.8`
+includes the docked-window binding fix and
+read-only native MCP integration, based on the released 0.1.6 UI redesign.
 These versions describe different
 components, not a TwinCAT product release.
 
@@ -27,6 +28,38 @@ Computer Use fails with
 See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action
+
+- Preview release 0.1.8 connects the existing Knowledge and TwinCAT MCPs to native
+  project chats. Project identity is independent of supported POU attachment;
+  each exact saved PLC project gets a private immutable OpenCode workspace.
+  General chats have Knowledge tools only. The operator has no documentation
+  corpus configured; the UI and corpus-status tool report that state. Real MCP
+  process checks pass with two synthetic PLCs and a synthetic activated corpus,
+  including same-name source isolation, foreign-project refusal and structured
+  documentation sources. Compiled native tests cover project switching,
+  reconnection and project-only context without making a model call. Local
+  checks pass: 51 Node tests, 8 browser contracts, 80 native shared checks,
+  28 WPF view checks and 37 compiled-control/runtime checks without a corpus;
+  both VSIX targets build without warnings/errors. Linux and Windows CI pass for
+  the implementation. Distribution is source-only; the installed x86 payload
+  remains 0.1.7. Actual corpus/installed IDE acceptance remains open. See
+  [setup, boundaries and checks](NATIVE_MCP.md) and
+  [release notes](releases/native-v0.1.8.md).
+
+- Candidate 0.1.7 on `fix/restored-editor-binding` binds native editor services
+  when the shell restores its docked Assistant pane. Version 0.1.6 only bound
+  those services through the menu command, so automatic chat startup could leave
+  the pane without a tracker despite a readable active ST POU. Both 0.1.7 host
+  packages build without warnings/errors. Local checks pass: 47 Node tests,
+  8 browser contracts, 28 WPF view checks and 31 compiled-control/runtime checks.
+  The new compiled-pane regression
+  reproduces the omission in installed 0.1.6 and passes in 0.1.7; missing-service
+  binding also clears stale local source. The operator confirms that rerunning
+  the existing Assistant menu command restores the active FB in installed 0.1.6.
+  The x86 0.1.7 fix is then installed with all 13 payload hashes verified and
+  0.1.6 preserved outside extension discovery. Automatic restoration after
+  restarting the installed IDE still needs acceptance. See
+  [active-editor details](ACTIVE_EDITOR.md).
 
 - Candidate 0.1.6 implements the selected mockup A. One native context bar follows
   OpenChamber's palette, with ST preview on the POU name and diagnostics in the
@@ -110,10 +143,10 @@ See [the integration contract](CHAT_INTEGRATION.md).
   not attached and a fresh profile has no model/provider enabled.
 - Installed x86 0.1.3 first-run password setup and display of the real OpenChamber
   login page are user-confirmed. The subsequent 0.1.5 core chat/provider flow is
-  accepted as recorded above. MCP binding remains open; this is not a complete
+  accepted as recorded above. MCP installed acceptance remains open; this is not a complete
   chat/agent MVP acceptance.
 - Installed 0.1.5 core chat/provider flow is accepted in `ContextChecks`;
-  native-to-MCP transport remains open. Local component tests also cover explicit
+  native-to-MCP transport is implemented in candidate 0.1.8. Local component tests also cover explicit
   composer attachment and session binding.
   Extended lifecycle and
   reliable active/unsaved-editor correlation remain open. No live amd64 host
@@ -134,9 +167,10 @@ For the new connection behavior and first-run setup, see [native chat](NATIVE_CH
   selector do not indicate missing objects. In `0.1.2`, its completeness warning
   has a separate persistent status and manual reads do not replace active context.
   Automatic following does not enumerate or depend on this catalog.
-- Automatic reads are Automation Interface snapshots. The current custom editor
+- Native active-source reads are Automation Interface snapshots. The current custom editor
   did not expose an EnvDTE TextDocument; exact unsaved editor-buffer text is not
-  verified. Methods/actions and non-ST objects are visibly unbound.
+  verified. Methods/actions and non-ST objects have no native source attachment;
+  candidate 0.1.8 can retain their PLC project for saved-file MCP access.
 - COM reads and bounded saved-source correlation currently run on the IDE UI
   thread. Active reads are coalesced at 180 ms with a 1-second fallback poll of
   only the active node. Installed responsiveness/cold-start acceptance is open.

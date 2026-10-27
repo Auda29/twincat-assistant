@@ -3,16 +3,19 @@ import { createServer } from 'node:net';
 import { lstat } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initializeState } from './state.mjs';
+import { initializeState, inspectState } from './state.mjs';
 import { prepareLaunch, runVersion } from './launcher.mjs';
 import { supervise } from './supervisor.mjs';
+import { configureNativeMcp } from './native-mcp.mjs';
 
 export function validateNativeChatRequest(value) {
-  if (!value || Object.keys(value).some(key => !['state', 'port', 'password'].includes(key))
+  if (!value || Object.keys(value).some(key => !['state', 'port', 'password', 'mcpConfig'].includes(key))
       || typeof value.state !== 'string' || value.state.length > 2048 || value.state.includes('\0') || !isAbsolute(value.state)
       || !Number.isInteger(value.port) || value.port < 1024 || value.port > 65535
       || typeof value.password !== 'string' || !value.password.trim() || value.password.length < 12 || value.password.length > 1024
-      || value.password.includes('\0')) throw new Error('Invalid native chat request');
+      || value.password.includes('\0')
+      || (value.mcpConfig !== undefined && (typeof value.mcpConfig !== 'string' || value.mcpConfig.length > 2048
+        || value.mcpConfig.includes('\0') || !isAbsolute(value.mcpConfig)))) throw new Error('Invalid native chat request');
   return value;
 }
 
@@ -63,6 +66,9 @@ export async function startNativeChat(request, signal, report, options = {}) {
     if (error.code !== 'ENOENT') throw error;
     await initializeState(state, {}); // first-run profile has no provider, MCP or source disclosure
   }
+  if (request.mcpConfig) await configureNativeMcp(state, request.mcpConfig);
+  else if ((await inspectState(state)).settings.engineering)
+    throw new Error('Native project access requires project-scoped MCP setup, not a global engineering backend');
   const upstream = fileURLToPath(new URL('../upstream/node_modules/', import.meta.url));
   const plan = await prepareLaunch(state, {
     openchamber: resolve(upstream, '@openchamber/web/bin/cli.js'),

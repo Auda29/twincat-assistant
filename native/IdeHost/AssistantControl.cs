@@ -229,7 +229,7 @@ namespace TwinCatAssistant.Native
             row.Children.Add(_targets);
             row.Children.Add(Secondary(Button("Lokal lesen", Read)));
             var panel = new StackPanel();
-            foreach (UIElement element in new UIElement[] { head, _chatStatus, _modelStatus, row, _inventoryStatus, _diagnosticStatus, _diagnosticSource })
+            foreach (UIElement element in new UIElement[] { head, _chatStatus, _modelStatus, _mcpStatus, row, _inventoryStatus, _diagnosticStatus, _diagnosticSource })
                 panel.Children.Add(element);
             _diagnosticSource.Margin = new Thickness(0, 4, 0, 0);
             _diagnostics.Child = panel;
@@ -316,7 +316,20 @@ namespace TwinCatAssistant.Native
         public void Bind(DTE dte, IVsMonitorSelection selection, IVsRunningDocumentTable rdt, Func<string, bool?> dirty)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_disposed || dte == null) return;
+            if (_disposed) return;
+            if (dte == null)
+            {
+                _tracker?.Dispose();
+                _tracker = null;
+                _reader?.Invalidate();
+                _reader = null;
+                _boundDte = null;
+                _chatSnapshotReader = null;
+                _chatProjectReader = null;
+                RenderProjectContext(null, null);
+                RenderContext(null, "Die IDE-Editorbindung fehlt. TwinCAT Assistant erneut über das Menü öffnen.");
+                return;
+            }
             if (_boundDte == dte && _tracker != null) return;
             _tracker?.Dispose();
             _tracker = null;
@@ -327,20 +340,22 @@ namespace TwinCatAssistant.Native
             _solutionEvents.Opened += Invalidate;
             _solutionEvents.AfterClosing += Invalidate;
             _reader = new NativeProjectReader(dte, Process.GetCurrentProcess().Id, dirty);
-            try { _tracker = new ActiveEditorTracker(dte, selection, rdt, dirty, RenderContext); }
+            try { _tracker = new ActiveEditorTracker(dte, selection, rdt, dirty, RenderContext, RenderProjectContext); }
             catch { RenderContext(null, "Die Editor-Dienste der IDE sind nicht verfügbar. Toolfenster erneut öffnen."); }
             _chatSnapshotReader = () => _tracker?.ReadForChat();
+            _chatProjectReader = () => _tracker?.ReadProjectForChat();
         }
 
         private void RenderContext(ActiveEditorSnapshot snapshot, string reason)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _chatActive = snapshot;
+            if (snapshot?.Identity != null) _chatProject = snapshot.Identity.ProjectIdentity;
             if (_disposed) return;
             var view = ActiveEditorPresentation.From(snapshot, reason);
-            var title = snapshot == null ? "Kein ST-Baustein aktiv" : view.Title;
+            var title = snapshot == null ? (_chatProject == null ? "Kein PLC-Projekt aktiv" : Path.GetFileNameWithoutExtension(_chatProject.ProjectFile)) : view.Title;
             if (_objectName.Text != title) _objectName.Text = title;
-            var scope = snapshot == null ? "" : Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile);
+            var scope = snapshot == null || _chatProject == null ? "" : Path.GetFileNameWithoutExtension(_chatProject.ProjectFile);
             if (_scope.Text != scope) _scope.Text = scope;
             _kindText.Text = snapshot == null ? "" : ActiveEditorPresentation.Kind(snapshot.Declaration);
             _kindBadge.Visibility = snapshot == null ? Visibility.Collapsed : Visibility.Visible;
@@ -356,6 +371,20 @@ namespace TwinCatAssistant.Native
                 : "Klicken für die ST-Vorschau" + Environment.NewLine + "IDE PID " + snapshot.Identity.IdeProcessId
                     + Environment.NewLine + snapshot.Identity.SolutionFile + Environment.NewLine + snapshot.Identity.ProjectFile
                     + Environment.NewLine + snapshot.Identity.TreePath;
+            RenderChatBinding();
+            KickAutomation();
+        }
+
+        private void RenderProjectContext(NativeProjectIdentity project, string reason)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            _chatProject = project;
+            if (_disposed) return;
+            if (_chatActive != null && !_chatActive.Identity.ProjectIdentity.Equals(project))
+            { RenderContext(null, reason); return; }
+            var scope = project == null || _chatActive == null ? "" : Path.GetFileNameWithoutExtension(project.ProjectFile);
+            if (_scope.Text != scope) _scope.Text = scope;
+            if (_chatActive == null) _objectName.Text = project == null ? "Kein PLC-Projekt aktiv" : Path.GetFileNameWithoutExtension(project.ProjectFile);
             RenderChatBinding();
             KickAutomation();
         }
@@ -555,6 +584,7 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed || !ReferenceEquals(sender, _browser.CoreWebView2) || !Allowed(args.Uri)) { args.Cancel = true; return; }
             _chatDocumentGeneration++;
+            _preparedProject = null; _mcpFailureKey = null;
             _chatAdapterReady = false; _chatSelection = null; _chatBinding = null;
             RenderChatBinding();
             _navigationGeneration = _chatConnection.Generation;

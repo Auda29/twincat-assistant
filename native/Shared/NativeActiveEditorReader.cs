@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
 using EnvDTE;
 using TCatSysManagerLib;
 
@@ -14,8 +15,9 @@ namespace TwinCatAssistant.Native
         internal ITcSmTreeItem Item;
     }
 
-    // Independent of discovery/catalog limits. Never enumerates the project or
-    // opens/saves a document; the active document's ProjectItem supplies the node.
+    // Active source reads use the document's exact ProjectItem, independently
+    // of catalog limits, without opening/saving documents. Project-only capture
+    // can fall back to bounded project metadata; it never inventories POU source.
     public sealed class NativeActiveEditorReader
     {
         private readonly DTE _dte;
@@ -55,6 +57,56 @@ namespace TwinCatAssistant.Native
                 Identity = new ActiveEditorIdentity(_pid, solution, project, moniker, item.PathName),
                 Document = document, Item = item
             };
+        }
+
+        public NativeProjectIdentity CaptureProject()
+        {
+#if HOST_X86 || HOST_AMD64
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+#endif
+            var solution = _dte.Solution.FullName;
+            if (string.IsNullOrWhiteSpace(solution)) throw new InvalidOperationException("This IDE has no open solution.");
+            var file = PlcProjectFile(_dte.ActiveDocument?.ProjectItem?.ContainingProject);
+            if (file != null) return new NativeProjectIdentity(_pid, solution, file);
+            var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (SelectedItem item in _dte.SelectedItems)
+            {
+                file = PlcProjectFile(item.ProjectItem?.ContainingProject) ?? PlcProjectFile(item.Project);
+                if (file != null) selected.Add(file);
+            }
+            if (selected.Count == 0)
+            {
+                var budget = 256;
+                foreach (Project project in _dte.Solution.Projects) CollectPlcProjects(project, selected, 0, ref budget);
+            }
+            if (selected.Count != 1) throw new InvalidOperationException("Select one PLC project in this IDE. No unambiguous project is bound.");
+            foreach (var project in selected) return new NativeProjectIdentity(_pid, solution, project);
+            throw new InvalidOperationException("No PLC project is bound.");
+        }
+
+        private static string PlcProjectFile(Project project)
+        {
+#if HOST_X86 || HOST_AMD64
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+#endif
+            var file = project?.FullName;
+            return !string.IsNullOrWhiteSpace(file) && Path.IsPathRooted(file)
+                && file.EndsWith(".plcproj", StringComparison.OrdinalIgnoreCase) ? file : null;
+        }
+        private static void CollectPlcProjects(Project project, HashSet<string> files, int depth, ref int budget)
+        {
+#if HOST_X86 || HOST_AMD64
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+#endif
+            if (--budget < 0 || depth > 8) throw new InvalidOperationException("Select a PLC project; automatic project discovery is incomplete.");
+            var file = PlcProjectFile(project);
+            if (file != null) { files.Add(file); return; } // Never scan POU items.
+            if (project.ProjectItems == null) return;
+            foreach (ProjectItem item in project.ProjectItems)
+            {
+                if (--budget < 0) throw new InvalidOperationException("Select a PLC project; automatic project discovery is incomplete.");
+                if (item.SubProject != null) CollectPlcProjects(item.SubProject, files, depth + 1, ref budget);
+            }
         }
 
         public ActiveEditorSnapshot Read(NativeActiveDocument active)

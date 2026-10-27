@@ -27,6 +27,12 @@ export function allowedProviders(entries) {
 
 const SESSION_ID = /^[a-zA-Z0-9_:-]{1,160}$/;
 
+export function mcpStates(entries) {
+  return (Array.isArray(entries) ? entries : []).filter(entry => ['knowledge', 'engineering'].includes(entry?.name))
+    .map(entry => ({ name: entry.name, status: ['connected', 'pending', 'disabled', 'failed', 'needs_auth'].includes(entry.status?.status)
+      ? entry.status.status : 'failed' }));
+}
+
 // Native context bar colors follow the live OpenChamber theme. Values are
 // normalized to #rrggbb through a canvas so any CSS color syntax works.
 const THEME_VARIABLES = Object.freeze({ background: '--background', foreground: '--foreground', muted: '--muted-foreground',
@@ -52,7 +58,7 @@ export function readTheme(scope) {
   } catch { return null; }
 }
 
-export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, providers = () => [], allowed = () => [], theme = () => null, permissionChanged = () => {}, authenticated = () => true, documentId = crypto.randomUUID() }) {
+export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], theme = () => null, permissionChanged = () => {}, authenticated = () => true, documentId = crypto.randomUUID() }) {
   for (const store of [ui, sessions, input]) {
     if (typeof store?.getState !== 'function' || typeof store?.subscribe !== 'function') throw new Error('Incompatible chat store');
   }
@@ -85,7 +91,7 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
     const value = sessions.getState();
     const model = config?.getState();
     return { version: 1, ready: true, authenticated: authenticated(), documentId, sessionId: value.currentSessionId ?? null,
-      directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(),
+      directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(), mcp: mcp(),
       model: model?.currentProviderId && model?.currentModelId ? model.currentProviderId + '/' + model.currentModelId : null,
       attachedObject: attachment?.title ?? null, attachedRevision: attachment?.revision ?? null, theme: theme() };
   };
@@ -164,6 +170,7 @@ export async function installEmbeddedChat(scope = window) {
   let signedIn = false;
   let connectedProviders = [];
   let enabledProviders = [];
+  let connectedMcp = [];
   let refreshingAuthentication = false;
   const refreshAuthentication = async () => {
     if (refreshingAuthentication) return;
@@ -171,9 +178,9 @@ export async function installEmbeddedChat(scope = window) {
     try {
       try { signedIn = (await scope.fetch('/auth/session', { redirect: 'error', signal: AbortSignal.timeout(1500) })).ok; }
       catch { signedIn = false; }
-      if (!signedIn) { connectedProviders = []; enabledProviders = []; return; }
+      if (!signedIn) { connectedProviders = []; enabledProviders = []; connectedMcp = []; return; }
       const directory = chat.z.getState().currentSessionDirectory ?? chat.l.getState().activeDirectoryKey;
-      if (typeof directory !== 'string' || !/^(?:[a-z]:[\\/]|\/)/i.test(directory)) { connectedProviders = []; enabledProviders = []; return; }
+      if (typeof directory !== 'string' || !/^(?:[a-z]:[\\/]|\/)/i.test(directory)) { connectedProviders = []; enabledProviders = []; connectedMcp = []; return; }
       const headers = { 'x-opencode-directory': encodeURIComponent(directory), 'x-opencode-directory-encoding': 'uri' };
       const read = async path => {
         const response = await scope.fetch(path, { headers, redirect: 'error', signal: AbortSignal.timeout(3000) });
@@ -186,7 +193,8 @@ export async function installEmbeddedChat(scope = window) {
       const [integrations, search, effective] = await Promise.all([read('/api/integration'), read('/api/websearch/provider'), read('/api/config')]);
       connectedProviders = consentProviders(integrations, search, chat.l.getState().providers ?? []);
       enabledProviders = allowedProviders(effective);
-    } catch { connectedProviders = []; enabledProviders = []; }
+      try { connectedMcp = mcpStates(await read('/api/mcp')); } catch { connectedMcp = []; }
+    } catch { connectedProviders = []; enabledProviders = []; connectedMcp = []; }
     finally { refreshingAuthentication = false; }
   };
   await refreshAuthentication();
@@ -218,7 +226,7 @@ export async function installEmbeddedChat(scope = window) {
     for (const form of scope.document.querySelectorAll('form:has([data-testid="chat-input"])')) form.inert = !composerAllowed;
   };
   const adapter = createChatAdapter({ ui: base.u, sessions: chat.z, input: chat.du, config: chat.l, reloadPolicy,
-    providers: () => connectedProviders, allowed: () => enabledProviders, theme: () => readTheme(scope),
+    providers: () => connectedProviders, allowed: () => enabledProviders, mcp: () => connectedMcp, theme: () => readTheme(scope),
     permissionChanged: allowed => { composerAllowed = allowed; markComposer(); }, authenticated: () => signedIn });
   Object.defineProperty(scope, '__twinCatChat', { value: adapter, configurable: false, writable: false });
   scope.document.documentElement.dataset.twincatEmbedded = 'true';

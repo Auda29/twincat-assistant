@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Last reconciled: **2026-10-26**. [Status](STATUS.md) is the current implementation
+Last reconciled: **2026-10-27**. [Status](STATUS.md) is the current implementation
 snapshot; this document defines the order of work and milestone exit gates.
 [MVP](MVP.md) describes the eventual product, not the permissions of the current
 prototype. No delivery dates or effort estimates are committed.
@@ -14,6 +14,7 @@ prototype. No delivery dates or effort estimates are committed.
 | x86 shell smoke test | Passed, user-reported | Menu, opening, docking, closing/reopening; local ST display observed |
 | Active-editor-first UX | Implemented in 0.1.2; core x86 flow verified | User/screenshot evidence for same-name PLC_A/PLC_B following and unsaved status; 7 live reader lifecycle/isolation checks; extended host acceptance remains open |
 | Native chat and model context | Installed 0.1.5; scoped x86 chat goal accepted | User-confirmed project refusal/return, explicit POU reference, provider consent/model selection and correct real response; MCP and extended acceptance remain open |
+| Native project MCPs | Preview 0.1.8; not installed | Both real MCPs pass synthetic project/corpus component checks; saved-project context works independently of a supported POU. Actual corpus and installed acceptance remain open |
 | amd64 shell acceptance | Blocked | No installed TcXaeShell64 is available for live validation |
 | Live source writes / compiler | Outside the current milestone | Future M3/M4 work; no authorization to implement or invoke these now; runtime control remains excluded |
 
@@ -147,14 +148,21 @@ The completed scoped x86 chat-integration goal delivers installed 0.1.5: a compa
 persistent exact IDE/project/session binding, explicit POU composer snapshots,
 provider consent and bounded reconnect. The operator confirms the actual model
 reply to an explicitly attached synthetic POU. See [implementation and evidence](CHAT_INTEGRATION.md).
-The native-to-MCP backend, real corpus and complete M2 acceptance remain separate;
-the composer attachment does not pretend to implement those adapters.
+Preview 0.1.8 adds both native-to-MCP connections with the existing saved-file
+engineering backend and per-project workspaces. Actual tool calls and structured
+Knowledge sources pass synthetic-corpus/project checks; no model call is made.
+No operator corpus is configured yet. The live/unsaved backend, real corpus and
+complete M2 installed acceptance remain separate. See [native MCP integration](NATIVE_MCP.md).
 
 - [ ] Start the local agent infrastructure or connect to a compatible running
   instance; avoid unintended duplicate starts.
 - [ ] Persistently associate the thread with the specific project/IDE binding.
-- [ ] Connect both MCPs and test tool catalogs and actual calls.
-- [ ] Check the knowledge MCP's protocol profile and `structuredContent`.
+- [x] Connect both MCPs and test tool catalogs and actual calls with synthetic
+  projects/corpus in the protected native runtime (0.1.8 preview).
+- [x] Check the knowledge MCP's protocol profile and `structuredContent` with
+  the pinned server and a synthetic activated corpus.
+- [ ] Configure an actual documentation corpus and accept installed project/MCP
+  behavior with the operator; component checks do not close this gate.
 - [ ] Connect accepted native context to the monorepo MCP/session boundary;
   show what context is attached and distinguish saved/live/unsaved evidence.
 - [ ] Make startup/reconnection a normal host lifecycle, not a user-managed port

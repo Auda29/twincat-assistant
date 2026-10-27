@@ -35,7 +35,7 @@ namespace TwinCatAssistant.Native
         }
         // Sessions previously bound to exactly this solution/PLC project on this
         // chat origin. Invalid or foreign files are skipped, never repaired.
-        public System.Collections.Generic.HashSet<string> SessionsForProject(string origin, ActiveEditorIdentity identity)
+        public System.Collections.Generic.HashSet<string> SessionsForProject(string origin, NativeProjectIdentity identity)
         {
             var result = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
             if (identity == null || !Directory.Exists(_directory)) return result;
@@ -48,7 +48,7 @@ namespace TwinCatAssistant.Native
                     var binding = serializer.Deserialize<ChatContextBinding>(Encoding.UTF8.GetString(NativeChatFiles.Read(file)));
                     if (binding != null && binding.Origin == origin && ChatSelection.ValidSession(binding.SessionId)
                         && string.Equals(Path.GetFileName(file), Path.GetFileName(FileName(origin, binding.SessionId)), StringComparison.OrdinalIgnoreCase)
-                        && binding.SameProject(identity)) result.Add(binding.SessionId);
+                        && binding.SameProjectContext(identity)) result.Add(binding.SessionId);
                 }
                 catch { /* Skip unreadable bindings; Read() still rejects them for prompts. */ }
             }

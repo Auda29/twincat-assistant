@@ -5,6 +5,40 @@ operator coordination. This is implementation evidence, not an accepted native M
 
 ## User-visible behavior
 
+### Restored tool-window follow-up, candidate 0.1.7
+
+When the IDE restores a previously docked Assistant window, the chat can start
+while the header still says **Kein ST-Baustein aktiv**, even with a supported
+top-level ST function block open. The 0.1.6 editor tracker was bound only by the
+Assistant menu command; restoring the pane does not execute that command.
+
+Candidate 0.1.7 binds the same editor services from
+`AssistantToolWindow.OnToolWindowCreated` as well. The menu command retains its
+idempotent binding/retry path. An unavailable IDE binding now clears old source
+and supplies an explicit local diagnostic instead of silently retaining context.
+The RDT dirty-state policy and exact document/project/frame checks are unchanged.
+
+A compiled-pane regression fails against installed 0.1.6 and passes against the
+0.1.7 build. It invokes the actual restoration callback without a menu command
+and verifies the missing-service diagnostic in a standalone fixture. A second
+check verifies that losing the IDE binding clears a previously staged local
+snapshot. These are component checks, not live IDE restoration acceptance.
+
+The real direct-reader and frame probes can resolve the reported top-level FB
+with matching document identities. DUTs, methods/actions and full project access
+through MCP remain separate work. Reopening a restored window does not authorize
+source submission or make those unsupported capabilities available.
+
+The operator confirms that rerunning the existing Assistant menu command makes
+the active FB appear in installed 0.1.6. After the operator closes the IDE, the
+x86 0.1.7 package is installed with all 13 payload hashes verified and 0.1.6
+preserved outside extension discovery. Both host targets build without warnings
+or errors; 47 Node tests, 8 browser contracts, 28 WPF view checks and 31 compiled
+control/runtime checks pass. The installed 0.1.7 pane has not yet been checked
+after automatic restoration on a fresh IDE startup.
+
+### Earlier active-editor implementation
+
 The native window follows an active ST PROGRAM, FUNCTION_BLOCK or FUNCTION
 automatically. A compact header identifies the POU, PLC project and solution,
 with dirty state, source provenance and a persistent local-only disclosure status.

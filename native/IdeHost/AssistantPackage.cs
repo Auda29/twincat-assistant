@@ -42,7 +42,7 @@ namespace TwinCatAssistant.Native
             }, new CommandID(new Guid("bd34d6a6-75aa-4df3-9b1a-f3b341fc4544"), 0x0100)));
         }
 
-        private static bool? GetDirty(IVsRunningDocumentTable table, string path)
+        internal static bool? GetDirty(IVsRunningDocumentTable table, string path)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (table == null) return null;
@@ -73,6 +73,22 @@ namespace TwinCatAssistant.Native
         {
             Caption = "TwinCAT Assistant — read-only";
             Content = new AssistantControl();
+        }
+        public override void OnToolWindowCreated()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            base.OnToolWindowCreated();
+            var control = (AssistantControl)Content;
+            try
+            {
+                // Shell layout restoration creates the pane without executing
+                // the menu command. Bind once the pane has its IDE service site.
+                var dte = GetService(typeof(SDTE)) as DTE;
+                var rdt = GetService(typeof(SVsRunningDocumentTable)) as IVsRunningDocumentTable;
+                var selection = GetService(typeof(SVsShellMonitorSelection)) as IVsMonitorSelection;
+                control.Bind(dte, selection, rdt, path => AssistantPackage.GetDirty(rdt, path));
+            }
+            catch { control.Bind(null, null, null, null); }
         }
         protected override void Dispose(bool disposing)
         {

@@ -15,6 +15,11 @@ internal static class ChatBindingTests
         Check(!binding.Matches(otherIde, "instance-one", binding.Origin, "ses_one"), "another IDE cannot reuse chat binding");
         Check(!binding.Matches(first, "reopened-instance", binding.Origin, "ses_one"), "PID reuse or a new host lifetime requires explicit rebinding");
         Check(!binding.Matches(first, "instance-one", binding.Origin, "ses_two"), "another session cannot reuse binding");
+        var projectOnly = ChatContextBinding.CreateProject(first.ProjectIdentity, "instance-one", binding.Origin, "ses_project");
+        Check(projectOnly.MatchesProject(first.ProjectIdentity, "instance-one", binding.Origin, "ses_project"), "project binding works without any POU identity");
+        Check(!projectOnly.MatchesProject(second.ProjectIdentity, "instance-one", binding.Origin, "ses_project"), "project-only binding rejects a different PLC");
+        Check(!projectOnly.MatchesProject(otherIde.ProjectIdentity, "instance-one", binding.Origin, "ses_project"), "project-only binding rejects another IDE");
+        Check(!projectOnly.MatchesProject(null, "instance-one", binding.Origin, "ses_project"), "lost project context cannot authorize a project chat");
         var general = ChatContextBinding.CreateGeneral("instance-one", 10, binding.Origin, "ses_general");
         Check(general.MatchesGeneral("instance-one", 10, binding.Origin, "ses_general"), "general chat remains usable without a POU identity");
         Check(!general.Matches(first, "instance-one", binding.Origin, "ses_general"), "general chat cannot authorize native POU source attachment");

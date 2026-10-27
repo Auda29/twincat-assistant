@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { allowedProviders, createChatAdapter, consentProviders } from '../src/embedded-chat.mjs';
+import { allowedProviders, createChatAdapter, consentProviders, mcpStates } from '../src/embedded-chat.mjs';
+
+test('native MCP status discloses only reviewed server names and connection states', () => {
+  assert.deepEqual(mcpStates([{ name:'knowledge', status:{status:'connected'} },
+    { name:'engineering', status:{status:'failed',error:'private connection detail'} },
+    { name:'unreviewed', status:{status:'connected'} }]),
+  [{name:'knowledge',status:'connected'},{name:'engineering',status:'failed'}]);
+  assert.deepEqual(mcpStates(null),[]);
+});
 
 function store(initial) {
   let value = initial;
