@@ -35,8 +35,9 @@ export function knowledgeResultForModel(result) {
   const text = JSON.stringify(result.structuredContent);
   if (Buffer.byteLength(text) > 1048576) throw new Error('Knowledge result exceeds the adapter limit');
   const content = result.content ?? [];
-  return { ...result, content: content.some(item => item.type === 'text' && item.text === text)
-    ? content : [...content, { type: 'text', text }] };
+  // A consumer that takes only the first text block must still get the full
+  // result. The upstream text blocks contain only the redundant count summary.
+  return { ...result, content: [{ type:'text', text }, ...content.filter(item => item.type !== 'text')] };
 }
 
 async function boundedFile(path, missing = false) {

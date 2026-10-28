@@ -14,6 +14,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 test('structured Knowledge results expose complete IDs, article bodies and sources as model text', () => {
   const input = { content: [{ type: 'text', text: 'count=3' }], structuredContent: { status: 'ok', data: { items: [{ topic_id: 'exact-id', body: 'article text', source_uri: 'source' }] } }, isError: false, resultType: 'complete' };
   const result = knowledgeResultForModel(input);
+  assert.deepEqual(JSON.parse(result.content[0].text),input.structuredContent,'even a first-text-only consumer receives IDs, bodies and citations');
   assert.deepEqual(JSON.parse(result.content.at(-1).text), input.structuredContent);
   assert.deepEqual(result.structuredContent, input.structuredContent);
   assert.deepEqual(knowledgeResultForModel(result), result, 'do not duplicate an existing text payload');
