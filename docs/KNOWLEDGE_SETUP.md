@@ -84,6 +84,9 @@ Local real-data verification on 2026-10-28 imports and activates the installed
 German `.47.mshc` archive: **49,970 articles**, followed by a successful MCP
 status call and a protected native runtime connection. No model request, PLC
 source change, compiler or machine validation occurs in these checks.
+The x86 0.1.9 candidate is installed with all 13 payload hashes verified and
+0.1.8 preserved outside extension discovery. The operator's managed corpus
+selection is ready and existing provider/model settings are preserved.
 
 On Windows, a current-user native mutex serializes setup across IDE windows and
 is released on owner death. A recognised leftover setup marker is reclaimed

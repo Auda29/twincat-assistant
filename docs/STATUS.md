@@ -1,7 +1,8 @@
 # Implementation status
 
 Updated: **2026-10-28**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.8`, installed after operator coordination. Preview release `0.1.8`
+`0.1.9`, installed after operator coordination. The last source prerelease is
+`0.1.8`, which
 includes the docked-window binding fix and
 read-only native MCP integration, based on the released 0.1.6 UI redesign.
 These versions describe different
@@ -37,6 +38,12 @@ See [the integration contract](CHAT_INTEGRATION.md).
   the actual MCP status and protected native runtime connection pass. Fixtures
   use synthetic archives and no model request. Exact implementation and
   verification boundaries are in [documentation setup](KNOWLEDGE_SETUP.md).
+  The x86 0.1.9 candidate is installed with all 13 payload hashes and the 0.1.8
+  rollback copy verified. The operator profile now selects the managed German
+  documentation with provider/model policy preserved. Installed IDE restart
+  acceptance remains open. Local checks pass: 56 Node, 8 browser, 33 WPF view
+  and 43 compiled-control/runtime checks; both VSIX targets and the Windows
+  ownership helper build without warnings/errors.
 
 - Preview release 0.1.8 connects the existing Knowledge and TwinCAT MCPs to native
   project chats. Project identity is independent of supported POU attachment;
