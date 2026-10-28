@@ -24,13 +24,14 @@ try {
     } else if (command === 'start') {
       if (values.settings) throw new Error('start reads saved settings');
       const upstream = fileURLToPath(new URL('../upstream/node_modules/', import.meta.url));
+      const openchamber = await realpath(values.openchamber ?? `${upstream}@openchamber/web/bin/cli.js`);
       const plan = await prepareLaunch(values.state, {
-        openchamber: await realpath(values.openchamber ?? `${upstream}@openchamber/web/bin/cli.js`),
+        openchamber,
         opencode: await realpath(values.opencode ?? `${upstream}@opencode/cli/bin/opencode.exe`),
         port: Number(values.port ?? 3123),
       });
       await runVersion(plan.env.OPENCODE_BINARY, ['--version'], plan.env, plan.cwd, '2.0.23');
-      await runVersion(process.execPath, [plan.args[0], '--version'], plan.env, plan.cwd, '2.1.1');
+      await runVersion(process.execPath, [openchamber, '--version'], plan.env, plan.cwd, '2.1.1');
       const controller = new AbortController();
       const stop = () => controller.abort();
       process.on('SIGINT', stop); process.on('SIGTERM', stop);

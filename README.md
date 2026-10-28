@@ -41,6 +41,17 @@ engineering server. No documentation corpus is configured yet. See
 [release notes](docs/releases/native-v0.1.8.md). The x86 0.1.8 payload is installed
 with all 13 hashes verified and 0.1.7 backed up outside extension discovery.
 Both MCP paths are configured; installed startup acceptance remains open.
+Native 0.1.9 ([preview release notes](docs/releases/native-v0.1.9.md)) adds automatic discovery and native setup of installed Beckhoff
+InfoSys help, background import with cancellation and automatic Knowledge
+reconnection. See [documentation setup](docs/KNOWLEDGE_SETUP.md). The local
+German help has been prepared and verified with 49,970 articles.
+The x86 0.1.9 prototype is installed locally with all 13 payload hashes verified
+and 0.1.8 preserved for rollback. The operator confirmed Knowledge readiness.
+The follow-up Node adapter shares one loaded Knowledge backend across native
+chat contexts and passes full search/article results to the model. One IDE
+restart selects this adapter; the installed VSIX payload is unchanged.
+The operator reports a successful combined Engineering/Knowledge model test,
+including opening and citing a documentation topic using its returned ID.
 Earlier x86 `0.1.5` corrected provider setup: explicitly allow an authenticated
 provider under Details first, then choose a model in the existing chat picker.
 This avoids a default-deny catalog hiding a successfully signed-in provider.

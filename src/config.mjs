@@ -1,4 +1,5 @@
 import { isAbsolute } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Config } from '@opencode/schema';
 import { Schema } from 'effect';
 
@@ -16,9 +17,12 @@ function absolute(value) {
 export function validateSettings(settings) {
   object(settings, ['knowledge', 'engineering', 'provider', 'model', 'sourceCodeDisclosureAccepted']);
   if (settings.knowledge !== undefined) {
-    object(settings.knowledge, ['executable', 'config']);
+    object(settings.knowledge, ['executable', 'config', 'startupTimeout', 'bridge']);
     absolute(settings.knowledge.executable);
     if (settings.knowledge.config !== undefined) absolute(settings.knowledge.config);
+    if (settings.knowledge.bridge !== undefined) absolute(settings.knowledge.bridge);
+    if (settings.knowledge.startupTimeout !== undefined && (!Number.isInteger(settings.knowledge.startupTimeout)
+      || settings.knowledge.startupTimeout < 15000 || settings.knowledge.startupTimeout > 600000)) throw new Error('Invalid knowledge startup timeout');
   }
   if (settings.engineering !== undefined) {
     object(settings.engineering, ['entrypoint', 'config']);
@@ -57,9 +61,11 @@ export function createOpenCodeConfig(settings = {}) {
   if (settings.knowledge) {
     servers.knowledge = {
       type: 'local', protocol: '2026-07-28', codemode: false,
-      command: [settings.knowledge.executable, 'serve', '--transport', 'stdio',
-        ...(settings.knowledge.config ? ['--config', settings.knowledge.config] : [])],
-      timeout: { startup: 15000, catalog: 15000, execution: 30000 },
+      command: settings.knowledge.bridge
+        ? [process.execPath, fileURLToPath(new URL('./knowledge-client.mjs', import.meta.url)), settings.knowledge.bridge]
+        : [settings.knowledge.executable, 'serve', '--transport', 'stdio',
+          ...(settings.knowledge.config ? ['--config', settings.knowledge.config] : [])],
+      timeout: { startup: settings.knowledge.startupTimeout ?? 15000, catalog: 15000, execution: 30000 },
     };
   }
   if (settings.engineering) {

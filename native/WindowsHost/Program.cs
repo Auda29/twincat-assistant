@@ -63,6 +63,24 @@ internal static class Program
                 }));
                 return 0;
             }
+            if (args is ["hold-knowledge-lock", var knowledgeRoot])
+            {
+                if (!Path.IsPathFullyQualified(knowledgeRoot) || !Directory.Exists(knowledgeRoot)) throw new IOException();
+                var sid = WindowsIdentity.GetCurrent().User?.Value ?? throw new IOException();
+                var key = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(knowledgeRoot).ToUpperInvariant())));
+                using var mutex = new Mutex(false, "Local\\TwinCatAssistant.Knowledge." + sid + "." + key);
+                bool held;
+                try { held = mutex.WaitOne(0); } catch (AbandonedMutexException) { held = true; }
+                if (!held) return 3;
+                try
+                {
+                    Console.WriteLine("{\"held\":true}"); Console.Out.Flush();
+                    // One owning thread; stdin EOF releases ownership on Node/host death.
+                    Console.In.ReadLine();
+                    return 0;
+                }
+                finally { mutex.ReleaseMutex(); }
+            }
             if (args is ["supervise"]) return await JobSupervisor.RunAsync();
             return 2;
         }

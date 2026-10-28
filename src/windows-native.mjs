@@ -2,6 +2,7 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute } from 'node:path';
+import { realpath } from 'node:fs/promises';
 
 const capture = promisify(execFile);
 function helperEnvironment() {
@@ -28,11 +29,39 @@ export async function secureWindowsDirectory(path) {
   catch { throw new Error('Unable to restrict Windows state directory access'); }
 }
 
-export async function superviseWindows(plan, signal, onStarted) {
+export async function acquireKnowledgeLease(root) {
+  root=await realpath(root);
+  const helper=spawn(windowsHelperPath(),['hold-knowledge-lock',root],{
+    shell:false,windowsHide:true,stdio:['pipe','pipe','ignore'],env:helperEnvironment(),
+  });
+  const lost=new AbortController();let releasing=false;
+  helper.stdin.on('error',()=>{if(!releasing)lost.abort();});
+  const closed=new Promise(resolve=>helper.once('close',()=>{if(!releasing)lost.abort();resolve();}));
+  try {
+    await new Promise((resolve,reject)=>{
+      let output='';const timer=setTimeout(()=>reject(new Error('Knowledge lease timed out')),10000);
+      const finish=action=>{clearTimeout(timer);action();};
+      helper.once('error',()=>finish(()=>reject(new Error('Knowledge lease unavailable'))));
+      helper.once('close',()=>finish(()=>reject(new Error('Another documentation setup is running'))));
+      helper.stdout.on('data',bytes=>{
+        output+=bytes.toString('utf8');
+        if(output.length>1024)return finish(()=>reject(new Error('Invalid knowledge lease')));
+        if(output.includes('\n')) {
+          try{if(JSON.parse(output.split('\n')[0]).held!==true)throw new Error();finish(resolve);}
+          catch{finish(()=>reject(new Error('Invalid knowledge lease')));}
+        }
+      });
+    });
+    return {signal:lost.signal,async release(){releasing=true;helper.stdin.end();const timer=setTimeout(()=>helper.kill(),3000);try{await closed;}finally{clearTimeout(timer);}}};
+  } catch(error){releasing=true;helper.stdin.destroy();helper.kill();await closed;throw error;}
+}
+
+export async function superviseWindows(plan, signal, onStarted = () => {}, onOutput = null) {
   if (signal?.aborted) return { cancelled: true };
   const helper = spawn(windowsHelperPath(), ['supervise'], {
-    shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'inherit'], env: helperEnvironment(),
+    shell: false, windowsHide: true, stdio: ['pipe', 'pipe', onOutput ? 'pipe' : 'inherit'], env: helperEnvironment(),
   });
+  if (onOutput) helper.stderr.on('data', onOutput);
   let stopped = false;
   let killTimer;
   let ready = false;

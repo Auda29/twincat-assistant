@@ -95,9 +95,11 @@ namespace TwinCatAssistant.Native
             var dock = new DockPanel();
             BuildStrip();
             BuildBanner();
+            BuildKnowledge();
             BuildDiagnostics();
             _toolbar.Children.Add(_strip);
             _toolbar.Children.Add(_banner);
+            _toolbar.Children.Add(_knowledgePanel);
             _toolbar.Children.Add(_diagnostics);
             DockPanel.SetDock(_toolbar, Dock.Top);
             dock.Children.Add(_toolbar);
@@ -229,7 +231,7 @@ namespace TwinCatAssistant.Native
             row.Children.Add(_targets);
             row.Children.Add(Secondary(Button("Lokal lesen", Read)));
             var panel = new StackPanel();
-            foreach (UIElement element in new UIElement[] { head, _chatStatus, _modelStatus, _mcpStatus, row, _inventoryStatus, _diagnosticStatus, _diagnosticSource })
+            foreach (UIElement element in new UIElement[] { head, _chatStatus, _modelStatus, _mcpStatus, _knowledgeSummary, row, _inventoryStatus, _diagnosticStatus, _diagnosticSource })
                 panel.Children.Add(element);
             _diagnosticSource.Margin = new Thickness(0, 4, 0, 0);
             _diagnostics.Child = panel;
@@ -686,6 +688,7 @@ namespace TwinCatAssistant.Native
             _chatHealth.Stop();
             _chatHealth.Tick -= CheckChatHealth;
             DisposeChatIntegration();
+            _knowledgeCancellation?.Cancel();
             _chatSession?.Dispose();
             _chatSession = null;
             _tracker?.Dispose();

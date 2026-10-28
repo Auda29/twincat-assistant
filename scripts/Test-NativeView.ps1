@@ -39,6 +39,7 @@ function Assert-View([bool]$Result, [string]$Name) {
     Write-Output "PASS $Name"
 }
 function Get-ViewField([string]$Name) { $taskControl.GetType().GetField($Name, $taskFlags).GetValue($taskControl) }
+function Set-ViewField([string]$Name,$Value) { $taskControl.GetType().GetField($Name,$taskFlags).SetValue($taskControl,$Value) }
 function Save-View([string]$State) {
     foreach ($taskWidth in @(340,520,900)) {
         $taskControl.Width = $taskWidth
@@ -98,6 +99,30 @@ try {
     Assert-View ((Get-ViewField '_diagnostics').Visibility -eq [Windows.Visibility]::Collapsed) 'diagnostics stay hidden by default'
     Assert-View (-not (Get-ViewField '_attachPouButton').IsEnabled) 'attach stays disabled before the chat is ready'
     Save-View 'active-light'
+    $taskSavedControl=$taskControl
+    $taskControl=[Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.AssistantControl'))
+    try {
+        $taskKnowledgeState=[Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.KnowledgeState'))
+        $taskKnowledgeState.phase='available';Set-ViewField '_knowledgeState' $taskKnowledgeState
+        (Get-ViewField '_knowledgePanel').Visibility=[Windows.Visibility]::Visible
+        $taskKnowledgeSource=[Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.KnowledgeSource'))
+        $taskKnowledgeSource.path='C:\Synthetic\BKINFOSYS3_TEST_DE-DE.47.mshc';$taskKnowledgeSource.language='de';$taskKnowledgeSource.catalog='VisualStudio15';$taskKnowledgeSource.name='BKINFOSYS3_TEST_DE-DE.47.mshc'
+        (Get-ViewField '_knowledgeSources').ItemsSource=[object[]]@($taskKnowledgeSource)
+        $taskKnowledgeRender=$taskControl.GetType().GetMethod('RenderKnowledge',$taskFlags)
+        $taskKnowledgeRender.Invoke($taskControl,@())
+        Assert-View (-not (Get-ViewField '_knowledgeStart').IsEnabled) 'knowledge setup requires a selected source'
+        (Get-ViewField '_knowledgeSources').SelectedIndex=0
+        Assert-View (Get-ViewField '_knowledgeStart').IsEnabled 'knowledge setup exposes its primary action for a selected source'
+        Save-View 'knowledge-available-light'
+        Set-ViewField '_knowledgeBusy' $true;$taskKnowledgeState.phase='indexing';$taskKnowledgeRender.Invoke($taskControl,@())
+        Assert-View ((Get-ViewField '_knowledgeProgress').Visibility -eq [Windows.Visibility]::Visible -and (Get-ViewField '_knowledgeCancel').IsEnabled) 'background import has progress and cancellation'
+        Save-View 'knowledge-indexing-light'
+        $taskKnowledgeState.phase='activating';$taskKnowledgeRender.Invoke($taskControl,@())
+        Assert-View (-not (Get-ViewField '_knowledgeCancel').IsEnabled) 'atomic knowledge finalization cannot be interrupted by a late cancel'
+        Set-ViewField '_knowledgeBusy' $false;$taskKnowledgeState.phase='ready';$taskKnowledgeState.ready=$true;$taskKnowledgeState.language='de';$taskKnowledgeState.topics=49970;$taskKnowledgeRender.Invoke($taskControl,@())
+        Assert-View ((Get-ViewField '_knowledgeText').Text.Contains('Dokumentation vorbereitet') -and -not (Get-ViewField '_knowledgeText').Text.Contains('Wissenssuche bereit')) 'a prepared index does not claim an established MCP connection'
+        Save-View 'knowledge-prepared-light'
+    } finally { $taskControl.Dispose();$taskControl=$taskSavedControl }
 
     (Get-ViewField '_diagnosticSource').Text = 'unrelated manual diagnostic source'
     (Get-ViewField '_chatStatus').Text = 'Chat is not connected.'

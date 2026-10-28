@@ -1,0 +1,10 @@
+import { writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { Client } from '@modelcontextprotocol/client';
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+const client = new Client({name:'owned-runtime-fixture',version:'1.0.0'}, {capabilities:{},versionNegotiation:{mode:{pin:'2026-07-28'}}});
+await client.connect(new StdioClientTransport({command:process.execPath,args:[fileURLToPath(new URL('../../src/knowledge-client.mjs',import.meta.url)),process.argv[2]],stderr:'ignore'}));
+await client.listTools();
+const result = await client.callTool({name:'tc_search',arguments:{query:'owned fixture'}});
+await writeFile(process.argv[3],JSON.stringify({backendPid:result.structuredContent.backend_pid,clientPid:process.pid}));
+setInterval(()=>{},1000);

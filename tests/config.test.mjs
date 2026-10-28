@@ -18,6 +18,9 @@ test('server configuration keeps knowledge modern and engineering legacy without
   assert.equal(config.mcp.servers.engineering.protocol, 'legacy');
   assert.equal(config.mcp.servers.knowledge.codemode, false);
   assert.equal(config.mcp.servers.engineering.codemode, false);
+  assert.equal(config.mcp.servers.knowledge.timeout.startup,15000,'existing profiles retain their reviewed policy');
+  assert.equal(createOpenCodeConfig({knowledge:{executable:path('knowledge'),startupTimeout:600000}}).mcp.servers.knowledge.timeout.startup,600000);
+  assert.throws(()=>createOpenCodeConfig({knowledge:{executable:path('knowledge'),startupTimeout:600001}}));
   assert.doesNotThrow(() => Schema.decodeUnknownSync(Config.Info)(config));
 });
 

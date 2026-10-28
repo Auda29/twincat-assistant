@@ -75,7 +75,7 @@ export async function startNativeChat(request, signal, report, options = {}) {
     opencode: resolve(upstream, '@opencode/cli/bin/opencode.exe'), port,
   }, { ...process.env, OPENCHAMBER_UI_PASSWORD: request.password });
   await runVersion(plan.env.OPENCODE_BINARY, ['--version'], plan.env, plan.cwd, '2.0.23');
-  await runVersion(process.execPath, [plan.args[0], '--version'], plan.env, plan.cwd, '2.1.1');
+  await runVersion(process.execPath, [resolve(upstream, '@openchamber/web/bin/cli.js'), '--version'], plan.env, plan.cwd, '2.1.1');
   const owner = new AbortController();
   const stop = () => owner.abort();
   signal.addEventListener('abort', stop, { once: true });

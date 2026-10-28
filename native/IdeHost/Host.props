@@ -18,6 +18,7 @@
   <ItemGroup>
     <Compile Include="../../Shared/NativeProjectIdentity.cs" Link="Shared/NativeProjectIdentity.cs" />
     <Compile Include="../NativeMcpProject.cs" Link="Shared/NativeMcpProject.cs" />
+    <Compile Include="../NativeKnowledge.cs;../KnowledgeIntegration.cs" Link="Shared/%(Filename)%(Extension)" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
     <PackageReference Include="Microsoft.VisualStudio.Shell.15.0" Version="$(ShellPackageVersion)" ExcludeAssets="runtime" />
     <PackageReference Include="EnvDTE" Version="$(DtePackageVersion)" ExcludeAssets="runtime" />

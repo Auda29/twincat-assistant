@@ -11,6 +11,9 @@ import { once } from 'node:events';
 import { initializeState, runtimeEnvironment } from '../../src/state.mjs';
 import { prepareNativeProject } from '../../src/native-mcp.mjs';
 import { probeServer } from '../../src/probe.mjs';
+import { startKnowledgeBroker } from '../../src/knowledge-broker.mjs';
+import { inspectState } from '../../src/state.mjs';
+import { knowledgeBrokerStatus, knowledgeBrokerAvailable } from '../../src/knowledge-client.mjs';
 
 const capture = promisify(execFile);
 const knowledge = process.env.TC_KNOWLEDGE_CHECKOUT;
@@ -21,7 +24,7 @@ test('native project locations connect both real MCPs and read only their config
   skip: !available, timeout: 150000,
 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'tc-native-mcp-real-'));
-  let child, closed;
+  let child, closed, broker;
   try {
     const corpus = join(root, 'corpus'); await mkdir(corpus);
     const executable = join(knowledge, '.venv', process.platform === 'win32' ? 'Scripts/twincat-knowledge.exe' : 'bin/twincat-knowledge');
@@ -53,14 +56,22 @@ test('native project locations connect both real MCPs and read only their config
       locations.push(location);
     }
     const config = JSON.parse(await readFile(join(locations[0].workspace, 'opencode.json'), 'utf8'));
+    broker = await startKnowledgeBroker({root:state,knowledge:(await inspectState(state)).settings.knowledge,
+      env:runtimeEnvironment(state,{}),cwd:locations[0].workspace});
     const docs = await probeServer('knowledge', config.mcp.servers.knowledge,
       { name: 'tc_search', arguments: { query: 'Fixture', limit: 2 } }, { env: runtimeEnvironment(state, {}), cwd: locations[0].workspace });
     assert.equal(docs.result.structuredContent.status, 'ok');
     assert.ok(docs.result.structuredContent.sources.length > 0);
+    assert.deepEqual(JSON.parse(docs.result.content.at(-1).text),docs.result.structuredContent,'model text includes actual search hits and source IDs');
+    const topicId=docs.result.structuredContent.data.items[0].id;
+    const topic=await probeServer('knowledge',config.mcp.servers.knowledge,
+      {name:'tc_get_topic',arguments:{topic_id:topicId}}, {env:runtimeEnvironment(state,{}),cwd:locations[0].workspace});
+    assert.equal(JSON.parse(topic.result.content.at(-1).text).data.topic_id,topicId,'the exact returned search ID opens its source topic');
     const emptyCorpus = await probeServer('knowledge', { ...config.mcp.servers.knowledge,
       command:[executable,'serve','--transport','stdio'] },
     {name:'tc_get_corpus_status',arguments:{}}, {env:runtimeEnvironment(state,{}),cwd:locations[0].workspace});
     assert.equal(emptyCorpus.result.structuredContent.status,'not_available','an unconfigured server must not claim documentation readiness');
+    await broker.close(); broker=null;
 
     if (process.platform !== 'win32') return; // pinned native launcher uses opencode.exe
     const net = createServer(); net.listen(0, '127.0.0.1'); await once(net, 'listening');
@@ -95,10 +106,16 @@ test('native project locations connect both real MCPs and read only their config
       } while(Date.now()<deadline);
       assert.deepEqual(catalog.map(server=>[server.name,server.status.status]).sort(), [['engineering','connected'],['knowledge','connected']]);
     }
-    child.stdin.end(); await closed;
+    const bridge=join(state,'knowledge/broker.json');
+    assert.equal((await knowledgeBrokerStatus(bridge)).backendStarts,1,'both actual runtime project contexts share one loaded corpus');
+    child.kill(); await closed; // deliberately lose the Node owner with both contexts connected
+    const stopped=Date.now()+10000;
+    while(await knowledgeBrokerAvailable(bridge)&&Date.now()<stopped)await new Promise(resolve=>setTimeout(resolve,100));
+    assert.equal(await knowledgeBrokerAvailable(bridge),false,'shared Knowledge must not survive native owner death');
   } finally {
+    await broker?.close();
     if (child?.exitCode===null) child.kill();
     if (closed) await closed;
-    await rm(root,{recursive:true,force:true});
+    await rm(root,{recursive:true,force:true,maxRetries:10,retryDelay:100});
   }
 });
