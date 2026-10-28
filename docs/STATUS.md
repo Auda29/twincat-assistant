@@ -40,8 +40,15 @@ See [the integration contract](CHAT_INTEGRATION.md).
   verification boundaries are in [documentation setup](KNOWLEDGE_SETUP.md).
   The x86 0.1.9 candidate is installed with all 13 payload hashes and the 0.1.8
   rollback copy verified. The operator profile now selects the managed German
-  documentation with provider/model policy preserved. Installed IDE restart
-  acceptance remains open. Local checks pass: 56 Node, 8 browser, 33 WPF view
+  documentation with provider/model policy preserved. The operator confirmed
+  installed Knowledge readiness, then found missing model-visible search details.
+  A follow-up Node adapter now shares one backend across native chat contexts,
+  avoids a disposable full-load process during protocol negotiation and retains
+  structured results as complete model-visible text. Search and source-topic
+  retrieval pass with the full corpus. Three warm searches take 617 ms and one
+  topic read 452 ms; a fresh full load still takes about 108 seconds. The running
+  IDE needs one restart to select the adapter; VSIX payloads are unchanged.
+  Local checks pass: 59 Node, 8 browser, 33 WPF view
   and 43 compiled-control/runtime checks; both VSIX targets and the Windows
   ownership helper build without warnings/errors.
 

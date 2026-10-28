@@ -46,7 +46,10 @@ InfoSys help, background import with cancellation and automatic Knowledge
 reconnection. See [documentation setup](docs/KNOWLEDGE_SETUP.md). The local
 German help has been prepared and verified with 49,970 articles.
 The x86 0.1.9 candidate is installed locally with all 13 payload hashes verified
-and 0.1.8 preserved for rollback. Installed IDE restart acceptance remains open.
+and 0.1.8 preserved for rollback. The operator confirmed Knowledge readiness.
+The follow-up Node adapter shares one loaded Knowledge backend across native
+chat contexts and passes full search/article results to the model. One IDE
+restart selects this adapter; the installed VSIX payload is unchanged.
 Earlier x86 `0.1.5` corrected provider setup: explicitly allow an authenticated
 provider under Details first, then choose a model in the existing chat picker.
 This avoids a default-deny catalog hiding a successfully signed-in provider.

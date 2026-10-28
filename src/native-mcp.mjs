@@ -37,6 +37,7 @@ export async function configureNativeMcp(root, settingsFile) {
   const settings = await readNativeMcpSettings(settingsFile);
   await inspectState(path(root));
   settings.knowledge = await effectiveKnowledge(root, settings.knowledge);
+  settings.knowledge.bridge = join(root, 'knowledge', 'broker.json');
   await updateProfile(path(root), current => {
     const { engineering, ...general } = current;
     return { ...general, knowledge: settings.knowledge };

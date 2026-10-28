@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { inspectState, readJsonFile, runtimeEnvironment } from './state.mjs';
 import { atomicJson } from './profile-update.mjs';
 import { readNativeMcpSettings } from './native-mcp.mjs';
+import { knowledgeBrokerAvailable } from './knowledge-client.mjs';
 import { knowledgePaths, knowledgeDirectory } from './knowledge-paths.mjs';
 import { superviseWindows, acquireKnowledgeLease } from './windows-native.mjs';
 import { probeServer } from './probe.mjs';
@@ -155,7 +156,9 @@ export async function setupKnowledge(request, { signal = new AbortController().s
       '--config',paths.config,'--json'],job,env,finish);
     }
     emit({phase:'verifying',ready:status.ready,language:source.language,topics:imported.topic_count});
-    const server = createOpenCodeConfig({knowledge:{...settings.knowledge,config:paths.config}}).mcp.servers.knowledge;
+    const bridge = join(paths.base, 'broker.json');
+    const server = createOpenCodeConfig({knowledge:{...settings.knowledge,config:paths.config,
+      ...(await knowledgeBrokerAvailable(bridge) ? {bridge} : {})}}).mcp.servers.knowledge;
     const probe = await probeServer('knowledge',server,{name:'tc_get_corpus_status',arguments:{}},{env,cwd:job,timeout:600000,signal});
     if (probe.result.isError || probe.result.structuredContent?.status !== 'ok') throw new Error('Corpus not available');
     const active = await readJsonFile(join(paths.state,'active.json'));

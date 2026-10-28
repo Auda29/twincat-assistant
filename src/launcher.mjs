@@ -1,5 +1,6 @@
 import { isAbsolute } from 'node:path';
 import { lstat } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { prepareChatWorkspace, runtimeEnvironment } from './state.mjs';
 
 export async function prepareLaunch(root, options, inherited = process.env) {
@@ -12,7 +13,12 @@ export async function prepareLaunch(root, options, inherited = process.env) {
   const env = runtimeEnvironment(root, status.settings, inherited);
   env.OPENCODE_BINARY = options.opencode;
   env.OPENCHAMBER_UI_PASSWORD = inherited.OPENCHAMBER_UI_PASSWORD;
-  return { command: process.execPath, args: [options.openchamber, 'serve', '--foreground', '--host', '127.0.0.1', '--port', String(options.port)], cwd: status.paths.workspace, env };
+  const args = [options.openchamber, 'serve', '--foreground', '--host', '127.0.0.1', '--port', String(options.port)];
+  if (status.settings.knowledge?.bridge) {
+    env.TC_ASSISTANT_KNOWLEDGE = JSON.stringify({ root: status.paths.root, knowledge: status.settings.knowledge });
+    args.unshift(fileURLToPath(new URL('./shared-chat-runtime.mjs', import.meta.url)));
+  }
+  return { command: process.execPath, args, cwd: status.paths.workspace, env };
 }
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

@@ -18,7 +18,7 @@ export async function probeServer(name, server, call, { env = {}, cwd, timeout =
     const catalog = await client.listTools({}, { timeout, signal });
     const names = catalog.tools.map(tool => tool.name);
     if (new Set(names).size !== names.length || names.length > 256 || !names.includes(call.name)) throw new Error('Unexpected tool catalog');
-    const result = await client.callTool(call, undefined, { timeout, signal });
+    const result = await client.callTool(call, { timeout, signal });
     return { protocol: client.getNegotiatedProtocolVersion(), era: client.getProtocolEra(), server: client.getServerVersion(), toolNames: names, result };
   } catch { throw new Error('Read-only MCP probe failed; check configured upstream version and prerequisites'); }
   finally { clearTimeout(deadline); await client.close(); await transport.close(); }
