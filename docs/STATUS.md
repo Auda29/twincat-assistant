@@ -1,10 +1,10 @@
 # Implementation status
 
 Updated: **2026-10-28**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.9`, installed after operator coordination. The last source prerelease is
-`0.1.8`, which
-includes the docked-window binding fix and
-read-only native MCP integration, based on the released 0.1.6 UI redesign.
+`0.1.9`, installed after operator coordination. The source prerelease version is
+`0.1.9`, described in [release notes](releases/native-v0.1.9.md). It adds automatic
+documentation setup and a shared Knowledge connection to the read-only MCP
+integration in 0.1.8 and the UI redesign in 0.1.6.
 These versions describe different
 components, not a TwinCAT product release.
 
@@ -48,6 +48,10 @@ See [the integration contract](CHAT_INTEGRATION.md).
   retrieval pass with the full corpus. Three warm searches take 617 ms and one
   topic read 452 ms; a fresh full load still takes about 108 seconds. The running
   IDE needs one restart to select the adapter; VSIX payloads are unchanged.
+  The operator reports that the combined model test now reads saved project
+  code and library references, opens the matching documentation using its
+  returned topic ID and cites it. Live PLC behavior and resolved library
+  versions remain outside this evidence.
   Local checks pass: 59 Node, 8 browser, 33 WPF view
   and 43 compiled-control/runtime checks; both VSIX targets and the Windows
   ownership helper build without warnings/errors.
