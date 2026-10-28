@@ -96,7 +96,10 @@ export async function runKnowledge(command, args, cwd, env, signal) {
 export async function setupKnowledge(request, { signal = new AbortController().signal, emit = () => {}, catalogRoot, run = runKnowledge } = {}) {
   const status = await knowledgeStatus(request,{catalogRoot});
   if (status.phase === 'external') throw new Error('Existing external corpus configuration is preserved');
-  const source = status.candidates.find(candidate => candidate.path === request.source && candidate.language === request.language);
+  let selectedPath;
+  try { selectedPath=await realpath(absolute(request.source)); }
+  catch { throw new Error('Select a discovered source and authorize local indexing'); }
+  const source = status.candidates.find(candidate => candidate.path === selectedPath && candidate.language === request.language);
   if (!source || request.acceptLocalIndexing !== true) throw new Error('Select a discovered source and authorize local indexing');
   const paths = await knowledgePaths(request.state);
   const lockPath = join(paths.base,'setup.lock');

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {mkdtemp,mkdir,writeFile,readFile,readdir,rm,symlink} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,readdir,realpath,rm,symlink} from 'node:fs/promises';
 import {join,dirname,resolve} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
@@ -73,12 +73,12 @@ test('Windows knowledge ownership excludes another import and reclaims a stale o
   const f=await fixture();let lease;
   try {
     lease=await acquireKnowledgeLease(f.state);
-    await assert.rejects(acquireKnowledgeLease(f.state),/running|unavailable/);
+    await assert.rejects(acquireKnowledgeLease(await realpath(f.state)),/running|unavailable/);
     await lease.release();lease=null;
     await knowledgeStatus(f,{catalogRoot:f.catalogRoot});
     await writeFile(join(f.state,'knowledge/setup.lock'),JSON.stringify({version:1,kind:'native-knowledge-setup',pid:1234}));
     const abort=new AbortController();abort.abort();
-    await assert.rejects(setupKnowledge({...f,language:'de',acceptLocalIndexing:true},{catalogRoot:f.catalogRoot,signal:abort.signal}),/Cancelled/);
+    await assert.rejects(setupKnowledge({...f,source:f.source.toUpperCase(),language:'de',acceptLocalIndexing:true},{catalogRoot:f.catalogRoot,signal:abort.signal}),/Cancelled/);
     await assert.rejects(readFile(join(f.state,'knowledge/setup.lock')),error=>error.code==='ENOENT');
     lease=await acquireKnowledgeLease(f.state);await lease.release();lease=null;
   } finally {if(lease)await lease.release();await cleanup(f.root);}

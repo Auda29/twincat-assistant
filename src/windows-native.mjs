@@ -2,6 +2,7 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute } from 'node:path';
+import { realpath } from 'node:fs/promises';
 
 const capture = promisify(execFile);
 function helperEnvironment() {
@@ -29,6 +30,7 @@ export async function secureWindowsDirectory(path) {
 }
 
 export async function acquireKnowledgeLease(root) {
+  root=await realpath(root);
   const helper=spawn(windowsHelperPath(),['hold-knowledge-lock',root],{
     shell:false,windowsHide:true,stdio:['pipe','pipe','ignore'],env:helperEnvironment(),
   });
