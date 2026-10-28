@@ -29,6 +29,15 @@ See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action
 
+- Native 0.1.9 on `feat/knowledge-auto-setup` adds bounded local help discovery,
+  source/version selection, background setup, cancellation/retry, changed-source
+  detection and Knowledge reconnection without replacing the project chat.
+  Import, validation and activation reuse the pinned Knowledge CLI. The local
+  German InfoSys `.47` archive is imported and activated with 49,970 articles;
+  the actual MCP status and protected native runtime connection pass. Fixtures
+  use synthetic archives and no model request. Exact implementation and
+  verification boundaries are in [documentation setup](KNOWLEDGE_SETUP.md).
+
 - Preview release 0.1.8 connects the existing Knowledge and TwinCAT MCPs to native
   project chats. Project identity is independent of supported POU attachment;
   each exact saved PLC project gets a private immutable OpenCode workspace.

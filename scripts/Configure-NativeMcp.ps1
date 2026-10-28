@@ -45,5 +45,5 @@ $taskNativeChat = Get-Content -LiteralPath $taskNativeChatPath -Raw | ConvertFro
 $taskNativeChat | Add-Member -MemberType NoteProperty -Name McpSettingsPath -Value ([IO.Path]::GetFullPath($McpSettingsPath)) -Force
 Write-ManagedJson $taskNativeChatPath $taskNativeChat
 Write-Output 'Both native MCP servers are configured. Reconnect the Assistant to load them.'
-if (-not $KnowledgeConfig) { Write-Output 'Knowledge tools will report an unavailable corpus until an activated corpus is configured.' }
+if (-not $KnowledgeConfig) { Write-Output 'Use Wissenssuche einrichten in the Assistant to prepare the locally installed Beckhoff help.' }
 Write-Output 'Engineering uses saved files from the PLC project selected in the IDE. No ADS/runtime backend or source writes are enabled.'

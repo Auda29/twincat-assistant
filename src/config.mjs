@@ -16,9 +16,11 @@ function absolute(value) {
 export function validateSettings(settings) {
   object(settings, ['knowledge', 'engineering', 'provider', 'model', 'sourceCodeDisclosureAccepted']);
   if (settings.knowledge !== undefined) {
-    object(settings.knowledge, ['executable', 'config']);
+    object(settings.knowledge, ['executable', 'config', 'startupTimeout']);
     absolute(settings.knowledge.executable);
     if (settings.knowledge.config !== undefined) absolute(settings.knowledge.config);
+    if (settings.knowledge.startupTimeout !== undefined && (!Number.isInteger(settings.knowledge.startupTimeout)
+      || settings.knowledge.startupTimeout < 15000 || settings.knowledge.startupTimeout > 600000)) throw new Error('Invalid knowledge startup timeout');
   }
   if (settings.engineering !== undefined) {
     object(settings.engineering, ['entrypoint', 'config']);
@@ -59,7 +61,7 @@ export function createOpenCodeConfig(settings = {}) {
       type: 'local', protocol: '2026-07-28', codemode: false,
       command: [settings.knowledge.executable, 'serve', '--transport', 'stdio',
         ...(settings.knowledge.config ? ['--config', settings.knowledge.config] : [])],
-      timeout: { startup: 15000, catalog: 15000, execution: 30000 },
+      timeout: { startup: settings.knowledge.startupTimeout ?? 15000, catalog: 15000, execution: 30000 },
     };
   }
   if (settings.engineering) {

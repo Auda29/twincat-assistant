@@ -13,6 +13,7 @@ object selector. Native editor/chat and amd64 acceptance remain open.
 - [Active editor implementation and acceptance](ACTIVE_EDITOR.md)
 - [Native chat start and connection](NATIVE_CHAT.md)
 - [Native Knowledge and TwinCAT MCP integration, 0.1.8 preview](NATIVE_MCP.md)
+- [Automatic Beckhoff documentation setup, 0.1.9](KNOWLEDGE_SETUP.md)
 - [Project-bound native chat and compact UI, 0.1.6 candidate](CHAT_INTEGRATION.md)
 - [Dependency audit and release blockers](SECURITY_AUDIT.md)
 - [Native 0.1.3 preview release notes](releases/native-v0.1.3.md)

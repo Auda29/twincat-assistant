@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath)
+param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath,[switch]$TestKnowledgeSetup,[string]$KnowledgeStateSource)
 $ErrorActionPreference = 'Stop'
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'Run with powershell.exe -NoProfile -STA.' }
 # Actual built host + WebView2 + pinned runtime. Only the editor snapshots and
@@ -6,6 +6,21 @@ if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'Run wit
 $taskRepo = Split-Path $PSScriptRoot -Parent
 $taskRoot = Join-Path ([IO.Path]::GetTempPath()) ('tc-chat-integration-' + [Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($taskRoot) | Out-Null
+$taskOriginalProgramData=$env:ProgramData
+if ($TestKnowledgeSetup) {
+    if (-not $McpSettingsPath) { throw 'Knowledge setup checks require the pinned MCP server paths.' }
+    $env:ProgramData=Join-Path $taskRoot 'ProgramData'
+    $taskHelpFolder=Join-Path $env:ProgramData 'Microsoft\HelpLibrary2\Catalogs\Fixture\ContentStore\DE-DE'
+    [IO.Directory]::CreateDirectory($taskHelpFolder) | Out-Null
+    Add-Type -AssemblyName System.IO.Compression,System.IO.Compression.FileSystem
+    foreach ($taskRevision in @(1,2)) {
+        $taskHelpArchive=[IO.Compression.ZipFile]::Open((Join-Path $taskHelpFolder ('BKINFOSYS3_TEST_DE-DE.'+$taskRevision+'.mshc')),[IO.Compression.ZipArchiveMode]::Create)
+        try {
+            $taskEntry=$taskHelpArchive.CreateEntry('sample/1031/1.html');$taskWriter=[IO.StreamWriter]::new($taskEntry.Open(),[Text.UTF8Encoding]::new($false))
+            try {$taskWriter.Write('<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Installationspruefung</title></head><body><p>Synthetic Beckhoff help fixture.</p></body></html>')} finally {$taskWriter.Dispose()}
+        } finally {$taskHelpArchive.Dispose()}
+    }
+}
 $taskBin = Join-Path $taskRepo 'native/IdeHost/X86/bin/Release/net472'
 $taskAssets = Get-Content (Join-Path $taskRepo 'native/IdeHost/X86/obj/project.assets.json') -Raw | ConvertFrom-Json
 $taskPackageRoot = @($taskAssets.packageFolders.PSObject.Properties)[0].Name
@@ -103,7 +118,7 @@ $taskConfig.StateRoot = Join-Path $taskRoot 'state'
 $taskMissingCorpus = $false
 if ($McpSettingsPath) {
     $taskConfig.McpSettingsPath = [IO.Path]::GetFullPath($McpSettingsPath)
-    $taskMissingCorpus = -not (Get-Content -LiteralPath $McpSettingsPath -Raw | ConvertFrom-Json).knowledge.config
+    $taskMissingCorpus = -not $KnowledgeStateSource -and -not (Get-Content -LiteralPath $McpSettingsPath -Raw | ConvertFrom-Json).knowledge.config
 }
 $taskListener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
 $taskListener.Start(); $taskPort = $taskListener.LocalEndpoint.Port; $taskListener.Stop()
@@ -112,6 +127,12 @@ $taskSession = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssista
 $taskControl = $null; $taskWindow = $null
 try {
     Await-Task ($taskSession.StartAsync($taskConfig,$taskPort,$taskPassword)) | Out-Null
+    if ($KnowledgeStateSource) {
+        $taskKnowledgeTarget=Join-Path $taskConfig.StateRoot 'knowledge\state'
+        [IO.Directory]::CreateDirectory($taskKnowledgeTarget) | Out-Null
+        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'state\active.json') -Destination (Join-Path $taskKnowledgeTarget 'active.json')
+        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'receipt.json') -Destination (Join-Path $taskConfig.StateRoot 'knowledge\receipt.json')
+    }
     $taskControl = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.AssistantControl'))
     $taskInitialPreferences = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatPreferences'),[object[]]@([string](Join-Path $taskRoot 'initial-preferences')))
     Set-Field '_chatPreferences' $taskInitialPreferences
@@ -138,11 +159,16 @@ try {
     Assert-Integration ($taskBrowser.CoreWebView2 -and (Field '_autoConnectAttempted')) 'opening the native window connects chat without a separate connect click'
     Wait-JS "window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated"
     Assert-Integration ((JS 'document.body.innerText.includes("Unlock OpenChamber")') -eq 'false') 'native sign-in authenticates without showing the password screen'
-    Wait-Native { (Field '_attachPouButton').IsEnabled } 'automatic project chat for PLC_A'
+    Wait-Native { (Field '_attachPouButton').IsEnabled } 'automatic project chat for PLC_A' $(if($KnowledgeStateSource){600}else{40})
     Assert-Integration (Field '_attachPouButton').IsEnabled 'opening a POU creates and binds its project chat automatically'
     if ($McpSettingsPath) {
-        Wait-JS "window.__twinCatChat.state().mcp.filter(s=>s.status==='connected').length===2" 45
+        Wait-JS "window.__twinCatChat.state().mcp.filter(s=>s.status==='connected').length===2" $(if($KnowledgeStateSource){600}else{45})
         Assert-Integration ((Field '_chatSelection').directory.Replace('\','/').Contains('/projects/')) 'native project chat uses its isolated MCP workspace'
+    }
+    if ($KnowledgeStateSource) {
+        Assert-Integration ((Field '_knowledgeState').ready -and (Field '_knowledgeState').topics -gt 49000) 'the real installed German corpus is recognized in an isolated native chat profile'
+        Write-Output 'Real corpus/native runtime startup passed; no operator credentials or model requests used.'
+        return
     }
     $taskFirstSession = (Field '_chatSelection').sessionId
     Assert-Integration ((JS '(()=>{const h=document.querySelector("header.header-safe-area");const c=document.querySelector(".main-content-safe-area > .absolute.left-0.top-0.z-30");return !!h && getComputedStyle(h).display==="none" && (!c || getComputedStyle(c).display==="none")})()') -eq 'true') 'OpenChamber top bar with unbound new-chat buttons is hidden'
@@ -158,7 +184,27 @@ try {
     Wait-Native { @((Field '_chatSelection').allowedProviders) -contains 'openai' -and -not (Field '_chatActionPending') -and (Field '_modelStatus').Text.Contains('(freigegeben)') } 'automatic provider enablement' 60
     Assert-Integration ((Field '_modelStatus').Text.Contains('(freigegeben)') -and ((Field '_banner').Visibility -ne [Windows.Visibility]::Visible -or -not (Field '_bannerText').Text.Contains('Noch kein Modellanbieter'))) 'connecting a provider in OpenChamber enables it automatically and is read back'
     if ($taskMissingCorpus) {
-        Assert-Integration ((Field '_banner').Visibility -eq [Windows.Visibility]::Visible -and (Field '_bannerText').Text.Contains('kein Dokumentationskorpus')) 'an unconfigured corpus is explained without blocking saved-project tools'
+        Assert-Integration ((Field '_banner').Visibility -eq [Windows.Visibility]::Visible -and (Field '_bannerText').Text.Contains('Beckhoff-Hilfe')) 'an unconfigured documentation search offers native setup without blocking saved-project tools'
+    }
+    if ($TestKnowledgeSetup) {
+        $taskSessionBeforeKnowledge=(Field '_chatSelection').sessionId
+        $taskControl.GetType().GetMethod('ShowKnowledgeSetup',$taskFlags).Invoke($taskControl,@())
+        Wait-Native { -not (Field '_knowledgeChecking') -and (Field '_knowledgeSources').Items.Count -eq 2 } 'automatic detection of both installed help versions'
+        Assert-Integration ((Field '_knowledgeSources').SelectedIndex -eq -1 -and -not (Field '_knowledgeStart').IsEnabled) 'ambiguous help versions require explicit selection'
+        (Field '_knowledgeSources').SelectedIndex=1
+        Assert-Integration (Field '_knowledgeStart').IsEnabled 'a selected help version can be configured with one button'
+        (Field '_knowledgeStart').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+        (Field '_knowledgeCancel').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+        Wait-Native { -not (Field '_knowledgeBusy') -and (Field '_knowledgeState').phase -eq 'cancelled' } 'cancelled native setup completes'
+        Assert-Integration (-not (Test-Path (Join-Path $taskConfig.StateRoot 'knowledge\state\active.json'))) 'native cancellation does not select an incomplete index'
+        (Field '_knowledgeStart').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+        Wait-Native { (Field '_knowledgeBusy') } 'background knowledge setup starts'
+        Assert-Integration ($taskControl.GetType().GetMethod('CanPromptCurrentChat',$taskFlags).Invoke($taskControl,@())) 'chat remains usable during knowledge indexing'
+        Wait-Native { -not (Field '_knowledgeBusy') -and (Field '_knowledgeState').ready } 'completed setup and automatic knowledge reconnection' 180
+        Assert-Integration ((Field '_knowledgeText').Text.Contains('Wissenssuche bereit') -and (Field '_knowledgeText').Text.Contains('Deutsch')) 'native setup reports the real ready state and language'
+        Assert-Integration ((Field '_chatSelection').sessionId -eq $taskSessionBeforeKnowledge -and (Field '_knowledgeConnectionKey')) 'knowledge activation keeps the existing project conversation'
+        $taskMissingCorpus=$false
+        (Field '_knowledgePanel').Visibility=[Windows.Visibility]::Collapsed
     }
     JS "import('/assets/useAppFontEffects-DC1U1Z6i.js').then(m=>{window.__fixtureCatalog=()=>m.l.getState().providers.map(p=>({id:p.id,count:p.models.length}));window.__fixtureCatalogDetails=()=>({active:m.l.getState().activeDirectoryKey,selected:window.__twinCatChat.state().directory,providers:window.__fixtureCatalog(),snapshots:Object.entries(m.l.getState().directoryScoped).map(([key,v])=>({key,providers:v.providers.map(p=>p.id)}))});})" | Out-Null
     Wait-JS "window.__fixtureCatalog?.().some(p=>p.id==='openai' && p.count>0)"
@@ -268,6 +314,7 @@ try {
     Write-Output "$taskCount native embedded integration checks passed. Synthetic editor snapshots; no IDE/compiler/model acceptance claimed."
     Write-Output ('Fixture evidence: '+$taskRoot)
 } finally {
+    $env:ProgramData=$taskOriginalProgramData
     if ($taskControl) { $taskOwnedRuntime = Field '_chatSession'; if ($taskOwnedRuntime) { Await-Task ($taskOwnedRuntime.StopAsync()) | Out-Null } }
     if ($taskControl) { $taskControl.Dispose() }
     if ($taskWindow) { $taskWindow.Close() }

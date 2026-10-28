@@ -1,5 +1,10 @@
 # Native read-only MCP integration
 
+Native 0.1.9 adds [automatic documentation setup](KNOWLEDGE_SETUP.md). Users can
+prepare installed Beckhoff help from **Wissenssuche einrichten**; a manual TOML
+is an optional advanced configuration. The 0.1.8 installation record below is
+historical.
+
 Preview release **0.1.8** connects the existing Knowledge and TwinCAT MCP servers to
 the native OpenChamber/OpenCode chat. It also includes the 0.1.7 docked-window
 editor-binding fix. The x86 operator payload was updated to 0.1.8 on 2026-10-28.
@@ -27,11 +32,12 @@ Run from the Assistant checkout, with absolute paths to those installations:
 ```
 
 If an activated documentation corpus exists, add
-`-KnowledgeConfig 'C:\corpora\knowledge.toml'`. This is optional. No corpus is
-currently configured for the operator. Setup neither downloads documentation
-nor ingests/activates a corpus. Without a TOML configuration, the native project
-chat explains that no corpus is configured; the server reports `not_available`
-for corpus status. Saved-project tools remain usable.
+`-KnowledgeConfig 'C:\corpora\knowledge.toml'`. This is an optional advanced
+configuration. Setup neither downloads documentation nor imports a corpus.
+Without an explicit TOML, native 0.1.9 creates its private configuration and
+offers **Wissenssuche einrichten** for installed help. Before activation, the
+server reports `not_available`; saved-project tools remain usable. The local
+German operator help is now prepared with 49,970 articles.
 
 The script writes `%LOCALAPPDATA%\TwinCatAssistant\native-mcp.json` and adds its
 path as `McpSettingsPath` in `native-chat.json`. It preserves the other host

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { readJsonFile, inspectState } from './state.mjs';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
 import { updateProfile } from './profile-update.mjs';
+import { effectiveKnowledge } from './knowledge-paths.mjs';
 
 function path(value) {
   if (typeof value !== 'string' || !value || value.length > 2048 || value.includes('\0') || !isAbsolute(value))
@@ -34,6 +35,8 @@ export async function readNativeMcpSettings(file) {
 }
 export async function configureNativeMcp(root, settingsFile) {
   const settings = await readNativeMcpSettings(settingsFile);
+  await inspectState(path(root));
+  settings.knowledge = await effectiveKnowledge(root, settings.knowledge);
   await updateProfile(path(root), current => {
     const { engineering, ...general } = current;
     return { ...general, knowledge: settings.knowledge };

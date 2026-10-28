@@ -197,6 +197,8 @@ namespace TwinCatAssistant.Native
             _automating = true;
             try
             {
+                await RefreshKnowledgeAsync();
+                if (_disposed || _chatSelection == null || !_chatAdapterReady) return;
                 if (_chatSelection.authenticated != true) { await SignInAgainAsync(); return; }
                 _signInAttempts = 0;
                 var identity = _chatProject;
@@ -276,6 +278,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_attachPouButton == null || _disposed) return;
+            RenderKnowledge();
             var ready = !_chatActionPending && _chatAdapterReady && _chatSelection?.authenticated == true;
             var identity = _chatProject;
             var foreign = _chatSelection?.IsSelected == true && _chatBinding != null && !_chatBinding.IsGeneral
@@ -363,9 +366,22 @@ namespace TwinCatAssistant.Native
                 text = "Noch kein Modellanbieter verbunden. Zugangsdaten gibst du nur in OpenChamber ein.";
                 action = "Anbieter verbinden"; command = () => RunAction(OpenProviderSettingsAsync);
             }
-            else if (ready && _mcpEnabled && HasCurrentChatBinding() && _knowledgeCorpus == "not_configured")
+            else if (ready && _knowledgeBusy)
             {
-                text = "Für die Wissenssuche ist noch kein Dokumentationskorpus eingerichtet. Der Projektzugriff verwendet gespeicherte Dateien.";
+                text = "Die Beckhoff-Hilfe wird für die Wissenssuche vorbereitet. Du kannst weiterchatten.";
+                action = "Fortschritt"; command = ShowKnowledgeSetup;
+            }
+            else if (ready && _knowledgeState?.phase == "update")
+            {
+                text = "Eine neuere Beckhoff-Hilfe ist installiert. Der bisherige Suchindex bleibt verfügbar.";
+                action = "Aktualisieren"; command = ShowKnowledgeSetup;
+            }
+            else if (ready && (_knowledgeState?.phase == "available" || _knowledgeState?.phase == "missing" || _knowledgeState?.phase == "error"))
+            {
+                text = _knowledgeState.phase == "available" ? "Installierte Beckhoff-Hilfe für die Wissenssuche verwenden."
+                    : _knowledgeState.phase == "missing" ? "Für die Wissenssuche wurde noch keine installierte Beckhoff-Hilfe gefunden."
+                    : "Die Wissenssuche konnte noch nicht eingerichtet werden.";
+                action = "Einrichten"; command = ShowKnowledgeSetup;
             }
             _banner.Visibility = text == null ? Visibility.Collapsed : Visibility.Visible;
             if (text == null) return;
@@ -408,6 +424,8 @@ namespace TwinCatAssistant.Native
             var ready = _chatAdapterReady && _chatSelection?.authenticated == true && !_chatActionPending;
             MenuRow("Neuer Chat ohne Projektkontext", ready, () => NewChatAsync(true));
             MenuRow("Aktiven Baustein automatisch anhängen", true, ToggleAutoAttachAsync, _chatPreferences.AutoAttach);
+            MenuRow(KnowledgeConnected() ? "Wissenssuche bereit · " + (_knowledgeState.language == "de" ? "Deutsch" : "Englisch") : "Wissenssuche einrichten …", true,
+                () => { ShowKnowledgeSetup(); return Task.CompletedTask; });
             var providers = _chatSelection?.providers ?? new ChatProviderChoice[0];
             if (providers.Length > 1)
             {
