@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Last reconciled: **2026-10-27**. [Status](STATUS.md) is the current implementation
+Last reconciled: **2026-10-28**. [Status](STATUS.md) is the current implementation
 snapshot; this document defines the order of work and milestone exit gates.
 [MVP](MVP.md) describes the eventual product, not the permissions of the current
 prototype. No delivery dates or effort estimates are committed.
@@ -14,7 +14,7 @@ prototype. No delivery dates or effort estimates are committed.
 | x86 shell smoke test | Passed, user-reported | Menu, opening, docking, closing/reopening; local ST display observed |
 | Active-editor-first UX | Implemented in 0.1.2; core x86 flow verified | User/screenshot evidence for same-name PLC_A/PLC_B following and unsaved status; 7 live reader lifecycle/isolation checks; extended host acceptance remains open |
 | Native chat and model context | Installed 0.1.5; scoped x86 chat goal accepted | User-confirmed project refusal/return, explicit POU reference, provider consent/model selection and correct real response; MCP and extended acceptance remain open |
-| Native project MCPs | Preview 0.1.8; not installed | Both real MCPs pass synthetic project/corpus component checks; saved-project context works independently of a supported POU. Actual corpus and installed acceptance remain open |
+| Native project MCPs | Preview 0.1.8 installed in x86 | All 13 payload hashes and the 0.1.7 rollback copy verified; both MCP paths configured and tested with synthetic data. Actual corpus and installed startup/project acceptance remain open |
 | amd64 shell acceptance | Blocked | No installed TcXaeShell64 is available for live validation |
 | Live source writes / compiler | Outside the current milestone | Future M3/M4 work; no authorization to implement or invoke these now; runtime control remains excluded |
 

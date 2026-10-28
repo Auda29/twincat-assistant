@@ -1,7 +1,7 @@
 # Implementation status
 
-Updated: **2026-10-27**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
-`0.1.7`, installed after operator coordination. Preview release `0.1.8`
+Updated: **2026-10-28**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
+`0.1.8`, installed after operator coordination. Preview release `0.1.8`
 includes the docked-window binding fix and
 read-only native MCP integration, based on the released 0.1.6 UI redesign.
 These versions describe different
@@ -41,8 +41,14 @@ See [the integration contract](CHAT_INTEGRATION.md).
   checks pass: 51 Node tests, 8 browser contracts, 80 native shared checks,
   28 WPF view checks and 37 compiled-control/runtime checks without a corpus;
   both VSIX targets build without warnings/errors. Linux and Windows CI pass for
-  the implementation. Distribution is source-only; the installed x86 payload
-  remains 0.1.7. Actual corpus/installed IDE acceptance remains open. See
+  the implementation. Distribution is source-only. On 2026-10-28, the local x86
+  payload is updated to 0.1.8 with all 13 payload hashes and the 0.1.7 rollback
+  copy verified. The old payload remains outside extension discovery. Both MCP
+  paths are configured without a corpus, preserving existing host settings.
+  Actual calls through these configured server paths read a synthetic saved POU
+  and return Knowledge corpus status `not_available`, without a model request.
+  The IDE remained closed; installed startup/project-context acceptance and a
+  real documentation corpus remain open. See
   [setup, boundaries and checks](NATIVE_MCP.md) and
   [release notes](releases/native-v0.1.8.md).
 

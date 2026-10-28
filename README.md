@@ -30,7 +30,7 @@ The x86 candidate is installed with all 13 payload hashes verified and 0.1.5
 preserved outside extension discovery. The IDE was closed for installation;
 broader UI and lifecycle acceptance remain open.
 Local x86 fix `0.1.7` binds editor tracking when the IDE restores a docked
-Assistant window without invoking its menu command. It is installed with all
+Assistant window without invoking its menu command. It was installed with all
 13 payload hashes verified and 0.1.6 preserved outside extension discovery.
 Automatic restoration after restarting the installed IDE still needs acceptance.
 Preview release `0.1.8` connects both existing MCPs to project chats, using
@@ -38,7 +38,9 @@ separate private workspaces for each saved PLC project. Project identity remains
 available with a DUT or unsupported source editor; general chats have no
 engineering server. No documentation corpus is configured yet. See
 [native MCP setup and verification](docs/NATIVE_MCP.md) and
-[release notes](docs/releases/native-v0.1.8.md). The installed x86 payload is 0.1.7.
+[release notes](docs/releases/native-v0.1.8.md). The x86 0.1.8 payload is installed
+with all 13 hashes verified and 0.1.7 backed up outside extension discovery.
+Both MCP paths are configured; installed startup acceptance remains open.
 Earlier x86 `0.1.5` corrected provider setup: explicitly allow an authenticated
 provider under Details first, then choose a model in the existing chat picker.
 This avoids a default-deny catalog hiding a successfully signed-in provider.

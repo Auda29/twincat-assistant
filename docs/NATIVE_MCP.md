@@ -2,7 +2,11 @@
 
 Preview release **0.1.8** connects the existing Knowledge and TwinCAT MCP servers to
 the native OpenChamber/OpenCode chat. It also includes the 0.1.7 docked-window
-editor-binding fix. The installed operator payload is still 0.1.7. See the
+editor-binding fix. The x86 operator payload was updated to 0.1.8 on 2026-10-28.
+All 13 installed payload hashes and the preserved 0.1.7 rollback copy are
+verified. Both MCP paths are configured without a Knowledge TOML; actual server
+calls using those paths pass with a synthetic project and no model request.
+Installed IDE startup and project-context acceptance remain open. See the
 [source-only release notes](releases/native-v0.1.8.md).
 
 ## Setup
