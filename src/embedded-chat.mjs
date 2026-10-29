@@ -1,6 +1,6 @@
-// Version-specific adapter for the *existing* OpenChamber chat. These exports
-// were traced to the source at v2.1.1 (e302062e3be0686986594fddabdafd8a97c129e5).
-// No upstream file is patched and no chat, model client or agent is duplicated.
+// Adapter for the existing OpenChamber chat. Source builds expose the reviewed,
+// versioned contract; distribution compatibility uses exports traced to v2.1.1
+// (e302062e3be0686986594fddabdafd8a97c129e5). No chat or agent is duplicated.
 export const EMBEDDED_ASSETS = Object.freeze([
   { path: '/assets/index-rxO-w0yQ.js', sha256: 'd7b60bc7722a484b53e89ac18e76d3f6d172fa1efc09cb7ad784af7ce96e28b8' },
   { path: '/assets/useAppFontEffects-DC1U1Z6i.js', sha256: '1a29973e760c994a97a8a64d29c24bdcfbc4f358d9c29919f07efeac0e40ff63' },
@@ -26,6 +26,29 @@ export function allowedProviders(entries) {
 }
 
 const SESSION_ID = /^[a-zA-Z0-9_:-]{1,160}$/;
+
+// Compatibility with the installed 0.1.9 distribution. Source builds use the
+// existing OpenCode SDK wrapper instead. This is a global session-list route;
+// reading history does not start an MCP location for every stored chat.
+export async function storedProjectSessions(fetch, directory) {
+  const items = [];
+  const seen = new Set();
+  let cursor;
+  do {
+    const query = new URLSearchParams({ directory, limit: '200' });
+    if (cursor) query.set('cursor', cursor);
+    const response = await fetch('/api/session?' + query, { redirect: 'error', signal: AbortSignal.timeout(15000) });
+    if (!response.ok) throw new Error('Stored project history unavailable');
+    const page = await response.json();
+    if (!Array.isArray(page.data)) throw new Error('Invalid stored project history');
+    items.push(...page.data.filter(item => !item.parentID && !item.time?.archived).map(item => ({ id: item.id, updated: item.time?.updated })));
+    cursor = page.cursor?.next;
+    if (cursor && (typeof cursor !== 'string' || seen.has(cursor))) throw new Error('Invalid project history cursor');
+    if (cursor) seen.add(cursor);
+    if (items.length > 20000) throw new Error('Project history exceeds the native metadata limit');
+  } while (cursor);
+  return items;
+}
 
 export function mcpStates(entries) {
   return (Array.isArray(entries) ? entries : []).filter(entry => ['knowledge', 'engineering'].includes(entry?.name))
@@ -60,7 +83,7 @@ export function readTheme(scope) {
 
 // Staged POU chips live in the composer's own React state, not in a store.
 // Reading them from the pinned chip markup lets a removed or sent chip clear
-// the native "Angehängt" state. Each chip shows its ID in the muted label.
+// the native "AngehÃ¤ngt" state. Each chip shows its ID in the muted label.
 export function composerChips(scope) {
   return {
     chips() {
@@ -76,7 +99,7 @@ export function composerChips(scope) {
   };
 }
 
-export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], theme = () => null, permissionChanged = () => {}, authenticated = () => true, composer = null, documentId = crypto.randomUUID() }) {
+export function createChatAdapter({ ui, sessions, input, config, source = null, loadSessions, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], theme = () => null, permissionChanged = () => {}, authenticated = () => true, composer = null, documentId = crypto.randomUUID() }) {
   for (const store of [ui, sessions, input]) {
     if (typeof store?.getState !== 'function' || typeof store?.subscribe !== 'function') throw new Error('Incompatible chat store');
   }
@@ -91,14 +114,13 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
   // Automatic attachment reuses one chip ID, so the composer replaces that
   // chip in place on every POU switch instead of adding another one.
   const staged = new Map();
-  let last = null;
   let creating = false;
   const pending = id => input.getState().pendingGuestIssue?.providerId === 'twincat-assistant' && input.getState().pendingGuestIssue.id === id;
   const present = () => {
     const chips = new Set(composer ? composer.chips() : staged.keys());
     return id => chips.has(id) || pending(id);
   };
-  const attachments = () => {
+  const fallbackAttachments = () => {
     const has = present();
     return [...staged].filter(([id]) => has(id)).slice(-8)
       .map(([id, value]) => ({ id, title: value.title, revision: value.revision, reference: value.reference }));
@@ -113,7 +135,7 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
     permission = null;
     permissionChanged(false);
     staged.clear();
-    last = null;
+    source?.setContext('', null);
     clearPending();
   });
   ui.getState().setSidebarOpen(false);
@@ -121,23 +143,55 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
   ui.getState().setShowOpenCodeUpdateNotifications(false);
   ui.getState().setContextRailHiddenSurfaces(['git', 'pr', 'diff', 'walkthrough', 'linear', 'editor', 'terminal', 'notes', 'plan', 'browser', 'chat']);
 
-  // The most recently staged chip, while it is still in the composer.
-  const current = () => {
-    const value = last && present()(last) ? staged.get(last) : null;
-    return { attachedObject: value?.title ?? null, attachedRevision: value?.revision ?? null };
-  };
   const state = () => {
     const value = sessions.getState();
     const model = config?.getState();
+    const observation = source?.composer(value.currentSessionId);
+    const queued = input.getState().pendingGuestIssue;
+    const pending = queued?.providerId === 'twincat-assistant' ? queued : null;
+    const metadata = item => ({ id: item.id, title: item.title, revision: item.revision ?? null,
+      reference: item.reference ?? staged.get(item.id)?.reference ?? item.id });
+    // The source composer is authoritative. The registry only supplies metadata
+    // for the older distribution, whose composer exposes chip IDs via markup.
+    const references = source ? (observation?.references ?? []).map(metadata) : fallbackAttachments();
+    const byId = new Map(references.map(item => [item.id, item]));
+    if (pending) byId.set(pending.id, metadata({ ...pending, ...pending.data }));
+    const attachments = [...byId.values()].slice(-8);
+    const submittedAttachments = (observation?.submitted ?? []).map(metadata).slice(-8);
+    const context = permission?.context;
+    const title = context?.object ? context.object + ' / ' + context.project : null;
+    const current = items => context?.reference ? items.filter(item => item.reference === context.reference).at(-1)
+      : title ? items.filter(item => item.title === title).at(-1) : items.at(-1);
+    const attached = current(attachments);
+    const submitted = current(submittedAttachments);
     return { version: 1, ready: true, authenticated: authenticated(), documentId, sessionId: value.currentSessionId ?? null,
       directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(), mcp: mcp(),
       model: model?.currentProviderId && model?.currentModelId ? model.currentProviderId + '/' + model.currentModelId : null,
-      ...current(), attachments: attachments(), theme: theme() };
+      attachmentState: attached ? (pending?.id === attached.id ? 'staging' : 'staged') : submitted ? 'submitted' : 'none',
+      attachedObject: attached?.title ?? null, attachedRevision: attached?.revision ?? null,
+      submittedObject: submitted?.title ?? null, submittedRevision: submitted?.revision ?? null,
+      attachments, submittedAttachments, theme: theme() };
   };
   const matches = expected => expected && expected.documentId === documentId && expected.sessionId && expected.sessionId === selected && expected.epoch === epoch;
   return Object.freeze({
     state,
-    permit(expected) { permission = matches(expected) ? { ...expected } : null; if (!permission) clearPending(); permissionChanged(!!permission); return !!permission; },
+    permit(expected) {
+      permission = matches(expected) ? { ...expected } : null;
+      if (!permission) clearPending();
+      const context = permission?.context;
+      if (context && (Object.keys(context).some(key => !['project', 'object', 'treePath', 'sourceKind', 'reference'].includes(key))
+        || typeof context.project !== 'string' || context.project.length > 200
+        || (context.reference != null && (typeof context.reference !== 'string' || context.reference.length > 128))
+        || ['object', 'treePath', 'sourceKind'].some(key => context[key] !== null && (typeof context[key] !== 'string' || context[key].length > 2048)))) {
+        permission = null;
+        source?.setContext('', null);
+        permissionChanged(false);
+        throw new Error('Invalid native context metadata');
+      }
+      source?.setContext(selected, context ?? null);
+      permissionChanged(!!permission);
+      return !!permission;
+    },
     attach(request) {
       if (!matches(request) || !matches(permission) || request.contextKey !== permission.contextKey) throw new Error('Chat binding changed');
       const item = request.item;
@@ -158,7 +212,6 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
       staged.set(item.id, { title: item.title, revision: item.data?.revision ?? null,
         reference: typeof item.data?.reference === 'string' ? item.data.reference.slice(0, 128) : item.id });
       while (staged.size > 32) staged.delete(staged.keys().next().value);
-      last = item.id;
       return { sessionId: selected, epoch, attachedObject: item.title };
     },
     async newChat({ title, directory }) {
@@ -179,9 +232,25 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
         .map(item => ({ id: item.id, updated: Number(item.time?.updated) || 0 }))
         .sort((a, b) => b.updated - a.updated).slice(0, 200);
     },
-    selectSession(id) {
+    async storedSessions(directory) {
+      const directories = Array.isArray(directory) ? directory : [directory];
+      if (!directories.length || directories.length > 64 || directories.some(value => typeof value !== 'string' || !value || value.length > 2048) || typeof loadSessions !== 'function')
+        throw new Error('Stored project history unavailable');
+      const list = [];
+      for (const value of [...new Set(directories)]) {
+        const path = value.replace(/\\/g, '/');
+        const items = await loadSessions(path);
+        if (!Array.isArray(items)) throw new Error('Invalid stored project history');
+        list.push(...items.map(item => ({ ...item, directory: path })));
+        if (list.length > 20000) throw new Error('Project history exceeds the native metadata limit');
+      }
+      return list.filter(item => typeof item?.id === 'string' && SESSION_ID.test(item.id))
+        .map(item => ({ id: item.id, updated: Number(item.updated) || 0, directory: item.directory }))
+        .sort((a, b) => b.updated - a.updated);
+    },
+    selectSession(id, directory) {
       if (typeof id !== 'string' || !SESSION_ID.test(id) || typeof sessions.getState().setCurrentSession !== 'function') return false;
-      if (selected !== id) sessions.getState().setCurrentSession(id);
+      if (selected !== id) sessions.getState().setCurrentSession(id, directory);
       return sessions.getState().currentSessionId === id;
     },
     toggleChats() { ui.getState().toggleSidebar(); },
@@ -194,14 +263,24 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
       if (!matches(expected)) throw new Error('Chat selection changed');
       return true;
     },
-    dispose() { unsubscribe(); clearPending(); permission = null; permissionChanged(false); },
+    dispose() { unsubscribe(); clearPending(); source?.setContext('', null); permission = null; permissionChanged(false); },
   });
 }
 
 export async function installEmbeddedChat(scope = window) {
   if (scope.__twinCatChat?.state) return;
   if (scope.location.protocol !== 'http:' || scope.location.hostname !== '127.0.0.1') throw new Error('Loopback chat required');
-  for (const asset of EMBEDDED_ASSETS) {
+  if (scope.__twinCatSourceReady) {
+    let timeout;
+    try {
+      await Promise.race([scope.__twinCatSourceReady, new Promise((_, reject) => {
+        timeout = scope.setTimeout(() => reject(new Error('Source chat initialization timed out')), 15000);
+      })]);
+    } finally { scope.clearTimeout(timeout); }
+  }
+  const source = scope.__twinCatSource;
+  if (source && source.version !== 1) throw new Error('Incompatible TwinCAT source contract');
+  for (const asset of source ? [] : EMBEDDED_ASSETS) {
     const response = await scope.fetch(asset.path, { redirect: 'error', signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error('Pinned chat assets unavailable');
     const bytes = await response.arrayBuffer();
@@ -209,8 +288,10 @@ export async function installEmbeddedChat(scope = window) {
     const digest = [...new Uint8Array(await scope.crypto.subtle.digest('SHA-256', bytes))].map(x => x.toString(16).padStart(2, '0')).join('');
     if (digest !== asset.sha256) throw new Error('Chat version changed; rebuild the native integration');
   }
-  const base = await import(/* @vite-ignore */ new URL(EMBEDDED_ASSETS[0].path, scope.location.origin).href);
-  const chat = await import(/* @vite-ignore */ new URL(EMBEDDED_ASSETS[1].path, scope.location.origin).href);
+  const base = source ? { u: source.stores.ui } : await import(/* @vite-ignore */ new URL(EMBEDDED_ASSETS[0].path, scope.location.origin).href);
+  const chat = source ? { z: source.stores.sessions, du: source.stores.input, l: source.stores.config, df: source.stores.locale }
+    : await import(/* @vite-ignore */ new URL(EMBEDDED_ASSETS[1].path, scope.location.origin).href);
+  source?.activate();
   if (typeof chat.l?.getState().loadProviders !== 'function') throw new Error('Incompatible provider config store');
   // OpenChamber ships a German dictionary. Use it unless the operator already
   // chose a language in OpenChamber's own settings.
@@ -273,8 +354,9 @@ export async function installEmbeddedChat(scope = window) {
   const markComposer = () => {
     for (const form of scope.document.querySelectorAll('form:has([data-testid="chat-input"])')) form.inert = !composerAllowed;
   };
-  const adapter = createChatAdapter({ ui: base.u, sessions: chat.z, input: chat.du, config: chat.l, reloadPolicy,
-    providers: () => connectedProviders, allowed: () => enabledProviders, mcp: () => connectedMcp, theme: () => readTheme(scope), composer: composerChips(scope),
+  const loadSessions = source ? directory => source.sessions(directory) : directory => storedProjectSessions(scope.fetch.bind(scope), directory);
+  const adapter = createChatAdapter({ ui: base.u, sessions: chat.z, input: chat.du, config: chat.l, source, loadSessions, reloadPolicy,
+    providers: () => connectedProviders, allowed: () => enabledProviders, mcp: () => connectedMcp, theme: () => readTheme(scope), composer: source ? null : composerChips(scope),
     permissionChanged: allowed => { composerAllowed = allowed; markComposer(); }, authenticated: () => signedIn });
   Object.defineProperty(scope, '__twinCatChat', { value: adapter, configurable: false, writable: false });
   scope.document.documentElement.dataset.twincatEmbedded = 'true';
@@ -295,7 +377,7 @@ export async function installEmbeddedChat(scope = window) {
     if (empty && !empty.querySelector('.tc-chat-intro')) {
       const intro = scope.document.createElement('p');
       intro.className = 'tc-chat-intro';
-      intro.textContent = 'Öffne einen ST-Baustein, dann startet der passende Projektchat automatisch. Mit + oben beginnt ein allgemeiner Chat.';
+      intro.textContent = 'Ã–ffne einen ST-Baustein, dann startet der passende Projektchat automatisch. Mit + oben beginnt ein allgemeiner Chat.';
       empty.append(intro);
     }
   };

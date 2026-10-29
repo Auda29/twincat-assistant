@@ -1,0 +1,18 @@
+[
+  {
+    "file": "packages/web/src/main.tsx",
+    "changes": [["window.__OPENCHAMBER_RUNTIME_APIS__ = createConfiguredWebAPIs();", "window.__OPENCHAMBER_RUNTIME_APIS__ = createConfiguredWebAPIs();\n  window.__twinCatSourceReady = (async () => {\n    await getDesktopRelayRestoreReady();\n    await import('@openchamber/ui/lib/twincat/install');\n  })();\n  await window.__twinCatSourceReady;"]]
+  },
+  {
+    "file": "packages/ui/src/components/chat/ChatInput.tsx",
+    "changes": [
+      ["import React from 'react';", "import React from 'react';\nimport { publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts } from '@/lib/twincat/twincat';"],
+      ["const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);", "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);\n    React.useEffect(() => {\n        if (columnPinned) return;\n        return publishTwinCatComposer(currentSessionId, linkedReferences);\n    }, [columnPinned, currentSessionId, linkedReferences]);"],
+      ["const queueRuntimeKey = getRuntimeKey();", "const twinCatQueuedContext = twinCatContextTexts(currentSessionId);\n        const queueRuntimeKey = getRuntimeKey();"],
+      ["syntheticTexts: syntheticParts.map((part) => part.text),", "syntheticTexts: [...twinCatQueuedContext, ...syntheticParts.map((part) => part.text)],"],
+      ["if (queuedOnly && autoReviewRunning) {", "const twinCatSubmittedContext = twinCatContextTexts(currentSessionId);\n        if (queuedOnly && autoReviewRunning) {"],
+      ["syntheticTexts: [\n                ...buildBtwSyntheticTexts", "syntheticTexts: [\n                ...(!isBtwActive && !queuedOnly && inputSnapshot.hasContent ? twinCatSubmittedContext : []),\n                ...buildBtwSyntheticTexts"],
+      ["recordLinkedReferences(linkTargetSessionId, linkTargetDirectory, linkedReferences);", "recordLinkedReferences(linkTargetSessionId, linkTargetDirectory, linkedReferences);\n                recordTwinCatSubmission(linkTargetSessionId, linkedReferences);"]
+    ]
+  }
+]

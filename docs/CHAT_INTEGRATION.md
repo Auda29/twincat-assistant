@@ -1,5 +1,11 @@
 # Native project chat, candidate 0.1.6
 
+The `feat/twincat-runtime-ui` source integration is documented in
+[Runtime integration](RUNTIME_INTEGRATION.md). It replaces bootstrap-cache
+restoration and source-build asset-export guessing, and adds authoritative
+composer attachment observations. The historical candidate evidence below
+continues to describe the released distribution integration.
+
 Candidate 0.1.8 extends this flow with both read-only MCPs and project identity
 independent of supported POU attachments. See [Native MCP integration](NATIVE_MCP.md)
 for the current setup, saved-file disclosure boundary and missing-corpus state.
@@ -46,8 +52,10 @@ OpenChamber defaults to German unless a language preference already exists.
    OpenChamber's settings and never enter the native selector.
 4. Choose **Anhängen** to stage the current snapshot as a visible composer
    reference. Its text includes identity, revision, provenance and the warning
-   that the exact unsaved editor buffer is not verified. **Angehängt** confirms
-   the staged revision; **Aktualisieren** indicates a changed source revision.
+   that the exact unsaved editor buffer is not verified. **Wird angehängt** means
+   staging is pending, **Vorgemerkt** confirms a staged revision, and
+   **Erneut anhängen** distinguishes a submitted revision from a staged one.
+   **Aktualisieren** indicates a changed source revision.
 5. Optionally enable **Aktiven Baustein automatisch anhängen** in the overflow
    menu. It defaults to off and persists as a boolean preference. While enabled,
    a matching project chat stages the active POU and changed revisions

@@ -11,6 +11,7 @@ namespace TwinCatAssistant.Native
     {
         public bool configured { get; set; }
         public string workspace { get; set; }
+        public string[] workspaces { get; set; }
         public string project { get; set; }
         public string solution { get; set; }
         public string source { get; set; }
@@ -18,7 +19,7 @@ namespace TwinCatAssistant.Native
     }
     internal static class NativeMcpProject
     {
-        internal static async Task<NativeMcpWorkspace> PrepareAsync(NativeChatConfiguration config, NativeProjectIdentity project)
+        internal static async Task<NativeMcpWorkspace> PrepareAsync(NativeChatConfiguration config, NativeProjectIdentity project, string workspace = null)
         {
             config.Validate();
             if (project == null || string.IsNullOrEmpty(config.McpSettingsPath)) throw new InvalidOperationException("Native MCP setup is missing.");
@@ -37,13 +38,15 @@ namespace TwinCatAssistant.Native
             {
                 if (process == null) throw new IOException("MCP project setup did not start.");
                 var drain = NativeChatSession.DrainAsync(process.StandardError);
-                var input = Encoding.UTF8.GetBytes(new JavaScriptSerializer().Serialize(new {
-                    state = config.StateRoot, mcpConfig = config.McpSettingsPath,
-                    solution = project.SolutionFile, project = project.ProjectFile
-                }));
+                var request = new System.Collections.Generic.Dictionary<string, object> {
+                    ["state"] = config.StateRoot, ["mcpConfig"] = config.McpSettingsPath,
+                    ["solution"] = project.SolutionFile, ["project"] = project.ProjectFile
+                };
+                if (workspace != null) request["workspace"] = workspace;
+                var input = Encoding.UTF8.GetBytes(new JavaScriptSerializer().Serialize(request));
                 await process.StandardInput.BaseStream.WriteAsync(input, 0, input.Length);
                 process.StandardInput.Close();
-                var read = NativeChatSession.ReadReadyAsync(process.StandardOutput, 12000);
+                var read = NativeChatSession.ReadReadyAsync(process.StandardOutput, 160000);
                 if (await Task.WhenAny(read, Task.Delay(30000)) != read)
                 { try { process.Kill(); } catch { } throw new IOException("MCP project setup timed out."); }
                 var result = new JavaScriptSerializer().Deserialize<NativeMcpWorkspace>(await read);
@@ -52,7 +55,11 @@ namespace TwinCatAssistant.Native
                     || !Path.GetFullPath(result.workspace).StartsWith(parent, StringComparison.OrdinalIgnoreCase)
                     || !string.Equals(result.project, project.ProjectFile, StringComparison.OrdinalIgnoreCase)
                     || !string.Equals(result.solution, project.SolutionFile, StringComparison.OrdinalIgnoreCase)
-                    || result.source != "saved-project-files") throw new IOException("MCP project setup could not be verified.");
+                    || result.source != "saved-project-files" || result.workspaces == null || result.workspaces.Length == 0 || result.workspaces.Length > 64)
+                    throw new IOException("MCP project setup could not be verified.");
+                foreach (var path in result.workspaces)
+                    if (string.IsNullOrEmpty(path) || !Path.GetFullPath(path).StartsWith(parent, StringComparison.OrdinalIgnoreCase))
+                        throw new IOException("Project history workspace could not be verified.");
                 return result;
             }
         }

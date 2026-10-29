@@ -1,6 +1,6 @@
 # Implementation status
 
-Updated: **2026-10-28**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
+Updated: **2026-10-29**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
 `0.1.9`, installed after operator coordination. The source prerelease version is
 `0.1.9`, described in [release notes](releases/native-v0.1.9.md). It adds automatic
 documentation setup and a shared Knowledge connection to the read-only MCP
@@ -29,6 +29,14 @@ Computer Use fails with
 See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action
+
+- `feat/twincat-runtime-ui` now builds the pinned OpenCode implementation
+  unchanged and connects the existing OpenChamber composer through a source
+  contract. Durable project identity, authoritative history restoration, legacy
+  chat compatibility and explicit attachment observations are implemented.
+  Runtime/provider/MCP checks use isolated profiles and synthetic credentials.
+  This source candidate has not replaced the installed release. Module removal
+  remains a joint next step. See [Runtime integration](RUNTIME_INTEGRATION.md).
 
 - Native 0.1.9 on `feat/knowledge-auto-setup` adds bounded local help discovery,
   source/version selection, background setup, cancellation/retry, changed-source

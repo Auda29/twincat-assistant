@@ -29,6 +29,13 @@ namespace TwinCatAssistant.Native
     {
         public string id { get; set; }
         public double updated { get; set; }
+        public string directory { get; set; }
+    }
+    public sealed class ChatHistoryResult
+    {
+        public string id { get; set; }
+        public string phase { get; set; }
+        public ChatSessionEntry[] items { get; set; }
     }
     public sealed class ChatMcpStatus
     {
@@ -57,6 +64,10 @@ namespace TwinCatAssistant.Native
         public string attachedObject;
         public string attachedRevision;
         public ChatAttachment[] attachments;
+        public ChatAttachment[] submittedAttachments;
+        public string attachmentState;
+        public string submittedObject;
+        public string submittedRevision;
         public string model;
         public ChatProviderChoice[] providers;
         public string[] allowedProviders;
@@ -75,6 +86,7 @@ namespace TwinCatAssistant.Native
         public int IdeProcessId { get; set; }
         public string SolutionFile { get; set; }
         public string ProjectFile { get; set; }
+        public string StateRoot { get; set; }
         public bool IsGeneral { get; set; }
 
         public bool SameProject(ActiveEditorIdentity identity)

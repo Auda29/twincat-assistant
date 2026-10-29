@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, writeFile, readFile, realpath, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, realpath, mkdir, rm, rename, unlink, cp } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { prepareNativeProject, readNativeMcpSettings } from '../src/native-mcp.mjs';
 import { initializeState, inspectState } from '../src/state.mjs';
+import { configureNativeModel } from '../src/native-chat-model.mjs';
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'tc-native-mcp-'));
@@ -22,6 +24,8 @@ async function fixture() {
 test('native MCP project locations isolate two PLCs and retain provider policy and source files', async () => {
   const f = await fixture();
   try {
+    const interrupted = join(f.state, 'projects', 'f'.repeat(64)); await mkdir(interrupted, { recursive: true });
+    await writeFile(join(interrupted, 'project.json'), '{');
     const projects = [];
     for (const name of ['PLC_A', 'PLC_B']) {
       const directory = join(f.root, name); await mkdir(directory);
@@ -66,5 +70,99 @@ test('native MCP setup refuses unknown options, wrong project types and changed 
     await assert.rejects(prepareNativeProject(request), /modified/);
     await writeFile(f.mcpConfig, JSON.stringify({ knowledge: { executable: project, apiKey: 'private' }, engineering: { entrypoint: project } }));
     await assert.rejects(readNativeMcpSettings(f.mcpConfig), /Invalid/);
+  } finally { await rm(f.root, { recursive: true, force: true }); }
+});
+
+test('MCP settings and model changes preserve project identity and existing workspace data', async () => {
+  const f = await fixture();
+  try {
+    const project = join(f.root, 'PLC.plcproj'); await writeFile(project, '<Project/>');
+    const request = { state: f.state, mcpConfig: f.mcpConfig, solution: f.solution, project };
+    const first = await prepareNativeProject(request);
+    const preserved = join(first.workspace, 'existing-chat-reference');
+    await writeFile(preserved, 'persisted session ID, no source code');
+    const newEntry = join(f.root, 'engineering-updated.mjs'); await writeFile(newEntry, '');
+    const settings = JSON.parse(await readFile(f.mcpConfig, 'utf8'));
+    settings.engineering.entrypoint = newEntry;
+    await writeFile(f.mcpConfig, JSON.stringify(settings));
+    await configureNativeModel({ state: f.state, model: 'openai/synthetic-test', acceptSourceDisclosure: true });
+    const second = await prepareNativeProject(request);
+    assert.equal(second.key, first.key);
+    assert.equal(second.workspace, first.workspace);
+    assert.equal(await readFile(preserved, 'utf8'), 'persisted session ID, no source code');
+    const local = JSON.parse(await readFile(join(second.workspace, 'opencode.json'), 'utf8'));
+    assert.equal(local.mcp.servers.engineering.command[1], newEntry);
+    assert.deepEqual(local.agents['twincat-readonly'].permissions[0], { action: '*', resource: '*', effect: 'deny' });
+    assert.equal((await inspectState(f.state)).settings.provider, 'openai');
+  } finally { await rm(f.root, { recursive: true, force: true }); }
+});
+
+test('a 0.1.9 project workspace is adopted in place and survives later configuration changes', async () => {
+  const f = await fixture();
+  try {
+    const project = join(f.root, 'PLC.plcproj'); await writeFile(project, '<Project/>');
+    const request = { state: f.state, mcpConfig: f.mcpConfig, solution: f.solution, project };
+    const first = await prepareNativeProject(request);
+    const receipt = JSON.parse(await readFile(join(first.workspace, 'project.json'), 'utf8'));
+    receipt.version = 1;
+    const legacyKey = createHash('sha256').update(JSON.stringify(receipt)).digest('hex');
+    const legacy = join(f.state, 'projects', legacyKey);
+    await rename(first.workspace, legacy);
+    await unlink(join(f.state, 'projects', first.key + '.json'));
+    await writeFile(join(legacy, 'project.json'), JSON.stringify(receipt));
+    const config = await readFile(join(legacy, 'opencode.json'), 'utf8');
+    await writeFile(join(legacy, 'opencode.json'), config.replaceAll(JSON.stringify(first.workspace).slice(1, -1), JSON.stringify(legacy).slice(1, -1)));
+    await writeFile(join(legacy, 'original-history-marker'), 'existing session');
+    const adopted = await prepareNativeProject(request);
+    assert.equal(adopted.workspace, legacy);
+    assert.equal(await readFile(join(legacy, 'original-history-marker'), 'utf8'), 'existing session');
+    assert.equal((await prepareNativeProject(request)).workspace, legacy);
+  } finally { await rm(f.root, { recursive: true, force: true }); }
+});
+
+test('historical configuration folders remain valid chat locations only for their original PLC', async () => {
+  const f = await fixture();
+  try {
+    const project = join(f.root, 'PLC.plcproj'); await writeFile(project, '<Project/>');
+    const request = { state: f.state, mcpConfig: f.mcpConfig, solution: f.solution, project };
+    const first = await prepareNativeProject(request);
+    const receipt = JSON.parse(await readFile(join(first.workspace, 'project.json'), 'utf8'));
+    receipt.version = 1;
+    const key = createHash('sha256').update(JSON.stringify(receipt)).digest('hex');
+    const legacy = join(f.state, 'projects', key);
+    await cp(first.workspace, legacy, { recursive: true });
+    await writeFile(join(legacy, 'project.json'), JSON.stringify(receipt));
+    const config = await readFile(join(legacy, 'opencode.json'), 'utf8');
+    await writeFile(join(legacy, 'opencode.json'), config.replaceAll(JSON.stringify(first.workspace).slice(1, -1), JSON.stringify(legacy).slice(1, -1)));
+    const current = await prepareNativeProject(request);
+    assert.deepEqual(new Set(current.workspaces), new Set([first.workspace, legacy]));
+    assert.equal((await prepareNativeProject({ ...request, workspace: legacy })).workspace, legacy);
+    assert.equal((await prepareNativeProject(request)).workspace, first.workspace, 'opening an old chat does not replace the stable project index');
+    const foreign = join(f.root, 'Other.plcproj'); await writeFile(foreign, '<Project/>');
+    await assert.rejects(prepareNativeProject({ ...request, project: foreign, workspace: legacy }), /another project/);
+  } finally { await rm(f.root, { recursive: true, force: true }); }
+});
+
+test('an interrupted managed configuration update recovers without replacing project history', async () => {
+  const f = await fixture();
+  try {
+    const project = join(f.root, 'PLC.plcproj'); await writeFile(project, '<Project/>');
+    const request = { state: f.state, mcpConfig: f.mcpConfig, solution: f.solution, project };
+    const first = await prepareNativeProject(request);
+    const receiptFile = join(first.workspace, 'project.json');
+    const before = JSON.parse(await readFile(receiptFile, 'utf8'));
+    const nextEntry = join(f.root, 'updated.mjs'); await writeFile(nextEntry, '');
+    const input = JSON.parse(await readFile(f.mcpConfig, 'utf8'));
+    input.engineering.entrypoint = nextEntry; await writeFile(f.mcpConfig, JSON.stringify(input));
+    await prepareNativeProject(request);
+    const after = JSON.parse(await readFile(receiptFile, 'utf8'));
+    // Simulate process death after committing config but before its receipt.
+    await writeFile(receiptFile, JSON.stringify(before));
+    const journal = join(first.workspace, '.configuration.json');
+    await writeFile(journal, JSON.stringify({ version: 1, solution: before.solution, project: before.project,
+      before: before.settings, after: after.settings }));
+    assert.equal((await prepareNativeProject(request)).workspace, first.workspace);
+    assert.deepEqual(JSON.parse(await readFile(receiptFile, 'utf8')), after);
+    await assert.rejects(readFile(journal), { code: 'ENOENT' });
   } finally { await rm(f.root, { recursive: true, force: true }); }
 });
