@@ -32,7 +32,7 @@ chat after one-time [native chat configuration](NATIVE_CHAT.md#development-setup
 | --- | --- |
 | OpenChamber web / SDK | `2.1.1` |
 | OpenCode CLI / schema | `2.0.23` |
-| Knowledge MCP | `6c9f1f629574e814abc0c321fd45bb54d81a90c1` |
+| Knowledge MCP | `0.1.1`, `fff24f410efa687bf39fe6829f5d068b1e80cf8f` |
 | Engineering monorepo MCP | `3c303837e6d6f72bec1b9d38e778a7c32c61ae5c` |
 
 Root and `upstream/` npm lockfiles pin their own dependencies. MCP source trees
@@ -59,13 +59,39 @@ not establish native Windows/TwinCAT compatibility.
 
 ## Install real upstreams
 
+For the Windows Assistant, install the pinned Knowledge release in its own
+environment with [Install-Knowledge.ps1](../scripts/Install-Knowledge.ps1):
+
+```powershell
+$knowledge = .\scripts\Install-Knowledge.ps1
+$knowledge.KnowledgeExecutable
+```
+
+This requires `gh` with access to the Knowledge repository and `uv`. The
+[release lock](../upstream/knowledge-lock.json) pins the 0.1.1 wheel, dependency
+requirements and checksums. The script verifies all three downloaded artifacts,
+installs hashed dependencies and the wheel, and checks both CLI and package
+versions. The default path is
+`%LOCALAPPDATA%\TwinCatAssistant\knowledge-runtime\0.1.1`; an absolute
+`-InstallRoot` selects another new directory. Completed matching installations
+are verified and reused. An incomplete or unrelated directory is refused.
+The installer does not change Assistant configuration, existing environments,
+the selected corpus, or provider/chat data. A failed installation leaves the
+previous executable configured; use a new empty path to retry.
+
+Then use [native MCP setup](NATIVE_MCP.md) to select the returned executable.
+For development fixtures or non-Windows setups, use the source instructions
+below. The existing protocol profile and four-tool catalog remain unchanged.
+Version 0.1.1 recovers marked abandoned loader caches after process termination;
+it does not remove unmarked legacy caches or reduce full-corpus startup time.
+
 Use a new ignored directory; do not reuse/change a customer checkout.
 
 ```sh
 npm ci --prefix upstream --no-audit --no-fund
 mkdir -p local-data/upstream
 git clone https://github.com/Auda29/twincat-knowledge-mcp.git local-data/upstream/knowledge
-git -C local-data/upstream/knowledge checkout --detach 6c9f1f629574e814abc0c321fd45bb54d81a90c1
+git -C local-data/upstream/knowledge checkout --detach fff24f410efa687bf39fe6829f5d068b1e80cf8f
 (cd local-data/upstream/knowledge && uv sync --frozen --no-dev --python 3.13)
 git clone https://github.com/Auda29/twincat-mcp-mono.git local-data/upstream/engineering
 git -C local-data/upstream/engineering checkout --detach 3c303837e6d6f72bec1b9d38e778a7c32c61ae5c
@@ -86,6 +112,14 @@ Both paths must select the exact pinned, built checkouts. The fixture imports
 upstream test builders, which are not a supported production corpus API. Its
 fixture corpus and ST project are synthetic. This suite is separate from the
 quick `npm run check` and requires installed upstream packages.
+
+To verify the installed Knowledge wheel rather than an editable source install,
+set `TC_KNOWLEDGE_EXECUTABLE` to the returned executable and
+`TC_KNOWLEDGE_CHECKOUT` to the pinned source checkout, then run
+`node --test tests/integration/knowledge-release.test.mjs`. It verifies CLI,
+package metadata, MCP version/protocol, search-to-topic retrieval and one shared
+broker using a synthetic corpus. The checkout supplies only the fixture builder;
+the release environment supplies the imported package. No model call occurs.
 
 ## Initialize operator state
 

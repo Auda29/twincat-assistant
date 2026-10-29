@@ -3,7 +3,7 @@ import test from 'node:test';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:net';
@@ -27,8 +27,9 @@ test('native project locations connect both real MCPs and read only their config
   let child, closed, broker;
   try {
     const corpus = join(root, 'corpus'); await mkdir(corpus);
-    const executable = join(knowledge, '.venv', process.platform === 'win32' ? 'Scripts/twincat-knowledge.exe' : 'bin/twincat-knowledge');
-    const python = join(knowledge, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+    const executable = process.env.TC_KNOWLEDGE_EXECUTABLE
+      ?? join(knowledge, '.venv', process.platform === 'win32' ? 'Scripts/twincat-knowledge.exe' : 'bin/twincat-knowledge');
+    const python = join(dirname(executable), process.platform === 'win32' ? 'python.exe' : 'python');
     const fixture = JSON.parse((await capture(python, [resolve('tests/integration/prepare_knowledge.py'), knowledge, corpus], { timeout: 30000 })).stdout);
     const settingsFile = join(root, 'mcp.json');
     await writeFile(settingsFile, JSON.stringify({ knowledge: { executable, config: fixture.config },

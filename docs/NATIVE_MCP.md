@@ -17,17 +17,19 @@ Installed IDE startup and project-context acceptance remain open. See the
 ## Setup
 
 First configure the protected chat runtime using
-[Configure-NativeChat.ps1](../scripts/Configure-NativeChat.ps1). Install/build the
-two MCP checkouts at the revisions in [Installation](INSTALLATION.md):
-Knowledge `6c9f1f629574e814abc0c321fd45bb54d81a90c1`, engineering
+[Configure-NativeChat.ps1](../scripts/Configure-NativeChat.ps1). Install Knowledge
+and build the engineering checkout at the revisions in [Installation](INSTALLATION.md):
+Knowledge `0.1.1` at `fff24f410efa687bf39fe6829f5d068b1e80cf8f`, engineering
 `3c303837e6d6f72bec1b9d38e778a7c32c61ae5c`. Engineering needs its built workspace
 dependencies, not only a copied `dist/index.js`.
 
-Run from the Assistant checkout, with absolute paths to those installations:
+The Windows Knowledge release can be installed independently of a development
+checkout. Run from the Assistant checkout:
 
 ```powershell
+$knowledge = .\scripts\Install-Knowledge.ps1
 .\scripts\Configure-NativeMcp.ps1 `
-  -KnowledgeExecutable 'C:\dev\twincat-knowledge-mcp\.venv\Scripts\twincat-knowledge.exe' `
+  -KnowledgeExecutable $knowledge.KnowledgeExecutable `
   -EngineeringEntrypoint 'C:\dev\twincat-mcp\packages\mcp\dist\index.js'
 ```
 
@@ -47,7 +49,7 @@ refused. MCP settings contain paths only, with this exact schema:
 ```json
 {
   "knowledge": {
-    "executable": "C:\\dev\\twincat-knowledge-mcp\\.venv\\Scripts\\twincat-knowledge.exe"
+    "executable": "C:\\Users\\example\\AppData\\Local\\TwinCatAssistant\\knowledge-runtime\\0.1.1\\.venv\\Scripts\\twincat-knowledge.exe"
   },
   "engineering": {
     "entrypoint": "C:\\dev\\twincat-mcp\\packages\\mcp\\dist\\index.js"
@@ -59,6 +61,14 @@ Reconnect the Assistant after setup or configuration changes. A connected
 Knowledge process does not establish that an activated corpus is available.
 Connection states appear under **Diagnose**; the project agent checks corpus status
 before documentation research and uses the server's returned sources.
+
+For an upgrade, retain an existing `KnowledgeConfig` argument if one is
+configured, and keep the same engineering entrypoint. The previous executable
+and corpus remain in place. The selected release is recorded in
+[knowledge-lock.json](../upstream/knowledge-lock.json); a CLI version probe and
+an MCP initialization response must both identify 0.1.1. Changing a development
+checkout alone is not a release installation. Package metadata can otherwise
+remain at the old version while editable source already reports a new one.
 
 ## Project and disclosure boundaries
 

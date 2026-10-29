@@ -1,5 +1,12 @@
 # Source runtime for the TwinCAT Assistant
 
+The independent Knowledge MCP release is pinned in
+[`knowledge-lock.json`](knowledge-lock.json). On Windows,
+[`Install-Knowledge.ps1`](../scripts/Install-Knowledge.ps1) installs its verified
+wheel and hashed dependencies in a separate versioned environment. Its release
+cycle and operator corpus remain separate from the OpenCode/OpenChamber source
+build described below. See [installation](../docs/INSTALLATION.md).
+
 `source-lock.json` fixes OpenCode 2.0.23 and OpenChamber 2.1.1 to their exact
 Git revisions. OpenCode's implementation is built unchanged. This includes its
 providers, login methods, model catalog, streaming, cancellation, agent loop,

@@ -5,6 +5,21 @@ Knowledge MCP from the native **Wissenssuche** panel. It reuses the pinned
 Knowledge CLI for import, validation and snapshot activation. No documentation
 files are bundled with the Assistant.
 
+## Knowledge software version
+
+The Assistant pins Knowledge MCP **0.1.1** separately in
+[knowledge-lock.json](../upstream/knowledge-lock.json). On Windows,
+[Install-Knowledge.ps1](../scripts/Install-Knowledge.ps1) installs the verified
+release wheel and hashed dependencies in a versioned environment. Native setup
+selects that executable; the existing TOML, active snapshot and documentation
+package remain in place. See [native MCP configuration](NATIVE_MCP.md).
+
+This release adds conservative cleanup of marked loader caches left behind by
+terminated processes. It preserves active readers and unmarked legacy caches.
+It does not change the four-tool protocol, convert the corpus or reduce the
+first full-corpus load. Restart the Assistant runtime after switching its MCP
+executable so the shared broker starts the selected installation.
+
 ## Normal use
 
 1. After native chat starts, the Assistant looks for installed help in the
