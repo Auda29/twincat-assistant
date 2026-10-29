@@ -8,6 +8,7 @@ Native acceptance and future engineering write/build milestones remain separate.
 
 - [Installation and real local checks](INSTALLATION.md)
 - [Planned OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md)
+- [Source runtime, persistent project chats and context states](RUNTIME_INTEGRATION.md)
 - [OpenChamber extension](EXTENSION.md)
 - [Diagnostic bridge and portable safety core](BRIDGE.md)
 - [Native Windows acceptance](WINDOWS_ACCEPTANCE.md)

@@ -76,3 +76,52 @@ jobs:
         run: node scripts/build-embedded-chat.mjs
       - name: Verify Windows authenticated runtime bootstrap and owner-death cleanup
         run: node --test tests/integration/windows-runtime.test.mjs tests/integration/native-chat.test.mjs
+  source-runtime:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '8.0.425'
+      - name: Install locked operator, build tools and reference distribution
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix tools --no-audit --no-fund
+          npm ci --prefix upstream --no-audit --no-fund
+      - name: Build the locked Windows ownership helper
+        run: dotnet build native/WindowsHost/WindowsHost.csproj --configuration Release /p:RestoreLockedMode=true --nologo
+      - name: Build the exact OpenCode and OpenChamber sources with the TwinCAT contract
+        run: npm run build:runtime
+      - name: Verify source runtime login, models, process ownership and existing data compatibility
+        run: node --test tests/integration/native-chat.test.mjs tests/integration/session-compatibility.test.mjs
+      - name: Check source contract types, lint and original composer assembly
+        shell: pwsh
+        run: |
+          $taskBun = (Resolve-Path tools/node_modules/bun/bin/bun.exe).Path
+          $env:PATH = (Split-Path $taskBun -Parent) + ';' + $env:PATH
+          Push-Location local-data/upstream/openchamber
+          try {
+            & $taskBun run --cwd packages/ui type-check
+            if ($LASTEXITCODE -ne 0) { throw 'Shared UI type check failed.' }
+            & $taskBun run --cwd packages/web type-check
+            if ($LASTEXITCODE -ne 0) { throw 'Web type check failed.' }
+            & $taskBun x --no-install oxlint packages/ui/src/lib/twincat/twincat.ts packages/ui/src/lib/twincat/install.ts
+            if ($LASTEXITCODE -ne 0) { throw 'Source contract lint failed.' }
+            & node scripts/run-isolated-tests.mjs packages/ui/src/components/chat/composer/submit/__tests__
+            if ($LASTEXITCODE -ne 0) { throw 'Original composer regressions failed.' }
+          } finally { Pop-Location }
+      - name: Execute original OpenCode provider, login, streaming, tool and MCP regressions
+        shell: pwsh
+        run: |
+          $taskBun = (Resolve-Path tools/node_modules/bun/bin/bun.exe).Path
+          $env:PATH = (Split-Path $taskBun -Parent) + ';' + $env:PATH
+          Push-Location local-data/upstream/opencode/packages/core
+          try {
+            & $taskBun run script/test.ts test/provider.test.ts test/integration.test.ts test/session-runner-recorded.test.ts test/session-runner-tool-events.test.ts test/mcp.test.ts
+            if ($LASTEXITCODE -ne 0) { throw 'Upstream core regressions failed.' }
+          } finally { Pop-Location }

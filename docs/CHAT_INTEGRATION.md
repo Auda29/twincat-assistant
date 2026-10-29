@@ -1,5 +1,11 @@
 # Native project chat, candidate 0.1.6
 
+The `feat/twincat-runtime-ui` source integration is documented in
+[Runtime integration](RUNTIME_INTEGRATION.md). It replaces bootstrap-cache
+restoration and source-build asset-export guessing, and adds authoritative
+composer attachment observations. The historical candidate evidence below
+continues to describe the released distribution integration.
+
 Candidate 0.1.8 extends this flow with both read-only MCPs and project identity
 independent of supported POU attachments. See [Native MCP integration](NATIVE_MCP.md)
 for the current setup, saved-file disclosure boundary and missing-corpus state.

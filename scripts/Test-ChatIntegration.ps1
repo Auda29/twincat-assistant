@@ -91,6 +91,8 @@ function Wait-Native([scriptblock]$Condition,[string]$Name,[int]$Seconds=40) {
         Pump 250
     } while ([DateTime]::UtcNow -lt $taskDeadline)
     Write-Output ('BANNER '+(Field '_bannerText').Text+' | STATUS '+(Field '_chatStatus').Text+' | MODEL '+(Field '_modelStatus').Text)
+    Write-Output ('ATTACH '+(Field '_attachLabel').Text+' enabled='+(Field '_attachPouButton').IsEnabled+' selection='+((New-Object System.Web.Script.Serialization.JavaScriptSerializer).Serialize((Field '_chatSelection'))))
+    Write-Output ('COMPOSER '+(JS 'JSON.stringify({state:window.__twinCatChat?.state(),composer:window.__twinCatSource?.composer(window.__twinCatChat?.state().sessionId)})'))
     throw ('Native automation did not reach: '+$Name)
 }
 function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; // synthetic context fixture') {
@@ -150,6 +152,26 @@ try {
     Set-Field '_chatProjectReader' ([Func[TwinCatAssistant.Native.NativeProjectIdentity]]{ return $global:taskIntegrationProject })
     (Field '_port').Text = [string]$taskPort
     Set-Snapshot 'PLC_A'
+    # Read an actual 0.1.9 binding keyed by its old listener origin, then
+    # rebind the same session after that IDE has exited and the port changed.
+    $taskCompatibilityDirectory = Join-Path $taskRoot 'compatibility-bindings'
+    [IO.Directory]::CreateDirectory($taskCompatibilityDirectory) | Out-Null
+    $taskCompatibilityStore = $taskStoreType.GetConstructor([type[]]@([string])).Invoke([object[]]@([string]$taskCompatibilityDirectory))
+    $taskBindingType = $taskAssembly.GetType('TwinCatAssistant.Native.ChatContextBinding')
+    $taskOldBinding = $taskBindingType.GetMethod('CreateProject').Invoke($null,[object[]]@($global:taskIntegrationProject,'closed-ide','http://127.0.0.1:31001/','ses_compatibility'))
+    $taskOldBinding.IdeProcessId = [int]::MaxValue
+    $taskSerializer = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+    $taskOldJson = $taskSerializer.Serialize($taskOldBinding)
+    $taskHashType = $taskAssembly.GetType('TwinCatAssistant.Native.ChatContextPolicy')
+    $taskOldName = $taskHashType.GetMethod('Hash').Invoke($null,[object[]]@("http://127.0.0.1:31001/"+[char]0+"ses_compatibility"))
+    $taskOldPath = Join-Path $taskCompatibilityDirectory ($taskOldName+'.json')
+    [IO.File]::WriteAllText($taskOldPath,$taskOldJson,[Text.UTF8Encoding]::new($false))
+    $taskReadBinding = $taskCompatibilityStore.Read('http://127.0.0.1:31002/','ses_compatibility')
+    Assert-Integration ($taskReadBinding.SessionId -eq 'ses_compatibility') 'legacy binding survives a changed listener port'
+    $taskNewBinding = $taskBindingType.GetMethod('CreateProject').Invoke($null,[object[]]@($global:taskIntegrationProject,'new-ide','http://127.0.0.1:31002/','ses_compatibility'))
+    $taskCompatibilityStore.Bind($taskNewBinding)
+    Assert-Integration ($taskCompatibilityStore.Read('http://127.0.0.1:31002/','ses_compatibility').IdeInstanceId -eq 'new-ide') 'closed IDE binding is revalidated under the new listener'
+    Assert-Integration ([IO.File]::ReadAllText($taskOldPath) -eq $taskOldJson) 'legacy binding adoption preserves the original metadata file'
     $taskWindow = New-Object Windows.Window
     $taskWindow.Content=$taskControl; $taskWindow.Width=640; $taskWindow.Height=900
     $taskWindow.ShowActivated=$false; $taskWindow.ShowInTaskbar=$false; $taskWindow.Left=-10000
@@ -176,7 +198,15 @@ try {
     Invoke-Chat 'AttachClickAsync'; Pump 800
     Assert-Integration ((JS 'document.body.innerText.includes("FB_Motor / PLC_A")') -eq 'true') 'explicit native attach produces a real upstream composer chip'
     Invoke-Chat 'PollChatSelectionAsync'
-    Assert-Integration ((Field '_attachLabel').Text.StartsWith('Angeh') -and -not (Field '_attachPouButton').IsEnabled) 'attach button reports the staged revision'
+    Assert-Integration ((Field '_attachLabel').Text -eq 'Vorgemerkt' -and -not (Field '_attachPouButton').IsEnabled) 'attach button reports the staged revision'
+    if ((JS '!!window.__twinCatSource') -eq 'true') {
+        Assert-Integration ((JS 'window.__twinCatChat.state().attachmentState') -eq '"staged"') 'source contract confirms the actual composer reference'
+        JS 'document.querySelector(''div[title="FB_Motor / PLC_A"] button[aria-label]'').click()' | Out-Null
+        Wait-Native { (JS 'window.__twinCatChat.state().attachedRevision===null') -eq 'true' } 'composer removal clears native attachment state'
+        Wait-Native { (Field '_attachLabel').Text.StartsWith('Anh') -and (Field '_attachPouButton').IsEnabled } 'native attach button follows composer removal'
+        Assert-Integration ((Field '_chatSelection').attachmentState -eq 'none' -and (Field '_attachPouButton').IsEnabled) 'removing the composer chip enables attach again'
+        Invoke-Chat 'AttachClickAsync'; Pump 800
+    }
     Assert-Integration ((JS '[...document.querySelectorAll("[role=dialog]")].some(e=>e.innerText.includes("Add project directory"))') -eq 'false') 'private chat workspace avoids the generic first-run project picker'
     Assert-Integration ((Field '_bannerText').Text.Contains('Modellanbieter') -and (Field '_banner').Visibility -eq [Windows.Visibility]::Visible) 'missing provider is explained with one action'
     JS "window.__fixtureProviderConnected=false;fetch('/api/integration/openai/connect/key',{method:'POST',headers:{'content-type':'application/json','x-opencode-directory':encodeURIComponent(window.__twinCatChat.state().directory),'x-opencode-directory-encoding':'uri'},body:JSON.stringify({key:'synthetic-not-a-real-api-key'})}).then(r=>window.__fixtureProviderConnected=r.status===204)" | Out-Null
@@ -206,7 +236,7 @@ try {
         $taskMissingCorpus=$false
         (Field '_knowledgePanel').Visibility=[Windows.Visibility]::Collapsed
     }
-    JS "import('/assets/useAppFontEffects-DC1U1Z6i.js').then(m=>{window.__fixtureCatalog=()=>m.l.getState().providers.map(p=>({id:p.id,count:p.models.length}));window.__fixtureCatalogDetails=()=>({active:m.l.getState().activeDirectoryKey,selected:window.__twinCatChat.state().directory,providers:window.__fixtureCatalog(),snapshots:Object.entries(m.l.getState().directoryScoped).map(([key,v])=>({key,providers:v.providers.map(p=>p.id)}))});})" | Out-Null
+    JS "(window.__twinCatSource?Promise.resolve({l:window.__twinCatSource.stores.config}):import('/assets/useAppFontEffects-DC1U1Z6i.js')).then(m=>{window.__fixtureCatalog=()=>m.l.getState().providers.map(p=>({id:p.id,count:p.models.length}));window.__fixtureCatalogDetails=()=>({active:m.l.getState().activeDirectoryKey,selected:window.__twinCatChat.state().directory,providers:window.__fixtureCatalog(),snapshots:Object.entries(m.l.getState().directoryScoped).map(([key,v])=>({key,providers:v.providers.map(p=>p.id)}))});})" | Out-Null
     Wait-JS "window.__fixtureCatalog?.().some(p=>p.id==='openai' && p.count>0)"
     Assert-Integration ((JS "window.__fixtureCatalog().some(p=>p.id==='openai' && p.count>0)") -eq 'true') 'real upstream model picker catalog is populated after provider-only consent'
     JS ("window.__fixtureShell=null;fetch('/api/session/"+$taskFirstSession+"/shell',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(r=>r.json()).then(r=>window.__fixtureShell=r.code)") | Out-Null
@@ -226,6 +256,18 @@ try {
     Pump 800; Invoke-Chat 'PollChatSelectionAsync'; Invoke-Chat 'BindCurrentChatAsync'
     Assert-Integration (-not (Field '_attachPouButton').IsEnabled -and (Field '_chatSelection').sessionId -eq $taskFirstSession) 'an existing project thread cannot be silently rebound to another PLC'
     Assert-Integration ((Field '_bannerText').Text.Contains('PLC_A') -and (Field '_statusText').Text.Contains('PLC_A')) 'a foreign project chat is explained as read-only'
+    if ((JS '!!window.__twinCatSource') -eq 'true') {
+        JS ("window.__twinCatChat.selectSession("+(New-Object Web.Script.Serialization.JavaScriptSerializer).Serialize($taskSecondSession)+")") | Out-Null
+        Wait-Native { (Field '_chatSelection').sessionId -eq $taskSecondSession -and $taskControl.GetType().GetMethod('CanPromptCurrentChat',$taskFlags).Invoke($taskControl,@()) } 'restore PLC_B before testing a failed project history read'
+        JS 'window.__fixtureSessions=window.__twinCatSource.sessions;window.__twinCatSource.sessions=async()=>{throw new Error("synthetic history outage")}' | Out-Null
+        Set-Snapshot 'PLC_A'
+        Wait-Native { (Field '_bannerText').Text.Contains('Projektverlauf') -and -not (Field '_chatActionPending') } 'history failure is shown without creating a new chat'
+        Assert-Integration ((Field '_chatSelection').sessionId -eq $taskSecondSession -and @(Get-ChildItem (Join-Path $taskRoot 'bindings') -Filter '*.json').Count -eq 2) 'failed history read preserves the existing conversations'
+        JS 'window.__twinCatSource.sessions=async directory=>{await new Promise(resolve=>setTimeout(resolve,2600));return window.__fixtureSessions(directory)}' | Out-Null
+        (Field '_noticeAction').Invoke()
+        Wait-Native { (Field '_chatSelection').sessionId -eq $taskFirstSession -and -not (Field '_chatActionPending') } 'history retry waits beyond the old two-second bootstrap limit'
+        JS 'window.__twinCatSource.sessions=window.__fixtureSessions;delete window.__fixtureSessions' | Out-Null
+    }
     Set-Snapshot 'PLC_A'
     Wait-Native { (Field '_chatSelection').sessionId -eq $taskFirstSession -and (Field '_chatBinding').ProjectFile.EndsWith('PLC_A.plcproj') } 'return to PLC_A chat'
     Set-Snapshot 'PLC_B'
@@ -255,6 +297,7 @@ try {
     Assert-Integration ($taskOwnedRuntime -and $taskOwnedRuntime.IsRunning) 'native host automatically restarts a lost protected runtime'
     Wait-JS ("window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated && window.__twinCatChat.state().documentId!=="+$taskPreviousDocument)
     Invoke-Chat 'PollChatSelectionAsync'
+    Assert-Integration ((Field '_chatSelection').sessionId -eq $taskFirstSession) 'runtime restart restores the same persisted project conversation'
     Assert-Integration ((JS 'window.__twinCatChat.state().attachedObject===null') -eq 'true') 'reconnection does not replay source disclosure'
     $taskPreferencesType = $taskAssembly.GetType('TwinCatAssistant.Native.NativeChatPreferences')
     $taskPreferences = $taskPreferencesType.GetConstructor([type[]]@([string])).Invoke([object[]]@([string](Join-Path $taskRoot 'preferences')))

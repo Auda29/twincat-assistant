@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "bun": "1.4.2",
+  "opencode": {
+    "repository": "https://github.com/anomalyco/opencode.git",
+    "tag": "v2.0.23",
+    "revision": "0fd7e2829449b052abf0078666669302923d77af",
+    "version": "2.0.23"
+  },
+  "openchamber": {
+    "repository": "https://github.com/openchamber/openchamber.git",
+    "tag": "v2.1.1",
+    "revision": "e302062e3be0686986594fddabdafd8a97c129e5",
+    "version": "2.1.1"
+  }
+}

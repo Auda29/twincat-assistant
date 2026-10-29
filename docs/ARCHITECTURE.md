@@ -2,12 +2,13 @@
 
 ## Core Decision
 
-The planned next step on `feat/twincat-runtime-ui` specializes both upstreams
+The implementation on `feat/twincat-runtime-ui` specializes both upstreams
 through source builds, retaining the relevant existing implementations and
 adapting their IDE integration. The agreed direction, proposed reductions and
 stepwise decisions are in the [TwinCAT runtime/UI plan](TWINCAT_RUNTIME_UI_PLAN.md).
-This is a planning document; the distribution-based implementation below remains
-the current 0.1.9 baseline.
+The first source build and project/context integration are described in
+[Runtime integration](RUNTIME_INTEGRATION.md). The distribution-based description
+below remains the released 0.1.9 reference.
 
 OpenChamber and OpenCode are reused together as the foundation. Initially, neither
 a new chat interface nor a new agent harness will be built. TwinCAT-specific

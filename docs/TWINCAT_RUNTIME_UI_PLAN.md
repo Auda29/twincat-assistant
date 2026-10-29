@@ -3,9 +3,11 @@
 Stand: 29.10.2026. Arbeitsbranch: `feat/twincat-runtime-ui`.
 Ausgangspunkt ist Release `native-v0.1.9`, Commit `d9d62d0`.
 
-Dieses Dokument beschreibt den gemeinsam besprochenen Umbau. Auf diesem Branch
-wird zunächst die Planung festgehalten. Die Quellcodeübernahme, die Auswahl der
-entfallenden Module und die einzelnen Umbauten folgen abschnittsweise.
+Dieses Dokument beschreibt den gemeinsam besprochenen Umbau. Die ersten beiden
+Funktionsgruppen werden auf diesem Branch mit festgelegten Quellständen und
+einer gezielten TwinCAT-Anbindung umgesetzt. Den Stand beschreibt
+[Runtime integration](RUNTIME_INTEGRATION.md). Die Auswahl entfallender Module
+bleibt ein späterer gemeinsamer Schritt.
 
 ## Vereinbarte Richtung
 

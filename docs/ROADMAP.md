@@ -5,14 +5,15 @@ snapshot; this document defines the order of work and milestone exit gates.
 [MVP](MVP.md) describes the eventual product, not the permissions of the current
 prototype. No delivery dates or effort estimates are committed.
 
-## Current planning branch
+## Current implementation branch
 
-As of 2026-10-29, `feat/twincat-runtime-ui` records the agreed direction to reuse
-the relevant OpenCode/OpenChamber source implementations and specialize their
-runtime and UI for TwinCAT. The next step is a joint function/dependency
-inventory, starting with OpenCode. Source intake and implementation have not
-started. See the [stepwise plan](TWINCAT_RUNTIME_UI_PLAN.md). Existing native
-acceptance and engineering milestones below remain separate requirements.
+As of 2026-10-29, `feat/twincat-runtime-ui` builds the pinned OpenCode source
+unchanged and adds a source contract to OpenChamber's existing composer. Project
+history restoration, configuration-independent identity, legacy data compatibility
+and context/attachment observations are implemented. See
+[Runtime integration](RUNTIME_INTEGRATION.md) and the
+[stepwise plan](TWINCAT_RUNTIME_UI_PLAN.md). Selecting modules to remove remains
+a joint next step. Native installation and engineering milestones stay separate.
 
 ## Where we are now
 

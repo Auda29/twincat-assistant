@@ -30,13 +30,13 @@ See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action
 
-- Planning on `feat/twincat-runtime-ui` now records the agreed source-based
-  specialization of OpenCode and OpenChamber. Relevant functions retain their
-  existing implementation; integration changes and module reductions will be
-  reviewed step by step. The next task is the OpenCode function/dependency
-  inventory. No runtime code or installed payload changes in this planning
-  commit. Project-chat restoration and the stale attachment indicator are
-  recorded acceptance issues. See the [runtime/UI plan](TWINCAT_RUNTIME_UI_PLAN.md).
+- `feat/twincat-runtime-ui` now builds the pinned OpenCode implementation
+  unchanged and connects the existing OpenChamber composer through a source
+  contract. Durable project identity, authoritative history restoration, legacy
+  chat compatibility and explicit attachment observations are implemented.
+  Runtime/provider/MCP checks use isolated profiles and synthetic credentials.
+  This source candidate has not replaced the installed release. Module removal
+  remains a joint next step. See [Runtime integration](RUNTIME_INTEGRATION.md).
 
 - Native 0.1.9 on `feat/knowledge-auto-setup` adds bounded local help discovery,
   source/version selection, background setup, cancellation/retry, changed-source

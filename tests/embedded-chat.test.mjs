@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { allowedProviders, createChatAdapter, consentProviders, mcpStates } from '../src/embedded-chat.mjs';
+import { allowedProviders, createChatAdapter, consentProviders, mcpStates, storedProjectSessions } from '../src/embedded-chat.mjs';
 
 test('native MCP status discloses only reviewed server names and connection states', () => {
   assert.deepEqual(mcpStates([{ name:'knowledge', status:{status:'connected'} },
@@ -16,7 +16,7 @@ function store(initial) {
   return { getState: () => value, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     set(patch) { value = { ...value, ...patch }; for (const fn of listeners) fn(value); } };
 }
-function fixture() {
+function fixture(options = {}) {
   const ui = store({});
   for (const key of ['setSidebarOpen', 'setDraftStartersVisible', 'setShowOpenCodeUpdateNotifications', 'setContextRailHiddenSurfaces', 'toggleSidebar']) {
     ui.getState()[key] = value => ui.set({ [key + 'Value']: value });
@@ -25,7 +25,7 @@ function fixture() {
   sessions.getState().createSession = async () => { sessions.set({ currentSessionId: 'session-two' }); return { id: 'session-two' }; };
   const input = store({ pendingGuestIssue: null });
   input.getState().setPendingGuestIssue = value => input.set({ pendingGuestIssue: value });
-  return { ui, sessions, input, adapter: createChatAdapter({ ui, sessions, input, documentId: 'fixture-document' }) };
+  return { ui, sessions, input, adapter: createChatAdapter({ ui, sessions, input, documentId: 'fixture-document', ...options }) };
 }
 const item = { providerId: 'twincat-assistant', id: 'snapshot-one', title: 'FB_Motor / PLC_A', url: 'http://127.0.0.1:3123/', text: 'synthetic ST snapshot' };
 
@@ -34,6 +34,63 @@ test('consent choices retain connected providers hidden by policy and expose no 
   const choices = consentProviders([connected('openai'), connected('mcp_private'), connected('search'), { id: 'not-connected', connections: [] }], [{ id: 'search' }]);
   assert.deepEqual(choices, [{ id: 'openai', name: 'openai' }]);
   assert.ok(!JSON.stringify(choices).includes('private'));
+});
+
+test('composer removal clears staged state while successful submission is a separate observation', () => {
+  let references = [], submitted = [];
+  const contexts = [];
+  const source = { composer: () => ({ references, submitted }), setContext: (...args) => contexts.push(args) };
+  const { adapter, input, sessions } = fixture({ source });
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'one' };
+  adapter.permit({ ...expected, context: { project: 'PLC_A', object: 'FB_Motor', treePath: 'POUs^FB_Motor', sourceKind: 'saved snapshot' } });
+  assert.equal(contexts.at(-1)[1].object, 'FB_Motor');
+  adapter.attach({ ...expected, item: { ...item, data: { revision: 'one' } } });
+  assert.equal(adapter.state().attachmentState, 'staging');
+  input.getState().setPendingGuestIssue(null);
+  references = [{ title: item.title, revision: 'one' }];
+  assert.equal(adapter.state().attachmentState, 'staged');
+  references.push({ title: 'FB_Other / PLC_A', revision: 'two' });
+  assert.equal(adapter.state().attachedRevision, 'one', 'the active POU is resolved among several staged references');
+  references = [];
+  assert.equal(adapter.state().attachedRevision, null, 'removing the actual composer chip removes the header state');
+  assert.equal(adapter.state().attachmentState, 'none');
+  submitted = [{ title: item.title, revision: 'one' }];
+  assert.equal(adapter.state().attachmentState, 'submitted');
+  assert.equal(adapter.state().attachedRevision, null, 'sent source is not a pending attachment');
+  assert.equal(adapter.state().submittedRevision, 'one');
+  sessions.set({ currentSessionId: 'session-two' });
+  assert.deepEqual(contexts.at(-1), ['', null], 'context metadata is revoked on session switch');
+});
+
+test('stored history is authoritative even before the UI cache loads, and errors remain errors', async () => {
+  const { adapter, sessions } = fixture({ loadSessions: async () => [{ id: 'persisted', updated: 23 }] });
+  sessions.getState().getSessionsByDirectory = () => [];
+  assert.deepEqual(adapter.recentSessions('/isolated'), []);
+  assert.deepEqual(await adapter.storedSessions('/isolated'), [{ id: 'persisted', updated: 23, directory: '/isolated' }]);
+  const failed = fixture({ loadSessions: async () => { throw new Error('runtime unavailable'); } }).adapter;
+  await assert.rejects(failed.storedSessions('/isolated'), /unavailable/);
+});
+
+test('all historical project locations participate in restoration in stored update order', async () => {
+  const { adapter } = fixture({ loadSessions: async directory => [{ id: directory.endsWith('old') ? 'latest' : 'earlier', updated: directory.endsWith('old') ? 100 : 20 }] });
+  assert.deepEqual(await adapter.storedSessions(['/project/current', '/project/old']), [
+    { id: 'latest', updated: 100, directory: '/project/old' },
+    { id: 'earlier', updated: 20, directory: '/project/current' },
+  ]);
+});
+
+test('stored session pagination reads every page without starting directory-scoped MCP locations', async () => {
+  const requests = [];
+  const list = await storedProjectSessions(async (url, options) => {
+    requests.push({ url, options });
+    return Response.json(requests.length === 1
+      ? { data: [{ id: 'one', time: { updated: 7 } }], cursor: { next: 'second' } }
+      : { data: [{ id: 'archived', time: { archived: 1 } }, { id: 'two', time: { updated: 5 } }], cursor: {} });
+  }, 'C:/isolated/project');
+  assert.deepEqual(list, [{ id: 'one', updated: 7 }, { id: 'two', updated: 5 }]);
+  assert.ok(requests.every(request => request.url.startsWith('/api/session?') && !request.options.headers));
+  assert.equal(new URL('http://127.0.0.1' + requests[1].url).searchParams.get('cursor'), 'second');
+  await assert.rejects(storedProjectSessions(async () => new Response('', { status: 503 }), '/isolated'), /unavailable/);
 });
 
 test('embedded adapter stages explicit context only for the exact permitted selection and never prompts', () => {

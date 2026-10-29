@@ -1,8 +1,8 @@
 import { parseArgs } from 'node:util';
 import { isAbsolute } from 'node:path';
 import { realpath } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import { prepareLaunch, runVersion } from './launcher.mjs';
+import { runtimePaths } from './runtime-paths.mjs';
 import { supervise } from './supervisor.mjs';
 import { initializeState, inspectState, readJsonFile } from './state.mjs';
 
@@ -23,11 +23,11 @@ try {
       result = status;
     } else if (command === 'start') {
       if (values.settings) throw new Error('start reads saved settings');
-      const upstream = fileURLToPath(new URL('../upstream/node_modules/', import.meta.url));
-      const openchamber = await realpath(values.openchamber ?? `${upstream}@openchamber/web/bin/cli.js`);
+      const runtime = values.openchamber && values.opencode ? null : await runtimePaths();
+      const openchamber = await realpath(values.openchamber ?? runtime.openchamber);
       const plan = await prepareLaunch(values.state, {
         openchamber,
-        opencode: await realpath(values.opencode ?? `${upstream}@opencode/cli/bin/opencode.exe`),
+        opencode: await realpath(values.opencode ?? runtime.opencode),
         port: Number(values.port ?? 3123),
       });
       await runVersion(plan.env.OPENCODE_BINARY, ['--version'], plan.env, plan.cwd, '2.0.23');
