@@ -1,6 +1,6 @@
 # Implementation status
 
-Updated: **2026-10-28**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
+Updated: **2026-10-29**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
 `0.1.9`, installed after operator coordination. The source prerelease version is
 `0.1.9`, described in [release notes](releases/native-v0.1.9.md). It adds automatic
 documentation setup and a shared Knowledge connection to the read-only MCP
@@ -29,6 +29,14 @@ Computer Use fails with
 See [the integration contract](CHAT_INTEGRATION.md).
 
 ## Current position and next action
+
+- Planning on `feat/twincat-runtime-ui` now records the agreed source-based
+  specialization of OpenCode and OpenChamber. Relevant functions retain their
+  existing implementation; integration changes and module reductions will be
+  reviewed step by step. The next task is the OpenCode function/dependency
+  inventory. No runtime code or installed payload changes in this planning
+  commit. Project-chat restoration and the stale attachment indicator are
+  recorded acceptance issues. See the [runtime/UI plan](TWINCAT_RUNTIME_UI_PLAN.md).
 
 - Native 0.1.9 on `feat/knowledge-auto-setup` adds bounded local help discovery,
   source/version selection, background setup, cancellation/retry, changed-source

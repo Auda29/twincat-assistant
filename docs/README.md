@@ -1,12 +1,13 @@
 # Documentation
 
 The MVP documents describe the target product. Start with [Status](STATUS.md) for
-what exists and has been tested, then [Roadmap](ROADMAP.md#where-we-are-now) for
-the next slice and exit gates. Current focus: active-editor-first local context
-after the x86 read-only shell smoke test; not write/build work or a larger manual
-object selector. Native editor/chat and amd64 acceptance remain open.
+what exists and has been tested, then [Roadmap](ROADMAP.md) for the work sequence
+and exit gates. The current planning branch describes the
+[OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
+Native acceptance and future engineering write/build milestones remain separate.
 
 - [Installation and real local checks](INSTALLATION.md)
+- [Planned OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md)
 - [OpenChamber extension](EXTENSION.md)
 - [Diagnostic bridge and portable safety core](BRIDGE.md)
 - [Native Windows acceptance](WINDOWS_ACCEPTANCE.md)
