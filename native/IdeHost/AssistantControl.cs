@@ -190,8 +190,9 @@ namespace TwinCatAssistant.Native
         {
             _menuPopup.PlacementTarget = _moreButton;
             _menuPopup.Placement = PlacementMode.Bottom;
-            _menuPopup.HorizontalOffset = -220;
-            _menuPopup.Child = PopupFrame(_menuItems, 250);
+            // Right-align the frame (inside its 8 px shadow margin) with the 28 px button.
+            _menuPopup.HorizontalOffset = 28 - 8 - 290;
+            _menuPopup.Child = PopupFrame(_menuItems, 290);
         }
 
         private void BuildBanner()

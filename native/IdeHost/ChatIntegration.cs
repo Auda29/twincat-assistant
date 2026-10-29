@@ -422,55 +422,133 @@ namespace TwinCatAssistant.Native
             if (_menuPopup.IsOpen || JustClosed(_menuClosedAt)) { _menuPopup.IsOpen = false; return; }
             _menuItems.Children.Clear();
             var ready = _chatAdapterReady && _chatSelection?.authenticated == true && !_chatActionPending;
-            MenuRow("Neuer Chat ohne Projektkontext", ready, () => NewChatAsync(true));
-            MenuRow("Aktiven Baustein automatisch anhängen", true, ToggleAutoAttachAsync, _chatPreferences.AutoAttach);
-            MenuRow(KnowledgeConnected() ? "Wissenssuche bereit · " + (_knowledgeState.language == "de" ? "Deutsch" : "Englisch") : "Wissenssuche einrichten …", true,
-                () => { ShowKnowledgeSetup(); return Task.CompletedTask; });
+            // Chat: actions and the one disclosure preference.
+            MenuRow("chat", "Neuer allgemeiner Chat", "Ohne Projekt- und Bausteinkontext", ready, () => NewChatAsync(true));
+            MenuRow("attach", "Baustein automatisch anhängen", "Bei jeder Änderung neu vormerken", true, ToggleAutoAttachAsync,
+                MenuSwitch(_chatPreferences.AutoAttach));
+            // Model providers: a single choice among the connected ones.
+            MenuSeparator();
+            MenuHeading("Modellanbieter");
             var providers = _chatSelection?.providers ?? new ChatProviderChoice[0];
             if (providers.Length > 1)
-            {
-                MenuSeparator("Modellanbieter");
                 foreach (var provider in providers)
                 {
                     var id = provider.id;
-                    MenuRow(provider.name, ready && CanPromptCurrentChat(), () => AllowProviderAsync(id), _chatSelection.allowedProviders?.Contains(id) == true);
+                    MenuRow(null, provider.name, null, ready && CanPromptCurrentChat(), () => AllowProviderAsync(id),
+                        leading: MenuRadio(_chatSelection.allowedProviders?.Contains(id) == true));
                 }
+            MenuRow("sliders", "Anbieter und Modelle verwalten …", null, ready, OpenProviderSettingsAsync);
+            // Knowledge: state on the right, setup behind the row.
+            MenuSeparator();
+            string knowledgeDetail = "Noch nicht eingerichtet", knowledgeStatus = "Einrichten", knowledgeTone = "Warning";
+            var language = _knowledgeState?.language == "de" ? "Deutsch" : "Englisch";
+            if (_knowledgeBusy) { knowledgeDetail = "Beckhoff-Hilfe wird vorbereitet"; knowledgeStatus = "Läuft"; knowledgeTone = "Neutral"; }
+            else if (_knowledgeState?.ready == true)
+            {
+                knowledgeDetail = "Beckhoff-Hilfe · " + language + (_knowledgeState.phase == "update" ? " · Update verfügbar" : "");
+                if (KnowledgeConnected()) { knowledgeStatus = "Bereit"; knowledgeTone = "Success"; }
+                else { knowledgeStatus = "Verbindet"; knowledgeTone = "Neutral"; }
             }
-            MenuRow("Anbieter und Modelle verwalten …", ready, OpenProviderSettingsAsync);
-            MenuSeparator(null);
-            MenuRow("Neu verbinden", !_connecting, () => { Reconnect(); return Task.CompletedTask; });
-            MenuRow(_diagnostics.Visibility == Visibility.Visible ? "Diagnose ausblenden" : "Diagnose anzeigen", true, () => {
+            MenuRow("book", "Wissenssuche", knowledgeDetail, true, () => { ShowKnowledgeSetup(); return Task.CompletedTask; },
+                MenuStatus(knowledgeStatus, knowledgeTone));
+            // Connection maintenance.
+            MenuSeparator();
+            MenuRow("refresh", "Neu verbinden", null, !_connecting, () => { Reconnect(); return Task.CompletedTask; });
+            MenuRow("pulse", "Diagnose anzeigen", null, true, () => {
                 _diagnostics.Visibility = _diagnostics.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
                 return Task.CompletedTask;
-            });
+            }, MenuSwitch(_diagnostics.Visibility == Visibility.Visible));
             _menuPopup.IsOpen = true;
         }
 
-        private void MenuRow(string label, bool enabled, Func<Task> action, bool? check = null)
+        // Menu row: icon (or radio), label with an optional muted detail line,
+        // and an optional trailing switch or status. Labels wrap, never clip.
+        private void MenuRow(string icon, string label, string detail, bool enabled, Func<Task> action, UIElement trailing = null, UIElement leading = null)
         {
-            var mark = new ShapePath { Data = AssistantTheme.Icon("check"), Width = 16, Height = 16, StrokeThickness = 1.6, Margin = new Thickness(0, 0, 8, 0),
-                StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round,
-                Visibility = check == true ? Visibility.Visible : check == false ? Visibility.Hidden : Visibility.Collapsed };
-            mark.SetResourceReference(Shape.StrokeProperty, "Tc.Primary");
-            var text = new TextBlock { Text = label, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
-            text.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Foreground");
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(26) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            if (leading == null && icon != null)
+            {
+                var path = Icon(icon);
+                path.SetResourceReference(Shape.StrokeProperty, "Tc.Muted");
+                leading = path;
+            }
+            if (leading is FrameworkElement lead) { lead.HorizontalAlignment = HorizontalAlignment.Left; lead.VerticalAlignment = VerticalAlignment.Top; lead.Margin = new Thickness(0, 1, 0, 0); }
+            if (leading != null) grid.Children.Add(leading);
+            var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            var title = new TextBlock { Text = label, FontSize = 12.5, TextWrapping = TextWrapping.Wrap };
+            title.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Foreground");
+            text.Children.Add(title);
+            if (detail != null)
+            {
+                var sub = new TextBlock { Text = detail, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 1, 0, 0) };
+                sub.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
+                text.Children.Add(sub);
+            }
+            Grid.SetColumn(text, 1);
+            grid.Children.Add(text);
+            if (trailing is FrameworkElement trail)
+            {
+                trail.Margin = new Thickness(10, 0, 0, 0);
+                trail.VerticalAlignment = VerticalAlignment.Center;
+                Grid.SetColumn(trail, 2);
+                grid.Children.Add(trail);
+            }
             var row = AsyncButton(null, async () => { _menuPopup.IsOpen = false; await action(); });
             row.SetResourceReference(StyleProperty, "Tc.MenuRow");
-            row.Margin = new Thickness(0);
-            row.Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { mark, text } };
+            row.Content = grid;
             row.IsEnabled = enabled;
+            System.Windows.Automation.AutomationProperties.SetName(row, label);
             _menuItems.Children.Add(row);
         }
 
-        private void MenuSeparator(string heading)
+        private void MenuSeparator()
         {
-            var line = new Border { Height = 1, Margin = new Thickness(4, 4, 4, heading == null ? 4 : 2) };
+            var line = new Border { Height = 1, Margin = new Thickness(6, 5, 6, 5) };
             line.SetResourceReference(Border.BackgroundProperty, "Tc.Border");
             _menuItems.Children.Add(line);
-            if (heading == null) return;
-            var text = new TextBlock { Text = heading, FontSize = 11, Margin = new Thickness(10, 4, 10, 2) };
+        }
+
+        private void MenuHeading(string heading)
+        {
+            var text = new TextBlock { Text = heading, FontSize = 11, FontWeight = FontWeights.SemiBold, Margin = new Thickness(8, 2, 8, 3) };
             text.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
             _menuItems.Children.Add(text);
+        }
+
+        private static FrameworkElement MenuSwitch(bool on)
+        {
+            var thumb = new Ellipse { Width = 10, Height = 10, Margin = new Thickness(2, 0, 2, 0), VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = on ? HorizontalAlignment.Right : HorizontalAlignment.Left };
+            thumb.SetResourceReference(Shape.FillProperty, on ? "Tc.PrimaryForeground" : "Tc.Muted");
+            var track = new Border { Width = 28, Height = 16, CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), Child = thumb };
+            track.SetResourceReference(Border.BackgroundProperty, on ? "Tc.Primary" : "Tc.NeutralSurface");
+            track.SetResourceReference(Border.BorderBrushProperty, on ? "Tc.Primary" : "Tc.Muted");
+            return track;
+        }
+
+        private static FrameworkElement MenuRadio(bool selected)
+        {
+            var ring = new Border { Width = 14, Height = 14, CornerRadius = new CornerRadius(7), BorderThickness = new Thickness(1.5) };
+            ring.SetResourceReference(Border.BorderBrushProperty, selected ? "Tc.Primary" : "Tc.Muted");
+            if (selected)
+            {
+                var dot = new Ellipse { Width = 6, Height = 6 };
+                dot.SetResourceReference(Shape.FillProperty, "Tc.Primary");
+                ring.Child = dot;
+            }
+            return ring;
+        }
+
+        private static FrameworkElement MenuStatus(string label, string tone)
+        {
+            var dot = new Ellipse { Width = 7, Height = 7, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center };
+            dot.SetResourceReference(Shape.FillProperty, "Tc." + tone);
+            var text = new TextBlock { Text = label, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+            text.SetResourceReference(TextBlock.ForegroundProperty, tone == "Neutral" ? "Tc.Muted" : "Tc." + tone);
+            return new StackPanel { Orientation = Orientation.Horizontal, Children = { dot, text } };
         }
 
         private async Task ToggleAutoAttachAsync()

@@ -86,6 +86,10 @@ namespace TwinCatAssistant.Native
                 case "refresh": return Geometry.Parse("M13,8.5 A5,5 0 1 1 11.6,4.6 M12,1.8 L12,4.9 L8.9,4.9");
                 case "check": return Geometry.Parse("M3.5,8.5 L6.5,11.5 L12.5,4.8");
                 case "close": return Geometry.Parse("M4.5,4.5 L11.5,11.5 M11.5,4.5 L4.5,11.5");
+                case "chat": return Geometry.Parse("M4,2.5 L12,2.5 A1.5,1.5 0 0 1 13.5,4 L13.5,9.5 A1.5,1.5 0 0 1 12,11 L7,11 L4.5,13.5 L4.5,11 L4,11 A1.5,1.5 0 0 1 2.5,9.5 L2.5,4 A1.5,1.5 0 0 1 4,2.5 Z M8,4.8 L8,8.7 M6.05,6.75 L9.95,6.75");
+                case "sliders": return Geometry.Parse("M2.5,5 L13.5,5 M2.5,11 L13.5,11 M10.5,3 L10.5,7 M5.5,9 L5.5,13");
+                case "book": return Geometry.Parse("M8,4.2 C6.6,3.2 4.6,2.9 2.5,3.3 L2.5,12.6 C4.6,12.2 6.6,12.5 8,13.5 C9.4,12.5 11.4,12.2 13.5,12.6 L13.5,3.3 C11.4,2.9 9.4,3.2 8,4.2 Z M8,4.2 L8,13.5");
+                case "pulse": return Geometry.Parse("M1.5,8.5 L4.5,8.5 L6.3,4 L9.4,12.5 L11.2,8.5 L14.5,8.5");
                 default: return Geometry.Empty;
             }
         }
@@ -136,7 +140,7 @@ namespace TwinCatAssistant.Native
   </Style>
   <Style x:Key='Tc.MenuRow' TargetType='Button' BasedOn='{StaticResource Tc.Button}'>
     <Setter Property='HorizontalContentAlignment' Value='Stretch'/>
-    <Setter Property='Padding' Value='10,6'/>
+    <Setter Property='Padding' Value='8,6'/>
     <Setter Property='Margin' Value='0'/>
   </Style>
   <Style x:Key='Tc.TextBox' TargetType='TextBox'>

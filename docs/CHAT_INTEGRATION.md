@@ -33,7 +33,7 @@ OpenChamber defaults to German unless a language preference already exists.
 2. Use history to read previous conversations, or **+** for a new project chat.
    A chat belonging to another PLC remains read-only while that PLC is inactive.
    Without an ST editor, **+** starts a general chat. The overflow menu also offers
-   **Neuer Chat ohne Projektkontext**. A general chat stays general when an editor
+   **Neuer allgemeiner Chat**. A general chat stays general when an editor
    opens; **Anhängen** can explicitly bind it to that editor's project.
 3. Sign in to a provider through **Anbieter verbinden** or the overflow menu's
    **Anbieter und Modelle verwalten** action. A connected provider is enabled

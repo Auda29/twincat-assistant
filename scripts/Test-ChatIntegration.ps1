@@ -264,7 +264,7 @@ try {
     Pump 100
     Assert-Integration (Field '_menuPopup').IsOpen 'the native overflow button opens its menu'
     $taskAutoOption = @((Field '_menuItems').Children | Where-Object {
-        $_ -is [Windows.Controls.Button] -and $_.Content.Children[-1].Text.StartsWith('Aktiven Baustein automatisch')
+        $_ -is [Windows.Controls.Button] -and [Windows.Automation.AutomationProperties]::GetName($_).StartsWith('Baustein automatisch')
     })
     if ($taskAutoOption.Count -ne 1) { throw 'The native menu must expose exactly one automatic attachment option.' }
     $taskAutoOption[0].RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
