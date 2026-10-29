@@ -82,6 +82,13 @@ namespace TwinCatAssistant.Native
         private DTE _boundDte;
         private Uri _origin;
         private bool _connecting, _disposed;
+        // An editor switch or edit first invalidates the context and reads the
+        // new POU a moment later. The bar keeps showing the previous POU for
+        // that gap instead of flashing an empty state. The logical context is
+        // cleared at once, so nothing stale can be attached meanwhile.
+        private readonly DispatcherTimer _viewHold = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(1500) };
+        private bool _holdingView, _showingPou;
+        private string _heldReason;
         private Events _events;
         private SolutionEvents _solutionEvents;
 
@@ -110,6 +117,7 @@ namespace TwinCatAssistant.Native
             _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; };
             _chatHealth = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(3) };
             _chatHealth.Tick += CheckChatHealth;
+            _viewHold.Tick += (sender, args) => { _viewHold.Stop(); if (_holdingView) { _holdingView = false; RenderContext(_chatActive, _heldReason); } };
             InitializeChatIntegration();
             RenderContext(null, null);
         }
@@ -329,6 +337,14 @@ namespace TwinCatAssistant.Native
             _chatActive = snapshot;
             if (snapshot?.Identity != null) _chatProject = snapshot.Identity.ProjectIdentity;
             if (_disposed) return;
+            if (snapshot == null && _showingPou && ActiveEditorTracker.IsTransient(reason))
+            {
+                _heldReason = reason;
+                if (!_holdingView) { _holdingView = true; _viewHold.Start(); }
+                return;
+            }
+            _holdingView = false; _viewHold.Stop();
+            _showingPou = snapshot != null;
             var view = ActiveEditorPresentation.From(snapshot, reason);
             var title = snapshot == null ? (_chatProject == null ? "Kein PLC-Projekt aktiv" : Path.GetFileNameWithoutExtension(_chatProject.ProjectFile)) : view.Title;
             if (_objectName.Text != title) _objectName.Text = title;
@@ -356,7 +372,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _chatProject = project;
-            if (_disposed) return;
+            if (_disposed || _holdingView) return;
             if (_chatActive != null && !_chatActive.Identity.ProjectIdentity.Equals(project))
             { RenderContext(null, reason); return; }
             var scope = project == null || _chatActive == null ? "" : Path.GetFileNameWithoutExtension(project.ProjectFile);
@@ -664,6 +680,7 @@ namespace TwinCatAssistant.Native
             _chatConnection.Dispose();
             _chatHealth.Stop();
             _chatHealth.Tick -= CheckChatHealth;
+            _viewHold.Stop();
             DisposeChatIntegration();
             _knowledgeCancellation?.Cancel();
             _chatSession?.Dispose();

@@ -99,6 +99,11 @@ try {
     Assert-View ((Get-ViewField '_diagnostics').Visibility -eq [Windows.Visibility]::Collapsed) 'diagnostics stay hidden by default'
     Assert-View (-not (Get-ViewField '_attachPouButton').IsEnabled) 'attach stays disabled before the chat is ready'
     Save-View 'active-light'
+    $taskRender.Invoke($taskControl,[object[]]@($null,'Resolving the active editor...'))
+    Assert-View ((Get-ViewField '_objectName').Text -eq 'FB_Motor' -and (Get-ViewField '_chatActive') -eq $null -and (Get-ViewField '_holdingView')) 'an editor switch keeps the previous POU visible while the logical context is already cleared'
+    $taskRender.Invoke($taskControl,[object[]]@($null,'Synthetic unsupported editor'))
+    Assert-View ((Get-ViewField '_objectName').Text -ne 'FB_Motor' -and -not (Get-ViewField '_holdingView')) 'a resolved non-POU editor replaces the held view at once'
+    $taskRender.Invoke($taskControl,[object[]]@($taskSnapshot,$null))
     $taskSavedControl=$taskControl
     $taskControl=[Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.AssistantControl'))
     try {

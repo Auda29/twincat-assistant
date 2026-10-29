@@ -131,7 +131,7 @@ test('a chip removed from the composer no longer counts as attached', () => {
   const { adapter, chips, stage } = composerFixture();
   stage('FB_A', 'rev-a');
   assert.equal(adapter.state().attachedRevision, 'rev-a');
-  assert.deepEqual(adapter.state().attachments, [{ id: 'FB_A', title: 'FB_A / PLC_A', revision: 'rev-a' }]);
+  assert.deepEqual(adapter.state().attachments, [{ id: 'FB_A', title: 'FB_A / PLC_A', revision: 'rev-a', reference: 'FB_A' }]);
   chips.splice(0, 1);
   assert.equal(adapter.state().attachedRevision, null);
   assert.deepEqual(adapter.state().attachments, []);
@@ -147,16 +147,30 @@ test('a staged reference counts as attached before the composer shows its chip',
   assert.equal(adapter.state().attachedRevision, 'rev-a');
 });
 
-test('automatic attachment replaces its previous POU chip and keeps operator chips', () => {
-  const { adapter, chips, stage } = composerFixture();
+test('automatic attachment reuses one chip slot so a POU switch replaces it in place', () => {
+  const { adapter, chips, stage, input } = composerFixture();
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'one' };
+  const auto = (reference, revision) => {
+    adapter.attach({ ...expected, auto: true, item: { ...item, id: 'Aktiver Baustein', title: reference + ' / PLC_A', data: { revision, reference } } });
+    const staged = input.getState().pendingGuestIssue;
+    input.getState().setPendingGuestIssue(null);
+    if (!chips.includes(staged.id)) chips.push(staged.id);
+  };
   stage('FB_Manual', 'rev-m');
-  stage('FB_A', 'rev-a', true);
-  stage('FB_B', 'rev-b', true);
-  assert.deepEqual(chips, ['FB_Manual', 'FB_B']);
-  assert.deepEqual(adapter.state().attachments.map(value => value.id), ['FB_Manual', 'FB_B']);
-  stage('FB_Manual', 'rev-m2', true);
-  stage('FB_C', 'rev-c', true);
-  assert.deepEqual(chips, ['FB_Manual', 'FB_C'], 'an operator chip stays when automatic attachment refreshes it');
+  auto('FB_A@PLC_A', 'rev-a');
+  auto('FB_B@PLC_A', 'rev-b');
+  assert.deepEqual(chips, ['FB_Manual', 'Aktiver Baustein']);
+  assert.deepEqual(adapter.state().attachments.map(value => value.reference), ['FB_Manual', 'FB_B@PLC_A']);
+  assert.equal(adapter.state().attachedObject, 'FB_B@PLC_A / PLC_A');
+});
+
+test('a newer own reference replaces one the composer has not consumed yet', () => {
+  const { adapter, input } = composerFixture();
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'one' };
+  adapter.attach({ ...expected, auto: true, item: { ...item, id: 'Aktiver Baustein', data: { revision: 'rev-a', reference: 'FB_A' } } });
+  adapter.attach({ ...expected, auto: true, item: { ...item, id: 'Aktiver Baustein', data: { revision: 'rev-b', reference: 'FB_B' } } });
+  assert.equal(input.getState().pendingGuestIssue.data.reference, 'FB_B');
+  assert.deepEqual(adapter.state().attachments.map(value => value.revision), ['rev-b']);
 });
 
 test('switching conversations forgets staged chips', () => {

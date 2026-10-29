@@ -42,6 +42,7 @@ namespace TwinCatAssistant.Native
         private int _chatReconnectAttempts, _signInAttempts;
         private long _chatDocumentGeneration;
         private string _autoProjectKey, _autoAttachedKey;
+        private bool _autoAttaching;
         private readonly HashSet<string> _autoBindAttempted = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _consentAttempted = new HashSet<string>(StringComparer.Ordinal);
         private string _noticeText, _noticeTone, _noticeActionLabel;
@@ -53,7 +54,7 @@ namespace TwinCatAssistant.Native
             Loaded += OnChatLoaded;
             _chatReconnect = new DispatcherTimer(DispatcherPriority.Background);
             _chatReconnect.Tick += ReconnectChat;
-            _automationKick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(400) };
+            _automationKick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(200) };
             _automationKick.Tick += OnAutomationKick;
             _noticeTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(8) };
             _noticeTimer.Tick += (sender, args) => { _noticeTimer.Stop(); if (_noticeTone != "error") DismissNotice(); };
@@ -193,7 +194,7 @@ namespace TwinCatAssistant.Native
         private async Task RunAutomationAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (_automating || _disposed || _chatActionPending || !_chatAdapterReady || _chatSelection == null || _origin == null) return;
+            if (_automating || _disposed || _holdingView || _chatActionPending || !_chatAdapterReady || _chatSelection == null || _origin == null) return;
             _automating = true;
             try
             {
@@ -279,7 +280,7 @@ namespace TwinCatAssistant.Native
         {
             if (_chatActive?.Identity == null || _chatSelection?.attachments == null) return null;
             var id = ChatContextPolicy.ReferenceId(_chatActive);
-            return _chatSelection.attachments.FirstOrDefault(chip => chip?.id == id);
+            return _chatSelection.attachments.Where(chip => (chip?.reference ?? chip?.id) == id).LastOrDefault();
         }
 
         private string ProjectName(string projectFile) { return string.IsNullOrEmpty(projectFile) ? "" : System.IO.Path.GetFileNameWithoutExtension(projectFile); }
@@ -287,9 +288,10 @@ namespace TwinCatAssistant.Native
         private void RenderChatBinding()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_attachPouButton == null || _disposed) return;
+            if (_attachPouButton == null || _disposed || _holdingView) return;
             RenderKnowledge();
-            var ready = !_chatActionPending && _chatAdapterReady && _chatSelection?.authenticated == true;
+            // Automatic attachment runs quietly; only operator actions disable the bar.
+            var ready = (!_chatActionPending || _autoAttaching) && _chatAdapterReady && _chatSelection?.authenticated == true;
             var identity = _chatProject;
             var foreign = _chatSelection?.IsSelected == true && _chatBinding != null && !_chatBinding.IsGeneral
                 && identity != null && !_chatBinding.SameProjectContext(identity);
@@ -299,7 +301,11 @@ namespace TwinCatAssistant.Native
             // Attach button: the one explicit disclosure action.
             var revision = ChatContextPolicy.Revision(_chatActive);
             var chip = HasCurrentChatBinding() ? ActiveChip() : null;
-            var attachedCurrent = revision != null && chip?.revision == revision;
+            // With automatic attachment the new POU shows as attached right away
+            // while it is staged; a failed or removed chip falls back to Anhängen.
+            var autoPending = _chatPreferences.AutoAttach && revision != null && chip?.revision != revision && HasCurrentChatBinding()
+                && (_autoAttaching || _autoAttachedKey != _chatSelection.sessionId + "\0" + revision);
+            var attachedCurrent = revision != null && (chip?.revision == revision || autoPending);
             var stale = !attachedCurrent && chip != null;
             _attachPouButton.IsEnabled = ready && _chatActive?.Identity != null && !foreign && !attachedCurrent && _chatSelection?.IsSelected == true;
             _attachLabel.Text = attachedCurrent ? "Angehängt" : stale ? "Aktualisieren" : "Anhängen";
@@ -845,7 +851,8 @@ namespace TwinCatAssistant.Native
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_chatActionPending || !HasCurrentChatBinding()) return;
-            _chatActionPending = true; RenderChatBinding();
+            _chatActionPending = true; _autoAttaching = auto;
+            if (!auto) RenderChatBinding();
             try
             {
                 var snapshot = FreshChatSnapshot();
@@ -863,19 +870,23 @@ namespace TwinCatAssistant.Native
                     throw new InvalidOperationException("Die Chat-Seite wurde neu geladen. Bitte den Kontext erneut prüfen.");
                 var serializer = new JavaScriptSerializer();
                 var request = new { sessionId = selection.sessionId, selection.epoch, selection.documentId, contextKey = revision, auto,
-                    item = new { providerId = "twincat-assistant", id = ChatContextPolicy.ReferenceId(snapshot),
+                    item = new { providerId = "twincat-assistant", id = auto ? ChatContextPolicy.ActiveReferenceId : ChatContextPolicy.ReferenceId(snapshot),
                         title = snapshot.ObjectName + " / " + System.IO.Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile),
                         url = _origin.AbsoluteUri, text = ChatContextPolicy.AttachmentText(snapshot),
-                        data = new { revision, sourceKind = snapshot.SourceKind, dirty = snapshot.Dirty?.State } } };
+                        data = new { revision, reference = ChatContextPolicy.ReferenceId(snapshot), sourceKind = snapshot.SourceKind, dirty = snapshot.Dirty?.State } } };
                 var permission = new { request.sessionId, request.epoch, request.documentId, request.contextKey };
                 var outcome = await _browser.CoreWebView2.ExecuteScriptAsync("(()=>{try{if(!window.__twinCatChat.permit(" + serializer.Serialize(permission)
                     + "))return false;window.__twinCatChat.attach(" + serializer.Serialize(request) + ");return true;}catch{return false;}})()");
                 if (outcome != "true") throw new InvalidOperationException("Unterhaltung gewechselt oder Anhang noch nicht verarbeitet. Kein neuer Anhang bestätigt.");
                 _noticeText = null;
             }
-            catch (Exception error) { if (!_disposed) Notify(error is InvalidOperationException ? error.Message : "Kontext konnte nicht angehängt werden. Keine automatische Wiederholung.", "error"); }
+            // A quick POU switch can outdate an automatic attempt; the next POU
+            // starts its own. Only operator clicks report failures.
+            catch (Exception error) { if (!_disposed && !auto) Notify(error is InvalidOperationException ? error.Message : "Kontext konnte nicht angehängt werden. Keine automatische Wiederholung.", "error"); }
             finally { _chatActionPending = false; }
             if (!_disposed) await PollChatSelectionAsync();
+            _autoAttaching = false;
+            if (!_disposed && auto) RenderChatBinding();
         }
 
         // Enables exactly one connected provider for the Assistant's read-only context.

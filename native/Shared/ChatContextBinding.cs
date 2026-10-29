@@ -41,6 +41,7 @@ namespace TwinCatAssistant.Native
         public string id { get; set; }
         public string title { get; set; }
         public string revision { get; set; }
+        public string reference { get; set; }
     }
 
     public sealed class ChatSelection
@@ -154,6 +155,10 @@ namespace TwinCatAssistant.Native
             if (result.Length > 16000) throw new InvalidOperationException("This POU exceeds the direct chat attachment limit. No partial source was attached.");
             return result;
         }
+        // Automatic attachment always uses this chip ID. The composer then
+        // replaces the chip in place when another POU becomes active.
+        public const string ActiveReferenceId = "Aktiver Baustein";
+
         public static string ReferenceId(ActiveEditorSnapshot snapshot)
         {
             var name = snapshot.ObjectName ?? "POU";

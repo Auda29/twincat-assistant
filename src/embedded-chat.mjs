@@ -60,23 +60,19 @@ export function readTheme(scope) {
 
 // Staged POU chips live in the composer's own React state, not in a store.
 // Reading them from the pinned chip markup lets a removed or sent chip clear
-// the native "Angehängt" state. Each chip shows its reference ID in the
-// muted label and ends with its remove button.
+// the native "Angehängt" state. Each chip shows its ID in the muted label.
 export function composerChips(scope) {
-  const read = () => {
-    const chips = new Map();
-    for (const form of scope.document.querySelectorAll('form:has([data-testid="chat-input"])')) {
-      for (const label of form.querySelectorAll('div[title] > button[type="button"] > span.text-muted-foreground')) {
-        const remove = label.parentElement.parentElement.querySelector(':scope > span > button[type="button"]');
-        const id = label.textContent.trim();
-        if (id && remove && !chips.has(id)) chips.set(id, remove);
-      }
-    }
-    return chips;
-  };
   return {
-    chips: () => [...read().keys()],
-    remove: id => { const button = read().get(id); if (!button) return false; button.click(); return true; },
+    chips() {
+      const ids = new Set();
+      for (const form of scope.document.querySelectorAll('form:has([data-testid="chat-input"])')) {
+        for (const label of form.querySelectorAll('div[title] > button[type="button"] > span.text-muted-foreground')) {
+          const id = label.textContent.trim();
+          if (id) ids.add(id);
+        }
+      }
+      return [...ids];
+    },
   };
 }
 
@@ -90,8 +86,10 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
   let epoch = 0;
   let selected = sessions.getState().currentSessionId;
   let permission = null;
-  // Reference ID -> { title, revision, auto } for chips this adapter staged.
+  // Chip ID -> { title, revision, reference } for chips this adapter staged.
   // Presence is always re-read from the composer; this only adds revisions.
+  // Automatic attachment reuses one chip ID, so the composer replaces that
+  // chip in place on every POU switch instead of adding another one.
   const staged = new Map();
   let last = null;
   let creating = false;
@@ -102,7 +100,8 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
   };
   const attachments = () => {
     const has = present();
-    return [...staged].filter(([id]) => has(id)).slice(-8).map(([id, value]) => ({ id, title: value.title, revision: value.revision }));
+    return [...staged].filter(([id]) => has(id)).slice(-8)
+      .map(([id, value]) => ({ id, title: value.title, revision: value.revision, reference: value.reference }));
   };
   const clearPending = () => {
     if (input.getState().pendingGuestIssue?.providerId === 'twincat-assistant') input.getState().setPendingGuestIssue(null);
@@ -146,21 +145,18 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
           || typeof item.title !== 'string' || item.title.length > 200 || typeof item.id !== 'string' || item.id.length > 128) {
         throw new Error('Invalid POU attachment');
       }
-      if (input.getState().pendingGuestIssue) throw new Error('Another attachment is still pending');
-      const auto = request.auto === true;
-      const has = present();
-      // Automatic attachment follows the active POU: it replaces the chip it
-      // staged for a previous POU. Chips the operator attached stay.
-      if (auto && composer) {
-        for (const [id, value] of staged) if (value.auto && id !== item.id && has(id)) composer.remove(id);
-      }
+      // A newer TwinCAT reference replaces an own one the composer has not
+      // consumed yet (fast POU switches); another extension's item stays.
+      const queued = input.getState().pendingGuestIssue;
+      if (queued && queued.providerId !== 'twincat-assistant') throw new Error('Another attachment is still pending');
       // The same queue and reference type used by SDK host.attach. It stages a
       // visible composer chip. It never submits a prompt or invokes a model.
       // The composer replaces a chip with the same ID instead of adding one.
       input.getState().setPendingGuestIssue(item);
-      const prior = has(item.id) ? staged.get(item.id) : null;
+      if (queued && queued.id !== item.id && !composer?.chips().includes(queued.id)) staged.delete(queued.id);
       staged.delete(item.id);
-      staged.set(item.id, { title: item.title, revision: item.data?.revision ?? null, auto: auto && prior?.auto !== false });
+      staged.set(item.id, { title: item.title, revision: item.data?.revision ?? null,
+        reference: typeof item.data?.reference === 'string' ? item.data.reference.slice(0, 128) : item.id });
       while (staged.size > 32) staged.delete(staged.keys().next().value);
       last = item.id;
       return { sessionId: selected, epoch, attachedObject: item.title };

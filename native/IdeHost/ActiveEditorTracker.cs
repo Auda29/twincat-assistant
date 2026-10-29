@@ -16,6 +16,11 @@ namespace TwinCatAssistant.Native
         private readonly Action<ActiveEditorSnapshot, string> _render;
         private readonly Action<NativeProjectIdentity, string> _renderProject;
         internal NativeProjectIdentity Project { get; private set; }
+        // Reasons for the short gap between an editor switch or edit and the
+        // next read. The view may keep showing the previous POU meanwhile.
+        internal const string Resolving = "Resolving the active editor...", Updating = "Updating active editor context...",
+            Changed = "The active editor changed. Resolving context...";
+        internal static bool IsTransient(string reason) { return reason == Resolving || reason == Updating || reason == Changed; }
         private readonly ActiveEditorPublication _publication = new ActiveEditorPublication();
         private readonly DispatcherTimer _debounce, _poll;
         private Events _events;
@@ -62,7 +67,7 @@ namespace TwinCatAssistant.Native
                 // DTE text notifications are optional in a custom editor. RDT,
                 // selection events and the bounded active-node poll remain used.
                 try { _text = _events.TextEditorEvents; _text.LineChanged += OnTextChanged; } catch { _text = null; }
-                Invalidate("Resolving the active editor...");
+                Invalidate(Resolving);
                 _poll.Start();
             }
             catch { Dispose(); throw; }
@@ -70,14 +75,14 @@ namespace TwinCatAssistant.Native
 
         private void OnDebounce(object sender, EventArgs args) { ThreadHelper.ThrowIfNotOnUIThread(); _debounce.Stop(); ReadNow(); }
         private void OnPoll(object sender, EventArgs args) { ThreadHelper.ThrowIfNotOnUIThread(); if (!_debounce.IsEnabled) ReadNow(); }
-        private void OnDocument(Document document) { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate("Updating active editor context..."); }
-        private void OnTextChanged(TextPoint start, TextPoint end, int hint) { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate("Updating active editor context..."); }
+        private void OnDocument(Document document) { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate(Updating); }
+        private void OnTextChanged(TextPoint start, TextPoint end, int hint) { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate(Updating); }
         private void OnProjectRemoved(Project project) { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate("The project changed. Resolving the active editor..."); }
         // BeforeClosing can be cancelled by the operator. Invalidate immediately,
         // but only suspend following once AfterClosing confirms the close.
         private void OnSolutionClosing() { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate("The solution is closing."); }
         private void OnSolutionClosed() { ThreadHelper.ThrowIfNotOnUIThread(); _closing = true; Invalidate("This IDE has no open solution."); }
-        private void OnSolutionOpened() { ThreadHelper.ThrowIfNotOnUIThread(); _closing = false; Invalidate("Resolving the active editor..."); }
+        private void OnSolutionOpened() { ThreadHelper.ThrowIfNotOnUIThread(); _closing = false; Invalidate(Resolving); }
 
         private void Invalidate(string reason)
         {
@@ -123,7 +128,7 @@ namespace TwinCatAssistant.Native
                 {
                     _publication.Invalidate();
                     generation = _publication.Generation;
-                    _render(null, "Resolving the active editor...");
+                    _render(null, Resolving);
                 }
                 var watch = Stopwatch.StartNew();
                 var result = _reader.Read(active);
@@ -134,7 +139,7 @@ namespace TwinCatAssistant.Native
                 if (_publication.TryPublish(generation, result, current.Identity)) _render(result, null);
                 else if (!_disposed && !_closing)
                 {
-                    if (generation == _publication.Generation) Invalidate("The active editor changed. Resolving context...");
+                    if (generation == _publication.Generation) Invalidate(Changed);
                     _debounce.Start();
                 }
             }
@@ -168,21 +173,21 @@ namespace TwinCatAssistant.Native
         public int OnElementValueChanged(uint elementid, object oldValue, object newValue)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (elementid == (uint)VSConstants.VSSELELEMID.SEID_DocumentFrame) Invalidate("Resolving the active editor...");
+            if (elementid == (uint)VSConstants.VSSELELEMID.SEID_DocumentFrame) Invalidate(Resolving);
             return VSConstants.S_OK;
         }
         public int OnCmdUIContextChanged(uint cookie, int active) { return VSConstants.S_OK; }
         public int OnSelectionChanged(IVsHierarchy oldHierarchy, uint oldItem, IVsMultiItemSelect oldSelection,
             ISelectionContainer oldContainer, IVsHierarchy newHierarchy, uint newItem, IVsMultiItemSelect newSelection,
             ISelectionContainer newContainer) { return VSConstants.S_OK; }
-        public int OnAfterAttributeChange(uint cookie, uint attributes) { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate("Updating active editor context..."); return VSConstants.S_OK; }
-        public int OnAfterSave(uint cookie) { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate("Updating active editor context..."); return VSConstants.S_OK; }
+        public int OnAfterAttributeChange(uint cookie, uint attributes) { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate(Updating); return VSConstants.S_OK; }
+        public int OnAfterSave(uint cookie) { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate(Updating); return VSConstants.S_OK; }
         public int OnBeforeLastDocumentUnlock(uint cookie, uint lockType, uint readLocks, uint editLocks)
-        { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate("Updating active editor context..."); return VSConstants.S_OK; }
+        { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate(Updating); return VSConstants.S_OK; }
         public int OnBeforeDocumentWindowShow(uint cookie, int firstShow, IVsWindowFrame frame)
-        { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate("Resolving the active editor..."); return VSConstants.S_OK; }
+        { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate(Resolving); return VSConstants.S_OK; }
         public int OnAfterDocumentWindowHide(uint cookie, IVsWindowFrame frame)
-        { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate("Updating active editor context..."); return VSConstants.S_OK; }
+        { ThreadHelper.ThrowIfNotOnUIThread(); Invalidate(Updating); return VSConstants.S_OK; }
         public int OnAfterFirstDocumentLock(uint cookie, uint lockType, uint readLocks, uint editLocks) { return VSConstants.S_OK; }
 
         public void Dispose()

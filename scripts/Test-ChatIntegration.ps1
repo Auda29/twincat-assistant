@@ -287,7 +287,10 @@ try {
     Set-Snapshot 'PLC_A' 'bRun := TRUE; // second synthetic POU' 'FB_Pump'
     Wait-Native { (JS 'window.__twinCatChat.state().attachedObject') -eq '"FB_Pump / PLC_A"' } 'auto-attach after switching to another POU'
     Wait-Native { @((Field '_chatSelection').attachments).Count -eq 1 } 'single chip after a POU switch'
-    Assert-Integration (@((Field '_chatSelection').attachments)[0].id.StartsWith('FB_Pump@PLC_A#') -and (JS 'document.querySelector(''form button[aria-label*="FB_Motor@PLC_A#"]'')===null') -eq 'true') 'switching POUs replaces the automatically attached chip instead of adding one'
+    $taskAutoChip = @((Field '_chatSelection').attachments)[0]
+    Assert-Integration ($taskAutoChip.id -eq 'Aktiver Baustein' -and $taskAutoChip.reference.StartsWith('FB_Pump@PLC_A#') -and
+        (JS '[...document.querySelectorAll("form div[title]")].filter(e=>e.title.includes("FB_Motor")).length===0') -eq 'true') 'switching POUs replaces the automatically attached chip in place instead of adding one'
+    Assert-Integration ((Field '_attachLabel').Text.StartsWith('Angeh') -and (Field '_historyButton').IsEnabled) 'automatic attachment leaves the bar enabled and reports the active POU as attached'
     Set-Snapshot 'PLC_A' 'bRun := FALSE; // edited synthetic fixture'
     Invoke-Chat 'ToggleAutoAttachAsync'
     Assert-Integration (-not $taskPreferences.AutoAttach -and (Field '_banner').Visibility -eq [Windows.Visibility]::Visible -and
