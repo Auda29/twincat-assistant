@@ -180,6 +180,11 @@ werden durch diese Bestandsaufnahme nicht verschoben.
 
 ## Empfohlener erster Umsetzungsschritt
 
+Der [gemeinsame Startvertrag](START_CONTRACT.md) konkretisiert inzwischen
+Eingaben, Reihenfolge, Bereitschaft, Prozessbesitz und Abnahme auf dem mit dem
+fertigen Frontend-Design zusammengeführten Stand. Die folgende Konsolidierung
+des Startcodes bleibt der nächste Umsetzungsschritt.
+
 Als Schritt 2 nehmen wir den vorhandenen Startpfad als Grundlage und ordnen ihn
 dem Core zu. Zuerst halten wir einen gemeinsamen Startvertrag mit den vorhandenen
 Feldern und Zuständen fest: Konfiguration, Profil, geprüfte Runtime-Artefakte,

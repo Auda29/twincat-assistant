@@ -16,6 +16,11 @@ von der Zielzuordnung zu Core, Chat, Host und beiden MCPs und hält offene
 Reduktionsentscheidungen fest. Diese Bestandsaufnahme ändert noch kein
 Laufzeitverhalten.
 
+Nach Übernahme des fertigen Frontend-Designs hält der
+[gemeinsame Startvertrag](START_CONTRACT.md) die vorhandenen Eingänge und
+Lebenszyklen sowie die Anforderungen an die nächste Konsolidierung fest.
+Themes und Commands müssen vor dem ersten Chat-Bootstrap vorbereitet sein.
+
 ## Vereinbarte Richtung
 
 Wir übernehmen die für den TwinCAT Assistant relevanten Funktionen aus OpenCode
