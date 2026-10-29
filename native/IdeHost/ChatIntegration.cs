@@ -169,7 +169,7 @@ namespace TwinCatAssistant.Native
                 try { _chatBinding = selection?.IsSelected == true ? _chatBindings.Read(_origin.AbsoluteUri, selection.sessionId) : null; }
                 catch { _chatBinding = null; }
                 await PermitCurrentChatAsync();
-                if (!_disposed && generation == _chatConnection.Generation) RenderChatBinding();
+                if (!_disposed && generation == _chatConnection.Generation) { RetryKnowledge(); RenderChatBinding(); }
             }
             catch
             {
@@ -463,9 +463,11 @@ namespace TwinCatAssistant.Native
             else if (_knowledgeState?.ready == true)
             {
                 knowledgeDetail = "Beckhoff-Hilfe · " + language + (_knowledgeState.phase == "update" ? " · Update verfügbar" : "");
-                // The live MCP state wins over the last confirmed reload.
-                if (McpFailed(McpState("knowledge"))) { knowledgeStatus = "Getrennt"; knowledgeTone = "Error"; }
-                else if (KnowledgeConnected()) { knowledgeStatus = "Bereit"; knowledgeTone = "Success"; }
+                // The live MCP state wins over the last confirmed reload; while
+                // automatic reconnects remain, a failed state shows as connecting.
+                var live = McpState("knowledge");
+                if (McpFailed(live) && !(live == "failed" && KnowledgeRetrying())) { knowledgeStatus = "Getrennt"; knowledgeTone = "Error"; }
+                else if (KnowledgeConnected() && !McpFailed(live)) { knowledgeStatus = "Bereit"; knowledgeTone = "Success"; }
                 else { knowledgeStatus = "Verbindet"; knowledgeTone = "Neutral"; }
             }
             MenuRow("book", "Wissenssuche", knowledgeDetail, true, () => { ShowKnowledgeSetup(); return Task.CompletedTask; },

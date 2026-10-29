@@ -70,3 +70,34 @@ test('concurrent native contexts share one Knowledge backend, retain it after di
     assert.equal(await knowledgeBrokerAvailable(bridge),false);
   } finally { await broker?.close(); await rm(root,{recursive:true,force:true}); }
 });
+
+test('the broker loads a configured corpus at start before any chat asks for its catalog', {timeout:30000}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tc-knowledge-warm-'));
+  let broker;
+  try {
+    const base = join(root, 'knowledge'); await mkdir(base); await mkdir(join(base, 'state'));
+    const config = join(base, 'knowledge.toml'), bridge = join(base, 'broker.json'), starts = join(root, 'starts.txt');
+    await writeFile(config, '[paths]\n');
+    const knowledge = { executable:process.execPath, config, bridge, startupTimeout:15000 };
+    broker = await startKnowledgeBroker({root, knowledge, cwd:root, env:{...process.env,TC_TEST_KNOWLEDGE_STARTS:starts}, backendCommand:[process.execPath, resolve('tests/fixtures/knowledge-server.mjs')]});
+    const deadline = Date.now() + 10000;
+    while (Date.now() < deadline && (await readFile(starts,'utf8').catch(() => '')).trim() === '') await new Promise(done => setTimeout(done, 50));
+    assert.equal(broker.statistics.starts,1,'the backend starts without a client request');
+    const server = createOpenCodeConfig({knowledge}).mcp.servers.knowledge;
+    await probeServer('knowledge',server,{name:'tc_search',arguments:{query:'after-warm'}}, {cwd:root,env:process.env});
+    assert.equal(broker.statistics.starts,1,'the first chat reuses the preloaded corpus');
+  } finally { await broker?.close(); await rm(root,{recursive:true,force:true}); }
+});
+
+test('a broker without a configured corpus starts quietly and loads nothing', {timeout:30000}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tc-knowledge-empty-'));
+  let broker;
+  try {
+    const base = join(root, 'knowledge'); await mkdir(base);
+    const knowledge = { executable:process.execPath, config:join(base, 'knowledge.toml'), bridge:join(base, 'broker.json'), startupTimeout:15000 };
+    broker = await startKnowledgeBroker({root, knowledge, cwd:root, env:process.env, backendCommand:[process.execPath, resolve('tests/fixtures/knowledge-server.mjs')]});
+    await new Promise(done => setTimeout(done, 300));
+    assert.equal(broker.statistics.starts,0);
+    assert.equal(await knowledgeBrokerAvailable(knowledge.bridge), true);
+  } finally { await broker?.close(); await rm(root,{recursive:true,force:true}); }
+});

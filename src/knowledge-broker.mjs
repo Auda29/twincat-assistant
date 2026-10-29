@@ -143,6 +143,10 @@ export async function startKnowledgeBroker({ root, knowledge, env, cwd, backendC
     await boundedFile(knowledge.bridge, true); // refuse redirected or oversized stale descriptors
     await atomicJson(knowledge.bridge, { version: 1, endpoint, token });
   } catch (error) { listener.close(); throw error; }
+  // Load the corpus right away. The first catalog request from a chat would
+  // otherwise start a full index load and outlast that request's timeout.
+  // A missing or not yet configured corpus fails here quietly; requests retry.
+  void withBackend(async () => {}).catch(() => {});
   return { statistics, async close() {
     if (closing) return; closing = true;
     for (const socket of sockets) socket.destroy();

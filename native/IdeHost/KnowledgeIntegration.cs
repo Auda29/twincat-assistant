@@ -22,6 +22,13 @@ namespace TwinCatAssistant.Native
         private DateTime _knowledgeChecked;
         private CancellationTokenSource _knowledgeCancellation;
         private string _knowledgeConnectionKey;
+        // OpenChamber's first catalog request can time out while the shared
+        // backend still loads the full index after the IDE starts. That load
+        // continues, so a later reconnect succeeds. Retry with growing gaps.
+        private static readonly int[] KnowledgeRetrySeconds={0,20,30,45,60,90,120,180};
+        private int _knowledgeRetries;
+        private DateTime _knowledgeRetryAt;
+        private string _knowledgeRetryKey;
         private bool KnowledgeConnected()
         {
             return _knowledgeState?.ready==true&&_chatAdapterReady&&_chatSelection?.IsSelected==true
@@ -93,7 +100,7 @@ namespace TwinCatAssistant.Native
                 _knowledgeSources.SelectedItem=sources.FirstOrDefault(item=>item.path==selected)
                     ??(sources.Count(item=>item.language=="de")==1?sources.First(item=>item.language=="de"):sources.Length==1?sources[0]:null);
                 RenderKnowledge();RenderChatBinding();
-                if(result.ready)BeginKnowledgeReconnect();
+                if(result.ready)BeginKnowledgeReconnect(true);
             }
             catch{if(!_disposed){_knowledgeState=new KnowledgeState {phase="error"};RenderKnowledge();}}
             finally{_knowledgeChecking=false;}
@@ -119,16 +126,31 @@ namespace TwinCatAssistant.Native
             catch{if(!_disposed)_knowledgeState=new KnowledgeState {phase=_knowledgeCancellation.IsCancellationRequested?"cancelled":"error"};}
             finally{_knowledgeBusy=false;_knowledgeCancellation.Dispose();_knowledgeCancellation=null;if(!_disposed){RenderKnowledge();RenderChatBinding();}}
         }
-        private void BeginKnowledgeReconnect()
+        // True while automatic reconnects for a ready index remain.
+        private bool KnowledgeRetrying(){return _knowledgeState?.ready==true&&_knowledgeRetries<KnowledgeRetrySeconds.Length;}
+        private void RetryKnowledge()
+        {
+            if(_disposed||_knowledgeState?.ready!=true||!_chatAdapterReady||_chatSelection?.IsSelected!=true)return;
+            var key=_knowledgeState.revision+"\0"+_chatSelection.directory+"\0"+_chatDocumentGeneration;
+            if(key!=_knowledgeRetryKey){_knowledgeRetryKey=key;_knowledgeRetries=0;_knowledgeRetryAt=DateTime.MinValue;}
+            var live=McpState("knowledge");
+            if(live=="connected"){_knowledgeRetries=0;_knowledgeRetryAt=DateTime.MinValue;return;}
+            if(live!="failed"||_knowledgeConnecting||_knowledgeBusy||_knowledgeChecking||!KnowledgeRetrying()||DateTime.UtcNow<_knowledgeRetryAt)return;
+            _knowledgeRetries++;
+            _knowledgeRetryAt=_knowledgeRetries<KnowledgeRetrySeconds.Length?DateTime.UtcNow.AddSeconds(KnowledgeRetrySeconds[_knowledgeRetries]):DateTime.MaxValue;
+            _knowledgeConnectionKey=null;
+            BeginKnowledgeReconnect(true);
+        }
+        private void BeginKnowledgeReconnect(bool quiet=false)
         {
             if(_knowledgeConnecting)return;
             _knowledgeConnecting=true;
             RunAction(async()=>{
-                try{await ReconnectKnowledgeAsync();}
+                try{await ReconnectKnowledgeAsync(quiet);}
                 finally{_knowledgeConnecting=false;if(!_disposed)RenderKnowledge();}
             });
         }
-        private async Task ReconnectKnowledgeAsync()
+        private async Task ReconnectKnowledgeAsync(bool quiet=false)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if(!_chatAdapterReady||_chatSelection?.IsSelected!=true||_knowledgeState?.ready!=true)return;
@@ -145,7 +167,7 @@ namespace TwinCatAssistant.Native
                 await Task.Delay(200);
             }
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if(!_disposed)Notify("Wissenssuche eingerichtet. Die Verbindung konnte noch nicht bestätigt werden.","warning","Neu verbinden",Reconnect);
+            if(!_disposed&&!quiet)Notify("Wissenssuche eingerichtet. Die Verbindung konnte noch nicht bestätigt werden.","warning","Neu verbinden",Reconnect);
         }
     }
 }

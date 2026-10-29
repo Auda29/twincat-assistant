@@ -176,6 +176,7 @@ namespace TwinCatAssistant.Native
             if (_knowledgeBusy) ShowRow(_knowledgeRow, "Wird vorbereitet …", "Neutral", _knowledgeSummary.Text, "Fortschritt", ShowKnowledgeSetup);
             else if (_knowledgeState?.ready != true) ShowRow(_knowledgeRow, "Nicht eingerichtet", "Warning", _knowledgeSummary.Text, "Einrichten", ShowKnowledgeSetup);
             else if (!ready) ShowRow(_knowledgeRow, "–", "Neutral", _knowledgeSummary.Text);
+            else if (knowledge == "failed" && KnowledgeRetrying()) ShowRow(_knowledgeRow, "Verbindet …", "Neutral", "Der Index wird geladen. Die Wissenssuche verbindet sich automatisch neu.");
             else if (McpFailed(knowledge)) { McpLabel(knowledge, out value, out tone); ShowRow(_knowledgeRow, value, tone, "OpenChamber meldet die Knowledge-Verbindung als " + knowledge + ".", "Neu verbinden", reconnectKnowledge); }
             else if (knowledge == "connected" && KnowledgeConnected()) ShowRow(_knowledgeRow, "Bereit", "Success", _knowledgeSummary.Text);
             else if (knowledge == null && !_mcpEnabled) ShowRow(_knowledgeRow, "Nicht konfiguriert", "Warning", _mcpStatus.Text);

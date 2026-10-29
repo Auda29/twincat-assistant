@@ -127,6 +127,26 @@ try {
         Set-ViewField '_knowledgeBusy' $false;$taskKnowledgeState.phase='ready';$taskKnowledgeState.ready=$true;$taskKnowledgeState.language='de';$taskKnowledgeState.topics=49970;$taskKnowledgeRender.Invoke($taskControl,@())
         Assert-View ((Get-ViewField '_knowledgeText').Text.Contains('Dokumentation vorbereitet') -and -not (Get-ViewField '_knowledgeText').Text.Contains('Wissenssuche bereit')) 'a prepared index does not claim an established MCP connection'
         Save-View 'knowledge-prepared-light'
+        $taskSelection=[Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ChatSelection'))
+        $taskSelection.version=1;$taskSelection.ready=$true;$taskSelection.authenticated=$true;$taskSelection.sessionId='view-session'
+        $taskSelection.documentId=[Guid]::NewGuid().ToString();$taskSelection.directory='C:\Synthetic\workspace'
+        $taskMcp=[Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ChatMcpStatus'));$taskMcp.name='knowledge';$taskMcp.status='failed'
+        $taskMcpArray=[Array]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ChatMcpStatus'),1);$taskMcpArray[0]=$taskMcp;$taskSelection.mcp=$taskMcpArray
+        Set-ViewField '_chatSelection' $taskSelection;Set-ViewField '_chatAdapterReady' $true;Set-ViewField '_knowledgeConnecting' $true
+        $taskRetry=$taskControl.GetType().GetMethod('RetryKnowledge',$taskFlags);$taskDiagnose=$taskControl.GetType().GetMethod('RenderDiagnostics',$taskFlags)
+        $taskRetry.Invoke($taskControl,@())
+        Assert-View ((Get-ViewField '_knowledgeRetries') -eq 0) 'no automatic Knowledge reconnect starts while another reconnect runs'
+        Set-ViewField '_knowledgeConnecting' $false;Set-ViewField '_knowledgeChecking' $false
+        $taskRetry.Invoke($taskControl,@())
+        Assert-View ((Get-ViewField '_knowledgeRetries') -eq 1) 'a ready index with a failed Knowledge connection reconnects automatically'
+        Set-ViewField '_knowledgeConnecting' $false;$taskRetry.Invoke($taskControl,@())
+        Assert-View ((Get-ViewField '_knowledgeRetries') -eq 1) 'automatic Knowledge reconnects wait for their growing gap'
+        $taskDiagnose.Invoke($taskControl,@())
+        Assert-View ((Get-ViewField '_knowledgeRow').Value.Text.StartsWith('Verbindet')) 'a failed Knowledge connection with retries left shows as connecting'
+        Set-ViewField '_knowledgeRetries' 8;$taskDiagnose.Invoke($taskControl,@())
+        Assert-View ((Get-ViewField '_knowledgeRow').Value.Text.StartsWith('Nicht')) 'after the last automatic reconnect a failed Knowledge connection is reported'
+        $taskMcp.status='connected';$taskRetry.Invoke($taskControl,@())
+        Assert-View ((Get-ViewField '_knowledgeRetries') -eq 0) 'a connected Knowledge server resets the automatic reconnects'
     } finally { $taskControl.Dispose();$taskControl=$taskSavedControl }
 
     (Get-ViewField '_diagnosticSource').Text = 'unrelated manual diagnostic source'
