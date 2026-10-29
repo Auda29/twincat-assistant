@@ -238,10 +238,12 @@ namespace TwinCatAssistant.Native
                 {
                     var revision = ChatContextPolicy.Revision(_chatActive);
                     var attempt = _chatSelection.sessionId + "\0" + revision;
-                    if (revision != _chatSelection.attachedRevision && attempt != _autoAttachedKey)
+                    if (ActiveChip()?.revision != revision && attempt != _autoAttachedKey)
                     {
+                        // A chip the operator removed stays removed until the
+                        // POU changes or another POU becomes active.
                         _autoAttachedKey = attempt;
-                        await AttachActivePouAsync();
+                        await AttachActivePouAsync(true);
                     }
                 }
             }
@@ -272,6 +274,14 @@ namespace TwinCatAssistant.Native
                 && SameDirectory(_chatSelection.directory, _chatWorkspace()));
         }
 
+        // The composer chip of the active POU in the selected chat, if staged.
+        private ChatAttachment ActiveChip()
+        {
+            if (_chatActive?.Identity == null || _chatSelection?.attachments == null) return null;
+            var id = ChatContextPolicy.ReferenceId(_chatActive);
+            return _chatSelection.attachments.FirstOrDefault(chip => chip?.id == id);
+        }
+
         private string ProjectName(string projectFile) { return string.IsNullOrEmpty(projectFile) ? "" : System.IO.Path.GetFileNameWithoutExtension(projectFile); }
 
         private void RenderChatBinding()
@@ -288,9 +298,9 @@ namespace TwinCatAssistant.Native
             _newChatButton.ToolTip = identity == null ? "Neuer allgemeiner Chat" : "Neuer Chat für " + ProjectName(identity.ProjectFile);
             // Attach button: the one explicit disclosure action.
             var revision = ChatContextPolicy.Revision(_chatActive);
-            var attachedCurrent = revision != null && _chatSelection?.attachedRevision == revision && HasCurrentChatBinding();
-            var title = _chatActive == null ? null : _chatActive.ObjectName + " / " + ProjectName(identity.ProjectFile);
-            var stale = !attachedCurrent && title != null && _chatSelection?.attachedObject == title && HasCurrentChatBinding();
+            var chip = HasCurrentChatBinding() ? ActiveChip() : null;
+            var attachedCurrent = revision != null && chip?.revision == revision;
+            var stale = !attachedCurrent && chip != null;
             _attachPouButton.IsEnabled = ready && _chatActive?.Identity != null && !foreign && !attachedCurrent && _chatSelection?.IsSelected == true;
             _attachLabel.Text = attachedCurrent ? "Angehängt" : stale ? "Aktualisieren" : "Anhängen";
             _attachIcon.Data = AssistantTheme.Icon(attachedCurrent ? "check" : stale ? "refresh" : "attach");
@@ -329,6 +339,7 @@ namespace TwinCatAssistant.Native
                         + (string.IsNullOrEmpty(_chatSelection?.model) ? ". Modell im Chat wählen." : ". Modell: " + _chatSelection.model + ".")
                         + " PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.";
             RenderBanner(ready, identity, foreign);
+            RenderDiagnostics();
         }
 
         private void RenderBanner(bool ready, NativeProjectIdentity identity, bool foreign)
@@ -446,7 +457,9 @@ namespace TwinCatAssistant.Native
             else if (_knowledgeState?.ready == true)
             {
                 knowledgeDetail = "Beckhoff-Hilfe · " + language + (_knowledgeState.phase == "update" ? " · Update verfügbar" : "");
-                if (KnowledgeConnected()) { knowledgeStatus = "Bereit"; knowledgeTone = "Success"; }
+                // The live MCP state wins over the last confirmed reload.
+                if (McpFailed(McpState("knowledge"))) { knowledgeStatus = "Getrennt"; knowledgeTone = "Error"; }
+                else if (KnowledgeConnected()) { knowledgeStatus = "Bereit"; knowledgeTone = "Success"; }
                 else { knowledgeStatus = "Verbindet"; knowledgeTone = "Neutral"; }
             }
             MenuRow("book", "Wissenssuche", knowledgeDetail, true, () => { ShowKnowledgeSetup(); return Task.CompletedTask; },
@@ -828,7 +841,7 @@ namespace TwinCatAssistant.Native
             if (HasCurrentChatBinding()) await AttachActivePouAsync();
         }
 
-        private async Task AttachActivePouAsync()
+        private async Task AttachActivePouAsync(bool auto = false)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_chatActionPending || !HasCurrentChatBinding()) return;
@@ -849,7 +862,7 @@ namespace TwinCatAssistant.Native
                 if (_disposed || documentGeneration != _chatDocumentGeneration)
                     throw new InvalidOperationException("Die Chat-Seite wurde neu geladen. Bitte den Kontext erneut prüfen.");
                 var serializer = new JavaScriptSerializer();
-                var request = new { sessionId = selection.sessionId, selection.epoch, selection.documentId, contextKey = revision,
+                var request = new { sessionId = selection.sessionId, selection.epoch, selection.documentId, contextKey = revision, auto,
                     item = new { providerId = "twincat-assistant", id = ChatContextPolicy.ReferenceId(snapshot),
                         title = snapshot.ObjectName + " / " + System.IO.Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile),
                         url = _origin.AbsoluteUri, text = ChatContextPolicy.AttachmentText(snapshot),

@@ -35,6 +35,14 @@ namespace TwinCatAssistant.Native
         public string name { get; set; }
         public string status { get; set; }
     }
+    // A TwinCAT chip currently staged in the composer (reference ID and revision).
+    public sealed class ChatAttachment
+    {
+        public string id { get; set; }
+        public string title { get; set; }
+        public string revision { get; set; }
+    }
+
     public sealed class ChatSelection
     {
         public int version;
@@ -47,6 +55,7 @@ namespace TwinCatAssistant.Native
         public bool creating;
         public string attachedObject;
         public string attachedRevision;
+        public ChatAttachment[] attachments;
         public string model;
         public ChatProviderChoice[] providers;
         public string[] allowedProviders;

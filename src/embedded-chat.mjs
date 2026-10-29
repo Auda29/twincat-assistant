@@ -58,7 +58,29 @@ export function readTheme(scope) {
   } catch { return null; }
 }
 
-export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], theme = () => null, permissionChanged = () => {}, authenticated = () => true, documentId = crypto.randomUUID() }) {
+// Staged POU chips live in the composer's own React state, not in a store.
+// Reading them from the pinned chip markup lets a removed or sent chip clear
+// the native "Angehängt" state. Each chip shows its reference ID in the
+// muted label and ends with its remove button.
+export function composerChips(scope) {
+  const read = () => {
+    const chips = new Map();
+    for (const form of scope.document.querySelectorAll('form:has([data-testid="chat-input"])')) {
+      for (const label of form.querySelectorAll('div[title] > button[type="button"] > span.text-muted-foreground')) {
+        const remove = label.parentElement.parentElement.querySelector(':scope > span > button[type="button"]');
+        const id = label.textContent.trim();
+        if (id && remove && !chips.has(id)) chips.set(id, remove);
+      }
+    }
+    return chips;
+  };
+  return {
+    chips: () => [...read().keys()],
+    remove: id => { const button = read().get(id); if (!button) return false; button.click(); return true; },
+  };
+}
+
+export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], theme = () => null, permissionChanged = () => {}, authenticated = () => true, composer = null, documentId = crypto.randomUUID() }) {
   for (const store of [ui, sessions, input]) {
     if (typeof store?.getState !== 'function' || typeof store?.subscribe !== 'function') throw new Error('Incompatible chat store');
   }
@@ -68,8 +90,20 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
   let epoch = 0;
   let selected = sessions.getState().currentSessionId;
   let permission = null;
-  let attachment = null;
+  // Reference ID -> { title, revision, auto } for chips this adapter staged.
+  // Presence is always re-read from the composer; this only adds revisions.
+  const staged = new Map();
+  let last = null;
   let creating = false;
+  const pending = id => input.getState().pendingGuestIssue?.providerId === 'twincat-assistant' && input.getState().pendingGuestIssue.id === id;
+  const present = () => {
+    const chips = new Set(composer ? composer.chips() : staged.keys());
+    return id => chips.has(id) || pending(id);
+  };
+  const attachments = () => {
+    const has = present();
+    return [...staged].filter(([id]) => has(id)).slice(-8).map(([id, value]) => ({ id, title: value.title, revision: value.revision }));
+  };
   const clearPending = () => {
     if (input.getState().pendingGuestIssue?.providerId === 'twincat-assistant') input.getState().setPendingGuestIssue(null);
   };
@@ -79,7 +113,8 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
     epoch++;
     permission = null;
     permissionChanged(false);
-    attachment = null;
+    staged.clear();
+    last = null;
     clearPending();
   });
   ui.getState().setSidebarOpen(false);
@@ -87,13 +122,18 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
   ui.getState().setShowOpenCodeUpdateNotifications(false);
   ui.getState().setContextRailHiddenSurfaces(['git', 'pr', 'diff', 'walkthrough', 'linear', 'editor', 'terminal', 'notes', 'plan', 'browser', 'chat']);
 
+  // The most recently staged chip, while it is still in the composer.
+  const current = () => {
+    const value = last && present()(last) ? staged.get(last) : null;
+    return { attachedObject: value?.title ?? null, attachedRevision: value?.revision ?? null };
+  };
   const state = () => {
     const value = sessions.getState();
     const model = config?.getState();
     return { version: 1, ready: true, authenticated: authenticated(), documentId, sessionId: value.currentSessionId ?? null,
       directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(), mcp: mcp(),
       model: model?.currentProviderId && model?.currentModelId ? model.currentProviderId + '/' + model.currentModelId : null,
-      attachedObject: attachment?.title ?? null, attachedRevision: attachment?.revision ?? null, theme: theme() };
+      ...current(), attachments: attachments(), theme: theme() };
   };
   const matches = expected => expected && expected.documentId === documentId && expected.sessionId && expected.sessionId === selected && expected.epoch === epoch;
   return Object.freeze({
@@ -107,10 +147,22 @@ export function createChatAdapter({ ui, sessions, input, config, reloadPolicy, p
         throw new Error('Invalid POU attachment');
       }
       if (input.getState().pendingGuestIssue) throw new Error('Another attachment is still pending');
+      const auto = request.auto === true;
+      const has = present();
+      // Automatic attachment follows the active POU: it replaces the chip it
+      // staged for a previous POU. Chips the operator attached stay.
+      if (auto && composer) {
+        for (const [id, value] of staged) if (value.auto && id !== item.id && has(id)) composer.remove(id);
+      }
       // The same queue and reference type used by SDK host.attach. It stages a
       // visible composer chip. It never submits a prompt or invokes a model.
+      // The composer replaces a chip with the same ID instead of adding one.
       input.getState().setPendingGuestIssue(item);
-      attachment = { title: item.title, revision: item.data?.revision ?? null };
+      const prior = has(item.id) ? staged.get(item.id) : null;
+      staged.delete(item.id);
+      staged.set(item.id, { title: item.title, revision: item.data?.revision ?? null, auto: auto && prior?.auto !== false });
+      while (staged.size > 32) staged.delete(staged.keys().next().value);
+      last = item.id;
       return { sessionId: selected, epoch, attachedObject: item.title };
     },
     async newChat({ title, directory }) {
@@ -226,7 +278,7 @@ export async function installEmbeddedChat(scope = window) {
     for (const form of scope.document.querySelectorAll('form:has([data-testid="chat-input"])')) form.inert = !composerAllowed;
   };
   const adapter = createChatAdapter({ ui: base.u, sessions: chat.z, input: chat.du, config: chat.l, reloadPolicy,
-    providers: () => connectedProviders, allowed: () => enabledProviders, mcp: () => connectedMcp, theme: () => readTheme(scope),
+    providers: () => connectedProviders, allowed: () => enabledProviders, mcp: () => connectedMcp, theme: () => readTheme(scope), composer: composerChips(scope),
     permissionChanged: allowed => { composerAllowed = allowed; markComposer(); }, authenticated: () => signedIn });
   Object.defineProperty(scope, '__twinCatChat', { value: adapter, configurable: false, writable: false });
   scope.document.documentElement.dataset.twincatEmbedded = 'true';

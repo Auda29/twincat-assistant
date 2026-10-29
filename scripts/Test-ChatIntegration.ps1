@@ -93,22 +93,22 @@ function Wait-Native([scriptblock]$Condition,[string]$Name,[int]$Seconds=40) {
     Write-Output ('BANNER '+(Field '_bannerText').Text+' | STATUS '+(Field '_chatStatus').Text+' | MODEL '+(Field '_modelStatus').Text)
     throw ('Native automation did not reach: '+$Name)
 }
-function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; // synthetic context fixture') {
+function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; // synthetic context fixture',[string]$Object='FB_Motor') {
     $global:taskIntegrationSnapshot = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorSnapshot'))
     $taskIdentityType = $taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorIdentity')
     $taskIdentityConstructor = $taskIdentityType.GetConstructor([type[]]@([int],[string],[string],[string],[string]))
     $global:taskIntegrationSnapshot.Identity = $taskIdentityConstructor.Invoke([object[]]@(
         [int]$PID,[string](Join-Path $taskRoot 'ContextChecks.sln'),[string](Join-Path $taskRoot ($Project+'.plcproj')),
-        [string](Join-Path $taskRoot ($Project+'/FB_Motor.TcPOU')),[string]('TIPC/'+$Project+'/POUs/FB_Motor')))
-    $global:taskIntegrationSnapshot.ObjectName = 'FB_Motor'
-    $global:taskIntegrationSnapshot.Declaration = 'FUNCTION_BLOCK FB_Motor'
+        [string](Join-Path $taskRoot ($Project+'/'+$Object+'.TcPOU')),[string]('TIPC/'+$Project+'/POUs/'+$Object)))
+    $global:taskIntegrationSnapshot.ObjectName = $Object
+    $global:taskIntegrationSnapshot.Declaration = 'FUNCTION_BLOCK '+$Object
     $global:taskIntegrationSnapshot.Implementation = $Implementation
     $global:taskIntegrationSnapshot.SourceKind = 'Automation Interface snapshot'
     $global:taskIntegrationProject = $global:taskIntegrationSnapshot.Identity.ProjectIdentity
     [IO.Directory]::CreateDirectory((Join-Path $taskRoot $Project)) | Out-Null
     [IO.File]::WriteAllText((Join-Path $taskRoot 'ContextChecks.sln'),'Synthetic fixture solution')
-    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'.plcproj')),('<Project><ItemGroup><Compile Include="'+$Project+'/FB_Motor.TcPOU" /></ItemGroup></Project>'))
-    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'/FB_Motor.TcPOU')),('<TcPlcObject><POU Name="FB_Motor" Id="{7317284c-267c-4963-959d-8629b64f2090}"><Declaration><![CDATA[FUNCTION_BLOCK FB_Motor]]></Declaration><Implementation><ST><![CDATA['+$Implementation+']]></ST></Implementation></POU></TcPlcObject>'))
+    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'.plcproj')),('<Project><ItemGroup><Compile Include="'+$Project+'/'+$Object+'.TcPOU" /></ItemGroup></Project>'))
+    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'/'+$Object+'.TcPOU')),('<TcPlcObject><POU Name="'+$Object+'" Id="{7317284c-267c-4963-959d-8629b64f2090}"><Declaration><![CDATA[FUNCTION_BLOCK '+$Object+']]></Declaration><Implementation><ST><![CDATA['+$Implementation+']]></ST></Implementation></POU></TcPlcObject>'))
     $taskControl.GetType().GetMethod('RenderContext',$taskFlags).Invoke($taskControl,[object[]]@($global:taskIntegrationSnapshot,$null))
 }
 $taskConfig = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatConfiguration'))
@@ -177,6 +177,14 @@ try {
     Assert-Integration ((JS 'document.body.innerText.includes("FB_Motor / PLC_A")') -eq 'true') 'explicit native attach produces a real upstream composer chip'
     Invoke-Chat 'PollChatSelectionAsync'
     Assert-Integration ((Field '_attachLabel').Text.StartsWith('Angeh') -and -not (Field '_attachPouButton').IsEnabled) 'attach button reports the staged revision'
+    Wait-Native { @((Field '_chatSelection').attachments).Count -eq 1 } 'composer chip readback'
+    Assert-Integration (@((Field '_chatSelection').attachments)[0].id.StartsWith('FB_Motor@PLC_A#')) 'the staged chip is read back from the real upstream composer markup'
+    JS 'document.querySelector(''form button[aria-label*="FB_Motor@PLC_A#"]'').click()' | Out-Null
+    Wait-Native { (Field '_attachPouButton').IsEnabled } 'attach button after the operator removed the chip'
+    Assert-Integration (-not (Field '_attachLabel').Text.StartsWith('Angeh') -and @((Field '_chatSelection').attachments).Count -eq 0) 'removing the chip in the composer re-enables attaching'
+    Invoke-Chat 'AttachClickAsync'; Pump 800
+    Wait-Native { (Field '_attachLabel').Text.StartsWith('Angeh') } 'attaching the same revision again'
+    Assert-Integration (-not (Field '_attachPouButton').IsEnabled) 'a removed chip can be attached again'
     Assert-Integration ((JS '[...document.querySelectorAll("[role=dialog]")].some(e=>e.innerText.includes("Add project directory"))') -eq 'false') 'private chat workspace avoids the generic first-run project picker'
     Assert-Integration ((Field '_bannerText').Text.Contains('Modellanbieter') -and (Field '_banner').Visibility -eq [Windows.Visibility]::Visible) 'missing provider is explained with one action'
     JS "window.__fixtureProviderConnected=false;fetch('/api/integration/openai/connect/key',{method:'POST',headers:{'content-type':'application/json','x-opencode-directory':encodeURIComponent(window.__twinCatChat.state().directory),'x-opencode-directory-encoding':'uri'},body:JSON.stringify({key:'synthetic-not-a-real-api-key'})}).then(r=>window.__fixtureProviderConnected=r.status===204)" | Out-Null
@@ -276,6 +284,11 @@ try {
     Set-Snapshot 'PLC_A' 'bRun := FALSE; // edited synthetic fixture'
     Wait-Native { (JS 'window.__twinCatChat.state().attachedRevision') -ne $taskAutoRevision } 'auto-attach of a changed revision'
     Assert-Integration $true 'auto-attach restages a changed POU revision'
+    Set-Snapshot 'PLC_A' 'bRun := TRUE; // second synthetic POU' 'FB_Pump'
+    Wait-Native { (JS 'window.__twinCatChat.state().attachedObject') -eq '"FB_Pump / PLC_A"' } 'auto-attach after switching to another POU'
+    Wait-Native { @((Field '_chatSelection').attachments).Count -eq 1 } 'single chip after a POU switch'
+    Assert-Integration (@((Field '_chatSelection').attachments)[0].id.StartsWith('FB_Pump@PLC_A#') -and (JS 'document.querySelector(''form button[aria-label*="FB_Motor@PLC_A#"]'')===null') -eq 'true') 'switching POUs replaces the automatically attached chip instead of adding one'
+    Set-Snapshot 'PLC_A' 'bRun := FALSE; // edited synthetic fixture'
     Invoke-Chat 'ToggleAutoAttachAsync'
     Assert-Integration (-not $taskPreferences.AutoAttach -and (Field '_banner').Visibility -eq [Windows.Visibility]::Visible -and
         (Field '_bannerText').Text.Contains('ist aus')) 'turning automatic attachment off shows its visible confirmation'

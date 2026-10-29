@@ -72,6 +72,7 @@ namespace TwinCatAssistant.Native
             _knowledgeSources.IsEnabled=!_knowledgeBusy;
             _knowledgeStart.IsEnabled=!_knowledgeBusy&&_knowledgeSources.SelectedItem is KnowledgeSource&&state?.phase!="external";
             _knowledgeStart.Content=state?.ready==true?"Index aktualisieren":"Einrichten";
+            RenderDiagnostics();
         }
         private void ShowKnowledgeSetup(){_menuPopup.IsOpen=false;_knowledgePanel.Visibility=Visibility.Visible;RenderKnowledge();RunAction(()=>RefreshKnowledgeAsync(true));}
         private async Task RefreshKnowledgeAsync(bool force=false)

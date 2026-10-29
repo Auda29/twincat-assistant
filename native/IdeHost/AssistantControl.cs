@@ -212,32 +212,6 @@ namespace TwinCatAssistant.Native
             _banner.SetResourceReference(Border.BorderBrushProperty, "Tc.Border");
         }
 
-        private void BuildDiagnostics()
-        {
-            _diagnostics.SetResourceReference(Border.BackgroundProperty, "Tc.Surface");
-            _diagnostics.SetResourceReference(Border.BorderBrushProperty, "Tc.Border");
-            _diagnostics.SetResourceReference(TextElement.ForegroundProperty, "Tc.Foreground");
-            _port.SetResourceReference(StyleProperty, "Tc.TextBox");
-            _diagnosticSource.SetResourceReference(StyleProperty, "Tc.TextBox");
-            var title = new TextBlock { Text = "Diagnose", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
-            var close = IconButton("close", "Diagnose ausblenden", () => { _diagnostics.Visibility = Visibility.Collapsed; return System.Threading.Tasks.Task.CompletedTask; });
-            var head = new DockPanel { LastChildFill = true, Margin = new Thickness(0, 0, 0, 4) };
-            DockPanel.SetDock(close, Dock.Right);
-            head.Children.Add(close); head.Children.Add(title);
-            var row = new WrapPanel { Margin = new Thickness(-4, 4, 0, 0) };
-            row.Children.Add(new TextBlock { Text = "Port", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0) });
-            row.Children.Add(_port);
-            row.Children.Add(Secondary(AsyncButton("Verbinden", ConnectAsync)));
-            row.Children.Add(Secondary(Button("IDE-Kontext lesen", Refresh)));
-            row.Children.Add(_targets);
-            row.Children.Add(Secondary(Button("Lokal lesen", Read)));
-            var panel = new StackPanel();
-            foreach (UIElement element in new UIElement[] { head, _chatStatus, _modelStatus, _mcpStatus, _knowledgeSummary, row, _inventoryStatus, _diagnosticStatus, _diagnosticSource })
-                panel.Children.Add(element);
-            _diagnosticSource.Margin = new Thickness(0, 4, 0, 0);
-            _diagnostics.Child = panel;
-        }
-
         // Narrow tool windows keep the POU name readable: the attach label and
         // then the chip text collapse to icons with tooltips.
         private void FitStrip(double width)
@@ -445,6 +419,8 @@ namespace TwinCatAssistant.Native
             {
                 _chatStatus.Text = "Unter Diagnose einen Loopback-Port zwischen 1024 und 65535 eintragen.";
                 _diagnostics.Visibility = Visibility.Visible;
+                ShowAdvancedDiagnostics(true);
+                RenderDiagnostics();
                 return;
             }
             _connecting = true;
