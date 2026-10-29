@@ -101,6 +101,9 @@ jobs:
         run: node --test tests/integration/native-chat.test.mjs tests/integration/session-compatibility.test.mjs
       - name: Check source contract types, lint and original composer assembly
         shell: pwsh
+        env:
+          # The complete upstream UI exceeds Node's 2 GiB hosted-runner default.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: |
           $taskBun = (Resolve-Path tools/node_modules/bun/bin/bun.exe).Path
           $env:PATH = (Split-Path $taskBun -Parent) + ';' + $env:PATH
