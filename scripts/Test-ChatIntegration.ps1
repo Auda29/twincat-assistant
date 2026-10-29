@@ -191,13 +191,18 @@ try {
     Assert-Integration (Field '_attachPouButton').IsEnabled 'opening a POU creates and binds its project chat automatically'
     # Simulate the gap between adapter installation and React mounting its chat.
     # Keep the real adapter/authentication alive; only withhold the UI markers.
+    # Pause the health poll so a poll already in flight cannot report the old DOM.
+    (Field '_chatHealth').Stop()
+    $taskPollDeadline = [DateTime]::UtcNow.AddSeconds(15)
+    while ((Field '_chatPolling') -and [DateTime]::UtcNow -lt $taskPollDeadline) { Pump 50 }
     JS 'window.__fixtureChatMarkers=[...document.querySelectorAll(''[data-testid="chat-input"],.oc-draft-center'')].map(e=>({e,test:e.getAttribute("data-testid"),draft:e.classList.contains("oc-draft-center")}));for(const {e} of window.__fixtureChatMarkers){e.removeAttribute("data-testid");e.classList.remove("oc-draft-center")}' | Out-Null
     $taskControl.GetType().GetMethod('ResetLoading',$taskFlags).Invoke($taskControl,@())
     Invoke-Chat 'PollChatSelectionAsync'
     Assert-Integration ((JS 'window.__twinCatChat.state().ready && window.__twinCatChat.state().authenticated') -eq 'true' -and
         (Field '_strip').Visibility -eq [Windows.Visibility]::Collapsed -and (Field '_browser').Visibility -eq [Windows.Visibility]::Hidden) 'adapter readiness without a mounted chat keeps the loading screen visible'
     JS 'for(const {e,test,draft} of window.__fixtureChatMarkers){if(test)e.setAttribute("data-testid",test);if(draft)e.classList.add("oc-draft-center")}delete window.__fixtureChatMarkers' | Out-Null
-    Invoke-Chat 'PollChatSelectionAsync'
+    Wait-Native { (Field '_strip').Visibility -eq [Windows.Visibility]::Visible } 'chat presentation after mounting' 15
+    (Field '_chatHealth').Start()
     Assert-Integration ((Field '_strip').Visibility -eq [Windows.Visibility]::Visible -and (Field '_browser').Visibility -eq [Windows.Visibility]::Visible) 'mounting the real chat completes loading'
     if ($McpSettingsPath) {
         Wait-JS "window.__twinCatChat.state().mcp.filter(s=>s.status==='connected').length===2" $(if($KnowledgeStateSource){600}else{45})
@@ -215,6 +220,12 @@ try {
     Wait-JS 'window.__fixtureCatalog!==null'
     $taskCatalog = (JS 'window.__fixtureCatalog') | ConvertFrom-Json | ConvertFrom-Json
     Assert-Integration ((@('explain','review','variable','docs','pou-docs') | Where-Object { @($taskCatalog.commands) -notcontains $_ }).Count -eq 0) 'OpenCode loads the TwinCAT slash commands'
+    $taskThemePrimary = (JS 'window.__twinCatChat.state().theme?.primary') | ConvertFrom-Json
+    Assert-Integration (@('#1e63b8','#3d8bfd') -contains $taskThemePrimary) 'the chat uses the TwinCAT theme'
+    $taskThemeBackground = (JS 'window.__twinCatChat.state().theme?.background') | ConvertFrom-Json
+    Assert-Integration ((Field '_strip').Background.ToString() -eq ('#FF'+$taskThemeBackground.Substring(1).ToUpperInvariant())) 'the native bar follows the TwinCAT chat theme'
+    $taskAgentColors = (JS '(()=>{const probe=document.createElement("span");probe.style.color="var(--primary)";document.body.append(probe);const p=getComputedStyle(probe).color;probe.remove();const a=[...document.querySelectorAll(".model-controls__agent-label")].map(e=>getComputedStyle(e).color);return JSON.stringify({p,a})})()') | ConvertFrom-Json | ConvertFrom-Json
+    Assert-Integration (@($taskAgentColors.a).Count -gt 0 -and (@($taskAgentColors.a) | Where-Object { $_ -ne $taskAgentColors.p }).Count -eq 0) 'the read-only agent is shown in the TwinCAT accent color'
     Invoke-Chat 'AttachClickAsync'; Pump 800
     Assert-Integration ((JS 'document.body.innerText.includes("FB_Motor / PLC_A")') -eq 'true') 'explicit native attach produces a real upstream composer chip'
     Invoke-Chat 'PollChatSelectionAsync'
@@ -387,14 +398,50 @@ try {
     }
     Set-Snapshot 'PLC_A'
     JS ("window.__twinCatChat.selectSession("+$taskSelectionJson+")") | Out-Null
-    Pump 800; Invoke-Chat 'PollChatSelectionAsync'; Invoke-Chat 'AttachClickAsync'; Pump 500
+    Pump 800
+    # Return to the existing project chat and clear fixture chips/overlays before
+    # taking the presentation captures. Do not create another project here.
+    JS 'document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",code:"Escape",bubbles:true}));for(const chip of document.querySelectorAll("form div[title]")){if(chip.title.includes(" / PLC_A"))chip.querySelector("button[aria-label]")?.click()}' | Out-Null
+    Pump 300; Invoke-Chat 'PollChatSelectionAsync'; Invoke-Chat 'AttachClickAsync'; Pump 500
+    Wait-JS '!document.querySelector("[role=dialog]")'
     $taskEvidence = Join-Path $taskRepo 'local-data/chat-integration-views'
     [IO.Directory]::CreateDirectory($taskEvidence) | Out-Null
-    foreach ($taskWidth in @(390,768,1100)) {
-        $taskWindow.Width = $taskWidth; Pump 700
-        $taskScreenshot = [IO.File]::Create((Join-Path $taskEvidence ('chat-'+$taskWidth+'.png')))
-        try { Await-Task ($taskBrowser.CoreWebView2.CapturePreviewAsync([Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat]::Png,$taskScreenshot)) | Out-Null }
-        finally { $taskScreenshot.Dispose() }
+    foreach ($taskVariant in @('light','dark')) {
+        JS ('window.dispatchEvent(new CustomEvent("openchamber:settings-synced",{detail:{adoptTheme:true,settings:{useSystemTheme:false,themeVariant:"'+$taskVariant+'",lightThemeId:"twincat-light",darkThemeId:"twincat-dark"}}}))') | Out-Null
+        $taskExpectedAccent = if ($taskVariant -eq 'dark') { '#3d8bfd' } else { '#1e63b8' }
+        Wait-JS ('window.__twinCatChat.state().theme?.primary==="'+$taskExpectedAccent+'"')
+        $taskExpectedBackground = if ($taskVariant -eq 'dark') { '#FF1B1E24' } else { '#FFFBFCFE' }
+        Wait-Native { (Field '_strip').Background.ToString() -eq $taskExpectedBackground } ($taskVariant+' native palette') 15
+        Assert-Integration ((Field '_strip').Background.ToString() -eq $taskExpectedBackground) ($taskVariant+' theme also updates the native bar')
+        foreach ($taskWidth in @(390,768,1100)) {
+            $taskWindow.Width = $taskWidth; Pump 700
+            # Responsive session panels remount in this synthetic profile. Close
+            # their directory prompt through its real close action after resizing.
+            JS 'document.querySelector("[data-slot=dialog-close]")?.click()' | Out-Null
+            Pump 300
+            Wait-JS '!document.querySelector("[data-slot=dialog-content]")'
+            Assert-Integration ((JS '(()=>{const probe=document.createElement("span");probe.style.color="var(--primary)";document.body.append(probe);const color=getComputedStyle(probe).color;probe.remove();const labels=[...document.querySelectorAll(".model-controls__agent-label")];return labels.length>0 && labels.every(e=>getComputedStyle(e).color===color)})()') -eq 'true') ($taskVariant+' agent accent at '+$taskWidth+'px')
+            $taskScreenshotPath = Join-Path $taskEvidence ('chat-'+$taskVariant+'-'+$taskWidth+'.png')
+            $taskScreenshot = [IO.File]::Create($taskScreenshotPath)
+            try { Await-Task ($taskBrowser.CoreWebView2.CapturePreviewAsync([Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat]::Png,$taskScreenshot)) | Out-Null }
+            finally { $taskScreenshot.Dispose() }
+            # WPF cannot capture the WebView child surface. Combine its actual
+            # browser capture with the rendered native control at its exact bounds.
+            $taskBrowserImage = [Windows.Media.Imaging.BitmapImage]::new()
+            $taskBrowserImage.BeginInit(); $taskBrowserImage.CacheOption = [Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+            $taskBrowserImage.UriSource = [Uri]$taskScreenshotPath; $taskBrowserImage.EndInit()
+            $taskNativeImage = [Windows.Media.Imaging.RenderTargetBitmap]::new([int][Math]::Ceiling($taskControl.ActualWidth),[int][Math]::Ceiling($taskControl.ActualHeight),96,96,[Windows.Media.PixelFormats]::Pbgra32)
+            $taskNativeImage.Render($taskControl)
+            $taskVisual = [Windows.Media.DrawingVisual]::new(); $taskDrawing = $taskVisual.RenderOpen()
+            $taskDrawing.DrawImage($taskNativeImage,[Windows.Rect]::new(0,0,$taskControl.ActualWidth,$taskControl.ActualHeight))
+            $taskBrowserOrigin = $taskBrowser.TransformToAncestor($taskControl).Transform([Windows.Point]::new(0,0))
+            $taskDrawing.DrawImage($taskBrowserImage,[Windows.Rect]::new($taskBrowserOrigin.X,$taskBrowserOrigin.Y,$taskBrowser.ActualWidth,$taskBrowser.ActualHeight)); $taskDrawing.Close()
+            $taskComposite = [Windows.Media.Imaging.RenderTargetBitmap]::new([int][Math]::Ceiling($taskControl.ActualWidth),[int][Math]::Ceiling($taskControl.ActualHeight),96,96,[Windows.Media.PixelFormats]::Pbgra32)
+            $taskComposite.Render($taskVisual)
+            $taskEncoder = [Windows.Media.Imaging.PngBitmapEncoder]::new(); $taskEncoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($taskComposite))
+            $taskScreenshot = [IO.File]::Create((Join-Path $taskEvidence ('assistant-'+$taskVariant+'-'+$taskWidth+'.png')))
+            try { $taskEncoder.Save($taskScreenshot) } finally { $taskScreenshot.Dispose() }
+        }
     }
     Write-Output "$taskCount native embedded integration checks passed. Synthetic editor snapshots; no IDE/compiler/model acceptance claimed."
     Write-Output ('Fixture evidence: '+$taskRoot)

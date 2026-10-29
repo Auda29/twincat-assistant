@@ -30,7 +30,13 @@ test('chat workspace prepares both fresh-profile roots and preserves existing ch
     const existingPreferences = { projects: [{ id: 'operator-project', path: '/operator-selected' }], activeProjectId: 'operator-project', theme: 'dark' };
     await writeFile(preferencesPath, JSON.stringify(existingPreferences));
     await prepareChatWorkspace(root);
-    assert.deepEqual(JSON.parse(await readFile(preferencesPath, 'utf8')), existingPreferences);
+    assert.deepEqual(JSON.parse(await readFile(preferencesPath, 'utf8')),
+      { ...existingPreferences, lightThemeId: 'twincat-light', darkThemeId: 'twincat-dark' }, 'projects stay; default themes become TwinCAT');
+    const chosenTheme = { ...existingPreferences, lightThemeId: 'ayu-light', darkThemeId: 'ayu-dark' };
+    await writeFile(preferencesPath, JSON.stringify(chosenTheme));
+    await prepareChatWorkspace(root);
+    assert.deepEqual(JSON.parse(await readFile(preferencesPath, 'utf8')), chosenTheme, 'a theme the operator chose is kept');
+    assert.ok((await lstat(join(paths.openchamber, 'themes', 'twincat-light.json'))).isFile());
   } finally { await rm(parent, { recursive: true, force: true }); }
 });
 

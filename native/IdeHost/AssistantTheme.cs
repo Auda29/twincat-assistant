@@ -10,12 +10,14 @@ namespace TwinCatAssistant.Native
     // from the pinned adapter are applied; everything else keeps the fallback.
     internal static class AssistantTheme
     {
-        public static readonly ChatTheme Light = new ChatTheme { background = "#fdfcfa", foreground = "#393a34", muted = "#5c5c54",
-            border = "#e5e1de", surface = "#f8f7f5", primary = "#b35017", primaryForeground = "#ffffff",
-            error = "#b7493f", warning = "#8d6c15", success = "#5f8d3d" };
-        public static readonly ChatTheme Dark = new ChatTheme { dark = true, background = "#1c1c1a", foreground = "#e6e4df", muted = "#a3a097",
-            border = "#383733", surface = "#252522", primary = "#d2733a", primaryForeground = "#ffffff",
-            error = "#e0796f", warning = "#d6b25e", success = "#8fbf6a" };
+        // Same values as the TwinCAT chat themes (src/themes.mjs), so the bar and
+        // the loading screen match the chat before its live palette is read.
+        public static readonly ChatTheme Light = new ChatTheme { background = "#fbfcfe", foreground = "#1c2433", muted = "#566176",
+            border = "#d8dee8", surface = "#ffffff", primary = "#1e63b8", primaryForeground = "#ffffff",
+            error = "#c4314b", warning = "#9a6700", success = "#2e7d32" };
+        public static readonly ChatTheme Dark = new ChatTheme { dark = true, background = "#1b1e24", foreground = "#e3e7ee", muted = "#9aa3b2",
+            border = "#343a46", surface = "#242933", primary = "#3d8bfd", primaryForeground = "#071a33",
+            error = "#f0707a", warning = "#e0b44c", success = "#6cc17a" };
         // TwinCAT's POU icon blue; constant so the badge stays recognizable.
         public static readonly Color PouBadge = Color.FromRgb(0x1f, 0x4f, 0x8f);
 

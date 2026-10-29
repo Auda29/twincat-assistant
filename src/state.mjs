@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
 import { readWindowsJson, secureWindowsDirectory } from './windows-native.mjs';
 import { installTwinCatCommands } from './commands.mjs';
+import { installTwinCatThemes, withTwinCatThemes } from './themes.mjs';
 
 export const MAX_SETTINGS_BYTES = 65536;
 export async function readJsonFile(path) {
@@ -113,11 +114,15 @@ export async function prepareChatWorkspace(root) {
   }
   if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)
       || (preferences.projects !== undefined && !Array.isArray(preferences.projects))) throw new Error('Invalid OpenChamber project preferences');
+  await installTwinCatThemes(status.paths.openchamber);
+  let value = withTwinCatThemes(preferences);
   if (!preferences.projects?.length) {
     const path = status.paths.workspace.replace(/\\/g, '/');
     const id = 'path_' + Buffer.from(path).toString('base64url');
-    const value = { ...preferences, projects: [{ id, path, label: 'TwinCAT Assistant', addedAt: Date.now(), lastOpenedAt: Date.now() }],
+    value = { ...value, projects: [{ id, path, label: 'TwinCAT Assistant', addedAt: Date.now(), lastOpenedAt: Date.now() }],
       activeProjectId: id, lastDirectory: path };
+  }
+  if (JSON.stringify(value) !== JSON.stringify(preferences)) {
     const temporary = join(status.paths.openchamber, '.workspace-' + randomUUID() + '.tmp');
     try {
       await exclusiveJson(temporary, value);
