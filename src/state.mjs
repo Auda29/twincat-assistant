@@ -4,6 +4,7 @@ import { resolve, join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
 import { readWindowsJson, secureWindowsDirectory } from './windows-native.mjs';
+import { installTwinCatCommands } from './commands.mjs';
 
 export const MAX_SETTINGS_BYTES = 65536;
 export async function readJsonFile(path) {
@@ -123,6 +124,7 @@ export async function prepareChatWorkspace(root) {
       await rename(temporary, settingsPath);
     } finally { await unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
   }
+  await installTwinCatCommands(dirname(status.paths.configPath));
   return status;
 }
 

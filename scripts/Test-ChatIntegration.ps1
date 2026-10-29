@@ -173,6 +173,10 @@ try {
     $taskFirstSession = (Field '_chatSelection').sessionId
     Assert-Integration ((JS '(()=>{const h=document.querySelector("header.header-safe-area");const c=document.querySelector(".main-content-safe-area > .absolute.left-0.top-0.z-30");return !!h && getComputedStyle(h).display==="none" && (!c || getComputedStyle(c).display==="none")})()') -eq 'true') 'OpenChamber top bar with unbound new-chat buttons is hidden'
     Assert-Integration ((JS 'document.body.innerText.includes("synthetic context fixture")') -eq 'false') 'opening and binding a chat do not disclose source'
+    JS "window.__fixtureCatalog=null;(async()=>{const h={'x-opencode-directory':encodeURIComponent(window.__twinCatChat.state().directory),'x-opencode-directory-encoding':'uri'};const read=async p=>{const v=await (await fetch(p,{headers:h})).json();return Array.isArray(v)?v:(v.data??[]);};window.__fixtureCatalog=JSON.stringify({commands:(await read('/api/command')).map(c=>c.name),skills:(await read('/api/skill')).map(s=>String(s.path??s.location??'').replace(/\\/g,'/').toLowerCase())});})().catch(()=>window.__fixtureCatalog='failed')" | Out-Null
+    Wait-JS 'window.__fixtureCatalog!==null'
+    $taskCatalog = (JS 'window.__fixtureCatalog') | ConvertFrom-Json | ConvertFrom-Json
+    Assert-Integration ((@('explain','review','variable','docs','pou-docs') | Where-Object { @($taskCatalog.commands) -notcontains $_ }).Count -eq 0) 'OpenCode loads the TwinCAT slash commands'
     Invoke-Chat 'AttachClickAsync'; Pump 800
     Assert-Integration ((JS 'document.body.innerText.includes("FB_Motor / PLC_A")') -eq 'true') 'explicit native attach produces a real upstream composer chip'
     Invoke-Chat 'PollChatSelectionAsync'
