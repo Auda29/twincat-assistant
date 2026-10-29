@@ -140,7 +140,14 @@ namespace TwinCatAssistant.Native
                 if (_disposed || generation != _chatConnection.Generation) return;
                 await PollChatSelectionAsync();
             }
-            catch { if (!_disposed && generation == _chatConnection.Generation) Notify("Chat-Integration nicht verfügbar. Version und Verbindung unter Diagnose prüfen.", "error"); }
+            catch
+            {
+                if (!_disposed && generation == _chatConnection.Generation)
+                {
+                    _chatConnection.Fail(generation, "Chat-Integration nicht verfügbar. Version und Verbindung unter Diagnose prüfen.");
+                    ShowChatStatus();
+                }
+            }
         }
 
         private async Task<ChatSelection> ReadChatSelectionAsync()
@@ -148,7 +155,10 @@ namespace TwinCatAssistant.Native
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_disposed || _browser.CoreWebView2 == null || !Allowed(_browser.CoreWebView2.Source)) return null;
             var serializer = new JavaScriptSerializer();
-            var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.__twinCatChat?.state() ?? {version:1,ready:false})");
+            // The adapter can finish before React has mounted the chat. Wait for
+            // the pinned chat/empty-chat markup as well before revealing it.
+            var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify((()=>{const s=window.__twinCatChat?.state() ?? {version:1,ready:false};"
+                + "return {...s,ready:s.ready && (!s.authenticated || !!document.querySelector('[data-testid=\"chat-input\"],.oc-draft-center'))};})())");
             if (raw == null || raw.Length > 12000) return null;
             var json = serializer.Deserialize<string>(raw);
             return serializer.Deserialize<ChatSelection>(json);
@@ -288,6 +298,7 @@ namespace TwinCatAssistant.Native
         private void RenderChatBinding()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            if (_attachPouButton != null && !_disposed) RenderLoading();
             if (_attachPouButton == null || _disposed || _holdingView) return;
             RenderKnowledge();
             // Automatic attachment runs quietly; only operator actions disable the bar.

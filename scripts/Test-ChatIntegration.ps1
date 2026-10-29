@@ -150,6 +150,9 @@ try {
     Set-Field '_chatProjectReader' ([Func[TwinCatAssistant.Native.NativeProjectIdentity]]{ return $global:taskIntegrationProject })
     (Field '_port').Text = [string]$taskPort
     Set-Snapshot 'PLC_A'
+    Assert-Integration ((Field '_strip').Visibility -eq [Windows.Visibility]::Collapsed -and
+        (Field '_browser').Visibility -eq [Windows.Visibility]::Hidden -and
+        (Field '_splash').Visibility -eq [Windows.Visibility]::Visible) 'before startup only the native TwinCAT Assistant loading screen is shown'
     $taskWindow = New-Object Windows.Window
     $taskWindow.Content=$taskControl; $taskWindow.Width=640; $taskWindow.Height=900
     $taskWindow.ShowActivated=$false; $taskWindow.ShowInTaskbar=$false; $taskWindow.Left=-10000
@@ -160,7 +163,20 @@ try {
     Wait-JS "window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated"
     Assert-Integration ((JS 'document.body.innerText.includes("Unlock OpenChamber")') -eq 'false') 'native sign-in authenticates without showing the password screen'
     Wait-Native { (Field '_attachPouButton').IsEnabled } 'automatic project chat for PLC_A' $(if($KnowledgeStateSource){600}else{40})
+    Assert-Integration ((Field '_strip').Visibility -eq [Windows.Visibility]::Visible -and
+        (Field '_browser').Visibility -eq [Windows.Visibility]::Visible -and
+        (Field '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'hidden WebView initializes and authenticates, then reveals chat and bar together'
     Assert-Integration (Field '_attachPouButton').IsEnabled 'opening a POU creates and binds its project chat automatically'
+    # Simulate the gap between adapter installation and React mounting its chat.
+    # Keep the real adapter/authentication alive; only withhold the UI markers.
+    JS 'window.__fixtureChatMarkers=[...document.querySelectorAll(''[data-testid="chat-input"],.oc-draft-center'')].map(e=>({e,test:e.getAttribute("data-testid"),draft:e.classList.contains("oc-draft-center")}));for(const {e} of window.__fixtureChatMarkers){e.removeAttribute("data-testid");e.classList.remove("oc-draft-center")}' | Out-Null
+    $taskControl.GetType().GetMethod('ResetLoading',$taskFlags).Invoke($taskControl,@())
+    Invoke-Chat 'PollChatSelectionAsync'
+    Assert-Integration ((JS 'window.__twinCatChat.state().ready && window.__twinCatChat.state().authenticated') -eq 'true' -and
+        (Field '_strip').Visibility -eq [Windows.Visibility]::Collapsed -and (Field '_browser').Visibility -eq [Windows.Visibility]::Hidden) 'adapter readiness without a mounted chat keeps the loading screen visible'
+    JS 'for(const {e,test,draft} of window.__fixtureChatMarkers){if(test)e.setAttribute("data-testid",test);if(draft)e.classList.add("oc-draft-center")}delete window.__fixtureChatMarkers' | Out-Null
+    Invoke-Chat 'PollChatSelectionAsync'
+    Assert-Integration ((Field '_strip').Visibility -eq [Windows.Visibility]::Visible -and (Field '_browser').Visibility -eq [Windows.Visibility]::Visible) 'mounting the real chat completes loading'
     if ($McpSettingsPath) {
         Wait-JS "window.__twinCatChat.state().mcp.filter(s=>s.status==='connected').length===2" $(if($KnowledgeStateSource){600}else{45})
         Assert-Integration ((Field '_chatSelection').directory.Replace('\','/').Contains('/projects/')) 'native project chat uses its isolated MCP workspace'
@@ -245,9 +261,20 @@ try {
     Assert-Integration (@(Get-ChildItem (Join-Path $taskRoot 'bindings') -Filter '*.json').Count -eq 2) 'returning to a project reopens its newest conversation instead of creating another'
     Set-Snapshot 'PLC_A'
     Wait-Native { (Field '_chatSelection').sessionId -eq $taskFirstSession } 'reopen PLC_A chat'
+    $script:taskReloadWasHidden = $false
+    $taskReloadObserver = [EventHandler[Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs]] {
+        $script:taskReloadWasHidden = (Field '_browser').Visibility -eq [Windows.Visibility]::Hidden -and
+            (Field '_strip').Visibility -eq [Windows.Visibility]::Collapsed -and
+            (Field '_splash').Visibility -eq [Windows.Visibility]::Visible
+    }
+    $taskBrowser.CoreWebView2.add_NavigationStarting($taskReloadObserver)
     $taskBrowser.CoreWebView2.Reload()
     Wait-JS "window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated"
     Pump 1500; Invoke-Chat 'PollChatSelectionAsync'
+    $taskBrowser.CoreWebView2.remove_NavigationStarting($taskReloadObserver)
+    Assert-Integration ($script:taskReloadWasHidden -and (Field '_browser').Visibility -eq [Windows.Visibility]::Visible -and
+        (Field '_strip').Visibility -eq [Windows.Visibility]::Visible -and
+        (Field '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'reload hides chat and bar during navigation and restores them after readiness'
     Assert-Integration ((JS 'document.body.innerText.includes("Could not initialize workspace")') -eq 'false') 'full page reload keeps the prepared workspace available'
     Wait-Native { -not (Field '_chatActionPending') -and -not (Field '_automating') -and $taskControl.GetType().GetMethod('CanPromptCurrentChat',$taskFlags).Invoke($taskControl,@()) } 'restored native binding before service-loss check'
     $taskPreviousDocument = JS 'window.__twinCatChat.state().documentId'

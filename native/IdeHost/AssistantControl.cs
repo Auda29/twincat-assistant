@@ -111,6 +111,7 @@ namespace TwinCatAssistant.Native
             DockPanel.SetDock(_toolbar, Dock.Top);
             dock.Children.Add(_toolbar);
             var grid = new Grid();
+            grid.Children.Add(BuildSplash());
             grid.Children.Add(_browser);
             dock.Children.Add(grid);
             Content = dock;
@@ -441,6 +442,8 @@ namespace TwinCatAssistant.Native
             }
             _connecting = true;
             _setupMissing = false;
+            ResetLoading();
+            _chatAdapterReady = false; _chatSelection = null; _chatBinding = null;
             var generation = _chatConnection.Begin();
             ShowChatStatus();
             try
@@ -492,7 +495,9 @@ namespace TwinCatAssistant.Native
                     grid.Children.Insert(0, _browser);
                     _browserNeedsReset = false;
                 }
-                _browser.Visibility = Visibility.Visible;
+                // Hidden, not collapsed: the control keeps its window for
+                // initialization while the loading screen stays visible.
+                _browser.Visibility = Visibility.Hidden;
                 if (_browser.CoreWebView2 == null)
                 {
                     var profile = _chatBrowserProfile ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -578,6 +583,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed || !ReferenceEquals(sender, _browser.CoreWebView2) || !Allowed(args.Uri)) { args.Cancel = true; return; }
+            ResetLoading();
             _chatDocumentGeneration++;
             _preparedProject = null; _mcpFailureKey = null;
             _chatAdapterReady = false; _chatSelection = null; _chatBinding = null;
@@ -585,6 +591,7 @@ namespace TwinCatAssistant.Native
             _navigationGeneration = _chatConnection.Generation;
             _chatConnection.Navigating(args.NavigationId);
             ShowChatStatus();
+            _chatReadyTimeout.Start();
         }
 #pragma warning disable VSTHRD100 // WebView2 navigation event handler.
         private async void OnChatNavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs args)
@@ -681,6 +688,9 @@ namespace TwinCatAssistant.Native
             _chatHealth.Stop();
             _chatHealth.Tick -= CheckChatHealth;
             _viewHold.Stop();
+            _chatReadyTimeout.Stop();
+            _chatReadyTimeout.Tick -= OnChatReadinessTimeout;
+            _splashRun.BeginAnimation(TranslateTransform.XProperty, null);
             DisposeChatIntegration();
             _knowledgeCancellation?.Cancel();
             _chatSession?.Dispose();

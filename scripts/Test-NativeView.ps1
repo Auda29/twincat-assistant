@@ -67,6 +67,53 @@ try {
     $taskRender = $taskControl.GetType().GetMethod('RenderContext', $taskFlags)
     Assert-View ((Get-ViewField '_source').Text -eq '') 'unbound control starts without source'
     Assert-View ((Get-ViewField '_reader') -eq $null) 'constructing the view does not scan the catalog'
+    Assert-View ((Get-ViewField '_strip').Visibility -eq [Windows.Visibility]::Collapsed -and
+        (Get-ViewField '_splash').Visibility -eq [Windows.Visibility]::Visible -and
+        (Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Hidden) 'startup shows only the native wordmark, with the browser hidden but laid out'
+    Save-View 'loading-light'
+    $taskLoadingRender = $taskControl.GetType().GetMethod('RenderLoading',$taskFlags)
+    $taskResetLoading = $taskControl.GetType().GetMethod('ResetLoading',$taskFlags)
+    $taskLoadingState = Get-ViewField '_chatConnection'
+    $taskLoadingGeneration = $taskLoadingState.Begin()
+    $taskLoadingState.Navigating(1)
+    $taskLoadingState.Completed(1,$true,200,'')
+    $taskLoadingRender.Invoke($taskControl,@())
+    Assert-View ((Get-ViewField '_strip').Visibility -eq [Windows.Visibility]::Collapsed) 'successful navigation alone does not expose the chat or bar'
+    $taskLoadingSelection = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ChatSelection'))
+    $taskLoadingSelection.ready=$true
+    Set-ViewField '_chatSelection' $taskLoadingSelection
+    Set-ViewField '_chatAdapterReady' $true
+    $taskLoadingRender.Invoke($taskControl,@())
+    Assert-View ((Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Hidden) 'automatic sign-in keeps the chat hidden until authentication completes'
+    $taskLoadingSelection.authenticated=$true
+    $taskLoadingRender.Invoke($taskControl,@())
+    Assert-View ((Get-ViewField '_strip').Visibility -eq [Windows.Visibility]::Visible -and
+        (Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Visible -and
+        (Get-ViewField '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'authenticated readiness reveals the chat and bar together'
+    Set-ViewField '_chatAdapterReady' $false
+    $taskLoadingRender.Invoke($taskControl,@())
+    Assert-View ((Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Visible) 'a transient failed status poll does not flash the loading screen'
+    $taskResetLoading.Invoke($taskControl,@())
+    Set-ViewField '_chatAdapterReady' $true
+    $taskLoadingSelection.authenticated=$false
+    Set-ViewField '_signInAttempts' 3
+    $taskLoadingRender.Invoke($taskControl,@())
+    Assert-View ((Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Visible -and
+        (Get-ViewField '_strip').Visibility -eq [Windows.Visibility]::Visible) 'exhausted automatic sign-in permits manual login'
+    $taskResetLoading.Invoke($taskControl,@())
+    Set-ViewField '_signInAttempts' 0
+    Set-ViewField '_chatAdapterReady' $false
+    $taskControl.GetType().GetMethod('OnChatReadinessTimeout',$taskFlags).Invoke($taskControl,[object[]]@($null,[EventArgs]::Empty))
+    Assert-View ($taskLoadingState.Phase -eq 'failed' -and (Get-ViewField '_bannerAction').Content -eq 'Neu verbinden' -and
+        (Get-ViewField '_strip').Visibility -eq [Windows.Visibility]::Visible -and
+        (Get-ViewField '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'stalled integration exits loading with an accessible reconnect action'
+    Save-View 'loading-timeout-light'
+    $taskResetLoading.Invoke($taskControl,@())
+    $taskLoadingGeneration=$taskLoadingState.Begin()
+    Set-ViewField '_chatSelection' $null
+    $taskLoadingRender.Invoke($taskControl,@())
+    Assert-View ((Get-ViewField '_splash').Visibility -eq [Windows.Visibility]::Visible -and
+        (Get-ViewField '_strip').Visibility -eq [Windows.Visibility]::Collapsed) 'a new connection returns to loading after failure'
     $taskRestoredPane = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.AssistantToolWindow'))
     try {
         $taskRestoredPane.OnToolWindowCreated()
@@ -166,6 +213,8 @@ try {
     $taskControl.GetType().GetMethod('ApplyTheme', $taskFlags).Invoke($taskControl,[object[]]@($taskTheme))
     Assert-View ((Get-ViewField '_strip').Background.ToString() -eq '#FF1C1C1A') 'invalid theme colors are ignored'
     Save-View 'dirty-dark'
+    Assert-View ((Get-ViewField '_splash').Background.ToString() -eq '#FF1C1C1A') 'loading follows the live dark palette'
+    Save-View 'loading-dark'
 
     $taskControl.Bind($null,$null,$null,$null)
     Assert-View ((Get-ViewField '_source').Text -eq '' -and (Get-ViewField '_pouButton').ToolTip.Contains('IDE-Editorbindung')) 'missing IDE binding clears old source instead of preserving stale context'
@@ -188,6 +237,8 @@ try {
     Assert-View ((Get-ViewField '_banner').Visibility -eq [Windows.Visibility]::Visible -and
         (Get-ViewField '_bannerText').Text.Contains('Verbindung')) 'connection failure stays visible above the chat'
     Assert-View ((Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Collapsed) 'failed browser error page is hidden'
+    Assert-View ((Get-ViewField '_strip').Visibility -eq [Windows.Visibility]::Visible -and
+        (Get-ViewField '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'navigation failure exposes controls and removes the loading screen'
     Assert-View ((Get-ViewField '_source').Text -eq '') 'chat error does not attach or restore native source'
     Save-View 'chat-refused-dark'
     $taskRender.Invoke($taskControl,[object[]]@($taskSnapshot,$null))

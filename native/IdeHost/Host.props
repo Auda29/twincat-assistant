@@ -32,7 +32,7 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Security" />
     <Reference Include="TCatSysManagerLib"><HintPath>$(TwinCatInteropPath)</HintPath><Private>true</Private><EmbedInteropTypes>false</EmbedInteropTypes></Reference>
-    <Compile Include="../AssistantPackage.cs;../AssistantControl.cs;../AssistantTheme.cs;../ActiveEditorTracker.cs;../NativeChatRuntime.cs;../ChatIntegration.cs;../DiagnosticsIntegration.cs;../ChatBindingStore.cs;../../Shared/ChatContextBinding.cs;../../Shared/ChatConnectionState.cs;../../Shared/NativeProjectReader.cs;../../Shared/DirtyEvidence.cs;../../Shared/ActiveEditorContext.cs;../../Shared/ActivePouSource.cs;../../Shared/NativeActiveEditorReader.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../AssistantPackage.cs;../AssistantControl.cs;../AssistantTheme.cs;../ActiveEditorTracker.cs;../NativeChatRuntime.cs;../ChatIntegration.cs;../DiagnosticsIntegration.cs;../SplashIntegration.cs;../ChatBindingStore.cs;../../Shared/ChatContextBinding.cs;../../Shared/ChatConnectionState.cs;../../Shared/NativeProjectReader.cs;../../Shared/DirtyEvidence.cs;../../Shared/ActiveEditorContext.cs;../../Shared/ActivePouSource.cs;../../Shared/NativeActiveEditorReader.cs" Link="Shared/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../obj/EmbeddedChat.js" LogicalName="TwinCatAssistant.EmbeddedChat.js" />
     <Compile Include="../NativeModelConsent.cs" Link="Shared/NativeModelConsent.cs" />
     <VSCTCompile Include="../Commands.vsct"><ResourceName>Menus.ctmenu</ResourceName></VSCTCompile>
