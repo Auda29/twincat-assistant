@@ -36,6 +36,28 @@ installed-host checks.
 
 ## Resume here
 
+### Verification completed on 2026-10-30
+
+- All three GitHub jobs passed for published main commit `0781bc4`.
+- The actual installed x86 Host DLL was loaded with WPF and WebView2 outside
+  TwinCAT, using its existing fixed runtime checkout and an isolated chat profile.
+  Both real MCPs connected. The profile referenced the existing German corpus
+  with 49,970 articles; no reindexing or operator credentials were needed.
+- The configured 0.1.1 wheel returned corpus status, three search results for
+  `FB_EcCoeSdoReadEx`, and the matching article using its returned topic ID.
+  Both structured results and the model-visible text contained the full payload.
+- Those three queries took about 1.5 seconds after connection and caused no
+  additional backend starts. This is a warm-query measurement, not a cold-load
+  improvement. The test first starts without a selected corpus and then adopts
+  the existing selection, so initial preload and selection each initiate a start.
+- Operator chat-database and active-selection hashes remained identical before
+  and after the test. Evidence is in the backend worktree's ignored
+  `local-data/installed-knowledge-20261030.log`.
+- TwinCAT was not running. These checks prove the installed Host/runtime/MCP
+  path in a standalone native window, not a live IDE, compiler or PLC session.
+
+The list below records the original checkpoint and its remaining IDE boundary.
+
 1. Check GitHub CI for the published main commit. Local success does not imply
    that the hosted checks have completed.
 2. Start/reconnect the Assistant and confirm the selected 0.1.1 installation
