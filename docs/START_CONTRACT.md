@@ -1,15 +1,16 @@
 # Gemeinsamer Startvertrag für Core, Chat und Host
 
-Stand: 29.10.2026. Arbeitsbranch `backend`, integrierter Stand `57fb2cc`.
+Stand der Bestandsaufnahme: 29.10.2026, integrierter Stand `57fb2cc`.
 Der Frontend-Commit `ddc9dce6b2662090b223149e0b4d032ef47b2b83` ist darin
-konfliktfrei übernommen. Außer der Bestandsaufnahme entsprechen Anwendung und
-Tests dem fertigen Frontend-Stand.
+konfliktfrei übernommen. Die Angaben zur vorausgehenden Designprüfung beziehen
+sich auf diesen Stand; die Startvorbereitung wurde am 30.10.2026 konsolidiert.
 
 Dieser Vertrag konkretisiert den nächsten Abschnitt der
 [Server-Bestandsaufnahme](BACKEND_SERVER_INVENTORY.md). Er beschreibt den
 vorhandenen Startpfad und die Anforderungen an dessen gemeinsame Verwaltung
-im Assistant Core. Die Konsolidierung des Startcodes folgt als eigener
-Umsetzungsschritt. Dieses Dokument führt weder einen neuen Dienst noch eine
+im Assistant Core. Die erste Konsolidierung ist seit 30.10.2026 in
+[runtime-start.mjs](../src/runtime-start.mjs) umgesetzt. Dieses Dokument führt
+weder einen neuen Dienst noch eine
 neue API, Protokollversion oder einen zusätzlichen Prozess ein.
 
 ## Zuständigkeiten
@@ -212,12 +213,20 @@ und verspricht keine neue Gesamtstartzeit. Die Knowledge-Korpusprüfung hat
 ihren eigenen Lebenszyklus und darf nicht in das Chat-Ladebildschirmbudget
 eingerechnet werden.
 
-## Abnahme und nächster Codeabschnitt
+## Abnahme der ersten Konsolidierung
 
-Die nächste Codeänderung führt die heute doppelten Schritte für Runtime-Auswahl,
-Launchplan und Versionsprüfung aus `cli.mjs` und `native-chat.mjs` in einem
-gemeinsamen Core-Startpfad zusammen. Die unterschiedlichen Eingänge,
-Rückmeldungen und Abbruchsignale bleiben an ihrer jeweiligen Grenze.
+`prepareRuntimeLaunch` führt Runtime-Auswahl, Launchplan und Versionsprüfung aus
+`cli.mjs` und `native-chat.mjs` gemeinsam aus. Die erwarteten Versionen stammen
+aus dem vorhandenen Source-Lock. Das Profil mit Themes und Commands wird wie
+bisher vor den Versionsprozessen vorbereitet. Erst nach erfolgreicher Prüfung
+geben die Eingänge den Plan an den unveränderten Supervisor weiter.
+
+Die unterschiedlichen Eingänge, Rückmeldungen und Abbruchsignale bleiben an
+ihrer jeweiligen Grenze. Der CLI normalisiert seine Operator-Binary-Pfade wie
+bisher über `realpath`; der native Eingang verwendet die vom Runtime-Receipt
+gewählten regulären Dateien. Die native Portprüfung und MCP-Einrichtung bleiben
+vor der gemeinsamen Vorbereitung, ihre 65-Sekunden-Bereitschaftsfrist beginnt
+weiterhin erst nach der Versionsprüfung. Es gibt keinen neuen Gesamt-Timeout.
 
 Für diese erste Konsolidierung gelten folgende Abnahmen:
 
@@ -242,8 +251,10 @@ Die vorhandenen Prüfungen für diese Abnahmen sind
 [gemeinsamer Broker](../tests/shared-runtime.test.mjs),
 [echter nativer Runtime-Eingang](../tests/integration/native-chat.test.mjs) und
 [WPF/WebView-Integration](../scripts/Test-ChatIntegration.ps1).
-Für die Konsolidierung ergänzen wir gezielt noch fehlende Prüfungen, etwa den
-gemeinsamen Versionsfehlerpfad und die Reihenfolge vor einem tatsächlichen Spawn.
+[Startvorbereitung](../tests/runtime-start.test.mjs) prüft zusätzlich die
+Reihenfolge vor der Versionsausführung, unveränderte Projektauswahl und eigene
+Themes, den gemeinsamen Versionsfehlerpfad ohne Prozessbesitz sowie die feste
+CLI-Fehlerantwort vor einem tatsächlichen Serverstart.
 
 ### Nachweis der vorausgehenden Designübernahme
 

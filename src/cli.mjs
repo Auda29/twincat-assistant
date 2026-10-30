@@ -1,8 +1,6 @@
 import { parseArgs } from 'node:util';
 import { isAbsolute } from 'node:path';
-import { realpath } from 'node:fs/promises';
-import { prepareLaunch, runVersion } from './launcher.mjs';
-import { runtimePaths } from './runtime-paths.mjs';
+import { prepareRuntimeLaunch } from './runtime-start.mjs';
 import { supervise } from './supervisor.mjs';
 import { initializeState, inspectState, readJsonFile } from './state.mjs';
 
@@ -23,15 +21,12 @@ try {
       result = status;
     } else if (command === 'start') {
       if (values.settings) throw new Error('start reads saved settings');
-      const runtime = values.openchamber && values.opencode ? null : await runtimePaths();
-      const openchamber = await realpath(values.openchamber ?? runtime.openchamber);
-      const plan = await prepareLaunch(values.state, {
-        openchamber,
-        opencode: await realpath(values.opencode ?? runtime.opencode),
+      const plan = await prepareRuntimeLaunch(values.state, {
+        openchamber: values.openchamber,
+        opencode: values.opencode,
         port: Number(values.port ?? 3123),
+        resolveOperatorPaths: true,
       });
-      await runVersion(plan.env.OPENCODE_BINARY, ['--version'], plan.env, plan.cwd, '2.0.23');
-      await runVersion(process.execPath, [openchamber, '--version'], plan.env, plan.cwd, '2.1.1');
       const controller = new AbortController();
       const stop = () => controller.abort();
       process.on('SIGINT', stop); process.on('SIGTERM', stop);
