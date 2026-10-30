@@ -4,10 +4,9 @@ import { lstat } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initializeState, inspectState } from './state.mjs';
-import { prepareLaunch, runVersion } from './launcher.mjs';
+import { prepareRuntimeLaunch } from './runtime-start.mjs';
 import { supervise } from './supervisor.mjs';
 import { configureNativeMcp } from './native-mcp.mjs';
-import { runtimePaths } from './runtime-paths.mjs';
 
 export function validateNativeChatRequest(value) {
   if (!value || Object.keys(value).some(key => !['state', 'port', 'password', 'mcpConfig'].includes(key))
@@ -70,12 +69,9 @@ export async function startNativeChat(request, signal, report, options = {}) {
   if (request.mcpConfig) await configureNativeMcp(state, request.mcpConfig);
   else if ((await inspectState(state)).settings.engineering)
     throw new Error('Native project access requires project-scoped MCP setup, not a global engineering backend');
-  const runtime = await runtimePaths(options.runtime);
-  const plan = await prepareLaunch(state, {
-    openchamber: runtime.openchamber, opencode: runtime.opencode, port,
+  const plan = await prepareRuntimeLaunch(state, {
+    runtime: options.runtime, port,
   }, { ...process.env, OPENCHAMBER_UI_PASSWORD: request.password });
-  await runVersion(plan.env.OPENCODE_BINARY, ['--version'], plan.env, plan.cwd, '2.0.23');
-  await runVersion(process.execPath, [runtime.openchamber, '--version'], plan.env, plan.cwd, '2.1.1');
   const owner = new AbortController();
   const stop = () => owner.abort();
   signal.addEventListener('abort', stop, { once: true });

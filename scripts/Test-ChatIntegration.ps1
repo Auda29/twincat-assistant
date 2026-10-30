@@ -341,7 +341,11 @@ try {
     }
     Assert-Integration ($taskOwnedRuntime -and $taskOwnedRuntime.IsRunning) 'native host automatically restarts a lost protected runtime'
     Wait-JS ("window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated && window.__twinCatChat.state().documentId!=="+$taskPreviousDocument)
-    Invoke-Chat 'PollChatSelectionAsync'
+    # Authentication and a new document can precede asynchronous project/history
+    # restoration. Wait for that binding rather than inspecting its old state
+    # while the host is still automating, especially during a concurrent build.
+    Wait-Native { -not (Field '_chatActionPending') -and -not (Field '_automating') -and
+        (Field '_chatSelection').sessionId -eq $taskFirstSession } 'persisted project binding after runtime restart'
     Assert-Integration ((Field '_chatSelection').sessionId -eq $taskFirstSession) 'runtime restart restores the same persisted project conversation'
     Assert-Integration ((JS 'window.__twinCatChat.state().attachedObject===null') -eq 'true') 'reconnection does not replay source disclosure'
     $taskPreferencesType = $taskAssembly.GetType('TwinCatAssistant.Native.NativeChatPreferences')
