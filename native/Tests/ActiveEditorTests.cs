@@ -80,6 +80,40 @@ internal static class ActiveEditorTests
         Check(ActivePouSource.Parse(new string('x', 1048577)) == null, "oversized XML rejected before parsing");
         try { ActivePouSource.Parse("<!DOCTYPE TcPlcObject [<!ENTITY x SYSTEM 'file:///private'>]>" + Xml()); Check(false, "DTD rejection"); }
         catch (XmlException) { Check(true, "DTD and external entities rejected"); }
+        foreach (var separator in new[] { ".", "/", "^", "\\" })
+            Check(ActiveEditorMemberPath.Parse("FB_Motor.TcPOU;FB_Motor" + separator + "Speed" + separator + "Get", "FB_Motor")
+                .SequenceEqual(new[] { "Speed", "Get" }), "exact property accessor moniker separator " + separator);
+        foreach (var suffix in new[] { "Other.Reset", "FB_Motor..Reset", "FB_Motor.Reset.Extra.Invalid", "FB_Motor.Reset;Other", "FB_Motor/../Reset" })
+        {
+            var rejected = false;
+            try { ActiveEditorMemberPath.Parse("FB_Motor.TcPOU;" + suffix, "FB_Motor"); }
+            catch (InvalidOperationException) { rejected = true; }
+            Check(rejected, "ambiguous or foreign moniker rejected " + suffix);
+        }
+        const string memberId = "269aabf6-2f22-4e25-a2aa-7e780a5a8110";
+        var action = $"<Action Name=\"Reset\" Id=\"{{{memberId}}}\"><Implementation><ST>bRun := FALSE;</ST></Implementation></Action>";
+        var method = action.Replace("Action", "Method").Replace("<Implementation>", "<Declaration>METHOD Reset</Declaration><Implementation>");
+        var property = $"<Property Name=\"Speed\" Id=\"{{{memberId}}}\"><Declaration>PROPERTY Speed : INT</Declaration>"
+            + "<Get Name=\"Get\" Id=\"{269aabf6-2f22-4e25-a2aa-7e780a5a8120}\"><Declaration>VAR x : INT; END_VAR</Declaration><Implementation><ST>Speed := x;</ST></Implementation></Get>"
+            + "<Set Name=\"Set\" Id=\"{269aabf6-2f22-4e25-a2aa-7e780a5a8130}\"><Declaration></Declaration><Implementation><ST>x := Speed;</ST></Implementation></Set></Property>";
+        string MemberXml(string member) => Xml().Replace("</POU>", member + "</POU>");
+        var actionSource = ActivePouSource.Parse(MemberXml(action), new[] { "Reset" });
+        Check(actionSource?.Kind == "Action" && actionSource.Declaration == "" && actionSource.Implementation == "bRun := FALSE;", "action body read without substituting the POU declaration");
+        var methodSource = ActivePouSource.Parse(MemberXml(method), new[] { "Reset" });
+        Check(methodSource?.Kind == "Method" && methodSource.Declaration == "METHOD Reset", "method has its own declaration and identity");
+        var propertySource = ActivePouSource.Parse(MemberXml(property), new[] { "Speed" });
+        Check(propertySource?.Kind == "Property" && propertySource.Implementation.Contains("// GET declaration\nVAR x")
+            && propertySource.Implementation.Contains("// SET implementation\nx := Speed;"), "property preserves both labelled accessor bodies and local declarations");
+        var getter = ActivePouSource.Parse(MemberXml(property), new[] { "Speed", "Get" });
+        Check(getter?.Kind == "Get" && getter.Name == "Get" && getter.Implementation == "Speed := x;", "selected getter excludes the setter and parent body");
+        Check(ActivePouSource.Parse(MemberXml(action), new[] { "Missing" }) == null, "missing member never falls back to the parent body");
+        Check(ActivePouSource.Parse(MemberXml(action + action), new[] { "Reset" }) == null, "duplicate member names are ambiguous");
+        var foreignOwner = new DirtyEvidence { PersistedDocumentDirty = false };
+        ActivePouSource.Correlate(foreignOwner, actionSource,
+            ActivePouSource.Parse(MemberXml(action).Replace(id, "269aabf6-2f22-4e25-a2aa-7e780a5a8199"), new[] { "Reset" }), "Reset", "", actionSource.Implementation);
+        Check(DirtyAssessment.Evaluate(foreignOwner).State == "unknown", "member UUID cannot correlate across a different owner UUID");
+        Check(ActiveEditorPresentation.BadgeKind(new() { ObjectKind = "Action" }) == "ACT"
+            && ActiveEditorPresentation.BadgeKind(new() { ObjectKind = "Get" }) == "GET", "member badge does not depend on a POU declaration");
         return count;
     }
 }

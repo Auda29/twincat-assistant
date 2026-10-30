@@ -127,6 +127,9 @@ namespace TwinCatAssistant.Native
         // Live connection state that OpenChamber reports for a reviewed MCP server.
         private string McpState(string name)
         {
+            var observation = _chatSelection?.mcpObservation;
+            if (observation != null && (!observation.observed || observation.stale
+                || !SameDirectory(observation.directory, _chatSelection.directory))) return "unknown";
             return _chatSelection?.mcp?.FirstOrDefault(server => server?.name == name)?.status;
         }
         private static bool McpFailed(string status) { return status == "failed" || status == "needs_auth" || status == "disabled"; }
@@ -134,6 +137,7 @@ namespace TwinCatAssistant.Native
         {
             switch (status)
             {
+                case "unknown": value = "Status wird geprüft …"; tone = "Neutral"; break;
                 case "connected": value = "Verbunden"; tone = "Success"; break;
                 case "pending": value = "Verbindet …"; tone = "Neutral"; break;
                 case "disabled": value = "Deaktiviert"; tone = "Warning"; break;
@@ -172,11 +176,12 @@ namespace TwinCatAssistant.Native
             else ShowRow(_toolsRow, "Verbindet …", "Neutral", _mcpStatus.Text);
             // Knowledge search: the live MCP connection, not only the last reload.
             var knowledge = McpState("knowledge");
-            Action reconnectKnowledge = () => { _knowledgeConnectionKey = null; BeginKnowledgeReconnect(); };
+            Action reconnectKnowledge = () => { _knowledgeConnectionKey = null; BeginKnowledgeReconnect(force:true); };
             if (_knowledgeBusy) ShowRow(_knowledgeRow, "Wird vorbereitet …", "Neutral", _knowledgeSummary.Text, "Fortschritt", ShowKnowledgeSetup);
             else if (_knowledgeState?.ready != true) ShowRow(_knowledgeRow, "Nicht eingerichtet", "Warning", _knowledgeSummary.Text, "Einrichten", ShowKnowledgeSetup);
             else if (!ready) ShowRow(_knowledgeRow, "–", "Neutral", _knowledgeSummary.Text);
-            else if (knowledge == "failed" && KnowledgeRetrying()) ShowRow(_knowledgeRow, "Verbindet …", "Neutral", "Der Index wird geladen. Die Wissenssuche verbindet sich automatisch neu.");
+            else if (knowledge == "unknown") ShowRow(_knowledgeRow, "Status wird geprüft …", "Neutral", _knowledgeSummary.Text);
+            else if (knowledge == "failed" && KnowledgeRetrying()) ShowRow(_knowledgeRow, "Verbindet …", "Neutral", "Die Wissenssuche verbindet sich automatisch neu. Der vorbereitete Index bleibt erhalten.");
             else if (McpFailed(knowledge)) { McpLabel(knowledge, out value, out tone); ShowRow(_knowledgeRow, value, tone, "OpenChamber meldet die Knowledge-Verbindung als " + knowledge + ".", "Neu verbinden", reconnectKnowledge); }
             else if (knowledge == "connected" && KnowledgeConnected()) ShowRow(_knowledgeRow, "Bereit", "Success", _knowledgeSummary.Text);
             else if (knowledge == null && !_mcpEnabled) ShowRow(_knowledgeRow, "Nicht konfiguriert", "Warning", _mcpStatus.Text);

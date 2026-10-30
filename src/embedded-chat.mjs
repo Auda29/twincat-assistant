@@ -58,7 +58,7 @@ export async function storedProjectSessions(fetch, directory) {
 export function mcpStates(entries) {
   return (Array.isArray(entries) ? entries : []).filter(entry => ['knowledge', 'engineering'].includes(entry?.name))
     .map(entry => ({ name: entry.name, status: ['connected', 'pending', 'disabled', 'failed', 'needs_auth'].includes(entry.status?.status)
-      ? entry.status.status : 'failed' }));
+      ? entry.status.status : 'unknown' }));
 }
 
 // Native context bar colors follow the live OpenChamber theme. Values are
@@ -104,7 +104,7 @@ export function composerChips(scope) {
   };
 }
 
-export function createChatAdapter({ ui, sessions, input, config, source = null, loadSessions, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], theme = () => null, permissionChanged = () => {}, authenticated = () => true, composer = null, documentId = crypto.randomUUID() }) {
+export function createChatAdapter({ ui, sessions, input, config, source = null, loadSessions, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], mcpObservation = () => null, theme = () => null, permissionChanged = () => {}, authenticated = () => true, composer = null, documentId = crypto.randomUUID() }) {
   for (const store of [ui, sessions, input]) {
     if (typeof store?.getState !== 'function' || typeof store?.subscribe !== 'function') throw new Error('Incompatible chat store');
   }
@@ -128,10 +128,16 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
   const fallbackAttachments = () => {
     const has = present();
     return [...staged].filter(([id]) => has(id)).slice(-8)
-      .map(([id, value]) => ({ id, title: value.title, revision: value.revision, reference: value.reference }));
+      .map(([id, value]) => ({ id, title: value.title, revision: value.revision, reference: value.reference, mode: value.mode }));
   };
   const clearPending = () => {
     if (input.getState().pendingGuestIssue?.providerId === 'twincat-assistant') input.getState().setPendingGuestIssue(null);
+  };
+  const clearFollowing = () => {
+    const queued = input.getState().pendingGuestIssue;
+    if (queued?.providerId === 'twincat-assistant' && (queued.data?.mode === 'following' || queued.id === 'Aktiver Baustein')) clearPending();
+    source?.clearFollowing?.(selected);
+    staged.delete('Aktiver Baustein');
   };
   const unsubscribe = sessions.subscribe(state => {
     if (selected === state.currentSessionId) return;
@@ -154,7 +160,7 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
     const observation = source?.composer(value.currentSessionId);
     const queued = input.getState().pendingGuestIssue;
     const pending = queued?.providerId === 'twincat-assistant' ? queued : null;
-    const metadata = item => ({ id: item.id, title: item.title, revision: item.revision ?? null,
+    const metadata = item => ({ id: item.id, title: item.title, revision: item.revision ?? null, mode: item.mode ?? (item.id === 'Aktiver Baustein' ? 'following' : 'manual'),
       reference: item.reference ?? staged.get(item.id)?.reference ?? item.id });
     // The source composer is authoritative. The registry only supplies metadata
     // for the older distribution, whose composer exposes chip IDs via markup.
@@ -169,8 +175,12 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
       : title ? items.filter(item => item.title === title).at(-1) : items.at(-1);
     const attached = current(attachments);
     const submitted = current(submittedAttachments);
-    return { version: 1, ready: true, authenticated: authenticated(), documentId, sessionId: value.currentSessionId ?? null,
-      directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(), mcp: mcp(),
+    // Source builds report committed history readiness. The older distribution
+    // retains the native host's markup and project-binding checks.
+    return { version: 1, ready: true, presentationReady: source ? source.presentationReady?.() === true : true,
+      authenticated: authenticated(), documentId, sessionId: value.currentSessionId ?? null,
+      directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(), mcp: mcp(), mcpObservation: mcpObservation(),
+      manualAttachmentPending: !!pending && pending.id !== 'Aktiver Baustein' && pending.data?.mode !== 'following',
       model: model?.currentProviderId && model?.currentModelId ? model.currentProviderId + '/' + model.currentModelId : null,
       attachmentState: attached ? (pending?.id === attached.id ? 'staging' : 'staged') : submitted ? 'submitted' : 'none',
       attachedObject: attached?.title ?? null, attachedRevision: attached?.revision ?? null,
@@ -180,19 +190,21 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
   const matches = expected => expected && expected.documentId === documentId && expected.sessionId && expected.sessionId === selected && expected.epoch === epoch;
   return Object.freeze({
     state,
+    clearFollowing,
     permit(expected) {
       permission = matches(expected) ? { ...expected } : null;
       if (!permission) clearPending();
       const context = permission?.context;
-      if (context && (Object.keys(context).some(key => !['project', 'object', 'treePath', 'sourceKind', 'reference'].includes(key))
+      if (context && (Object.keys(context).some(key => !['project', 'object', 'treePath', 'sourceKind', 'reference', 'objectKind', 'owner', 'member'].includes(key))
         || typeof context.project !== 'string' || context.project.length > 200
         || (context.reference != null && (typeof context.reference !== 'string' || context.reference.length > 128))
-        || ['object', 'treePath', 'sourceKind'].some(key => context[key] !== null && (typeof context[key] !== 'string' || context[key].length > 2048)))) {
+        || ['object', 'treePath', 'sourceKind', 'objectKind', 'owner', 'member'].some(key => context[key] != null && (typeof context[key] !== 'string' || context[key].length > 2048)))) {
         permission = null;
         source?.setContext('', null);
         permissionChanged(false);
         throw new Error('Invalid native context metadata');
       }
+      if (!context?.reference) clearFollowing();
       source?.setContext(selected, context ?? null);
       permissionChanged(!!permission);
       return !!permission;
@@ -208,13 +220,15 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
       // consumed yet (fast POU switches); another extension's item stays.
       const queued = input.getState().pendingGuestIssue;
       if (queued && queued.providerId !== 'twincat-assistant') throw new Error('Another attachment is still pending');
+      if (queued && queued.id !== item.id && queued.id !== 'Aktiver Baustein' && queued.data?.mode !== 'following')
+        throw new Error('A manual attachment is still pending');
       // The same queue and reference type used by SDK host.attach. It stages a
       // visible composer chip. It never submits a prompt or invokes a model.
       // The composer replaces a chip with the same ID instead of adding one.
       input.getState().setPendingGuestIssue(item);
       if (queued && queued.id !== item.id && !composer?.chips().includes(queued.id)) staged.delete(queued.id);
       staged.delete(item.id);
-      staged.set(item.id, { title: item.title, revision: item.data?.revision ?? null,
+      staged.set(item.id, { title: item.title, revision: item.data?.revision ?? null, mode: item.data?.mode ?? (request.auto ? 'following' : 'manual'),
         reference: typeof item.data?.reference === 'string' ? item.data.reference.slice(0, 128) : item.id });
       while (staged.size > 32) staged.delete(staged.keys().next().value);
       return { sessionId: selected, epoch, attachedObject: item.title };
@@ -305,16 +319,22 @@ export async function installEmbeddedChat(scope = window) {
   let connectedProviders = [];
   let enabledProviders = [];
   let connectedMcp = [];
+  let mcpDirectory = null;
+  let mcpObserved = false;
+  let mcpStale = true;
+  const currentDirectory = () => chat.z.getState().currentSessionDirectory ?? chat.l.getState().activeDirectoryKey;
+  const resetMcp = directory => { mcpDirectory = directory; connectedMcp = []; mcpObserved = false; mcpStale = true; };
   let refreshingAuthentication = false;
   const refreshAuthentication = async () => {
     if (refreshingAuthentication) return;
     refreshingAuthentication = true;
     try {
       try { signedIn = (await scope.fetch('/auth/session', { redirect: 'error', signal: AbortSignal.timeout(1500) })).ok; }
-      catch { signedIn = false; }
-      if (!signedIn) { connectedProviders = []; enabledProviders = []; connectedMcp = []; return; }
-      const directory = chat.z.getState().currentSessionDirectory ?? chat.l.getState().activeDirectoryKey;
-      if (typeof directory !== 'string' || !/^(?:[a-z]:[\\/]|\/)/i.test(directory)) { connectedProviders = []; enabledProviders = []; connectedMcp = []; return; }
+      catch { signedIn = false; mcpStale = true; return; }
+      if (!signedIn) { connectedProviders = []; enabledProviders = []; resetMcp(null); return; }
+      const directory = currentDirectory();
+      if (typeof directory !== 'string' || !/^(?:[a-z]:[\\/]|\/)/i.test(directory)) { connectedProviders = []; enabledProviders = []; resetMcp(null); return; }
+      if (mcpDirectory !== directory) { resetMcp(directory); enabledProviders = []; }
       const headers = { 'x-opencode-directory': encodeURIComponent(directory), 'x-opencode-directory-encoding': 'uri' };
       const read = async path => {
         const response = await scope.fetch(path, { headers, redirect: 'error', signal: AbortSignal.timeout(3000) });
@@ -324,11 +344,21 @@ export async function installEmbeddedChat(scope = window) {
         if (!Array.isArray(items) || items.length > 1000) throw new Error('Invalid provider metadata');
         return items;
       };
-      const [integrations, search, effective] = await Promise.all([read('/api/integration'), read('/api/websearch/provider'), read('/api/config')]);
-      connectedProviders = consentProviders(integrations, search, chat.l.getState().providers ?? []);
-      enabledProviders = allowedProviders(effective);
-      try { connectedMcp = mcpStates(await read('/api/mcp')); } catch { connectedMcp = []; }
-    } catch { connectedProviders = []; enabledProviders = []; connectedMcp = []; }
+      // Provider discovery is independent of the MCP catalog. A failed read is
+      // unknown, never an empty authoritative catalog or a reconnect request.
+      const [providerRead, mcpRead] = await Promise.allSettled([
+        Promise.all([read('/api/integration'), read('/api/websearch/provider'), read('/api/config')]), read('/api/mcp'),
+      ]);
+      if (currentDirectory() !== directory) return;
+      if (providerRead.status === 'fulfilled') {
+        const [integrations, search, effective] = providerRead.value;
+        connectedProviders = consentProviders(integrations, search, chat.l.getState().providers ?? []);
+        enabledProviders = allowedProviders(effective);
+      } else { connectedProviders = []; enabledProviders = []; }
+      if (mcpRead.status === 'fulfilled') {
+        connectedMcp = mcpStates(mcpRead.value); mcpObserved = true; mcpStale = false;
+      } else { mcpStale = true; }
+    } catch { connectedProviders = []; enabledProviders = []; mcpStale = true; }
     finally { refreshingAuthentication = false; }
   };
   await refreshAuthentication();
@@ -361,7 +391,11 @@ export async function installEmbeddedChat(scope = window) {
   };
   const loadSessions = source ? directory => source.sessions(directory) : directory => storedProjectSessions(scope.fetch.bind(scope), directory);
   const adapter = createChatAdapter({ ui: base.u, sessions: chat.z, input: chat.du, config: chat.l, source, loadSessions, reloadPolicy,
-    providers: () => connectedProviders, allowed: () => enabledProviders, mcp: () => connectedMcp, theme: () => readTheme(scope), composer: source ? null : composerChips(scope),
+    providers: () => connectedProviders, allowed: () => enabledProviders,
+    mcp: () => mcpDirectory === currentDirectory() ? connectedMcp : [],
+    mcpObservation: () => ({ directory: currentDirectory() ?? null, observed: mcpDirectory === currentDirectory() && mcpObserved,
+      stale: !signedIn || mcpDirectory !== currentDirectory() || mcpStale }),
+    theme: () => readTheme(scope), composer: source ? null : composerChips(scope),
     permissionChanged: allowed => { composerAllowed = allowed; markComposer(); }, authenticated: () => signedIn });
   Object.defineProperty(scope, '__twinCatChat', { value: adapter, configurable: false, writable: false });
   scope.document.documentElement.dataset.twincatEmbedded = 'true';

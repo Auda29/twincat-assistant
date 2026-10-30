@@ -351,7 +351,7 @@ namespace TwinCatAssistant.Native
             if (_objectName.Text != title) _objectName.Text = title;
             var scope = snapshot == null || _chatProject == null ? "" : Path.GetFileNameWithoutExtension(_chatProject.ProjectFile);
             if (_scope.Text != scope) _scope.Text = scope;
-            _kindText.Text = snapshot == null ? "" : ActiveEditorPresentation.Kind(snapshot.Declaration);
+            _kindText.Text = snapshot == null ? "" : ActiveEditorPresentation.BadgeKind(snapshot);
             _kindBadge.Visibility = snapshot == null ? Visibility.Collapsed : Visibility.Visible;
             _chevron.Visibility = snapshot == null ? Visibility.Collapsed : Visibility.Visible;
             _previewTitle.Text = snapshot == null ? "" : view.Title + " · " + scope;
