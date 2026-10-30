@@ -90,7 +90,12 @@ Quelle: [cli.mjs](../src/cli.mjs), [prepareLaunch](../src/launcher.mjs).
    `prepareChatWorkspace` auf. Beide benötigten Chat-Verzeichnisse, die beiden
    TwinCAT-Theme-Dateien, die bisherige Default-Auswahl und die TwinCAT-Commands
    sind vorbereitet, bevor der Chatserver startet. Eigene Themes und vorhandene
-   Projekte bleiben erhalten. Wiederholte Vorbereitung erhält vorhandene Chats.
+   Projekte bleiben erhalten. Bestehende Standardfarben werden auch im
+   maßgeblichen OpenChamber-Profil `preferences.json` einschließlich seiner
+   Oberflächen-Auswahl umgestellt. Eigene Farbauswahlen und die Zeitstempel
+   anderer Einstellungen bleiben erhalten; unbekannte oder beschädigte
+   Profildokumente werden nicht überschrieben. Wiederholte Vorbereitung erhält
+   vorhandene Chats.
 6. **Umgebung und Launchplan herstellen.** Der bestehende Plan enthält
    `command`, `args`, `cwd` und `env`. HOME/XDG/OpenChamber-Pfade zeigen auf das
    isolierte Operator-Profil. Relay bleibt ausgeschaltet. Beliebige IDE-Secrets

@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath,[switch]$TestKnowledgeSetup,[string]$KnowledgeStateSource)
+param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath,[switch]$TestKnowledgeSetup,[string]$KnowledgeStateSource,[switch]$TestExistingThemeProfile)
 $ErrorActionPreference = 'Stop'
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'Run with powershell.exe -NoProfile -STA.' }
 # Actual built host + WebView2 + pinned runtime. Only the editor snapshots and
@@ -128,6 +128,14 @@ $taskPassword = 'synthetic-' + [Guid]::NewGuid().ToString('N')
 $taskSession = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatSession'))
 $taskControl = $null; $taskWindow = $null
 try {
+    if ($TestExistingThemeProfile) {
+        # Exercise a real previously initialized profile, not only settings.json
+        # or a first-run browser. The canonical profile wins upstream reads.
+        Await-Task ($taskSession.StartAsync($taskConfig,$taskPort,$taskPassword)) | Out-Null
+        Await-Task ($taskSession.StopAsync()) | Out-Null
+        $taskOldThemeProfile='{"version":1,"fields":{"lightThemeId":{"value":"openchamber-light","updatedAt":1,"surfaces":{"web":{"value":"openchamber-light","updatedAt":2}}},"darkThemeId":{"value":"openchamber-dark","updatedAt":3,"surfaces":{"web":{"value":"openchamber-dark","updatedAt":4}}}}}'
+        [IO.File]::WriteAllText((Join-Path $taskConfig.StateRoot 'openchamber\preferences.json'),$taskOldThemeProfile,[Text.UTF8Encoding]::new($false))
+    }
     Await-Task ($taskSession.StartAsync($taskConfig,$taskPort,$taskPassword)) | Out-Null
     if ($KnowledgeStateSource) {
         $taskKnowledgeTarget=Join-Path $taskConfig.StateRoot 'knowledge\state'
@@ -222,6 +230,22 @@ try {
     Assert-Integration ((@('explain','review','variable','docs','pou-docs') | Where-Object { @($taskCatalog.commands) -notcontains $_ }).Count -eq 0) 'OpenCode loads the TwinCAT slash commands'
     $taskThemePrimary = (JS 'window.__twinCatChat.state().theme?.primary') | ConvertFrom-Json
     Assert-Integration (@('#1e63b8','#3d8bfd') -contains $taskThemePrimary) 'the chat uses the TwinCAT theme'
+    if ($TestExistingThemeProfile) {
+        $taskMigratedProfile=Get-Content -LiteralPath (Join-Path $taskConfig.StateRoot 'openchamber\preferences.json') -Raw | ConvertFrom-Json
+        Assert-Integration ($taskMigratedProfile.fields.lightThemeId.value -eq 'twincat-light' -and
+            $taskMigratedProfile.fields.darkThemeId.value -eq 'twincat-dark' -and
+            $taskMigratedProfile.fields.lightThemeId.surfaces.web.value -eq 'twincat-light') 'existing canonical base and web theme choices migrate before bootstrap'
+        $taskThemeSession=(Field '_chatSelection').sessionId
+        $taskThemeDocument=JS 'window.__twinCatChat.state().documentId'
+        JS 'for(const key of Object.keys(localStorage)){if(!key.startsWith("openchamber.theme.v2:"))continue;const p=JSON.parse(localStorage.getItem(key));p.lightThemeId="openchamber-light";p.darkThemeId="openchamber-dark";localStorage.setItem(key,JSON.stringify(p))}localStorage.setItem("lightThemeId","openchamber-light");localStorage.setItem("darkThemeId","openchamber-dark")' | Out-Null
+        $taskBrowser.CoreWebView2.Reload()
+        Wait-JS ("window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated && window.__twinCatChat.state().documentId!=="+$taskThemeDocument)
+        Wait-JS '["#1e63b8","#3d8bfd"].includes(window.__twinCatChat.state().theme?.primary)'
+        Wait-Native { -not (Field '_chatActionPending') -and -not (Field '_automating') -and
+            (Field '_attachPouButton').IsEnabled -and
+            (Field '_chatSelection').sessionId -eq $taskThemeSession } 'project binding after cached-theme reload'
+        Assert-Integration (@('#1e63b8','#3d8bfd') -contains ((JS 'window.__twinCatChat.state().theme?.primary') | ConvertFrom-Json)) 'canonical theme overrides an old browser cache after reload'
+    }
     $taskThemeBackground = (JS 'window.__twinCatChat.state().theme?.background') | ConvertFrom-Json
     Assert-Integration ((Field '_strip').Background.ToString() -eq ('#FF'+$taskThemeBackground.Substring(1).ToUpperInvariant())) 'the native bar follows the TwinCAT chat theme'
     $taskAgentColors = (JS '(()=>{const probe=document.createElement("span");probe.style.color="var(--primary)";document.body.append(probe);const p=getComputedStyle(probe).color;probe.remove();const a=[...document.querySelectorAll(".model-controls__agent-label")].map(e=>getComputedStyle(e).color);return JSON.stringify({p,a})})()') | ConvertFrom-Json | ConvertFrom-Json
