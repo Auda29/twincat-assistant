@@ -103,6 +103,18 @@ Gleichnamige Projekte, mehrere PLCs in einer Solution und mehrere IDE-Instanzen
 werden getrennt geprüft. Die Regeln für verschobene oder umbenannte Projekte
 legen wir vor einer Datenmigration fest.
 
+Am 30.10.2026 ist die Navigation dafür festgelegt worden: Mehrere Chats pro
+PLC-Projekt sind erlaubt. Die Uhr öffnet eine kompakte Liste mit Titel und
+letzter Aktivität ausschließlich für dieses Projekt; Plus beginnt einen weiteren
+Projektchat. Beim erneuten Öffnen wird der zuletzt ausgewählte Chat
+wiederhergestellt. Ein Baustein- oder Memberwechsel bleibt im aktuellen Chat.
+Allgemeine Chats bleiben getrennt über das Menü erreichbar. Projektwerkzeuge und
+Knowledge-Verbindung werden gemeinsam genutzt, bestehende Chats bleiben erhalten.
+Diese Navigationsänderung ist noch umzusetzen; der aktuelle Stand öffnet über
+die Uhr weiterhin die allgemeine OpenChamber-Seitenleiste. Die
+[genauen Regeln und die Abgrenzung zum heutigen Verhalten](RUNTIME_INTEGRATION.md#agreed-project-chat-navigation-2026-10-30)
+sind festgehalten.
+
 ### Kontext und Anhänge eindeutig behandeln
 
 Der lokale aktive Baustein, Projektmetadaten, ein vorgemerkter Snapshot und der
@@ -137,6 +149,9 @@ Die bestehende Prozessaufsicht und das Beenden eigener Kindprozesse beim
 Schließen oder Absturz bleiben erhalten. Der langsame erste Knowledge-Start
 wird getrennt gemessen und untersucht, da die vollständige Korpusprüfung im
 Knowledge-MCP liegt. Der Fork allein beseitigt diesen Aufwand nicht.
+Die weiterhin sehr lange Verbindung trotz vorbereitetem Index ist als
+[offene Untersuchung mit Video-Beobachtung und Abnahmekriterien](KNOWLEDGE_SETUP.md#open-investigation-slow-knowledge-connection)
+festgehalten. Sie bleibt ein eigener Arbeitspunkt neben der UI-Bereinigung.
 
 ## Kandidaten für die Reduktion
 

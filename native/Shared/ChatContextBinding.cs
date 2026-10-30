@@ -63,6 +63,7 @@ namespace TwinCatAssistant.Native
         public int version;
         public bool ready;
         public bool presentationReady;
+        public bool canExport;
         public bool authenticated;
         public string sessionId;
         public string directory;

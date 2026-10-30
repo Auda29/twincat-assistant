@@ -108,6 +108,41 @@ than bypassing package validation. Existing running IDE sessions need one restar
 to load this updated Node runtime. No new VSIX installation is needed for these
 JavaScript changes.
 
+## Open investigation: slow Knowledge connection
+
+Status: unresolved, recorded on 2026-10-30. The recording
+`30.10.2026_12.37.24_REC.mp4` shows the Knowledge panel open at approximately
+01:00–02:35. Its heading remains **Dokumentation bereit · Deutsch · 49 970 Artikel**,
+while the connection line alternates between connecting and reconnecting.
+No successful connection confirmation is visible during that interval. The
+prepared index remains available; this observation does not establish a new
+import, an actual backend restart or the cause of the connection delay.
+
+The earlier 108-second first-load measurement above is a separate baseline.
+Warm search/topic timings do not demonstrate an acceptable cold start. Building
+OpenCode from source and stabilizing the status display do not resolve this
+performance issue.
+
+The next investigation must:
+
+- Timestamp host status reads, workspace MCP catalog reads, connect/disconnect
+  requests and broker/backend readiness in one trace. Record retry reasons,
+  timeouts and backend start counts without credentials or article bodies.
+- Measure cold runtime start and warm reconnection separately with the existing
+  49,970-article corpus. Identify time spent in corpus validation, broker startup,
+  MCP negotiation and UI confirmation, including repeated requests across chat
+  contexts.
+- Check whether reconnect attempts restart a healthy or still-starting backend,
+  and whether the shared broker and cache are reused. Do not reimport or delete
+  the prepared index merely to reconnect.
+
+Completion requires measured cold/warm timings, an explained backend start count
+and a successful status/search/topic sequence through the Assistant. A ready
+index must reach a confirmed connection without an unexplained reconnect loop;
+progress and failures must remain understandable while ordinary chat stays
+usable. Set a concrete timing target after measuring the individual phases.
+The issue remains open until these results are recorded.
+
 ## Verification
 
 The 2026-10-28 candidate passes 59 Node tests, 8 browser contracts, 33 WPF view
