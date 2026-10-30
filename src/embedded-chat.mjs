@@ -26,6 +26,11 @@ export function allowedProviders(entries) {
 }
 
 const SESSION_ID = /^[a-zA-Z0-9_:-]{1,160}$/;
+// OpenChamber colors the composer's agent with a syntax color picked by a name
+// hash (an inline var(--syntax-...) style), so the read-only agent could look
+// like a red string. Around the agent label these variables are the accent.
+const AGENT_COLOR_VARIABLES = Object.freeze(['--syntax-keyword', '--syntax-type', '--syntax-function', '--syntax-number',
+  '--syntax-string', '--syntax-operator', '--syntax-variable', '--status-success']);
 
 // Compatibility with the installed 0.1.9 distribution. Source builds use the
 // existing OpenCode SDK wrapper instead. This is a global session-list route;
@@ -368,7 +373,9 @@ export async function installEmbeddedChat(scope = window) {
     html[data-twincat-embedded] header.header-safe-area{display:none}
     html[data-twincat-chat-selection="empty"] .oc-draft-center h1,
     html[data-twincat-chat-selection="empty"] form:has([data-testid="chat-input"]){display:none}
-    .tc-chat-intro{max-width:28rem;font:inherit;font-size:14px;line-height:1.6;color:var(--muted-foreground);text-wrap:balance}`;
+    .tc-chat-intro{max-width:28rem;font:inherit;font-size:14px;line-height:1.6;color:var(--muted-foreground);text-wrap:balance}
+    html[data-twincat-embedded] .model-controls__agent-trigger,
+    html[data-twincat-embedded] :has(> .model-controls__agent-label){${AGENT_COLOR_VARIABLES.map(name => name + ':var(--primary)').join(';')}}`;
   scope.document.head.append(style);
   const markSelection = () => {
     markComposer();

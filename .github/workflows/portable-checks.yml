@@ -28,6 +28,9 @@ jobs:
           dotnet-version: '8.0.425'
       - name: Install locked panel and operator dependencies
         run: npm ci --no-audit --no-fund
+      # Theme regressions load the real pinned OpenChamber theme validator.
+      - name: Install pinned theme-loader and runtime dependencies
+        run: npm ci --prefix upstream --no-audit --no-fund
       - name: Audit root dependency graph
         run: npm audit --audit-level=high
       - name: Install Chromium
@@ -60,6 +63,8 @@ jobs:
         run: dotnet build native/WindowsHost/WindowsHost.csproj --configuration Release /p:RestoreLockedMode=true --nologo
       - name: Install locked operator dependencies
         run: npm ci --no-audit --no-fund
+      - name: Install pinned actual upstream runtime (no private MCP checkouts)
+        run: npm ci --prefix upstream --no-audit --no-fund
       - name: Check Windows operator, JSON and owned process-tree regressions
         run: npm test
       - name: Execute shared dirty-evidence policy regressions (not IDE acceptance)
@@ -70,8 +75,6 @@ jobs:
         run: |
           dotnet restore engineering/EngineeringSafety.sln --locked-mode
           dotnet run --project engineering/tests/Engineering.Safety.Tests/Engineering.Safety.Tests.csproj --no-restore
-      - name: Install pinned actual upstream runtime (no private MCP checkouts)
-        run: npm ci --prefix upstream --no-audit --no-fund
       - name: Verify and bundle the pinned embedded chat adapter
         run: node scripts/build-embedded-chat.mjs
       - name: Verify Windows authenticated runtime bootstrap and owner-death cleanup

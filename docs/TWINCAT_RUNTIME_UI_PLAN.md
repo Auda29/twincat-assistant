@@ -9,6 +9,18 @@ einer gezielten TwinCAT-Anbindung umgesetzt. Den Stand beschreibt
 [Runtime integration](RUNTIME_INTEGRATION.md). Die Auswahl entfallender Module
 bleibt ein späterer gemeinsamer Schritt.
 
+Die nächste Umbauphase auf `backend` beginnt mit der
+[Bestandsaufnahme der Serveraufgaben](BACKEND_SERVER_INVENTORY.md). Sie erfasst
+den auf `main` zusammengeführten Stand `de4eef8`, trennt heutige Serveraufgaben
+von der Zielzuordnung zu Core, Chat, Host und beiden MCPs und hält offene
+Reduktionsentscheidungen fest. Diese Bestandsaufnahme ändert noch kein
+Laufzeitverhalten.
+
+Nach Übernahme des fertigen Frontend-Designs hält der
+[gemeinsame Startvertrag](START_CONTRACT.md) die vorhandenen Eingänge und
+Lebenszyklen sowie die Anforderungen an die nächste Konsolidierung fest.
+Themes und Commands müssen vor dem ersten Chat-Bootstrap vorbereitet sein.
+
 ## Vereinbarte Richtung
 
 Wir übernehmen die für den TwinCAT Assistant relevanten Funktionen aus OpenCode
