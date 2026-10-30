@@ -178,7 +178,7 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
     // Source builds report committed history readiness. The older distribution
     // retains the native host's markup and project-binding checks.
     return { version: 1, ready: true, presentationReady: source ? source.presentationReady?.() === true : true,
-      authenticated: authenticated(), documentId, sessionId: value.currentSessionId ?? null,
+      authenticated: authenticated(), canExport: typeof source?.exportThread === 'function', documentId, sessionId: value.currentSessionId ?? null,
       directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(), mcp: mcp(), mcpObservation: mcpObservation(),
       manualAttachmentPending: !!pending && pending.id !== 'Aktiver Baustein' && pending.data?.mode !== 'following',
       model: model?.currentProviderId && model?.currentModelId ? model.currentProviderId + '/' + model.currentModelId : null,
@@ -190,6 +190,18 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
   const matches = expected => expected && expected.documentId === documentId && expected.sessionId && expected.sessionId === selected && expected.epoch === epoch;
   return Object.freeze({
     state,
+    async exportThread(expected) {
+      if (!authenticated() || !matches(expected) || typeof source?.exportThread !== 'function') throw new Error('Thread export is not available');
+      const directory = sessions.getState().currentSessionDirectory;
+      if (typeof directory !== 'string' || !directory) throw new Error('Thread directory is unavailable');
+      const result = await source.exportThread(selected, directory);
+      if (!authenticated() || !matches(expected) || sessions.getState().currentSessionDirectory !== directory)
+        throw new Error('Chat selection changed during export');
+      if (!result || typeof result.markdown !== 'string' || result.markdown.length > 8 * 1024 * 1024
+        || typeof result.filename !== 'string' || result.filename.length > 200 || !result.filename.endsWith('.md')
+        || /[\\/\x00-\x1f]/.test(result.filename)) throw new Error('Thread export is invalid or too large');
+      return result;
+    },
     clearFollowing,
     permit(expected) {
       permission = matches(expected) ? { ...expected } : null;

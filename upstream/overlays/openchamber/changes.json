@@ -35,7 +35,11 @@
     "changes": [
       [
         "import React from 'react';",
-        "import React from 'react';\nimport { publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts, twinCatAttachmentMode, keepTwinCatReference } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts, twinCatAttachmentMode, keepTwinCatReference, isTwinCatEmbedded, twinCatSelectableAgents, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "        if (!isPermissionAutoAcceptInteractive) return false;",
+        "        if (isTwinCatEmbedded() || !isPermissionAutoAcceptInteractive) return false;"
       ],
       [
         "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);",
@@ -72,6 +76,14 @@
       [
         "onReopenPicker={() => reopenGuestItem(reference)}",
         "keep={twinCatMode === 'following' ? {\n                                    label: t('chat.twincat.attachment.keep'), hint: t('chat.twincat.attachment.keepHint'),\n                                    onClick: () => setLinkedReferences(current => keepTwinCatReference(current, reference)),\n                                } : undefined}\n                                onReopenPicker={() => reopenGuestItem(reference)}"
+      ],
+      [
+        "    const agents = getVisibleAgents();",
+        "    const agents = twinCatSelectableAgents(getVisibleAgents());"
+      ],
+      [
+        "    const currentAgentName = pinnedComposerSelection?.agent ?? configAgentName;",
+        "    const currentAgentName = isTwinCatEmbedded() ? TWINCAT_ANALYSIS_PROFILE : pinnedComposerSelection?.agent ?? configAgentName;"
       ]
     ]
   },
@@ -105,6 +117,44 @@
     ]
   },
   {
+    "file": "packages/ui/src/components/chat/composer/ui/ComposerAttachmentControls.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "    const { t } = useI18n();",
+        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);"
+      ],
+      [
+        "        filesOnly = false,",
+        "        filesOnly: requestedFilesOnly = false,"
+      ],
+      [
+        "    } = props;\n\n    return (",
+        "    } = props;\n    const filesOnly = requestedFilesOnly || twinCatEmbedded;\n\n    return ("
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/chat/composer/ui/PermissionAutoAcceptButton.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "    const { t } = useI18n();",
+        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);"
+      ],
+      [
+        "    const label = permissionMode === 'safety'",
+        "    if (twinCatEmbedded) return null;\n\n    const label = permissionMode === 'safety'"
+      ]
+    ]
+  },
+  {
     "file": "packages/ui/src/components/chat/composer/ui/LinkedReferenceRow.tsx",
     "changes": [
       [
@@ -126,7 +176,7 @@
     "changes": [
       [
         "\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatic\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Follows the active editor. Switching objects replaces this attachment.\",\n  'chat.twincat.attachment.manualHint': \"Kept manually. Switching objects does not change this snapshot.\",\n  'chat.twincat.attachment.keep': \"Keep\",\n  'chat.twincat.attachment.keepHint': \"Keep this revision as a manual attachment.\",\n\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatic\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Follows the active editor. Switching objects replaces this attachment.\",\n  'chat.twincat.attachment.manualHint': \"Kept manually. Switching objects does not change this snapshot.\",\n  'chat.twincat.attachment.keep': \"Keep\",\n  'chat.twincat.attachment.keepHint': \"Keep this revision as a manual attachment.\",\n\n  'chat.twincat.profile.analysis': \"Analysis\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat information\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n"
       ]
     ]
   },
@@ -135,7 +185,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Manuell\",\n  'chat.twincat.attachment.followingHint': \"Folgt dem aktiven Editor. Ein Objektwechsel ersetzt diesen Anhang.\",\n  'chat.twincat.attachment.manualHint': \"Manuell beibehalten. Ein Objektwechsel ändert diesen Snapshot nicht.\",\n  'chat.twincat.attachment.keep': \"Beibehalten\",\n  'chat.twincat.attachment.keepHint': \"Diesen Stand als manuellen Anhang beibehalten.\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Manuell\",\n  'chat.twincat.attachment.followingHint': \"Folgt dem aktiven Editor. Ein Objektwechsel ersetzt diesen Anhang.\",\n  'chat.twincat.attachment.manualHint': \"Manuell beibehalten. Ein Objektwechsel ändert diesen Snapshot nicht.\",\n  'chat.twincat.attachment.keep': \"Beibehalten\",\n  'chat.twincat.attachment.keepHint': \"Diesen Stand als manuellen Anhang beibehalten.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat-Informationen\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n};\n"
       ]
     ]
   },
@@ -144,7 +194,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Sigue al editor activo. Al cambiar de objeto se reemplaza este adjunto.\",\n  'chat.twincat.attachment.manualHint': \"Conservado manualmente. Cambiar de objeto no modifica esta instantánea.\",\n  'chat.twincat.attachment.keep': \"Conservar\",\n  'chat.twincat.attachment.keepHint': \"Conservar esta revisión como adjunto manual.\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Sigue al editor activo. Al cambiar de objeto se reemplaza este adjunto.\",\n  'chat.twincat.attachment.manualHint': \"Conservado manualmente. Cambiar de objeto no modifica esta instantánea.\",\n  'chat.twincat.attachment.keep': \"Conservar\",\n  'chat.twincat.attachment.keepHint': \"Conservar esta revisión como adjunto manual.\",\n\n  'chat.twincat.profile.analysis': \"Análisis\",\n  'chat.twincat.modelDetails': \"Detalles\",\n\n  'chat.twincat.chatInformation': \"Información del chat\",\n  'chat.twincat.chatInformationDetails': \"Detalles\",\n\n};\n"
       ]
     ]
   },
@@ -153,7 +203,7 @@
     "changes": [
       [
         "\n} as const;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatique\",\n  'chat.twincat.attachment.manual': \"Manuel\",\n  'chat.twincat.attachment.followingHint': \"Suit l’éditeur actif. Un changement d’objet remplace cette pièce jointe.\",\n  'chat.twincat.attachment.manualHint': \"Conservé manuellement. Un changement d’objet ne modifie pas cet instantané.\",\n  'chat.twincat.attachment.keep': \"Conserver\",\n  'chat.twincat.attachment.keepHint': \"Conserver cette version comme pièce jointe manuelle.\",\n\n} as const;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatique\",\n  'chat.twincat.attachment.manual': \"Manuel\",\n  'chat.twincat.attachment.followingHint': \"Suit l’éditeur actif. Un changement d’objet remplace cette pièce jointe.\",\n  'chat.twincat.attachment.manualHint': \"Conservé manuellement. Un changement d’objet ne modifie pas cet instantané.\",\n  'chat.twincat.attachment.keep': \"Conserver\",\n  'chat.twincat.attachment.keepHint': \"Conserver cette version comme pièce jointe manuelle.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.modelDetails': \"Détails\",\n\n  'chat.twincat.chatInformation': \"Informations du chat\",\n  'chat.twincat.chatInformationDetails': \"Détails\",\n\n} as const;\n"
       ]
     ]
   },
@@ -162,7 +212,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"アクティブなエディターに追従します。オブジェクトを切り替えると、この添付は置き換わります。\",\n  'chat.twincat.attachment.manualHint': \"手動で保持されています。オブジェクトを切り替えても、このスナップショットは変わりません。\",\n  'chat.twincat.attachment.keep': \"保持\",\n  'chat.twincat.attachment.keepHint': \"この版を手動の添付として保持します。\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"アクティブなエディターに追従します。オブジェクトを切り替えると、この添付は置き換わります。\",\n  'chat.twincat.attachment.manualHint': \"手動で保持されています。オブジェクトを切り替えても、このスナップショットは変わりません。\",\n  'chat.twincat.attachment.keep': \"保持\",\n  'chat.twincat.attachment.keepHint': \"この版を手動の添付として保持します。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.modelDetails': \"詳細\",\n\n  'chat.twincat.chatInformation': \"チャット情報\",\n  'chat.twincat.chatInformationDetails': \"詳細\",\n\n};\n"
       ]
     ]
   },
@@ -171,7 +221,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"자동\",\n  'chat.twincat.attachment.manual': \"수동\",\n  'chat.twincat.attachment.followingHint': \"활성 편집기를 따릅니다. 개체를 전환하면 이 첨부가 교체됩니다.\",\n  'chat.twincat.attachment.manualHint': \"수동으로 유지됩니다. 개체를 전환해도 이 스냅샷은 바뀌지 않습니다.\",\n  'chat.twincat.attachment.keep': \"유지\",\n  'chat.twincat.attachment.keepHint': \"이 버전을 수동 첨부로 유지합니다.\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"자동\",\n  'chat.twincat.attachment.manual': \"수동\",\n  'chat.twincat.attachment.followingHint': \"활성 편집기를 따릅니다. 개체를 전환하면 이 첨부가 교체됩니다.\",\n  'chat.twincat.attachment.manualHint': \"수동으로 유지됩니다. 개체를 전환해도 이 스냅샷은 바뀌지 않습니다.\",\n  'chat.twincat.attachment.keep': \"유지\",\n  'chat.twincat.attachment.keepHint': \"이 버전을 수동 첨부로 유지합니다.\",\n\n  'chat.twincat.profile.analysis': \"분석\",\n  'chat.twincat.modelDetails': \"세부 정보\",\n\n  'chat.twincat.chatInformation': \"채팅 정보\",\n  'chat.twincat.chatInformationDetails': \"세부 정보\",\n\n};\n"
       ]
     ]
   },
@@ -180,7 +230,7 @@
     "changes": [
       [
         "\n} as const;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Handmatig\",\n  'chat.twincat.attachment.followingHint': \"Volgt de actieve editor. Bij een ander object wordt deze bijlage vervangen.\",\n  'chat.twincat.attachment.manualHint': \"Handmatig bewaard. Bij een ander object blijft deze momentopname ongewijzigd.\",\n  'chat.twincat.attachment.keep': \"Bewaren\",\n  'chat.twincat.attachment.keepHint': \"Deze versie als handmatige bijlage bewaren.\",\n\n} as const;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Handmatig\",\n  'chat.twincat.attachment.followingHint': \"Volgt de actieve editor. Bij een ander object wordt deze bijlage vervangen.\",\n  'chat.twincat.attachment.manualHint': \"Handmatig bewaard. Bij een ander object blijft deze momentopname ongewijzigd.\",\n  'chat.twincat.attachment.keep': \"Bewaren\",\n  'chat.twincat.attachment.keepHint': \"Deze versie als handmatige bijlage bewaren.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chatinformatie\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n"
       ]
     ]
   },
@@ -189,7 +239,7 @@
     "changes": [
       [
         "\n} as const;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatycznie\",\n  'chat.twincat.attachment.manual': \"Ręcznie\",\n  'chat.twincat.attachment.followingHint': \"Podąża za aktywnym edytorem. Zmiana obiektu zastępuje ten załącznik.\",\n  'chat.twincat.attachment.manualHint': \"Zachowano ręcznie. Zmiana obiektu nie zmienia tej migawki.\",\n  'chat.twincat.attachment.keep': \"Zachowaj\",\n  'chat.twincat.attachment.keepHint': \"Zachowaj tę wersję jako ręczny załącznik.\",\n\n} as const;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatycznie\",\n  'chat.twincat.attachment.manual': \"Ręcznie\",\n  'chat.twincat.attachment.followingHint': \"Podąża za aktywnym edytorem. Zmiana obiektu zastępuje ten załącznik.\",\n  'chat.twincat.attachment.manualHint': \"Zachowano ręcznie. Zmiana obiektu nie zmienia tej migawki.\",\n  'chat.twincat.attachment.keep': \"Zachowaj\",\n  'chat.twincat.attachment.keepHint': \"Zachowaj tę wersję jako ręczny załącznik.\",\n\n  'chat.twincat.profile.analysis': \"Analiza\",\n  'chat.twincat.modelDetails': \"Szczegóły\",\n\n  'chat.twincat.chatInformation': \"Informacje o czacie\",\n  'chat.twincat.chatInformationDetails': \"Szczegóły\",\n\n} as const;\n"
       ]
     ]
   },
@@ -198,7 +248,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Acompanha o editor ativo. Trocar de objeto substitui este anexo.\",\n  'chat.twincat.attachment.manualHint': \"Mantido manualmente. Trocar de objeto não altera este instantâneo.\",\n  'chat.twincat.attachment.keep': \"Manter\",\n  'chat.twincat.attachment.keepHint': \"Manter esta versão como anexo manual.\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Acompanha o editor ativo. Trocar de objeto substitui este anexo.\",\n  'chat.twincat.attachment.manualHint': \"Mantido manualmente. Trocar de objeto não altera este instantâneo.\",\n  'chat.twincat.attachment.keep': \"Manter\",\n  'chat.twincat.attachment.keepHint': \"Manter esta versão como anexo manual.\",\n\n  'chat.twincat.profile.analysis': \"Análise\",\n  'chat.twincat.modelDetails': \"Detalhes\",\n\n  'chat.twincat.chatInformation': \"Informações do chat\",\n  'chat.twincat.chatInformationDetails': \"Detalhes\",\n\n};\n"
       ]
     ]
   },
@@ -207,7 +257,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Otomatik\",\n  'chat.twincat.attachment.manual': \"El ile\",\n  'chat.twincat.attachment.followingHint': \"Etkin düzenleyiciyi izler. Nesne değiştirildiğinde bu ek değiştirilir.\",\n  'chat.twincat.attachment.manualHint': \"El ile saklanır. Nesne değiştirmek bu anlık görüntüyü değiştirmez.\",\n  'chat.twincat.attachment.keep': \"Sakla\",\n  'chat.twincat.attachment.keepHint': \"Bu sürümü el ile eklenmiş bir ek olarak sakla.\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Otomatik\",\n  'chat.twincat.attachment.manual': \"El ile\",\n  'chat.twincat.attachment.followingHint': \"Etkin düzenleyiciyi izler. Nesne değiştirildiğinde bu ek değiştirilir.\",\n  'chat.twincat.attachment.manualHint': \"El ile saklanır. Nesne değiştirmek bu anlık görüntüyü değiştirmez.\",\n  'chat.twincat.attachment.keep': \"Sakla\",\n  'chat.twincat.attachment.keepHint': \"Bu sürümü el ile eklenmiş bir ek olarak sakla.\",\n\n  'chat.twincat.profile.analysis': \"Analiz\",\n  'chat.twincat.modelDetails': \"Ayrıntılar\",\n\n  'chat.twincat.chatInformation': \"Sohbet bilgileri\",\n  'chat.twincat.chatInformationDetails': \"Ayrıntılar\",\n\n};\n"
       ]
     ]
   },
@@ -216,7 +266,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Автоматично\",\n  'chat.twincat.attachment.manual': \"Вручну\",\n  'chat.twincat.attachment.followingHint': \"Стежить за активним редактором. Зміна об’єкта замінює це вкладення.\",\n  'chat.twincat.attachment.manualHint': \"Збережено вручну. Зміна об’єкта не змінює цей знімок.\",\n  'chat.twincat.attachment.keep': \"Зберегти\",\n  'chat.twincat.attachment.keepHint': \"Зберегти цю версію як ручне вкладення.\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Автоматично\",\n  'chat.twincat.attachment.manual': \"Вручну\",\n  'chat.twincat.attachment.followingHint': \"Стежить за активним редактором. Зміна об’єкта замінює це вкладення.\",\n  'chat.twincat.attachment.manualHint': \"Збережено вручну. Зміна об’єкта не змінює цей знімок.\",\n  'chat.twincat.attachment.keep': \"Зберегти\",\n  'chat.twincat.attachment.keepHint': \"Зберегти цю версію як ручне вкладення.\",\n\n  'chat.twincat.profile.analysis': \"Аналіз\",\n  'chat.twincat.modelDetails': \"Докладніше\",\n\n  'chat.twincat.chatInformation': \"Інформація про чат\",\n  'chat.twincat.chatInformationDetails': \"Докладніше\",\n\n};\n"
       ]
     ]
   },
@@ -225,7 +275,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"自动\",\n  'chat.twincat.attachment.manual': \"手动\",\n  'chat.twincat.attachment.followingHint': \"跟随当前编辑器。切换对象会替换此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手动保留。切换对象不会更改此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"将此版本保留为手动附件。\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"自动\",\n  'chat.twincat.attachment.manual': \"手动\",\n  'chat.twincat.attachment.followingHint': \"跟随当前编辑器。切换对象会替换此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手动保留。切换对象不会更改此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"将此版本保留为手动附件。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.modelDetails': \"详情\",\n\n  'chat.twincat.chatInformation': \"聊天信息\",\n  'chat.twincat.chatInformationDetails': \"详情\",\n\n};\n"
       ]
     ]
   },
@@ -234,7 +284,285 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"跟隨目前的編輯器。切換物件會取代此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手動保留。切換物件不會變更此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"將此版本保留為手動附件。\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"跟隨目前的編輯器。切換物件會取代此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手動保留。切換物件不會變更此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"將此版本保留為手動附件。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.modelDetails': \"詳細資料\",\n\n  'chat.twincat.chatInformation': \"聊天資訊\",\n  'chat.twincat.chatInformationDetails': \"詳細資料\",\n\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/ui/AppStartupOverlay.tsx",
+    "changes": [
+      [
+        "import { OpenChamberLogo } from './OpenChamberLogo';",
+        "import { OpenChamberLogo } from './OpenChamberLogo';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, publishTwinCatStartup } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "  const reducedMotion = useReducedMotion();",
+        "  const reducedMotion = useReducedMotion();\n  const embedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n  // The native host owns the one visible splash. Complete the web handoff\n  // synchronously once ready: hidden WebView2 need not deliver animation frames.\n  React.useLayoutEffect(() => {\n    if (embedded && ready && !dismissed) setDismissed(true);\n    return publishTwinCatStartup(dismissed || (embedded && ready));\n  }, [dismissed, embedded, ready]);"
+      ],
+      [
+        "  if (dismissed) return null;",
+        "  if (dismissed || (embedded && ready)) return null;"
+      ],
+      [
+        "    <motion.div",
+        "    <motion.div\n      data-twincat-startup-overlay={embedded ? \"\" : undefined}"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/layout/Header.tsx",
+    "changes": [
+      [
+        "import { buildExportFilename, downloadAsMarkdown, formatSessionAsMarkdown, saveAsMarkdownDesktop } from '@/lib/exportSession';",
+        "import { buildExportFilename, downloadAsMarkdown, formatSessionAsMarkdown, saveAsMarkdownDesktop } from '@/lib/exportSession';\nimport { publishTwinCatThreadExport } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "  const loadSessionRecords = useSessionMessageRecordsForExport();",
+        "  const loadSessionRecords = useSessionMessageRecordsForExport();\n  React.useEffect(() => publishTwinCatThreadExport(currentSessionId, currentSession?.title ?? null, loadSessionRecords),\n    [currentSessionId, currentSession?.title, loadSessionRecords]);"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/chat/ModelControls.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { Button } from '@/components/ui/button';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "    const { t } = useI18n();",
+        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const [twinCatModelDetails, setTwinCatModelDetails] = React.useState(false);\n    const labelAgent = (agent: Pick<Agent, 'name' | 'displayName'>) => twinCatEmbedded && agent.name === TWINCAT_ANALYSIS_PROFILE\n        ? t('chat.twincat.profile.analysis') : agentLabel(agent);"
+      ],
+      [
+        "    const agents = getVisibleAgents();",
+        "    const agents = twinCatSelectableAgents(getVisibleAgents());"
+      ],
+      [
+        "    const uiAgentName = currentSessionId\n        ? (sessionSavedAgentName || stickySessionAgentName || currentAgentName)\n        : currentAgentName;",
+        "    const uiAgentName = twinCatEmbedded ? TWINCAT_ANALYSIS_PROFILE : currentSessionId\n        ? (sessionSavedAgentName || stickySessionAgentName || currentAgentName)\n        : currentAgentName;\n    React.useEffect(() => {\n        if (!twinCatEmbedded || selection || !agents.some(agent => agent.name === TWINCAT_ANALYSIS_PROFILE)) return;\n        if (currentAgentName !== TWINCAT_ANALYSIS_PROFILE\n            || (sessionSavedAgentName && sessionSavedAgentName !== TWINCAT_ANALYSIS_PROFILE)) {\n            setAgent(TWINCAT_ANALYSIS_PROFILE, { keepModel: true });\n        }\n    }, [twinCatEmbedded, selection, agents, currentAgentName, currentSessionId, sessionSavedAgentName, setAgent]);"
+      ],
+      [
+        "        if (!isModelSelectorOpen) {\n            setDesktopModelQuery('');",
+        "        if (!isModelSelectorOpen) {\n            setTwinCatModelDetails(false);\n            setDesktopModelQuery('');"
+      ],
+      [
+        "    const handleAgentChange = React.useCallback((agentName: string, options?: { closeModelSelector?: boolean }) => {",
+        "    const handleAgentChange = React.useCallback((agentName: string, options?: { closeModelSelector?: boolean }) => {\n        if (isTwinCatEmbedded() && agentName !== TWINCAT_ANALYSIS_PROFILE) return;"
+      ],
+      [
+        "            return shownAgent ? agentLabel(shownAgent) : t('chat.modelControls.selectAgent');",
+        "            return shownAgent ? labelAgent(shownAgent) : t('chat.modelControls.selectAgent');"
+      ],
+      [
+        "        return agent ? agentLabel(agent) : agentLabel({ name: uiAgentName, displayName: '' });",
+        "        return agent ? labelAgent(agent) : labelAgent({ name: uiAgentName, displayName: '' });"
+      ],
+      [
+        "                title={agentLabel(currentAgent)}",
+        "                title={labelAgent(currentAgent)}"
+      ],
+      [
+        "                                        {agentLabel(agent)}",
+        "                                        {labelAgent(agent)}"
+      ],
+      [
+        "                            {agentLabel(currentAgent)}",
+        "                            {labelAgent(currentAgent)}"
+      ],
+      [
+        "                                                            <span className=\"font-medium\">{agentLabel(agent)}</span>",
+        "                                                            <span className=\"font-medium\">{labelAgent(agent)}</span>"
+      ],
+      [
+        "        return (\n            <Tooltip delayDuration={600}>\n                {!isCompact ? (",
+        "        return (\n            <Tooltip delayDuration={600} open={twinCatEmbedded ? false : undefined}>\n                {!isCompact ? ("
+      ],
+      [
+        "                            <ModelPickerList",
+        "                            {twinCatEmbedded ? (\n                                <div className=\"flex justify-end border-b border-border/40 px-2 py-1\">\n                                    <Button type=\"button\" variant=\"ghost\" size=\"xs\"\n                                        aria-pressed={twinCatModelDetails}\n                                        onMouseDown={(event) => event.preventDefault()}\n                                        onKeyDown={(event) => {\n                                            if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();\n                                        }}\n                                        onClick={(event) => {\n                                            event.stopPropagation();\n                                            setTwinCatModelDetails(value => !value);\n                                        }}>\n                                        {t('chat.twincat.modelDetails')}\n                                    </Button>\n                                </div>\n                            ) : null}\n                            <ModelPickerList"
+      ],
+      [
+        "                                leadingAction={onRunInParallel ? {",
+        "                                leadingAction={!twinCatEmbedded && onRunInParallel ? {"
+      ],
+      [
+        "                                tooltipsEnabled={agentMenuOpen}",
+        "                                tooltipsEnabled={agentMenuOpen && (!twinCatEmbedded || twinCatModelDetails)}"
+      ],
+      [
+        "    const resolveLiveAgentName = React.useCallback(() => {",
+        "    const resolveLiveAgentName = React.useCallback(() => {\n        if (isTwinCatEmbedded()) return TWINCAT_ANALYSIS_PROFILE;"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/chat/MobileAgentButton.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { useI18n } from '@/lib/i18n';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "    const getAgentColor = useAgentColors();",
+        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const getAgentColor = useAgentColors();"
+      ],
+      [
+        "    const agents = getVisibleAgents();",
+        "    const agents = twinCatSelectableAgents(getVisibleAgents());"
+      ],
+      [
+        "    const uiAgentName = currentSessionId ? (sessionAgentName || currentAgentName) : currentAgentName;",
+        "    const uiAgentName = twinCatEmbedded ? TWINCAT_ANALYSIS_PROFILE : currentSessionId ? (sessionAgentName || currentAgentName) : currentAgentName;"
+      ],
+      [
+        "    const agentLabel = getAgentDisplayName(agents, uiAgentName);",
+        "    const agentLabel = twinCatEmbedded ? t('chat.twincat.profile.analysis') : getAgentDisplayName(agents, uiAgentName);"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/hooks/useKeyboardShortcuts.ts",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { twinCatSelectableAgents, twinCatSelectablePanels, isTwinCatEmbedded } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "      const next = getCycledPrimaryAgentName(config.getVisibleAgents(), config.currentAgentName, direction);",
+        "      const next = getCycledPrimaryAgentName(twinCatSelectableAgents(config.getVisibleAgents()), config.currentAgentName, direction);"
+      ],
+      [
+        "          const visibleSurfaces = getVisibleContextRailSurfaces({\n            railOrder: state.contextRailOrder,\n            hiddenSurfaces: state.contextRailHiddenSurfaces,\n            planModeEnabled: useFeatureFlagsStore.getState().planModeEnabled,\n            isVSCode: isVSCodeRuntime(),\n            screenWidth: window.innerWidth,\n            tabs: panel?.tabs ?? [],\n            linearConnected: useLinearAuthStore.getState().status?.connected === true,\n            sourceControlConnected: Object.values(useSourceControlAuthStore.getState().entries).some((entry) => entry.status?.status === 'connected'),\n            extras: enabledGuestSurfaces(useGuestsStore.getState().guests, getRuntimeUrlResolver().authenticatedAsset),\n          });",
+        "          const visibleSurfaces = twinCatSelectablePanels(getVisibleContextRailSurfaces({\n            railOrder: state.contextRailOrder,\n            hiddenSurfaces: isTwinCatEmbedded() ? [] : state.contextRailHiddenSurfaces,\n            planModeEnabled: useFeatureFlagsStore.getState().planModeEnabled,\n            isVSCode: isVSCodeRuntime(),\n            screenWidth: window.innerWidth,\n            tabs: panel?.tabs ?? [],\n            linearConnected: useLinearAuthStore.getState().status?.connected === true,\n            sourceControlConnected: Object.values(useSourceControlAuthStore.getState().entries).some((entry) => entry.status?.status === 'connected'),\n            extras: enabledGuestSurfaces(useGuestsStore.getState().guests, getRuntimeUrlResolver().authenticatedAsset),\n          }));"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/chat/FileMentionAutocomplete.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { twinCatSelectableAgents } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "    const visibleAgents = getVisibleAgents();",
+        "    const visibleAgents = twinCatSelectableAgents(getVisibleAgents());"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/layout/ContextPanelRail.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectablePanels } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "  const { t } = useI18n();",
+        "  const { t } = useI18n();\n  const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);"
+      ],
+      [
+        "    return getVisibleContextRailSurfaces({",
+        "    return twinCatSelectablePanels(getVisibleContextRailSurfaces({"
+      ],
+      [
+        "      hiddenSurfaces: contextRailHiddenSurfaces,",
+        "      hiddenSurfaces: twinCatEmbedded ? [] : contextRailHiddenSurfaces,"
+      ],
+      [
+        "    }).map((surface) => (surface.id === 'pr' && repositoryProvider === 'gitlab' ? { ...surface, icon: 'gitlab' as const } : surface));",
+        "    })).map((surface) => (surface.id === 'pr' && repositoryProvider === 'gitlab' ? { ...surface, icon: 'gitlab' as const } : surface));"
+      ],
+      [
+        "  }, [contextRailHiddenSurfaces, contextRailOrder, guestSurfaces, linearConnected, planModeEnabled, repositoryProvider, screenWidth, sourceControlConnected, tabs]);",
+        "  }, [contextRailHiddenSurfaces, contextRailOrder, guestSurfaces, linearConnected, planModeEnabled, repositoryProvider, screenWidth, sourceControlConnected, tabs, twinCatEmbedded]);"
+      ],
+      [
+        "            const label = surface.label ?? t(changeRequestCopy(surface.labelKey, repositoryProvider));",
+        "            const label = twinCatEmbedded && surface.mode === 'context'\n              ? t('chat.twincat.chatInformation') : surface.label ?? t(changeRequestCopy(surface.labelKey, repositoryProvider));"
+      ],
+      [
+        "      {/* Outside the sortable list on purpose: this button takes no digit,",
+        "      {!twinCatEmbedded ? (\n        <>\n      {/* Outside the sortable list on purpose: this button takes no digit,"
+      ],
+      [
+        "      <ContextRailSurfacesDialog open={isSurfacesDialogOpen} onOpenChange={setIsSurfacesDialogOpen} />",
+        "      <ContextRailSurfacesDialog open={isSurfacesDialogOpen} onOpenChange={setIsSurfacesDialogOpen} />\n        </>\n      ) : null}"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/layout/ContextPanel.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectablePanels } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "export const ContextPanel: React.FC = () => {\n  const { t } = useI18n();",
+        "export const ContextPanel: React.FC = () => {\n  const { t } = useI18n();\n  const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);"
+      ],
+      [
+        "  return t('contextPanel.mode.context');",
+        "  return t(isTwinCatEmbedded() ? 'chat.twincat.chatInformation' : 'contextPanel.mode.context');"
+      ],
+      [
+        "  const closeContextPanel = useUIStore((state) => state.closeContextPanel);",
+        "  const closeContextPanel = useUIStore((state) => state.closeContextPanel);\n  const openContextSurface = useUIStore((state) => state.openContextSurface);"
+      ],
+      [
+        "  const tabs = React.useMemo(() => panelState?.tabs ?? [], [panelState?.tabs]);",
+        "  const tabs = React.useMemo(() => twinCatSelectablePanels(panelState?.tabs ?? []), [panelState?.tabs, twinCatEmbedded]);\n  React.useEffect(() => {\n    if (twinCatEmbedded && directoryKey && panelState?.isOpen\n        && !tabs.some(tab => tab.id === panelState.activeTabId)) {\n      openContextSurface(directoryKey, 'context');\n    }\n  }, [twinCatEmbedded, directoryKey, panelState?.isOpen, panelState?.activeTabId, tabs, openContextSurface]);"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/layout/ContextSidebarTab.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { Button } from '@/components/ui/button';\nimport { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "  const { t } = useI18n();",
+        "  const { t } = useI18n();\n  const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n  const [twinCatDetailsOpen, setTwinCatDetailsOpen] = React.useState(false);"
+      ],
+      [
+        "    setExpandedRawMessages((prev) => (Object.keys(prev).length > 0 ? {} : prev));\n    setCopiedRawMessageId(null);",
+        "    setExpandedRawMessages((prev) => (Object.keys(prev).length > 0 ? {} : prev));\n    setCopiedRawMessageId(null);\n    setTwinCatDetailsOpen(false);"
+      ],
+      [
+        "        {/* ── Last turn tokens ── */}",
+        "        <Collapsible open={!twinCatEmbedded || twinCatDetailsOpen} onOpenChange={setTwinCatDetailsOpen}>\n          {twinCatEmbedded ? (\n            <CollapsibleTrigger asChild>\n              <Button type=\"button\" variant=\"ghost\" size=\"sm\" className=\"mb-3 w-full justify-between\">\n                <span>{t('chat.twincat.chatInformationDetails')}</span>\n                <Icon name={twinCatDetailsOpen ? 'arrow-down-s' : 'arrow-right-s'} className=\"size-4\" />\n              </Button>\n            </CollapsibleTrigger>\n          ) : null}\n          <CollapsibleContent>\n            {(!twinCatEmbedded || twinCatDetailsOpen) ? (<>\n        {/* ── Last turn tokens ── */}"
+      ],
+      [
+        "      </div>\n    </ScrollableOverlay>\n  );\n};\n",
+        "            </>) : null}\n          </CollapsibleContent>\n        </Collapsible>\n      </div>\n    </ScrollableOverlay>\n  );\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/ui/CommandPalette.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "  const { t } = useI18n();",
+        "  const { t } = useI18n();\n  const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);"
+      ],
+      [
+        "        title: t('commandPalette.item.showContextUsage'),",
+        "        title: t(twinCatEmbedded ? 'chat.twincat.chatInformation' : 'commandPalette.item.showContextUsage'),"
+      ],
+      [
+        "        searchText: t('commandPalette.item.showContextUsage'),",
+        "        searchText: t(twinCatEmbedded ? 'chat.twincat.chatInformation' : 'commandPalette.item.showContextUsage'),"
+      ],
+      [
+        "    return list;\n  }, [\n    t,",
+        "    return twinCatEmbedded\n      ? list.filter(command => !['toggle-terminal', 'open-notes', 'open-todos'].includes(command.id))\n      : list;\n  }, [\n    twinCatEmbedded,\n    t,"
       ]
     ]
   }

@@ -42,6 +42,32 @@ instead of interpreting an empty UI bootstrap cache as an empty history. An
 unavailable history reports an error and offers retry. It does not create a new
 chat. Each asynchronous result is checked against the current page/project.
 
+### Agreed project chat navigation, 2026-10-30
+
+This decision is accepted; its navigation changes are not yet implemented. The
+current clock still toggles the general OpenChamber sidebar, and project
+restoration currently prefers the most recently updated stored conversation.
+
+- Each PLC project may have multiple persistent conversations, with one shown
+  at a time. Separate topics do not need to share one ever-growing transcript.
+- The clock opens a compact list of this PLC project's conversations, showing
+  their titles and last activity. It replaces the general folder/project sidebar.
+- The plus button explicitly starts another conversation in the current project.
+- Reopening or switching back to a project restores its last selected
+  conversation. Selection must survive IDE/runtime restarts and is distinct
+  from a conversation merely receiving a newer update.
+- Changing the active POU, action, method or property keeps the selected
+  conversation. Context metadata and the agreed attachment behavior follow the
+  editor independently.
+- General chats remain separate and accessible through the existing menu.
+
+Reuse the existing conversation storage, paged history loading and project
+binding checks. Preserve existing chats and IDs. Remember selection under the
+stable operator/project identity, independently of IDE PID, port and model.
+History errors retain their retry behavior and must not create replacement
+conversations. Project chats share their configured project tools and Knowledge
+connection; opening another chat must not create a separate documentation index.
+
 ## Context and attachments
 
 The native host provides only PLC project name, active object name, tree path
@@ -94,6 +120,52 @@ replace only the automatic slot. Losing active context or disabling automatic
 attachment clears that slot and preserves manual snapshots. Automatic staging
 waits for pending manual items rather than overwriting the original input queue.
 
+The first agreed composer cleanup uses the existing attachment control's
+`filesOnly` mode in the embedded TwinCAT chat, including its narrow layout. A
+paperclip opens the original local-file picker directly; the attachment menu
+for GitHub/GitLab, Linear and other integrations is no longer offered there.
+POU attachments still use the native context bar and existing composer chips.
+The generic permission auto-accept shield is no longer rendered in the embedded
+composer, and its keyboard shortcut does not cycle permission modes there.
+This does not alter stored permission choices, tool rights or permission request
+dialogs. The later writing agent's change-application workflow remains a separate
+decision. These UI changes await the next combined build/test pass.
+
+The next agreed cleanup covers model/profile controls. The native model picker
+starts with its metadata popups disabled and exposes a **Details** toggle. Closing
+the picker resets that temporary choice. Model selection, favorites and effort
+selection retain their original implementation. The native picker omits **Run
+on several models**. Its profile selection, cycling and mentions use the single
+`twincat-readonly` profile, displayed as **Analyse** in German. The original ID,
+tool permissions, stored conversations and protected configuration format remain
+unchanged. Existing built-in profiles are not deleted from upstream sources.
+
+| Surface | Intended model/profile behavior |
+| --- | --- |
+| TwinCAT embedded WebView, wide and narrow layout | Explicit model details, Analyse profile only, no parallel-model picker action. |
+| Standalone web | Existing OpenChamber behavior. |
+| Electron desktop | Existing OpenChamber behavior. |
+| VS Code | Existing OpenChamber behavior. |
+| Hosted mobile | Existing OpenChamber behavior. |
+| Capacitor mobile | Existing OpenChamber behavior. |
+
+These additions await combined validation of details off/on/reopen, keyboard
+selection, profile restoration, both responsive layouts and retained model/effort
+choices. No operator profile or installed runtime is changed by preparing them.
+
+The native side rail is limited to **Chat information** and no longer offers the
+panel-configuration dialog. Rail shortcuts use the same single-panel selection.
+The native panel filters out other restored tabs without deleting their saved
+data; an open unsupported panel is redirected to chat information. Other
+OpenChamber runtimes retain their existing panel selection and behavior.
+
+Chat information keeps the existing model, context usage, message counts and
+cost overview. Last-turn token/cache statistics, the detailed context breakdown
+and raw messages sit behind a **Details** disclosure, initially closed and reset
+when changing chat or workspace. The existing calculations, raw-message preview
+and JSON copy path remain in use. These local changes still await the combined
+build and runtime tests, including restored tabs and panel shortcuts.
+
 The native loading screen shows the `TwinCAT Assistant` wordmark while the
 browser initializes, authenticates and restores the project conversation.
 Operational adapter readiness remains separate from `presentationReady`, so
@@ -118,12 +190,45 @@ branding without native project gating. Electron, VS Code, hosted mobile and
 Capacitor are not shipped or rebuilt here; the shared splash variant would
 inherit the branding when built with this overlay, without native gating.
 
+The next startup change makes the app overlay publish its own committed handoff
+state. Native embedding removes that overlay synchronously when the app is ready,
+without waiting for a fade or animation frames in a hidden WebView. The native
+splash stays visible until both this handoff and the selected history are ready.
+Standalone web, Electron, VS Code, hosted mobile and Capacitor keep their existing
+startup animation; only the native host activates the TwinCAT embedding flag.
+
+## Thread copy and Markdown export
+
+The native overflow menu exposes **Gesamten Chat kopieren** and **Chat als Markdown
+speichern**. Both use the existing OpenChamber Markdown formatter and its complete
+history loader, including messages older than the rendered/virtualized viewport.
+This exports the stored conversation and attached context supported by that
+formatter; unsent composer drafts and image binaries are outside the transcript.
+There is no new backend, session store or model request. These native commands
+are unavailable for an unselected chat or a distribution without the source API.
+Other web/desktop/mobile surfaces retain their existing export controls.
+
+The native host performs clipboard and file operations only after a menu action.
+Saving uses the standard Markdown save dialog and an atomic UTF-8 write. A failed
+history read, changed session/directory/document or oversized result fails without
+a partial export. Results are limited to eight million UTF-16 code units; they are
+never silently truncated. The bridge passes text and a safe suggested filename;
+it does not expose a native filesystem API or change the download-deny policy.
+
+The overlay handoff and thread-export additions on `feat/thread-export-startup`
+are prepared changes awaiting the next combined build/test pass. That pass needs
+actual hidden-WebView startup checks, a paginated history export, clipboard/save
+and cancellation, plus stale-selection and failure/size cases. The validation
+results for 2026-10-30 below describe the preceding merged `e328df4` stand.
+
 Startup presentation and branding are covered by the combined checks below,
 including delayed history readiness, page reload and both themes in WebView2.
 
 The Knowledge and engineering MCPs retain their existing implementation. The
 shared Knowledge broker remains in use. Its cold corpus validation is a separate
 cost, unaffected by building OpenCode from source.
+The prolonged connection seen with the prepared index on 2026-10-30 remains an
+[open investigation](KNOWLEDGE_SETUP.md#open-investigation-slow-knowledge-connection).
 
 The prepared documentation index and the MCP connection are separate states.
 The setup panel keeps its index-ready heading while reporting the live connection

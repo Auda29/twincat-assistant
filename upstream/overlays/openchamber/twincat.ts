@@ -6,11 +6,40 @@ import { useI18nStore } from '@/lib/i18n';
 import { opencodeClient } from '@/lib/opencode/client';
 import { z } from 'zod';
 import type { ComposerReference } from '@/components/chat/composer/composerReferences';
+import { buildExportFilename, formatSessionAsMarkdown, type SessionMessageRecord } from '@/lib/exportSession';
 
 type Reference = { id: string; title: string; revision: string | null; reference: string; mode: 'following' | 'manual' };
 type Context = { project: string; object: string | null; treePath: string | null; sourceKind: string | null; reference?: string | null;
   objectKind?: string | null; owner?: string | null; member?: string | null };
 let active = false;
+const embeddingListeners = new Set<() => void>();
+export const isTwinCatEmbedded = () => active;
+export const TWINCAT_ANALYSIS_PROFILE = 'twincat-readonly';
+// One native profile policy for menus, keyboard cycling and @ mentions.
+// Keep the original catalog and stored profile IDs intact.
+export function twinCatSelectableAgents<T extends { name: string }>(agents: T[]): T[] {
+  return active ? agents.filter(agent => agent.name === TWINCAT_ANALYSIS_PROFILE) : agents;
+}
+export function twinCatSelectablePanels<T extends { mode: string }>(panels: T[]): T[] {
+  return active ? panels.filter(panel => panel.mode === 'context') : panels;
+}
+export function subscribeTwinCatEmbedding(listener: () => void) {
+  embeddingListeners.add(listener);
+  return () => { embeddingListeners.delete(listener); };
+}
+let startup: { ready: boolean } | null = null;
+export function publishTwinCatStartup(ready: boolean) {
+  const value = { ready };
+  startup = value;
+  return () => { if (startup === value) startup = null; };
+}
+type ExportLoader = (target: { directory: string; sessionID: string }) => Promise<SessionMessageRecord[] | null>;
+let threadExport: { sessionId: string | null; title: string | null; load: ExportLoader } | null = null;
+export function publishTwinCatThreadExport(sessionId: string | null, title: string | null, load: ExportLoader) {
+  const value = { sessionId, title, load };
+  threadExport = value;
+  return () => { if (threadExport === value) threadExport = null; };
+}
 let context: { sessionId: string; value: Context } | null = null;
 let composer: { sessionId: string | null; references: Reference[]; clearFollowing: () => void } | null = null;
 let view: { sessionId: string | null; directory: string | null; ready: boolean } | null = null;
@@ -86,10 +115,14 @@ export function twinCatContextTexts(sessionId: string | null): string[] {
 export const twinCatSource = {
   version: 1,
   stores: { ui: useUIStore, sessions: useSessionUIStore, input: useInputStore, config: useConfigStore, locale: useI18nStore },
-  activate() { active = true; },
+  activate() {
+    if (active) return;
+    active = true;
+    for (const listener of embeddingListeners) listener();
+  },
   presentationReady() {
     const selection = useSessionUIStore.getState();
-    return useConfigStore.getState().isInitialized && view?.ready === true
+    return startup?.ready === true && useConfigStore.getState().isInitialized && view?.ready === true
       && view.sessionId === (selection.currentSessionId ?? null)
       && view.directory === (selection.currentSessionDirectory ?? null);
   },
@@ -98,6 +131,15 @@ export const twinCatSource = {
     if (!value?.reference && composer?.sessionId === sessionId) composer.clearFollowing();
   },
   clearFollowing(sessionId: string) { if (composer?.sessionId === sessionId) composer.clearFollowing(); },
+  async exportThread(sessionId: string, directory: string) {
+    const exporter = threadExport;
+    if (!active || !exporter || exporter.sessionId !== sessionId) throw new Error('Thread export is not ready');
+    // Reuse the original history loader, including pagination and runtime-switch
+    // checks. The rendered/virtualized transcript is never the export source.
+    const records = await exporter.load({ sessionID: sessionId, directory });
+    if (!records) throw new Error('Thread history could not be loaded');
+    return { filename: buildExportFilename(exporter.title), markdown: formatSessionAsMarkdown(records, exporter.title) };
+  },
   composer(sessionId: string) {
     return { observed: composer?.sessionId === sessionId, references: composer?.sessionId === sessionId ? composer.references : [],
       submitted: sent.get(sessionId) ?? [] };

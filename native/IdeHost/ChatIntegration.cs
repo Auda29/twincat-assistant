@@ -163,7 +163,7 @@ namespace TwinCatAssistant.Native
             // original timeline settles its geometry when rendering resumes.
             var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify((()=>{const s=window.__twinCatChat?.state() ?? {version:1,ready:false};"
                 + "const mounted=!!document.querySelector('[data-testid=\"chat-input\"],.oc-draft-center');"
-                + "const loading=!!document.querySelector('#initial-loading,[data-chat-hydration-skeleton]');"
+                + "const loading=!!document.querySelector('#initial-loading,[data-chat-hydration-skeleton],[data-twincat-startup-overlay]');"
                 + "return {...s,ready:s.ready && (!s.authenticated || mounted),"
                 + "presentationReady:s.presentationReady === true && mounted && !loading};})())");
             if (raw == null || raw.Length > 12000) return null;
@@ -473,6 +473,9 @@ namespace TwinCatAssistant.Native
             var ready = _chatAdapterReady && _chatSelection?.authenticated == true && !_chatActionPending;
             // Chat: actions and the one disclosure preference.
             MenuRow("chat", "Neuer allgemeiner Chat", "Ohne Projekt- und Bausteinkontext", ready, () => NewChatAsync(true));
+            var exportReady = ready && _chatSelection?.IsSelected == true && _chatSelection.canExport && !_threadExporting;
+            MenuRow("copy", "Gesamten Chat kopieren", "Alle gespeicherten Nachrichten als Markdown", exportReady, () => ExportThreadAsync(false));
+            MenuRow("download", "Chat als Markdown speichern …", "Vollständigen Verlauf als .md-Datei exportieren", exportReady, () => ExportThreadAsync(true));
             MenuRow("attach", "Baustein automatisch anhängen", "Bei jeder Änderung neu vormerken", true, ToggleAutoAttachAsync,
                 MenuSwitch(_chatPreferences.AutoAttach));
             // Model providers: a single choice among the connected ones.
