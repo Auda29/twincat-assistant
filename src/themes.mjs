@@ -92,3 +92,34 @@ export function withTwinCatThemes(preferences) {
   }
   return value;
 }
+
+// Current OpenChamber profiles are authoritative in preferences.json. Updating
+// only its legacy settings.json mirror is undone by the first server read/write.
+// Keep the upstream schema, per-surface choices and unrelated field stamps.
+export async function migrateTwinCatThemePreferences(openchamberDirectory, readPreferences) {
+  const path = join(openchamberDirectory, 'preferences.json');
+  const metadata = await lstat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+  if (!metadata) return false; // The upstream server seeds a fresh profile itself.
+  if (!metadata.isFile() || metadata.isSymbolicLink()) throw new Error('Theme preferences must be a regular file');
+  const document = await readPreferences(path);
+  const { parsePreferencesDocument } = await import('../upstream/node_modules/@openchamber/web/server/lib/opencode/settings-files.js');
+  if (!parsePreferencesDocument(JSON.stringify(document)).ok) throw new Error('Unsupported or invalid theme preferences');
+  const value = structuredClone(document);
+  const defaults = { 'openchamber-light': 'twincat-light', 'openchamber-dark': 'twincat-dark' };
+  const now = Date.now();
+  let changed = false;
+  const migrate = entry => {
+    if (!entry || typeof entry.value !== 'string' || !Object.hasOwn(defaults, entry.value)) return;
+    entry.value = defaults[entry.value];
+    entry.updatedAt = now;
+    changed = true;
+  };
+  for (const key of ['lightThemeId', 'darkThemeId', 'themeId']) {
+    const entry = value.fields[key];
+    if (!entry) continue;
+    migrate(entry);
+    for (const surface of Object.values(entry.surfaces ?? {})) migrate(surface);
+  }
+  if (changed) await writeOwnedFile(openchamberDirectory, 'preferences.json', JSON.stringify(value, null, 2) + '\n');
+  return changed;
+}

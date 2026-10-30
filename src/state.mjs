@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
 import { readWindowsJson, secureWindowsDirectory } from './windows-native.mjs';
 import { installTwinCatCommands } from './commands.mjs';
-import { installTwinCatThemes, withTwinCatThemes } from './themes.mjs';
+import { installTwinCatThemes, migrateTwinCatThemePreferences, withTwinCatThemes } from './themes.mjs';
 
 export const MAX_SETTINGS_BYTES = 65536;
 export async function readJsonFile(path) {
@@ -115,6 +115,7 @@ export async function prepareChatWorkspace(root) {
   if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)
       || (preferences.projects !== undefined && !Array.isArray(preferences.projects))) throw new Error('Invalid OpenChamber project preferences');
   await installTwinCatThemes(status.paths.openchamber);
+  await migrateTwinCatThemePreferences(status.paths.openchamber, readJsonFile);
   let value = withTwinCatThemes(preferences);
   if (!preferences.projects?.length) {
     const path = status.paths.workspace.replace(/\\/g, '/');
