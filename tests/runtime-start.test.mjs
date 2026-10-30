@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, readFile, rm, writeFile, lstat } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm, writeFile, lstat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { initializeState } from '../src/state.mjs';
@@ -40,8 +40,10 @@ test('common preparation installs themes and commands before version execution a
     const env = { ...process.env, OPENCHAMBER_UI_PASSWORD: password, OPENAI_API_KEY: 'must-not-reach-probe', GITHUB_TOKEN: 'must-not-reach-probe' };
     // A partial override still selects the other artifact from the real pinned distribution.
     const plan = await prepareRuntimeLaunch(root, { runtime: 'distribution', openchamber: chamber, port: 3210, resolveOperatorPaths: true }, env);
-    assert.equal(plan.env.OPENCODE_BINARY, (await runtimePaths('distribution')).opencode);
-    assert.deepEqual(plan.args, [chamber, 'serve', '--foreground', '--host', '127.0.0.1', '--port', '3210']);
+    assert.equal(plan.env.OPENCODE_BINARY, await realpath((await runtimePaths('distribution')).opencode));
+    // Windows runners may expose TEMP through an 8.3 alias such as RUNNER~1.
+    // The operator path is intentionally canonicalized before execution.
+    assert.deepEqual(plan.args, [await realpath(chamber), 'serve', '--foreground', '--host', '127.0.0.1', '--port', '3210']);
     assert.equal(plan.env.OPENCHAMBER_UI_PASSWORD, password);
     assert.equal(plan.cwd, paths.workspace);
     assert.equal(await readFile(join(root, 'version-checked'), 'utf8'), 'profile ready before execution');
