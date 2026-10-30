@@ -36,6 +36,11 @@ export async function runtimePaths(mode = process.env.TWINCAT_ASSISTANT_RUNTIME)
     }
     return { opencode: path(receipt.opencode.path), openchamber: path(receipt.openchamber.path), sourceContract: 1 };
   }
-  return { opencode: join(root, 'upstream/node_modules/@opencode/cli/bin', process.platform === 'win32' ? 'opencode.exe' : 'opencode'),
+  const cli = join(root, 'upstream/node_modules/@opencode/cli');
+  // The pinned package installs its declared bin target on every platform; its
+  // .exe suffix is also used for the Linux/macOS native binary, not just Windows.
+  const binary = JSON.parse(await readFile(join(cli, 'package.json'), 'utf8')).bin?.opencode;
+  if (!['./bin/opencode', './bin/opencode.exe'].includes(binary)) throw new Error('Unexpected OpenCode binary declaration');
+  return { opencode: resolve(cli, binary),
     openchamber: join(root, 'upstream/node_modules/@openchamber/web/bin/cli.js'), sourceContract: 0 };
 }

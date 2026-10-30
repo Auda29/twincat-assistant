@@ -76,12 +76,13 @@ test('operator entry refuses a mismatched Chat version before serving and keeps 
     await initializeState(root, {});
     const chamber = join(parent, 'wrong-version.mjs');
     const marker = join(parent, 'served');
-    await writeFile(chamber, `import { writeFileSync } from 'node:fs'; if (process.argv.includes('--version')) console.log('9.9.9'); else writeFileSync(${JSON.stringify(marker)}, 'served');`);
+    await writeFile(chamber, `import { writeFileSync } from 'node:fs'; if (process.argv.includes('--version')) { writeFileSync(${JSON.stringify(marker + '.version')}, 'probed'); console.log('9.9.9'); } else writeFileSync(${JSON.stringify(marker)}, 'served');`);
     const runtime = await runtimePaths('distribution');
     await assert.rejects(capture(process.execPath, [resolve('src/cli.mjs'), 'start', '--state', root, '--opencode', runtime.opencode, '--openchamber', chamber], {
       windowsHide: true, cwd: parent, timeout: 30000,
       env: { ...process.env, OPENCHAMBER_UI_PASSWORD: password, TWINCAT_ASSISTANT_RUNTIME: 'ignored-for-two-operator-paths' },
     }), error => error.code === 1 && error.stdout === '' && error.stderr === 'Assistant command failed. Check command options, regular settings files, state integrity and documented prerequisites.\n');
+    assert.equal(await readFile(marker + '.version', 'utf8'), 'probed', 'the Core gate passed and the mismatched Chat was actually probed');
     await assert.rejects(lstat(marker), { code: 'ENOENT' });
     await assert.rejects(lstat(join(root, 'launcher.lock')), { code: 'ENOENT' });
   } finally { await rm(parent, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }

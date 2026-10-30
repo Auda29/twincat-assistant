@@ -224,7 +224,9 @@ geben die Eingänge den Plan an den unveränderten Supervisor weiter.
 Die unterschiedlichen Eingänge, Rückmeldungen und Abbruchsignale bleiben an
 ihrer jeweiligen Grenze. Der CLI normalisiert seine Operator-Binary-Pfade wie
 bisher über `realpath`; der native Eingang verwendet die vom Runtime-Receipt
-gewählten regulären Dateien. Die native Portprüfung und MCP-Einrichtung bleiben
+gewählten regulären Dateien. Die Referenzdistribution verwendet den geprüften
+`bin.opencode`-Pfad ihres Paketmanifests, dessen `.exe`-Suffix bei der gepinnten
+Version auch unter Linux und macOS gilt. Die native Portprüfung und MCP-Einrichtung bleiben
 vor der gemeinsamen Vorbereitung, ihre 65-Sekunden-Bereitschaftsfrist beginnt
 weiterhin erst nach der Versionsprüfung. Es gibt keinen neuen Gesamt-Timeout.
 
