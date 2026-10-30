@@ -156,10 +156,16 @@ namespace TwinCatAssistant.Native
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_disposed || _browser.CoreWebView2 == null || !Allowed(_browser.CoreWebView2.Source)) return null;
             var serializer = new JavaScriptSerializer();
-            // The adapter can finish before React has mounted the chat. Wait for
-            // the pinned chat/empty-chat markup as well before revealing it.
+            // Operational readiness lets automation select/bind the project.
+            // Presentation additionally waits for that selection's committed
+            // history, not just an input field from the previous selection.
+            // Do not await animation frames while WebView2 is hidden: the
+            // original timeline settles its geometry when rendering resumes.
             var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify((()=>{const s=window.__twinCatChat?.state() ?? {version:1,ready:false};"
-                + "return {...s,ready:s.ready && (!s.authenticated || !!document.querySelector('[data-testid=\"chat-input\"],.oc-draft-center'))};})())");
+                + "const mounted=!!document.querySelector('[data-testid=\"chat-input\"],.oc-draft-center');"
+                + "const loading=!!document.querySelector('#initial-loading,[data-chat-hydration-skeleton]');"
+                + "return {...s,ready:s.ready && (!s.authenticated || mounted),"
+                + "presentationReady:s.presentationReady === true && mounted && !loading};})())");
             if (raw == null || raw.Length > 12000) return null;
             var json = serializer.Deserialize<string>(raw);
             return serializer.Deserialize<ChatSelection>(json);
@@ -199,6 +205,7 @@ namespace TwinCatAssistant.Native
             var metadata = CanPromptCurrentChat() && !_chatBinding.IsGeneral ? new {
                 project = ProjectName(_chatProject.ProjectFile), @object = active?.ObjectName,
                 treePath = active?.Identity?.TreePath, sourceKind = active?.SourceKind,
+                objectKind = active?.ObjectKind, owner = active?.OwnerName, member = active?.MemberPath,
                 reference = active == null ? null : ChatContextPolicy.ReferenceId(active)
             } : null;
             var permission = CanPromptCurrentChat() ? new { sessionId = selection.sessionId, selection.epoch, selection.documentId,
@@ -254,7 +261,7 @@ namespace TwinCatAssistant.Native
                 }
                 var provider = ChatContextPolicy.ProviderToEnable(_chatSelection);
                 if (provider != null && CanPromptCurrentChat() && _consentAttempted.Add(provider)) { await AllowProviderAsync(provider); return; }
-                if (_chatPreferences.AutoAttach && HasCurrentChatBinding() && _chatActive != null)
+                if (_chatPreferences.AutoAttach && HasCurrentChatBinding() && _chatActive != null && !_chatSelection.manualAttachmentPending)
                 {
                     var revision = ChatContextPolicy.Revision(_chatActive);
                     var attempt = _chatSelection.sessionId + "\0" + revision;
@@ -357,7 +364,8 @@ namespace TwinCatAssistant.Native
             var allowed = _chatSelection?.allowedProviders ?? new string[0];
             var connected = _chatSelection?.providers ?? new ChatProviderChoice[0];
             var servers = _chatSelection?.mcp ?? new ChatMcpStatus[0];
-            _mcpStatus.Text = "MCP: " + (servers.Length == 0 ? "noch nicht eingerichtet oder noch nicht verbunden."
+            _mcpStatus.Text = (_chatSelection?.mcpObservation?.stale == true ? "MCP-Status wird geprüft. Letzter bestätigter Stand: " : "MCP: ")
+                + (servers.Length == 0 ? "noch nicht eingerichtet oder noch nicht verbunden."
                 : string.Join("; ", servers.Select(server => (server.name == "knowledge" ? "Knowledge" : "TwinCAT") + ": "
                     + (server.status == "connected" ? "verbunden" : server.status == "pending" ? "verbindet" : "nicht verfügbar"))))
                 + (_mcpEnabled ? " Projektwerkzeuge lesen gespeicherte Dateien. "
@@ -491,7 +499,8 @@ namespace TwinCatAssistant.Native
                 // automatic reconnects remain, a failed state shows as connecting.
                 var live = McpState("knowledge");
                 if (McpFailed(live) && !(live == "failed" && KnowledgeRetrying())) { knowledgeStatus = "Getrennt"; knowledgeTone = "Error"; }
-                else if (KnowledgeConnected() && !McpFailed(live)) { knowledgeStatus = "Bereit"; knowledgeTone = "Success"; }
+                else if (KnowledgeConnected()) { knowledgeStatus = "Bereit"; knowledgeTone = "Success"; }
+                else if (live == "unknown") { knowledgeStatus = "Status offen"; knowledgeTone = "Neutral"; }
                 else { knowledgeStatus = "Verbindet"; knowledgeTone = "Neutral"; }
             }
             MenuRow("book", "Wissenssuche", knowledgeDetail, true, () => { ShowKnowledgeSetup(); return Task.CompletedTask; },
@@ -603,7 +612,11 @@ namespace TwinCatAssistant.Native
             try { _chatPreferences.Save(); } catch { Notify("Einstellung konnte nicht gespeichert werden; sie gilt bis zum Schließen der IDE.", "warning"); }
             _autoAttachedKey = null;
             if (_chatPreferences.AutoAttach) Notify("Der aktive Baustein wird jetzt automatisch angehängt, sobald er sich ändert. Erst Absenden überträgt ihn.");
-            else Notify("Automatisches Anhängen ist aus. Bausteine nur noch über Anhängen freigeben.");
+            else
+            {
+                await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat?.clearFollowing()");
+                Notify("Automatisches Anhängen ist aus. Der automatisch folgende Anhang wurde entfernt; manuelle Anhänge bleiben erhalten.");
+            }
             await PollChatSelectionAsync();
         }
 
@@ -914,6 +927,11 @@ namespace TwinCatAssistant.Native
                 var revision = ChatContextPolicy.Revision(snapshot);
                 var documentGeneration = _chatDocumentGeneration;
                 var selection = await ReadChatSelectionAsync();
+                if (auto && selection?.manualAttachmentPending == true)
+                {
+                    _autoAttachedKey = null; // Resume when the original composer consumes the manual item.
+                    throw new InvalidOperationException("Ein manueller Anhang wird noch verarbeitet.");
+                }
                 if (selection?.IsSelected != true || !SameDirectory(selection.directory, _projectWorkspace)
                     || !_chatBinding.Matches(snapshot.Identity, _chatIdeInstance, _origin.AbsoluteUri, selection.sessionId))
                     throw new InvalidOperationException("Chat-Zuordnung geändert. Kein Quelltext angehängt.");
@@ -928,7 +946,9 @@ namespace TwinCatAssistant.Native
                     item = new { providerId = "twincat-assistant", id = auto ? ChatContextPolicy.ActiveReferenceId : ChatContextPolicy.ReferenceId(snapshot),
                         title = snapshot.ObjectName + " / " + System.IO.Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile),
                         url = _origin.AbsoluteUri, text = ChatContextPolicy.AttachmentText(snapshot),
-                        data = new { revision, reference = ChatContextPolicy.ReferenceId(snapshot), sourceKind = snapshot.SourceKind, dirty = snapshot.Dirty?.State } } };
+                        data = new { revision, reference = ChatContextPolicy.ReferenceId(snapshot), mode = auto ? "following" : "manual",
+                            objectKind = snapshot.ObjectKind, owner = snapshot.OwnerName, member = snapshot.MemberPath,
+                            sourceKind = snapshot.SourceKind, dirty = snapshot.Dirty?.State } } };
                 var permission = new { request.sessionId, request.epoch, request.documentId, request.contextKey };
                 var outcome = await _browser.CoreWebView2.ExecuteScriptAsync("(()=>{try{if(!window.__twinCatChat.permit(" + serializer.Serialize(permission)
                     + "))return false;window.__twinCatChat.attach(" + serializer.Serialize(request) + ");return true;}catch{return false;}})()");

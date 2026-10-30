@@ -197,6 +197,16 @@ try {
         (Field '_browser').Visibility -eq [Windows.Visibility]::Visible -and
         (Field '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'hidden WebView initializes and authenticates, then reveals chat and bar together'
     Assert-Integration (Field '_attachPouButton').IsEnabled 'opening a POU creates and binds its project chat automatically'
+    if ((JS '!!window.__twinCatSource') -eq 'true') {
+        JS 'window.__fixturePresentation=window.__twinCatSource.presentationReady;window.__twinCatSource.presentationReady=()=>false' | Out-Null
+        $taskControl.GetType().GetMethod('ResetLoading',$taskFlags).Invoke($taskControl,@())
+        Invoke-Chat 'PollChatSelectionAsync'
+        Assert-Integration ((Field '_chatAdapterReady') -and
+            (Field '_browser').Visibility -eq [Windows.Visibility]::Hidden -and
+            (Field '_splash').Visibility -eq [Windows.Visibility]::Visible) 'authenticated mounted chat still waits for committed history readiness'
+        JS 'window.__twinCatSource.presentationReady=window.__fixturePresentation;delete window.__fixturePresentation' | Out-Null
+        Wait-Native { (Field '_browser').Visibility -eq [Windows.Visibility]::Visible } 'history readiness releases startup presentation'
+    }
     # Simulate the gap between adapter installation and React mounting its chat.
     # Keep the real adapter/authentication alive; only withhold the UI markers.
     # Pause the health poll so a poll already in flight cannot report the old DOM.
@@ -268,7 +278,8 @@ try {
     Assert-Integration ((Field '_bannerText').Text.Contains('Modellanbieter') -and (Field '_banner').Visibility -eq [Windows.Visibility]::Visible) 'missing provider is explained with one action'
     JS "window.__fixtureProviderConnected=false;fetch('/api/integration/openai/connect/key',{method:'POST',headers:{'content-type':'application/json','x-opencode-directory':encodeURIComponent(window.__twinCatChat.state().directory),'x-opencode-directory-encoding':'uri'},body:JSON.stringify({key:'synthetic-not-a-real-api-key'})}).then(r=>window.__fixtureProviderConnected=r.status===204)" | Out-Null
     Wait-JS 'window.__fixtureProviderConnected'
-    Wait-Native { @((Field '_chatSelection').allowedProviders) -contains 'openai' -and -not (Field '_chatActionPending') -and (Field '_modelStatus').Text.Contains('(freigegeben)') } 'automatic provider enablement' 60
+    Wait-Native { @((Field '_chatSelection').allowedProviders) -contains 'openai' -and -not (Field '_chatActionPending') -and
+        (JS 'window.__twinCatPolicy') -eq '"ready"' -and (Field '_modelStatus').Text.Contains('(freigegeben)') } 'automatic provider enablement and completed policy readback' 60
     Assert-Integration ((Field '_modelStatus').Text.Contains('(freigegeben)') -and ((Field '_banner').Visibility -ne [Windows.Visibility]::Visible -or -not (Field '_bannerText').Text.Contains('Noch kein Modellanbieter'))) 'connecting a provider in OpenChamber enables it automatically and is read back'
     if ($taskMissingCorpus) {
         Assert-Integration ((Field '_banner').Visibility -eq [Windows.Visibility]::Visible -and (Field '_bannerText').Text.Contains('Beckhoff-Hilfe')) 'an unconfigured documentation search offers native setup without blocking saved-project tools'
@@ -288,9 +299,27 @@ try {
         Wait-Native { (Field '_knowledgeBusy') } 'background knowledge setup starts'
         Assert-Integration ($taskControl.GetType().GetMethod('CanPromptCurrentChat',$taskFlags).Invoke($taskControl,@())) 'chat remains usable during knowledge indexing'
         Wait-Native { -not (Field '_knowledgeBusy') -and (Field '_knowledgeState').ready } 'completed setup and automatic knowledge reconnection' 180
-        Assert-Integration ((Field '_knowledgeText').Text.Contains('Wissenssuche bereit') -and (Field '_knowledgeText').Text.Contains('Deutsch')) 'native setup reports the real ready state and language'
+        Wait-Native { $taskControl.GetType().GetMethod('KnowledgeConnected',$taskFlags).Invoke($taskControl,@()) } 'live MCP catalog confirms knowledge readiness'
+        Assert-Integration ((Field '_knowledgeText').Text.Contains('Dokumentation bereit') -and (Field '_knowledgeText').Text.Contains('Deutsch')) 'native setup reports the real ready state and language'
         Assert-Integration ((Field '_chatSelection').sessionId -eq $taskSessionBeforeKnowledge -and (Field '_knowledgeConnectionKey')) 'knowledge activation keeps the existing project conversation'
         $taskMissingCorpus=$false
+        JS 'window.__fixtureFetch=window.fetch;window.__fixtureProviderFailures=0;window.fetch=(url,options)=>{if(String(url)==="/api/integration"){window.__fixtureProviderFailures++;return Promise.resolve(new Response("",{status:503}))}return window.__fixtureFetch(url,options)}' | Out-Null
+        Wait-JS 'window.__fixtureProviderFailures>0 && window.__twinCatChat.state().mcpObservation.observed && !window.__twinCatChat.state().mcpObservation.stale'
+        Invoke-Chat 'PollChatSelectionAsync'
+        Assert-Integration ($taskControl.GetType().GetMethod('KnowledgeConnected',$taskFlags).Invoke($taskControl,@())) 'provider metadata failure does not erase a successful knowledge connection read'
+        $taskRetriesBefore = Field '_knowledgeRetries'
+        JS 'window.__fixtureReconnects=0;window.fetch=(url,options)=>{const p=String(url);if(p==="/api/mcp")return Promise.resolve(new Response("",{status:503}));if(p.includes("/mcp/knowledge/"))window.__fixtureReconnects++;return window.__fixtureFetch(url,options)}' | Out-Null
+        Wait-JS 'window.__twinCatChat.state().mcpObservation.stale'
+        Invoke-Chat 'PollChatSelectionAsync'
+        Assert-Integration ((JS 'window.__twinCatChat.state().mcp.some(s=>s.name==="knowledge"&&s.status==="connected")') -eq 'true' -and
+            (Field '_knowledgeText').Text.Contains('Dokumentation bereit') -and
+            (Field '_knowledgeText').Text.Contains('Verbindungsstatus wird') -and
+            (Field '_knowledgeRetries') -eq $taskRetriesBefore) 'failed catalog read keeps the index ready and marks the last connection observation stale without retrying'
+        Await-Task ($taskControl.GetType().GetMethod('RefreshKnowledgeAsync',$taskFlags).Invoke($taskControl,[object[]]@($true))) | Out-Null
+        Assert-Integration ((JS 'window.__fixtureReconnects') -eq '0') 'refreshing the prepared index status does not disconnect or reconnect the MCP'
+        JS 'window.fetch=window.__fixtureFetch;delete window.__fixtureFetch' | Out-Null
+        Wait-JS '!window.__twinCatChat.state().mcpObservation.stale'
+        Wait-Native { $taskControl.GetType().GetMethod('KnowledgeConnected',$taskFlags).Invoke($taskControl,@()) } 'fresh knowledge observations recover after a transient catalog outage'
         (Field '_knowledgePanel').Visibility=[Windows.Visibility]::Collapsed
     }
     JS "(window.__twinCatSource?Promise.resolve({l:window.__twinCatSource.stores.config}):import('/assets/useAppFontEffects-DC1U1Z6i.js')).then(m=>{window.__fixtureCatalog=()=>m.l.getState().providers.map(p=>({id:p.id,count:p.models.length}));window.__fixtureCatalogDetails=()=>({active:m.l.getState().activeDirectoryKey,selected:window.__twinCatChat.state().directory,providers:window.__fixtureCatalog(),snapshots:Object.entries(m.l.getState().directoryScoped).map(([key,v])=>({key,providers:v.providers.map(p=>p.id)}))});})" | Out-Null
@@ -399,8 +428,35 @@ try {
     Assert-Integration ($taskAutoChip.id -eq 'Aktiver Baustein' -and $taskAutoChip.reference.StartsWith('FB_Pump@PLC_A#') -and
         (JS '[...document.querySelectorAll("form div[title]")].filter(e=>e.title.includes("FB_Motor")).length===0') -eq 'true') 'switching POUs replaces the automatically attached chip in place instead of adding one'
     Assert-Integration ((Field '_attachLabel').Text -eq 'Vorgemerkt' -and (Field '_historyButton').IsEnabled) 'automatic attachment leaves the bar enabled and reports the active POU as attached'
+    if ((JS '!!window.__twinCatSource') -eq 'true') {
+        Wait-JS '[...document.querySelectorAll("button")].some(b=>b.textContent.trim()==="Beibehalten")'
+        JS '[...document.querySelectorAll("button")].find(b=>b.textContent.trim()==="Beibehalten").click()' | Out-Null
+        Wait-Native { @((Field '_chatSelection').attachments | Where-Object {$_.mode -eq 'manual' -and $_.title -eq 'FB_Pump / PLC_A'}).Count -eq 1 } 'keep the displayed automatic revision as a manual snapshot'
+        Set-Snapshot 'PLC_A' 'bRun := TRUE; // following another editor' 'FB_Valve'
+        Wait-Native { @((Field '_chatSelection').attachments).Count -eq 2 -and @((Field '_chatSelection').attachments | Where-Object {$_.mode -eq 'following' -and $_.title -eq 'FB_Valve / PLC_A'}).Count -eq 1 } 'automatic context follows the next editor while preserving the kept manual snapshot'
+        Assert-Integration ((JS 'document.body.innerText.includes("Automatisch") && document.body.innerText.includes("Manuell")') -eq 'true') 'the actual composer visibly distinguishes manual and automatic references'
+        foreach ($taskMemberCase in @(@('Action','Reset','ACT'),@('Method','Run','METH'),@('Property','Speed','PROP'),@('Get','Speed.Get','GET'),@('Set','Speed.Set','SET'))) {
+            Set-Snapshot 'PLC_A' 'bRun := FALSE; // synthetic member implementation'
+            $taskOwnerIdentity=$global:taskIntegrationSnapshot.Identity
+            $taskMemberIdentity=$taskOwnerIdentity.GetType().GetConstructor([type[]]@([int],[string],[string],[string],[string]))
+            $global:taskIntegrationSnapshot.Identity=$taskMemberIdentity.Invoke([object[]]@([int]$PID,$taskOwnerIdentity.SolutionFile,$taskOwnerIdentity.ProjectFile,($taskOwnerIdentity.DocumentMoniker+';FB_Motor.'+$taskMemberCase[1]),($taskOwnerIdentity.TreePath+'^'+$taskMemberCase[1].Replace('.','^'))))
+            $global:taskIntegrationSnapshot.ObjectName='FB_Motor.'+$taskMemberCase[1]
+            $global:taskIntegrationSnapshot.OwnerName='FB_Motor'
+            $global:taskIntegrationSnapshot.MemberPath=$taskMemberCase[1]
+            $global:taskIntegrationSnapshot.ObjectKind=$taskMemberCase[0]
+            $global:taskIntegrationSnapshot.Declaration=$taskMemberCase[0]+' '+$taskMemberCase[1]
+            $taskControl.GetType().GetMethod('RenderContext',$taskFlags).Invoke($taskControl,[object[]]@($global:taskIntegrationSnapshot,$null))
+            Wait-Native { (Field '_objectName').Text -eq ('FB_Motor.'+$taskMemberCase[1]) -and
+                @((Field '_chatSelection').attachments | Where-Object {$_.mode -eq 'following' -and $_.title -eq ('FB_Motor.'+$taskMemberCase[1]+' / PLC_A')}).Count -eq 1 } ('attach exact '+$taskMemberCase[0]+' context')
+            Assert-Integration ((Field '_kindText').Text -eq $taskMemberCase[2] -and @((Field '_chatSelection').attachments).Count -eq 2) ('native '+$taskMemberCase[0]+' identity reaches the composer without replacing the manual snapshot')
+        }
+    }
     Set-Snapshot 'PLC_A' 'bRun := FALSE; // edited synthetic fixture'
     Invoke-Chat 'ToggleAutoAttachAsync'
+    if ((JS '!!window.__twinCatSource') -eq 'true') {
+        Wait-Native { @((Field '_chatSelection').attachments | Where-Object {$_.mode -eq 'following'}).Count -eq 0 } 'disabling following clears only its automatic slot'
+        Assert-Integration (@((Field '_chatSelection').attachments | Where-Object {$_.mode -eq 'manual' -and $_.title -eq 'FB_Pump / PLC_A'}).Count -eq 1) 'disabling automatic attachments preserves the manually kept snapshot'
+    }
     Assert-Integration (-not $taskPreferences.AutoAttach -and (Field '_banner').Visibility -eq [Windows.Visibility]::Visible -and
         (Field '_bannerText').Text.Contains('ist aus')) 'turning automatic attachment off shows its visible confirmation'
     (Field '_bannerDismiss').RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))

@@ -57,9 +57,8 @@ namespace TwinCatAssistant.Native
             if (_disposed) return;
             var failed = _setupMissing || _chatConnection.Phase == "failed";
             if (failed) _chatPresented = false;
-            else if (_chatConnection.PageLoaded && _chatAdapterReady
-                && (_chatSelection?.authenticated == true || _signInAttempts >= 3))
-                _chatPresented = true; // After automatic sign-in retries, allow manual login.
+            else if (_chatConnection.PageLoaded && _chatAdapterReady && CanPresentChat())
+                _chatPresented = true;
             var loading = !_chatPresented && !failed;
             _strip.Visibility = loading ? Visibility.Collapsed : Visibility.Visible;
             _splash.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
@@ -72,6 +71,18 @@ namespace TwinCatAssistant.Native
                 _splashRun.BeginAnimation(TranslateTransform.XProperty, animate ? new DoubleAnimation(-40, 140, TimeSpan.FromMilliseconds(1200))
                     { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } } : null);
             }
+        }
+
+        private bool CanPresentChat()
+        {
+            // After automatic sign-in retries, allow manual login. Do not wait
+            // for authenticated history on the sign-in screen itself.
+            if (_chatSelection?.authenticated != true) return _signInAttempts >= 3;
+            if (!_chatSelection.presentationReady || _chatActionPending) return false;
+            if (_chatProject == null) return !_chatSelection.IsSelected || CanPromptCurrentChat();
+            var key = _chatProject.SolutionFile + "\0" + _chatProject.ProjectFile + "\0" + _chatDocumentGeneration;
+            return _autoProjectKey == key && (HasCurrentChatBinding()
+                || ((!_mcpEnabled || _explicitGeneralRequested) && _chatBinding?.IsGeneral == true && CanPromptCurrentChat()));
         }
 
         private void OnChatReadinessTimeout(object sender, EventArgs args)

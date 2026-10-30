@@ -8,6 +8,7 @@ test('native MCP status discloses only reviewed server names and connection stat
     { name:'unreviewed', status:{status:'connected'} }]),
   [{name:'knowledge',status:'connected'},{name:'engineering',status:'failed'}]);
   assert.deepEqual(mcpStates(null),[]);
+  assert.deepEqual(mcpStates([{ name: 'knowledge', status: { status: 'new-runtime-state' } }]), [{ name: 'knowledge', status: 'unknown' }]);
 });
 
 function store(initial) {
@@ -215,7 +216,7 @@ test('a chip removed from the composer no longer counts as attached', () => {
   const { adapter, chips, stage } = composerFixture();
   stage('FB_A', 'rev-a');
   assert.equal(adapter.state().attachedRevision, 'rev-a');
-  assert.deepEqual(adapter.state().attachments, [{ id: 'FB_A', title: 'FB_A / PLC_A', revision: 'rev-a', reference: 'FB_A' }]);
+  assert.deepEqual(adapter.state().attachments, [{ id: 'FB_A', title: 'FB_A / PLC_A', revision: 'rev-a', reference: 'FB_A', mode: 'manual' }]);
   chips.splice(0, 1);
   assert.equal(adapter.state().attachedRevision, null);
   assert.deepEqual(adapter.state().attachments, []);
@@ -263,4 +264,46 @@ test('switching conversations forgets staged chips', () => {
   sessions.set({ currentSessionId: 'session-two' });
   assert.deepEqual(adapter.state().attachments, []);
   assert.equal(adapter.state().attachedObject, null);
+});
+
+test('operational adapter readiness precedes history presentation and MCP observations remain explicit', () => {
+  let presentationReady = false;
+  let observation = { directory: '/isolated', observed: true, stale: false };
+  const { adapter } = fixture({ source: { presentationReady: () => presentationReady, composer: () => ({ references: [] }) },
+    mcp: () => [{ name: 'knowledge', status: 'connected' }], mcpObservation: () => observation });
+  assert.equal(adapter.state().ready, true);
+  assert.equal(adapter.state().presentationReady, false);
+  presentationReady = true;
+  assert.equal(adapter.state().presentationReady, true);
+  observation = { ...observation, stale: true };
+  assert.equal(adapter.state().mcp[0].status, 'connected', 'last confirmed catalog is retained');
+  assert.equal(adapter.state().mcpObservation.stale, true, 'retained catalog is not represented as a fresh read');
+});
+
+test('automatic staging cannot overwrite an unconsumed manual item and can resume once consumed', () => {
+  const { adapter, input } = fixture();
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'one' };
+  adapter.permit(expected);
+  adapter.attach({ ...expected, item: { ...item, data: { mode: 'manual' } } });
+  const manual = input.getState().pendingGuestIssue;
+  const auto = { ...expected, auto: true, item: { ...item, id: 'Aktiver Baustein', data: { mode: 'following' } } };
+  assert.equal(adapter.state().manualAttachmentPending, true);
+  assert.throws(() => adapter.attach(auto), /manual attachment is still pending/);
+  assert.equal(input.getState().pendingGuestIssue, manual);
+  adapter.clearFollowing();
+  assert.equal(input.getState().pendingGuestIssue, manual, 'disabling following preserves pending manual source');
+  input.getState().setPendingGuestIssue(null);
+  adapter.attach(auto);
+  assert.equal(adapter.state().manualAttachmentPending, false);
+  assert.equal(adapter.state().attachments.at(-1).mode, 'following');
+});
+
+test('losing active context clears following references through the original composer without removing manual snapshots', () => {
+  let references = [{ id: 'manual', title: 'Kept', revision: 'old', mode: 'manual' },
+    { id: 'Aktiver Baustein', title: 'Current', revision: 'new', mode: 'following' }];
+  const source = { composer: () => ({ references }), setContext() {}, clearFollowing() { references = references.filter(item => item.mode !== 'following'); } };
+  const { adapter } = fixture({ source });
+  adapter.permit({ sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'one',
+    context: { project: 'PLC_A', object: null, treePath: null, sourceKind: null, reference: null } });
+  assert.deepEqual(adapter.state().attachments.map(item => item.id), ['manual']);
 });

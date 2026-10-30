@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace TwinCatAssistant.Native
 {
@@ -41,6 +42,9 @@ namespace TwinCatAssistant.Native
     {
         public ActiveEditorIdentity Identity { get; set; }
         public string ObjectName { get; set; }
+        public string ObjectKind { get; set; }
+        public string OwnerName { get; set; }
+        public string MemberPath { get; set; }
         public string Declaration { get; set; }
         public string Implementation { get; set; }
         public string SourceKind { get; set; }
@@ -48,6 +52,24 @@ namespace TwinCatAssistant.Native
         public DirtyAssessment Dirty { get; set; }
         public double ReadMilliseconds { get; set; }
         public long ContextGeneration { get; set; }
+    }
+
+    public static class ActiveEditorMemberPath
+    {
+        public static string[] Parse(string moniker, string owner)
+        {
+            var index = (moniker ?? "").IndexOf(';');
+            if (index < 0) return new string[0];
+            var names = moniker.Substring(index + 1).Split(new[] { '.', '/', '\\', '^' }, StringSplitOptions.None);
+            if (names.Length < 1 || names.Length > 3 || !string.Equals(names[0], owner, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The editor moniker does not identify this POU and member chain.");
+            foreach (var name in names)
+                if (!Regex.IsMatch(name, @"\A[\p{L}_][\p{L}\p{Nd}_]*\z", RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+                    throw new InvalidOperationException("The editor member identity is unsupported or ambiguous.");
+            var result = new string[names.Length - 1];
+            Array.Copy(names, 1, result, 0, result.Length);
+            return result;
+        }
     }
 
     // A generation changes even if the same path is closed and reopened. A read
@@ -94,6 +116,19 @@ namespace TwinCatAssistant.Native
                 if (text.StartsWith(pair[0], StringComparison.OrdinalIgnoreCase)
                     && (text.Length == pair[0].Length || !char.IsLetterOrDigit(text[pair[0].Length]) && text[pair[0].Length] != '_')) return pair[1];
             return "ST";
+        }
+
+        public static string BadgeKind(ActiveEditorSnapshot snapshot)
+        {
+            switch (snapshot?.ObjectKind)
+            {
+                case "Action": return "ACT";
+                case "Method": return "METH";
+                case "Property": return "PROP";
+                case "Get": return "GET";
+                case "Set": return "SET";
+                default: return Kind(snapshot?.Declaration);
+            }
         }
 
         public static ActiveEditorPresentation From(ActiveEditorSnapshot snapshot, string unavailableReason = null)

@@ -42,6 +42,12 @@ namespace TwinCatAssistant.Native
         public string name { get; set; }
         public string status { get; set; }
     }
+    public sealed class ChatMcpObservation
+    {
+        public string directory { get; set; }
+        public bool observed { get; set; }
+        public bool stale { get; set; }
+    }
     // A TwinCAT chip currently staged in the composer (reference ID and revision).
     public sealed class ChatAttachment
     {
@@ -49,18 +55,21 @@ namespace TwinCatAssistant.Native
         public string title { get; set; }
         public string revision { get; set; }
         public string reference { get; set; }
+        public string mode { get; set; }
     }
 
     public sealed class ChatSelection
     {
         public int version;
         public bool ready;
+        public bool presentationReady;
         public bool authenticated;
         public string sessionId;
         public string directory;
         public string documentId;
         public long epoch;
         public bool creating;
+        public bool manualAttachmentPending;
         public string attachedObject;
         public string attachedRevision;
         public ChatAttachment[] attachments;
@@ -73,6 +82,7 @@ namespace TwinCatAssistant.Native
         public string[] allowedProviders;
         public ChatTheme theme;
         public ChatMcpStatus[] mcp;
+        public ChatMcpObservation mcpObservation;
         public bool IsSelected { get { return version == 1 && ready && authenticated && ValidSession(sessionId) && Guid.TryParse(documentId, out _) && epoch >= 0; } }
         public static bool ValidSession(string value) { return value != null && Regex.IsMatch(value, @"\A[a-zA-Z0-9_:-]{1,160}\z"); }
     }
@@ -158,6 +168,8 @@ namespace TwinCatAssistant.Native
         {
             if (snapshot?.Identity == null) throw new InvalidOperationException("No active POU available.");
             var result = "TwinCAT context snapshot\nObject: " + snapshot.ObjectName
+                + "\nObject kind: " + (snapshot.ObjectKind ?? "POU") + "\nOwning POU: " + (snapshot.OwnerName ?? snapshot.ObjectName)
+                + "\nMember: " + (string.IsNullOrEmpty(snapshot.MemberPath) ? "POU body" : snapshot.MemberPath)
                 + "\nIDE PID: " + snapshot.Identity.IdeProcessId + "\nSolution: " + snapshot.Identity.SolutionFile
                 + "\nPLC project: " + snapshot.Identity.ProjectFile + "\nTree path: " + snapshot.Identity.TreePath
                 + "\nSource: " + snapshot.SourceKind + "\nChanges: " + (snapshot.Dirty?.State ?? "unknown")

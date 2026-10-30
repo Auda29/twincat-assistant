@@ -87,9 +87,12 @@ try {
     Assert-View ((Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Hidden) 'automatic sign-in keeps the chat hidden until authentication completes'
     $taskLoadingSelection.authenticated=$true
     $taskLoadingRender.Invoke($taskControl,@())
+    Assert-View ((Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Hidden) 'authentication without restored history keeps the splash visible'
+    $taskLoadingSelection.presentationReady=$true
+    $taskLoadingRender.Invoke($taskControl,@())
     Assert-View ((Get-ViewField '_strip').Visibility -eq [Windows.Visibility]::Visible -and
         (Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Visible -and
-        (Get-ViewField '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'authenticated readiness reveals the chat and bar together'
+        (Get-ViewField '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'authenticated presentation readiness reveals the chat and bar together'
     Set-ViewField '_chatAdapterReady' $false
     $taskLoadingRender.Invoke($taskControl,@())
     Assert-View ((Get-ViewField '_browser').Visibility -eq [Windows.Visibility]::Visible) 'a transient failed status poll does not flash the loading screen'
@@ -172,7 +175,7 @@ try {
         $taskKnowledgeState.phase='activating';$taskKnowledgeRender.Invoke($taskControl,@())
         Assert-View (-not (Get-ViewField '_knowledgeCancel').IsEnabled) 'atomic knowledge finalization cannot be interrupted by a late cancel'
         Set-ViewField '_knowledgeBusy' $false;$taskKnowledgeState.phase='ready';$taskKnowledgeState.ready=$true;$taskKnowledgeState.language='de';$taskKnowledgeState.topics=49970;$taskKnowledgeRender.Invoke($taskControl,@())
-        Assert-View ((Get-ViewField '_knowledgeText').Text.Contains('Dokumentation vorbereitet') -and -not (Get-ViewField '_knowledgeText').Text.Contains('Wissenssuche bereit')) 'a prepared index does not claim an established MCP connection'
+        Assert-View ((Get-ViewField '_knowledgeText').Text.Contains('Dokumentation bereit') -and -not (Get-ViewField '_knowledgeText').Text.Contains('Wissenssuche verbunden')) 'a prepared index does not claim an established MCP connection'
         Save-View 'knowledge-prepared-light'
         $taskSelection=[Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ChatSelection'))
         $taskSelection.version=1;$taskSelection.ready=$true;$taskSelection.authenticated=$true;$taskSelection.sessionId='view-session'

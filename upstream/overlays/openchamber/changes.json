@@ -1,18 +1,241 @@
 [
   {
     "file": "packages/web/src/main.tsx",
-    "changes": [["window.__OPENCHAMBER_RUNTIME_APIS__ = createConfiguredWebAPIs();", "window.__OPENCHAMBER_RUNTIME_APIS__ = createConfiguredWebAPIs();\n  window.__twinCatSourceReady = (async () => {\n    await getDesktopRelayRestoreReady();\n    await import('@openchamber/ui/lib/twincat/install');\n  })();\n  await window.__twinCatSourceReady;"]]
+    "changes": [
+      [
+        "window.__OPENCHAMBER_RUNTIME_APIS__ = createConfiguredWebAPIs();",
+        "window.__OPENCHAMBER_RUNTIME_APIS__ = createConfiguredWebAPIs();\n  window.__twinCatSourceReady = (async () => {\n    await getDesktopRelayRestoreReady();\n    await import('@openchamber/ui/lib/twincat/install');\n  })();\n  await window.__twinCatSourceReady;"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/chat/ChatContainer.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { publishTwinCatView } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "\tif (!currentSessionId && !draftOpen) {",
+        "    // Publish the committed main view, not the live selection ahead of its deferred render.\n    // Successful empty history and the existing load-error/retry surface are both settled views.\n    const twinCatViewReady = active && currentSessionId === liveSessionId\n        && currentSessionDirectory === liveSessionDirectory\n        && (currentSessionId\n            ? !draftOpen && !draftPresentationExiting && (hasRenderableSessionSnapshot || sessionMessageLoadState.status === 'error')\n            : draftOpen);\n    React.useLayoutEffect(() => {\n        if (pinned) return;\n        return publishTwinCatView(currentSessionId, currentSessionDirectory, twinCatViewReady);\n    }, [pinned, currentSessionId, currentSessionDirectory, twinCatViewReady]);\n\n\tif (!currentSessionId && !draftOpen) {"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/ui/OpenChamberLogo.tsx",
+    "changes": [
+      [
+        "  const logoFillColor = strokeColor;",
+        "  if (variant === 'splash') {\n    return (\n      <div className={`twincat-loading ${isAnimated ? 'twincat-loading-animated' : ''} ${className}`} role=\"status\" aria-label=\"TwinCAT Assistant\">\n        <div className=\"twincat-loading-mark\" aria-hidden=\"true\"><strong>TwinCAT</strong>{' '}<span>Assistant</span></div>\n        <div className=\"twincat-loading-track\" aria-hidden=\"true\"><span /></div>\n      </div>\n    );\n  }\n\n  const logoFillColor = strokeColor;"
+      ]
+    ]
   },
   {
     "file": "packages/ui/src/components/chat/ChatInput.tsx",
     "changes": [
-      ["import React from 'react';", "import React from 'react';\nimport { publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts } from '@/lib/twincat/twincat';"],
-      ["const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);", "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);\n    React.useEffect(() => {\n        if (columnPinned) return;\n        return publishTwinCatComposer(currentSessionId, linkedReferences);\n    }, [columnPinned, currentSessionId, linkedReferences]);"],
-      ["const queueRuntimeKey = getRuntimeKey();", "const twinCatQueuedContext = twinCatContextTexts(currentSessionId);\n        const queueRuntimeKey = getRuntimeKey();"],
-      ["syntheticTexts: syntheticParts.map((part) => part.text),", "syntheticTexts: [...twinCatQueuedContext, ...syntheticParts.map((part) => part.text)],"],
-      ["if (queuedOnly && autoReviewRunning) {", "const twinCatSubmittedContext = twinCatContextTexts(currentSessionId);\n        if (queuedOnly && autoReviewRunning) {"],
-      ["syntheticTexts: [\n                ...buildBtwSyntheticTexts", "syntheticTexts: [\n                ...(!isBtwActive && !queuedOnly && inputSnapshot.hasContent ? twinCatSubmittedContext : []),\n                ...buildBtwSyntheticTexts"],
-      ["recordLinkedReferences(linkTargetSessionId, linkTargetDirectory, linkedReferences);", "recordLinkedReferences(linkTargetSessionId, linkTargetDirectory, linkedReferences);\n                recordTwinCatSubmission(linkTargetSessionId, linkedReferences);"]
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts, twinCatAttachmentMode, keepTwinCatReference } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);",
+        "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);\n    React.useEffect(() => {\n        if (columnPinned) return;\n        return publishTwinCatComposer(currentSessionId, linkedReferences, () => {\n            setLinkedReferences(current => current.some(item => twinCatAttachmentMode(item) === 'following')\n                ? current.filter(item => twinCatAttachmentMode(item) !== 'following') : current);\n        });\n    }, [columnPinned, currentSessionId, linkedReferences]);"
+      ],
+      [
+        "const queueRuntimeKey = getRuntimeKey();",
+        "const twinCatQueuedContext = twinCatContextTexts(currentSessionId);\n        const queueRuntimeKey = getRuntimeKey();"
+      ],
+      [
+        "syntheticTexts: syntheticParts.map((part) => part.text),",
+        "syntheticTexts: [...twinCatQueuedContext, ...syntheticParts.map((part) => part.text)],"
+      ],
+      [
+        "if (queuedOnly && autoReviewRunning) {",
+        "const twinCatSubmittedContext = twinCatContextTexts(currentSessionId);\n        if (queuedOnly && autoReviewRunning) {"
+      ],
+      [
+        "syntheticTexts: [\n                ...buildBtwSyntheticTexts",
+        "syntheticTexts: [\n                ...(!isBtwActive && !queuedOnly && inputSnapshot.hasContent ? twinCatSubmittedContext : []),\n                ...buildBtwSyntheticTexts"
+      ],
+      [
+        "recordLinkedReferences(linkTargetSessionId, linkTargetDirectory, linkedReferences);",
+        "recordLinkedReferences(linkTargetSessionId, linkTargetDirectory, linkedReferences);\n                recordTwinCatSubmission(linkTargetSessionId, linkedReferences);"
+      ],
+      [
+        "const key = composerReferenceKey(reference);",
+        "const key = composerReferenceKey(reference);\n                const twinCatMode = twinCatAttachmentMode(reference);"
+      ],
+      [
+        "numberLabel={reference.thread === 'pull'",
+        "numberLabel={twinCatMode ? (\n                                    <span className={twinCatMode === 'following' ? 'text-primary' : undefined}\n                                        title={t(twinCatMode === 'following' ? 'chat.twincat.attachment.followingHint' : 'chat.twincat.attachment.manualHint')}>\n                                        {t(twinCatMode === 'following' ? 'chat.twincat.attachment.following' : 'chat.twincat.attachment.manual')}\n                                    </span>\n                                ) : reference.thread === 'pull'"
+      ],
+      [
+        "onReopenPicker={() => reopenGuestItem(reference)}",
+        "keep={twinCatMode === 'following' ? {\n                                    label: t('chat.twincat.attachment.keep'), hint: t('chat.twincat.attachment.keepHint'),\n                                    onClick: () => setLinkedReferences(current => keepTwinCatReference(current, reference)),\n                                } : undefined}\n                                onReopenPicker={() => reopenGuestItem(reference)}"
+      ]
+    ]
+  },
+  {
+    "file": "packages/web/index.html",
+    "changes": [
+      [
+        "          <svg width=\"120\" height=\"120\" viewBox=\"0 0 100 100\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"OpenChamber loading icon\">\n            <!-- Isometric cube: edge=48, centerY=50 -->\n            <!-- Points: top(50,2), left(8.432,26), right(91.568,26), center(50,50), bottomLeft(8.432,74), bottomRight(91.568,74), bottom(50,98) -->\n\n            <!-- Left face - base fill with stroke -->\n            <path d=\"M50 50 L8.432 26 L8.432 74 L50 98 Z\" fill=\"var(--splash-face-fill)\" stroke=\"var(--splash-stroke)\" stroke-width=\"2\" stroke-linejoin=\"round\"/>\n\n            <!-- Left face grid cells (4x4) with varying opacity -->\n            <path d=\"M50 50 L39.608 44 L39.608 56 L50 62 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.2\"/>\n            <path d=\"M39.608 44 L29.216 38 L29.216 50 L39.608 56 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.45\"/>\n            <path d=\"M29.216 38 L18.824 32 L18.824 44 L29.216 50 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.15\"/>\n            <path d=\"M18.824 32 L8.432 26 L8.432 38 L18.824 44 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.55\"/>\n            <path d=\"M50 62 L39.608 56 L39.608 68 L50 74 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.35\"/>\n            <path d=\"M39.608 56 L29.216 50 L29.216 62 L39.608 68 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.1\"/>\n            <path d=\"M29.216 50 L18.824 44 L18.824 56 L29.216 62 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.5\"/>\n            <path d=\"M18.824 44 L8.432 38 L8.432 50 L18.824 56 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.25\"/>\n            <path d=\"M50 74 L39.608 68 L39.608 80 L50 86 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.4\"/>\n            <path d=\"M39.608 68 L29.216 62 L29.216 74 L39.608 80 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.3\"/>\n            <path d=\"M29.216 62 L18.824 56 L18.824 68 L29.216 74 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.45\"/>\n            <path d=\"M18.824 56 L8.432 50 L8.432 62 L18.824 68 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.15\"/>\n            <path d=\"M50 86 L39.608 80 L39.608 92 L50 98 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.55\"/>\n            <path d=\"M39.608 80 L29.216 74 L29.216 86 L39.608 92 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.2\"/>\n            <path d=\"M29.216 74 L18.824 68 L18.824 80 L29.216 86 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.35\"/>\n            <path d=\"M18.824 68 L8.432 62 L8.432 74 L18.824 80 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.1\"/>\n\n            <!-- Right face - base fill with stroke -->\n            <path d=\"M50 50 L91.568 26 L91.568 74 L50 98 Z\" fill=\"var(--splash-face-fill)\" stroke=\"var(--splash-stroke)\" stroke-width=\"2\" stroke-linejoin=\"round\"/>\n\n            <!-- Right face grid cells (4x4) with varying opacity -->\n            <path d=\"M50 50 L60.392 44 L60.392 56 L50 62 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.3\"/>\n            <path d=\"M60.392 44 L70.784 38 L70.784 50 L60.392 56 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.15\"/>\n            <path d=\"M70.784 38 L81.176 32 L81.176 44 L70.784 50 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.45\"/>\n            <path d=\"M81.176 32 L91.568 26 L91.568 38 L81.176 44 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.25\"/>\n            <path d=\"M50 62 L60.392 56 L60.392 68 L50 74 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.5\"/>\n            <path d=\"M60.392 56 L70.784 50 L70.784 62 L60.392 68 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.35\"/>\n            <path d=\"M70.784 50 L81.176 44 L81.176 56 L70.784 62 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.1\"/>\n            <path d=\"M81.176 44 L91.568 38 L91.568 50 L81.176 56 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.4\"/>\n            <path d=\"M50 74 L60.392 68 L60.392 80 L50 86 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.2\"/>\n            <path d=\"M60.392 68 L70.784 62 L70.784 74 L60.392 80 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.55\"/>\n            <path d=\"M70.784 62 L81.176 56 L81.176 68 L70.784 74 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.3\"/>\n            <path d=\"M81.176 56 L91.568 50 L91.568 62 L81.176 68 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.15\"/>\n            <path d=\"M50 86 L60.392 80 L60.392 92 L50 98 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.45\"/>\n            <path d=\"M60.392 80 L70.784 74 L70.784 86 L60.392 92 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.25\"/>\n            <path d=\"M70.784 74 L81.176 68 L81.176 80 L70.784 86 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.4\"/>\n            <path d=\"M81.176 68 L91.568 62 L91.568 74 L81.176 80 Z\" fill=\"var(--splash-cell-fill)\" opacity=\"0.2\"/>\n\n            <!-- Top face - open (no fill), only stroke -->\n            <path d=\"M50 2 L8.432 26 L50 50 L91.568 26 Z\" fill=\"none\" stroke=\"var(--splash-stroke)\" stroke-width=\"2\" stroke-linejoin=\"round\"/>\n\n            <!-- OpenCode logo on top face -->\n            <g transform=\"matrix(0.866, 0.5, -0.866, 0.5, 50, 26) scale(0.75)\">\n              <path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M-16 -20 L16 -20 L16 20 L-16 20 Z M-8 -12 L-8 12 L8 12 L8 -12 Z\" fill=\"var(--splash-logo-fill)\"/>\n              <path d=\"M-8 -4 L8 -4 L8 12 L-8 12 Z\" fill=\"var(--splash-logo-fill)\" fill-opacity=\"0.4\"/>\n            </g>\n          </svg>",
+        "          <div class=\"twincat-loading twincat-loading-animated\" role=\"status\" aria-label=\"TwinCAT Assistant\">\n            <div class=\"twincat-loading-mark\" aria-hidden=\"true\"><strong>TwinCAT</strong> <span>Assistant</span></div>\n            <div class=\"twincat-loading-track\" aria-hidden=\"true\"><span></span></div>\n          </div>"
+      ],
+      [
+        "--splash-background-dark: #151313;",
+        "--splash-background-dark: #1b1e24;"
+      ],
+      [
+        "--splash-stroke-dark: #CECDC3;",
+        "--splash-stroke-dark: #e3e7ee;"
+      ],
+      [
+        "--splash-background-light: #FFFCF0;",
+        "--splash-background-light: #fbfcfe;"
+      ],
+      [
+        "--splash-stroke-light: #100F0F;",
+        "--splash-stroke-light: #1c2433;"
+      ],
+      [
+        "  </head>",
+        "    <style>\n      .twincat-loading { display: flex; flex-direction: column; align-items: center; max-width: 100%; padding: 24px; color: var(--surface-foreground, var(--splash-stroke)); }\n      .twincat-loading-mark { font-family: Bahnschrift, \"Segoe UI\", sans-serif; font-size: clamp(20px, 8vw, 30px); line-height: 1.2; white-space: nowrap; }\n      .twincat-loading-mark strong { font-weight: 600; }\n      .twincat-loading-mark > span { font-weight: 300; color: var(--surface-muted-foreground, var(--splash-stroke)); }\n      .twincat-loading-track { width: 140px; height: 2px; overflow: hidden; margin-top: 14px; background: var(--interactive-border, color-mix(in srgb, var(--splash-stroke) 20%, transparent)); }\n      .twincat-loading-track > span { display: block; width: 40px; height: 2px; transform: translateX(50px); background: var(--primary-base, var(--twincat-loading-accent)); }\n      :root { --twincat-loading-accent: #3d8bfd; }\n      html[data-splash-variant='light'] { --twincat-loading-accent: #1e63b8; }\n      .twincat-loading-animated .twincat-loading-track > span { animation: twincat-loading-run 1.2s ease-in-out infinite; }\n      @keyframes twincat-loading-run { from { transform: translateX(-40px); } to { transform: translateX(140px); } }\n      @media (prefers-reduced-motion: reduce) { .twincat-loading-animated .twincat-loading-track > span { animation: none; } }\n    </style>\n  </head>"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/chat/composer/ui/LinkedReferenceRow.tsx",
+    "changes": [
+      [
+        "import { useI18n } from '@/lib/i18n';",
+        "import { useI18n } from '@/lib/i18n';\nimport { Button } from '@/components/ui/button';"
+      ],
+      [
+        "    onRemove: () => void;",
+        "    onRemove: () => void;\n    keep?: { label: string; hint: string; onClick: () => void };"
+      ],
+      [
+        "            <span className=\"flex items-center flex-shrink-0\">",
+        "            <span className=\"flex items-center flex-shrink-0\">\n                {props.keep ? (\n                    <Button type=\"button\" variant=\"ghost\" size=\"xs\" onClick={props.keep.onClick}\n                        title={props.keep.hint} aria-label={props.keep.hint}>\n                        {props.keep.label}\n                    </Button>\n                ) : null}"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/en.ts",
+    "changes": [
+      [
+        "\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n",
+        "\n  'chat.twincat.attachment.following': \"Automatic\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Follows the active editor. Switching objects replaces this attachment.\",\n  'chat.twincat.attachment.manualHint': \"Kept manually. Switching objects does not change this snapshot.\",\n  'chat.twincat.attachment.keep': \"Keep\",\n  'chat.twincat.attachment.keepHint': \"Keep this revision as a manual attachment.\",\n\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/de.ts",
+    "changes": [
+      [
+        "\n};\n",
+        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Manuell\",\n  'chat.twincat.attachment.followingHint': \"Folgt dem aktiven Editor. Ein Objektwechsel ersetzt diesen Anhang.\",\n  'chat.twincat.attachment.manualHint': \"Manuell beibehalten. Ein Objektwechsel ändert diesen Snapshot nicht.\",\n  'chat.twincat.attachment.keep': \"Beibehalten\",\n  'chat.twincat.attachment.keepHint': \"Diesen Stand als manuellen Anhang beibehalten.\",\n\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/es.ts",
+    "changes": [
+      [
+        "\n};\n",
+        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Sigue al editor activo. Al cambiar de objeto se reemplaza este adjunto.\",\n  'chat.twincat.attachment.manualHint': \"Conservado manualmente. Cambiar de objeto no modifica esta instantánea.\",\n  'chat.twincat.attachment.keep': \"Conservar\",\n  'chat.twincat.attachment.keepHint': \"Conservar esta revisión como adjunto manual.\",\n\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/fr.ts",
+    "changes": [
+      [
+        "\n} as const;\n",
+        "\n  'chat.twincat.attachment.following': \"Automatique\",\n  'chat.twincat.attachment.manual': \"Manuel\",\n  'chat.twincat.attachment.followingHint': \"Suit l’éditeur actif. Un changement d’objet remplace cette pièce jointe.\",\n  'chat.twincat.attachment.manualHint': \"Conservé manuellement. Un changement d’objet ne modifie pas cet instantané.\",\n  'chat.twincat.attachment.keep': \"Conserver\",\n  'chat.twincat.attachment.keepHint': \"Conserver cette version comme pièce jointe manuelle.\",\n\n} as const;\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/ja.ts",
+    "changes": [
+      [
+        "\n};\n",
+        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"アクティブなエディターに追従します。オブジェクトを切り替えると、この添付は置き換わります。\",\n  'chat.twincat.attachment.manualHint': \"手動で保持されています。オブジェクトを切り替えても、このスナップショットは変わりません。\",\n  'chat.twincat.attachment.keep': \"保持\",\n  'chat.twincat.attachment.keepHint': \"この版を手動の添付として保持します。\",\n\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/ko.ts",
+    "changes": [
+      [
+        "\n};\n",
+        "\n  'chat.twincat.attachment.following': \"자동\",\n  'chat.twincat.attachment.manual': \"수동\",\n  'chat.twincat.attachment.followingHint': \"활성 편집기를 따릅니다. 개체를 전환하면 이 첨부가 교체됩니다.\",\n  'chat.twincat.attachment.manualHint': \"수동으로 유지됩니다. 개체를 전환해도 이 스냅샷은 바뀌지 않습니다.\",\n  'chat.twincat.attachment.keep': \"유지\",\n  'chat.twincat.attachment.keepHint': \"이 버전을 수동 첨부로 유지합니다.\",\n\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/nl.ts",
+    "changes": [
+      [
+        "\n} as const;\n",
+        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Handmatig\",\n  'chat.twincat.attachment.followingHint': \"Volgt de actieve editor. Bij een ander object wordt deze bijlage vervangen.\",\n  'chat.twincat.attachment.manualHint': \"Handmatig bewaard. Bij een ander object blijft deze momentopname ongewijzigd.\",\n  'chat.twincat.attachment.keep': \"Bewaren\",\n  'chat.twincat.attachment.keepHint': \"Deze versie als handmatige bijlage bewaren.\",\n\n} as const;\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/pl.ts",
+    "changes": [
+      [
+        "\n} as const;\n",
+        "\n  'chat.twincat.attachment.following': \"Automatycznie\",\n  'chat.twincat.attachment.manual': \"Ręcznie\",\n  'chat.twincat.attachment.followingHint': \"Podąża za aktywnym edytorem. Zmiana obiektu zastępuje ten załącznik.\",\n  'chat.twincat.attachment.manualHint': \"Zachowano ręcznie. Zmiana obiektu nie zmienia tej migawki.\",\n  'chat.twincat.attachment.keep': \"Zachowaj\",\n  'chat.twincat.attachment.keepHint': \"Zachowaj tę wersję jako ręczny załącznik.\",\n\n} as const;\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/pt-BR.ts",
+    "changes": [
+      [
+        "\n};\n",
+        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Acompanha o editor ativo. Trocar de objeto substitui este anexo.\",\n  'chat.twincat.attachment.manualHint': \"Mantido manualmente. Trocar de objeto não altera este instantâneo.\",\n  'chat.twincat.attachment.keep': \"Manter\",\n  'chat.twincat.attachment.keepHint': \"Manter esta versão como anexo manual.\",\n\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/tr.ts",
+    "changes": [
+      [
+        "\n};\n",
+        "\n  'chat.twincat.attachment.following': \"Otomatik\",\n  'chat.twincat.attachment.manual': \"El ile\",\n  'chat.twincat.attachment.followingHint': \"Etkin düzenleyiciyi izler. Nesne değiştirildiğinde bu ek değiştirilir.\",\n  'chat.twincat.attachment.manualHint': \"El ile saklanır. Nesne değiştirmek bu anlık görüntüyü değiştirmez.\",\n  'chat.twincat.attachment.keep': \"Sakla\",\n  'chat.twincat.attachment.keepHint': \"Bu sürümü el ile eklenmiş bir ek olarak sakla.\",\n\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/uk.ts",
+    "changes": [
+      [
+        "\n};\n",
+        "\n  'chat.twincat.attachment.following': \"Автоматично\",\n  'chat.twincat.attachment.manual': \"Вручну\",\n  'chat.twincat.attachment.followingHint': \"Стежить за активним редактором. Зміна об’єкта замінює це вкладення.\",\n  'chat.twincat.attachment.manualHint': \"Збережено вручну. Зміна об’єкта не змінює цей знімок.\",\n  'chat.twincat.attachment.keep': \"Зберегти\",\n  'chat.twincat.attachment.keepHint': \"Зберегти цю версію як ручне вкладення.\",\n\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/zh-CN.ts",
+    "changes": [
+      [
+        "\n};\n",
+        "\n  'chat.twincat.attachment.following': \"自动\",\n  'chat.twincat.attachment.manual': \"手动\",\n  'chat.twincat.attachment.followingHint': \"跟随当前编辑器。切换对象会替换此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手动保留。切换对象不会更改此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"将此版本保留为手动附件。\",\n\n};\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/i18n/messages/zh-TW.ts",
+    "changes": [
+      [
+        "\n};\n",
+        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"跟隨目前的編輯器。切換物件會取代此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手動保留。切換物件不會變更此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"將此版本保留為手動附件。\",\n\n};\n"
+      ]
     ]
   }
 ]

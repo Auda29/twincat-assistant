@@ -32,7 +32,22 @@ namespace TwinCatAssistant.Native
         private bool KnowledgeConnected()
         {
             return _knowledgeState?.ready==true&&_chatAdapterReady&&_chatSelection?.IsSelected==true
-                &&_knowledgeConnectionKey==_knowledgeState.revision+"\0"+_chatSelection.directory+"\0"+_chatDocumentGeneration;
+                &&McpState("knowledge")=="connected";
+        }
+
+        private string KnowledgeConnectionText()
+        {
+            if(_chatSelection?.IsSelected!=true||_chatBinding?.IsGeneral==true)return "Wissenssuche im Projektchat verfügbar.";
+            if(_knowledgeConnecting)return "Die Verbindung zur Wissenssuche wird aufgebaut …";
+            switch(McpState("knowledge"))
+            {
+                case "connected": return "Wissenssuche verbunden.";
+                case "pending": return "Die Wissenssuche verbindet …";
+                case "failed": return KnowledgeRetrying()?"Die Verbindung wird erneut aufgebaut …":"Die Verbindung zur Wissenssuche ist fehlgeschlagen.";
+                case "disabled": return "Die Wissenssuche ist deaktiviert.";
+                case "needs_auth": return "Die Wissenssuche benötigt eine Anmeldung.";
+                default: return "Der Verbindungsstatus wird geprüft. Der vorbereitete Index bleibt erhalten.";
+            }
         }
 
         private void BuildKnowledge()
@@ -69,7 +84,8 @@ namespace TwinCatAssistant.Native
                 :state.phase=="cancelled"?"Einrichtung abgebrochen. Du kannst sie später erneut starten."
                 :state.phase=="error"?"Die Einrichtung konnte nicht abgeschlossen werden. Vorhandene Dokumentation bleibt erhalten. Erneut versuchen."
                 :state.phase=="external"?"Eine eigene Dokumentationsquelle ist konfiguriert. Sie wird durch die automatische Einrichtung nicht ersetzt."
-                :state.ready?(KnowledgeConnected()?"Wissenssuche bereit · ":"Dokumentation vorbereitet · ")+language+" · "+state.topics.ToString("N0")+" Artikel"+(state.phase=="update"?". Eine neuere installierte Hilfe ist verfügbar.":KnowledgeConnected()?".":". Die Wissenssuche verbindet …")
+                :state.ready?"Dokumentation bereit · "+language+" · "+state.topics.ToString("N0")+" Artikel."
+                    +(state.phase=="update"?" Eine neuere installierte Hilfe ist verfügbar.":"")+Environment.NewLine+KnowledgeConnectionText()
                 :state.phase=="missing"?"Keine installierte Beckhoff-Hilfe erkannt. Installiere InfoSys und wähle danach Neu suchen."
                 :"Verwende die installierte Beckhoff-Hilfe für Antworten mit Quellen. Die Dokumente werden einmal lokal aufbereitet.";
             _knowledgeText.Text=text;_knowledgeSummary.Text=text;
@@ -100,9 +116,9 @@ namespace TwinCatAssistant.Native
                 _knowledgeSources.SelectedItem=sources.FirstOrDefault(item=>item.path==selected)
                     ??(sources.Count(item=>item.language=="de")==1?sources.First(item=>item.language=="de"):sources.Length==1?sources[0]:null);
                 RenderKnowledge();RenderChatBinding();
-                if(result.ready)BeginKnowledgeReconnect(true);
+                if(result.ready)RetryKnowledge();
             }
-            catch{if(!_disposed){_knowledgeState=new KnowledgeState {phase="error"};RenderKnowledge();}}
+            catch{if(!_disposed){if(_knowledgeState?.ready!=true)_knowledgeState=new KnowledgeState {phase="error"};RenderKnowledge();}}
             finally{_knowledgeChecking=false;}
         }
         private async Task SetupKnowledgeAsync()
@@ -121,7 +137,7 @@ namespace TwinCatAssistant.Native
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 if(_disposed)return;
                 _knowledgeState=result;
-                if(result.ready){_knowledgeConnectionKey=null;await ReconnectKnowledgeAsync();}
+                if(result.ready){_knowledgeConnectionKey=null;await ReconnectKnowledgeAsync(force:true);}
             }
             catch{if(!_disposed)_knowledgeState=new KnowledgeState {phase=_knowledgeCancellation.IsCancellationRequested?"cancelled":"error"};}
             finally{_knowledgeBusy=false;_knowledgeCancellation.Dispose();_knowledgeCancellation=null;if(!_disposed){RenderKnowledge();RenderChatBinding();}}
@@ -130,6 +146,7 @@ namespace TwinCatAssistant.Native
         private bool KnowledgeRetrying(){return _knowledgeState?.ready==true&&_knowledgeRetries<KnowledgeRetrySeconds.Length;}
         private void RetryKnowledge()
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
             if(_disposed||_knowledgeState?.ready!=true||!_chatAdapterReady||_chatSelection?.IsSelected!=true)return;
             var key=_knowledgeState.revision+"\0"+_chatSelection.directory+"\0"+_chatDocumentGeneration;
             if(key!=_knowledgeRetryKey){_knowledgeRetryKey=key;_knowledgeRetries=0;_knowledgeRetryAt=DateTime.MinValue;}
@@ -141,33 +158,38 @@ namespace TwinCatAssistant.Native
             _knowledgeConnectionKey=null;
             BeginKnowledgeReconnect(true);
         }
-        private void BeginKnowledgeReconnect(bool quiet=false)
+        private void BeginKnowledgeReconnect(bool quiet=false,bool force=false)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
             if(_knowledgeConnecting)return;
             _knowledgeConnecting=true;
+            RenderKnowledge();
             RunAction(async()=>{
-                try{await ReconnectKnowledgeAsync(quiet);}
+                try{await ReconnectKnowledgeAsync(quiet,force);}
                 finally{_knowledgeConnecting=false;if(!_disposed)RenderKnowledge();}
             });
         }
-        private async Task ReconnectKnowledgeAsync(bool quiet=false)
+        private async Task ReconnectKnowledgeAsync(bool quiet=false,bool force=false)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if(!_chatAdapterReady||_chatSelection?.IsSelected!=true||_knowledgeState?.ready!=true)return;
             var key=_knowledgeState.revision+"\0"+_chatSelection.directory+"\0"+_chatDocumentGeneration;
-            if(key==_knowledgeConnectionKey)return;
+            if(!force&&(McpState("knowledge")=="connected"||key==_knowledgeConnectionKey))return;
+            var generation=_chatDocumentGeneration;
+            var requestId=Guid.NewGuid().ToString("N");
             var directory=new JavaScriptSerializer().Serialize(_chatSelection.directory);
-            await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatKnowledgeReload='pending';(async()=>{const h={'x-opencode-directory':encodeURIComponent("+directory+"),'x-opencode-directory-encoding':'uri'};for(const a of ['disconnect','connect']){const r=await fetch('/api/experimental/mcp/knowledge/'+a,{method:'POST',headers:h});if(r.status!==204)throw Error();}})().then(()=>window.__twinCatKnowledgeReload='ready',()=>window.__twinCatKnowledgeReload='failed');");
+            await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatKnowledgeReload={id:'"+requestId+"',phase:'pending'};(async()=>{const h={'x-opencode-directory':encodeURIComponent("+directory+"),'x-opencode-directory-encoding':'uri'};for(const a of ['disconnect','connect']){const r=await fetch('/api/experimental/mcp/knowledge/'+a,{method:'POST',headers:h});if(r.status!==204)throw Error();}})().then(()=>{if(window.__twinCatKnowledgeReload?.id==='"+requestId+"')window.__twinCatKnowledgeReload.phase='ready';},()=>{if(window.__twinCatKnowledgeReload?.id==='"+requestId+"')window.__twinCatKnowledgeReload.phase='failed';});");
             var deadline=DateTime.UtcNow.AddMinutes(10);
-            while(!_disposed&&DateTime.UtcNow<deadline)
+            while(!_disposed&&generation==_chatDocumentGeneration&&DateTime.UtcNow<deadline)
             {
-                var phase=await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatKnowledgeReload");
+                if(key!=_knowledgeState?.revision+"\0"+_chatSelection?.directory+"\0"+_chatDocumentGeneration)return;
+                var phase=await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatKnowledgeReload?.id==='"+requestId+"'?window.__twinCatKnowledgeReload.phase:null");
                 if(phase=="\"ready\""){_knowledgeConnectionKey=key;return;}
                 if(phase=="\"failed\"")break;
                 await Task.Delay(200);
             }
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if(!_disposed&&!quiet)Notify("Wissenssuche eingerichtet. Die Verbindung konnte noch nicht bestätigt werden.","warning","Neu verbinden",Reconnect);
+            if(!_disposed&&generation==_chatDocumentGeneration&&!quiet)Notify("Wissenssuche eingerichtet. Die Verbindung konnte noch nicht bestätigt werden.","warning","Neu verbinden",()=>BeginKnowledgeReconnect(force:true));
         }
     }
 }
