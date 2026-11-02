@@ -110,7 +110,13 @@ JavaScript changes.
 
 ## Open investigation: slow Knowledge connection
 
-Status: unresolved, recorded on 2026-10-30. The recording
+Status: still open. The [2026-11-02 investigation](KNOWLEDGE_STARTUP_INVESTIGATION.md)
+attributes most startup time to full-corpus validation, documents a tested local
+Knowledge optimization and explains the earlier fixture's two backend starts.
+The candidate still needs about a minute and is not installed; the historical
+operator-profile write attribution also remains open.
+
+Originally recorded on 2026-10-30. The recording
 `30.10.2026_12.37.24_REC.mp4` shows the Knowledge panel open at approximately
 01:00–02:35. Its heading remains **Dokumentation bereit · Deutsch · 49 970 Artikel**,
 while the connection line alternates between connecting and reconnecting.
@@ -168,8 +174,10 @@ powershell.exe -NoProfile -STA -ExecutionPolicy Bypass `
 The fixture substitutes its own Help Library catalog and synthetic archives;
 it does not ingest the operator's help or use operator credentials. An optional
 `-KnowledgeStateSource 'C:\path\to\knowledge'` instead checks startup with an
-already verified real corpus, using a separate chat profile and cache. It reads
-only the corpus state/receipt/package, not operator authentication files.
+already verified real corpus, using a separate chat profile and cache. It seeds
+the selected snapshot before launching the runtime and asserts one backend after
+both MCPs connect. It reads only the corpus state/receipt/package, not operator
+authentication files.
 
 Local real-data verification on 2026-10-28 imports and activates the installed
 German `.47.mshc` archive: **49,970 articles**, followed by a successful MCP

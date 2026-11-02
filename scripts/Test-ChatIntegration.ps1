@@ -128,6 +128,19 @@ $taskPassword = 'synthetic-' + [Guid]::NewGuid().ToString('N')
 $taskSession = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatSession'))
 $taskControl = $null; $taskWindow = $null
 try {
+    if ($KnowledgeStateSource) {
+        # Seed the already activated corpus before starting the runtime. Copying
+        # active.json after broker startup tests activation and starts a second
+        # backend; it does not measure an ordinary cold start.
+        $taskEmptySettings=Join-Path $taskRoot 'initial-settings.json'
+        [IO.File]::WriteAllText($taskEmptySettings,'{}',[Text.UTF8Encoding]::new($false))
+        & $taskConfig.NodePath (Join-Path $taskRepo 'src\cli.mjs') init --settings $taskEmptySettings --state $taskConfig.StateRoot | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not initialize the isolated corpus fixture profile.' }
+        $taskKnowledgeTarget=Join-Path $taskConfig.StateRoot 'knowledge\state'
+        [IO.Directory]::CreateDirectory($taskKnowledgeTarget) | Out-Null
+        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'state\active.json') -Destination (Join-Path $taskKnowledgeTarget 'active.json')
+        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'receipt.json') -Destination (Join-Path $taskConfig.StateRoot 'knowledge\receipt.json')
+    }
     if ($TestExistingThemeProfile) {
         # Exercise a real previously initialized profile, not only settings.json
         # or a first-run browser. The canonical profile wins upstream reads.
@@ -136,13 +149,8 @@ try {
         $taskOldThemeProfile='{"version":1,"fields":{"lightThemeId":{"value":"openchamber-light","updatedAt":1,"surfaces":{"web":{"value":"openchamber-light","updatedAt":2}}},"darkThemeId":{"value":"openchamber-dark","updatedAt":3,"surfaces":{"web":{"value":"openchamber-dark","updatedAt":4}}}}}'
         [IO.File]::WriteAllText((Join-Path $taskConfig.StateRoot 'openchamber\preferences.json'),$taskOldThemeProfile,[Text.UTF8Encoding]::new($false))
     }
+    $taskStartupClock=[Diagnostics.Stopwatch]::StartNew()
     Await-Task ($taskSession.StartAsync($taskConfig,$taskPort,$taskPassword)) | Out-Null
-    if ($KnowledgeStateSource) {
-        $taskKnowledgeTarget=Join-Path $taskConfig.StateRoot 'knowledge\state'
-        [IO.Directory]::CreateDirectory($taskKnowledgeTarget) | Out-Null
-        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'state\active.json') -Destination (Join-Path $taskKnowledgeTarget 'active.json')
-        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'receipt.json') -Destination (Join-Path $taskConfig.StateRoot 'knowledge\receipt.json')
-    }
     $taskControl = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.AssistantControl'))
     $taskInitialPreferences = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatPreferences'),[object[]]@([string](Join-Path $taskRoot 'initial-preferences')))
     Set-Field '_chatPreferences' $taskInitialPreferences
@@ -228,6 +236,20 @@ try {
     }
     if ($KnowledgeStateSource) {
         Assert-Integration ((Field '_knowledgeState').ready -and (Field '_knowledgeState').topics -gt 49000) 'the real installed German corpus is recognized in an isolated native chat profile'
+        Write-Output ('KNOWLEDGE_NATIVE_CONNECTED elapsedMs='+$taskStartupClock.ElapsedMilliseconds)
+        $taskBrokerCheck=@'
+import assert from 'node:assert/strict';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const [state, repo] = process.argv.slice(2);
+const { knowledgeBrokerStatus } = await import(pathToFileURL(join(repo, 'src', 'knowledge-client.mjs')).href);
+const status = await knowledgeBrokerStatus(join(state, 'knowledge', 'broker.json'));
+assert.equal(status.backendStarts, 1, 'an already activated corpus must load once');
+assert.equal(status.backendConnected, true);
+console.log(JSON.stringify({ backendStarts: status.backendStarts, backendConnected: status.backendConnected }));
+'@
+        $taskBrokerCheck | & $taskConfig.NodePath --input-type=module - $taskConfig.StateRoot $taskRepo
+        if ($LASTEXITCODE -ne 0) { throw 'Ordinary cold corpus startup must reuse one backend.' }
         Write-Output 'Real corpus/native runtime startup passed; no operator credentials or model requests used.'
         return
     }
