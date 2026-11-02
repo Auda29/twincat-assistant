@@ -48,7 +48,7 @@ namespace TwinCatAssistant.Native
         private Action _bannerCommand;
         private Button _bannerDismiss;
         private DateTime _previewClosedAt, _menuClosedAt;
-        // Popups: own HWNDs, so they render above the WebView2 airspace.
+        // Popups stay anchored to the context bar and close on browser focus.
         private readonly Popup _previewPopup = new Popup { Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true, VerticalOffset = 4 };
         private readonly TextBlock _previewTitle = new TextBlock { FontWeight = FontWeights.SemiBold, FontSize = 12.5 };
         private readonly TextBlock _sourceNotice = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
@@ -71,7 +71,9 @@ namespace TwinCatAssistant.Native
         private readonly TextBlock _inventoryStatus = new TextBlock { Text = "Inventar nicht geladen. Die Editor-Verfolgung nutzt diesen Katalog nicht.", TextWrapping = TextWrapping.Wrap };
         private readonly TextBox _port = new TextBox { Text = "3123", Width = 70, Margin = new Thickness(4), VerticalContentAlignment = VerticalAlignment.Center };
         private readonly ComboBox _targets = new ComboBox { MinWidth = 180, Margin = new Thickness(4), DisplayMemberPath = "Name" };
-        private WebView2 _browser = new WebView2();
+        // Participate in WPF composition so IDE auto-hide panes can cover chat.
+        // The windowed WebView2 HwndHost draws above overlapping WPF panels.
+        private WebView2CompositionControl _browser = new WebView2CompositionControl();
         private bool _browserNeedsReset;
         private readonly StackPanel _toolbar = new StackPanel();
         private readonly TextBox _diagnosticSource = new TextBox { IsReadOnly = true, AcceptsReturn = true,
@@ -488,15 +490,15 @@ namespace TwinCatAssistant.Native
                 {
                     var oldBrowser = _browser;
                     var grid = (Grid)oldBrowser.Parent;
-                    _browser = new WebView2();
+                    _browser = new WebView2CompositionControl();
                     _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; };
                     grid.Children.Remove(oldBrowser);
                     oldBrowser.Dispose();
                     grid.Children.Insert(0, _browser);
                     _browserNeedsReset = false;
                 }
-                // Hidden, not collapsed: the control keeps its window for
-                // initialization while the loading screen stays visible.
+                // Hidden, not collapsed: retain layout and initialization
+                // while the loading screen stays visible.
                 _browser.Visibility = Visibility.Hidden;
                 if (_browser.CoreWebView2 == null)
                 {

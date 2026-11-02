@@ -95,6 +95,77 @@ function Wait-Native([scriptblock]$Condition,[string]$Name,[int]$Seconds=40) {
     Write-Output ('COMPOSER '+(JS 'JSON.stringify({state:window.__twinCatChat?.state(),composer:window.__twinCatSource?.composer(window.__twinCatChat?.state().sessionId)})'))
     throw ('Native automation did not reach: '+$Name)
 }
+function Assert-DockingOverlays {
+    # Real WPF/WebView rendering, not a browser-only CapturePreview composited
+    # over native controls. The latter cannot detect HWND airspace problems.
+    $taskSurface=New-Object Windows.Controls.Grid
+    $taskOriginalWidth=$taskWindow.Width
+    $taskDocument=JS 'window.__twinCatChat.state().documentId'
+    $taskSessionBefore=JS 'window.__twinCatChat.state().sessionId'
+    $taskEvidence=Join-Path $taskRepo 'local-data/chat-integration-views'
+    [IO.Directory]::CreateDirectory($taskEvidence) | Out-Null
+    $taskWindow.Content=$null; $taskSurface.Children.Add($taskControl) | Out-Null; $taskWindow.Content=$taskSurface
+    $taskPanel=New-Object Windows.Controls.Border
+    $taskPanel.Background=[Windows.Media.SolidColorBrush]::new([Windows.Media.Color]::FromRgb(113,206,134))
+    $taskPanel.HorizontalAlignment=[Windows.HorizontalAlignment]::Right
+    $taskPanel.VerticalAlignment=[Windows.VerticalAlignment]::Top
+    $taskPanel.Padding=[Windows.Thickness]::new(12)
+    $taskCaption=New-Object Windows.Controls.TextBlock
+    $taskCaption.Foreground=[Windows.Media.Brushes]::Black
+    $taskButton=New-Object Windows.Controls.Button
+    $taskButton.Content='Fixture action'; $taskButton.Margin=[Windows.Thickness]::new(0,12,0,0)
+    $script:taskDockingClicks=0
+    $taskButton.add_Click({ $script:taskDockingClicks++ })
+    $taskPanel.Child=[Windows.Controls.StackPanel]::new()
+    $taskPanel.Child.Children.Add($taskCaption) | Out-Null; $taskPanel.Child.Children.Add($taskButton) | Out-Null
+    $taskSurface.Children.Add($taskPanel) | Out-Null
+    function Capture-Docking {
+        $taskFrame=[Windows.Media.Imaging.RenderTargetBitmap]::new([int][Math]::Ceiling($taskSurface.ActualWidth),[int][Math]::Ceiling($taskSurface.ActualHeight),96,96,[Windows.Media.PixelFormats]::Pbgra32)
+        $taskFrame.Render($taskSurface)
+        return $taskFrame
+    }
+    function Docking-Pixel($Frame,[Windows.Point]$Point) {
+        $taskBytes=New-Object byte[] 4
+        $Frame.CopyPixels([Windows.Int32Rect]::new([int]$Point.X,[int]$Point.Y,1,1),$taskBytes,4,0)
+        return [Windows.Media.Color]::FromArgb($taskBytes[3],$taskBytes[2],$taskBytes[1],$taskBytes[0])
+    }
+    try {
+        JS '(()=>{const e=document.createElement("div");e.id="fixture-docking-marker";e.style.cssText="position:fixed;inset:0;z-index:2147483647;background:rgb(18,104,204)";document.body.append(e)})()' | Out-Null
+        foreach ($taskWidth in @(390,900)) {
+            $taskWindow.Width=$taskWidth; Pump 200
+            $taskOrigin=$taskBrowser.TransformToAncestor($taskSurface).Transform([Windows.Point]::new(0,0))
+            $taskPanel.Width=$taskSurface.ActualWidth*0.55
+            $taskPanel.Height=[Math]::Min(220,$taskBrowser.ActualHeight-20)
+            $taskPanel.Margin=[Windows.Thickness]::new(0,$taskOrigin.Y+10,0,0)
+            foreach ($taskName in @('Properties','Toolbox')) {
+                $taskCaption.Text=$taskName+' (synthetic docking panel)'; $taskPanel.Visibility=[Windows.Visibility]::Visible; Pump 150
+                $taskPanelOrigin=$taskPanel.TransformToAncestor($taskSurface).Transform([Windows.Point]::new(0,0))
+                $taskPanelPoint=[Windows.Point]::new($taskPanelOrigin.X+12,$taskPanelOrigin.Y+$taskPanel.ActualHeight-12)
+                $taskBrowserPoint=[Windows.Point]::new($taskOrigin.X+12,$taskPanelPoint.Y)
+                $taskDeadline=[DateTime]::UtcNow.AddSeconds(12)
+                do {
+                    Pump 100; $taskFrame=Capture-Docking; $taskBrowserPixel=Docking-Pixel $taskFrame $taskBrowserPoint
+                } while ($taskBrowserPixel.ToString() -ne '#FF1268CC' -and [DateTime]::UtcNow -lt $taskDeadline)
+                Assert-Integration ($taskBrowserPixel.ToString() -eq '#FF1268CC') ('real browser pixels participate in WPF composition at '+$taskWidth+'px')
+                Assert-Integration ((Docking-Pixel $taskFrame $taskPanelPoint).ToString() -eq '#FF71CE86') ($taskName+' renders above the browser at '+$taskWidth+'px')
+                $taskButtonPoint=$taskButton.TransformToAncestor($taskSurface).Transform([Windows.Point]::new($taskButton.ActualWidth/2,$taskButton.ActualHeight/2))
+                $taskHit=$taskSurface.InputHitTest($taskButtonPoint)
+                while ($taskHit -and $taskHit -ne $taskButton) { $taskHit=[Windows.Media.VisualTreeHelper]::GetParent($taskHit) }
+                Assert-Integration ($taskHit -eq $taskButton) ($taskName+' receives WPF input above the browser at '+$taskWidth+'px')
+                $taskButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+                $taskEncoder=[Windows.Media.Imaging.PngBitmapEncoder]::new(); $taskEncoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($taskFrame))
+                $taskFile=[IO.File]::Create((Join-Path $taskEvidence ('docking-'+$taskName.ToLowerInvariant()+'-'+$taskWidth+'.png')))
+                try { $taskEncoder.Save($taskFile) } finally { $taskFile.Dispose() }
+                $taskPanel.Visibility=[Windows.Visibility]::Collapsed; Pump 150
+                Assert-Integration ((Docking-Pixel (Capture-Docking) $taskPanelPoint).ToString() -eq '#FF1268CC') ('closing '+$taskName+' reveals the same browser at '+$taskWidth+'px')
+            }
+        }
+        Assert-Integration ($script:taskDockingClicks -eq 4 -and (JS 'window.__twinCatChat.state().documentId') -eq $taskDocument -and (JS 'window.__twinCatChat.state().sessionId') -eq $taskSessionBefore) 'overlay actions preserve the existing chat document and session'
+    } finally {
+        JS 'document.getElementById("fixture-docking-marker")?.remove()' | Out-Null
+        $taskSurface.Children.Remove($taskControl); $taskWindow.Content=$null; $taskWindow.Content=$taskControl; $taskWindow.Width=$taskOriginalWidth; Pump 150
+    }
+}
 function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; // synthetic context fixture',[string]$Object='FB_Motor') {
     $global:taskIntegrationSnapshot = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorSnapshot'))
     $taskIdentityType = $taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorIdentity')
@@ -230,6 +301,7 @@ try {
     Wait-Native { (Field '_strip').Visibility -eq [Windows.Visibility]::Visible } 'chat presentation after mounting' 15
     (Field '_chatHealth').Start()
     Assert-Integration ((Field '_strip').Visibility -eq [Windows.Visibility]::Visible -and (Field '_browser').Visibility -eq [Windows.Visibility]::Visible) 'mounting the real chat completes loading'
+    Assert-DockingOverlays
     if ($McpSettingsPath) {
         Wait-JS "window.__twinCatChat.state().mcp.filter(s=>s.status==='connected').length===2" $(if($KnowledgeStateSource){600}else{45})
         Assert-Integration ((Field '_chatSelection').directory.Replace('\','/').Contains('/projects/')) 'native project chat uses its isolated MCP workspace'

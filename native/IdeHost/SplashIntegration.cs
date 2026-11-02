@@ -48,9 +48,9 @@ namespace TwinCatAssistant.Native
             _previewPopup.IsOpen = false;
         }
 
-        // WebView2 keeps loading and running the adapter while hidden. Only the
-        // native wordmark is visible until this document is ready, so none of
-        // OpenChamber's startup screen can flash through the HWND airspace.
+        // WebView2 keeps loading and running the adapter while hidden. The
+        // native wordmark remains visible until this document is ready;
+        // OpenChamber's startup screen stays hidden during that handoff.
         private void RenderLoading()
         {
             ThreadHelper.ThrowIfNotOnUIThread();

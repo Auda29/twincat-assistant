@@ -197,6 +197,33 @@ splash stays visible until both this handoff and the selected history are ready.
 Standalone web, Electron, VS Code, hosted mobile and Capacitor keep their existing
 startup animation; only the native host activates the TwinCAT embedding flag.
 
+## Docked IDE panels and browser composition
+
+The native chat uses `WebView2CompositionControl` from the existing pinned
+WebView2 SDK, including when recreating the browser after process failure.
+The windowed `WebView2` inherits `HwndHost` and can draw over WPF auto-hide panes,
+leaving only the upper part of Properties or Toolbox visible. The composition
+control participates in WPF drawing order, clipping and input routing. Microsoft
+documents it as the replacement for this
+[WPF airspace issue](https://learn.microsoft.com/en-us/microsoft-edge/webview2/platforms/wpf).
+The SDK version, chat API, private browser profile and navigation policy stay
+unchanged. Browser composition can have a lower frame rate than HWND hosting;
+scrolling, selection and text input remain part of installed IDE acceptance.
+
+The 2026-11-02 local check builds X86 and Amd64 and passes 97 native policy/context
+cases, 52 WPF view cases and 98 source-runtime WebView2 integration cases with
+both real MCPs and synthetic projects/help. The new regression renders the real
+browser and overlapping WPF panels into one WPF bitmap at 390 and 900 pixels.
+Pixel checks confirm both surfaces, WPF hit testing reaches each panel's button,
+and hiding it reveals the same browser document and chat session. This does not
+combine an independent browser screenshot over the native capture, since that
+would conceal an HWND airspace failure.
+
+The panels in this regression are synthetic Properties/Toolbox stand-ins.
+The actual TwinCAT docking manager, physical keyboard/mouse use, floating and
+auto-hidden IDE panes still need a manual check after installation. This local
+change has not been installed in the running IDE.
+
 ## Thread copy and Markdown export
 
 The native overflow menu exposes **Gesamten Chat kopieren** and **Chat als Markdown
