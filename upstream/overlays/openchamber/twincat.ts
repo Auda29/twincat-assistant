@@ -16,6 +16,24 @@ import { collectSessionTitleTurns, generateSessionTitle } from '@/lib/sessionTit
 import { generateAndSaveSessionTitle, runSessionTitleGeneration } from '@/sync/session-title-generation';
 import { getRuntimeKey } from '@/lib/runtime-switch';
 
+function titleFailure(code: string) { return Object.assign(new Error('Chat title operation failed'), { code }); }
+export function validateTwinCatGeneratedTitle(value: string): string {
+  const title = value.normalize('NFC').trim();
+  if (!title || /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\ufffd]|\p{Surrogate}/u.test(title)) throw titleFailure('invalid_title');
+  // Preserve valid Unicode, including CJK titles. Reject malformed paired
+  // punctuation observed in model output, rather than guessing missing text.
+  const pairs = new Map([['【', '】'], ['「', '」'], ['『', '』'], ['（', '）'], ['［', '］'], ['｛', '｝']]);
+  const closers = new Set(pairs.values());
+  const stack: string[] = [];
+  for (const char of title) {
+    const close = pairs.get(char);
+    if (close) stack.push(close);
+    else if (closers.has(char) && stack.pop() !== char) throw titleFailure('invalid_title');
+  }
+  if (stack.length) throw titleFailure('invalid_title');
+  return title;
+}
+
 type Reference = { id: string; title: string; revision: string | null; reference: string; mode: 'following' | 'manual' };
 type Context = { project: string; object: string | null; treePath: string | null; sourceKind: string | null; reference?: string | null;
   objectKind?: string | null; owner?: string | null; member?: string | null };
@@ -215,10 +233,11 @@ export const twinCatSource = {
     registerSessionDirectory(session.id, request.directory);
     if (request.action === 'generate-title') {
       const exporter = threadExport;
-      if (!active || !exporter || session.time.archived) throw new Error('Chat title generation is unavailable');
+      if (!active || !exporter) throw titleFailure('history_unavailable');
+      if (session.time.archived) throw titleFailure('archived');
       const status = await opencodeClient.getHostSessionStatusSnapshot();
       const state = status?.sessions[request.id]?.status;
-      if (!status || (state && !['idle', 'completed', 'error', 'aborted'].includes(state))) throw new Error('Chat is active or its status is unknown');
+      if (!status || (state && !['idle', 'completed', 'error', 'aborted'].includes(state))) throw titleFailure('chat_busy');
       assertCurrent();
       const runtimeKey = getRuntimeKey();
       await runSessionTitleGeneration({ runtimeKey, directory: request.directory, sessionID: request.id }, async signal => {
@@ -226,12 +245,24 @@ export const twinCatSource = {
           signal,
           prepare: async () => {
             assertCurrent();
-            const records = await exporter.load({ directory: request.directory, sessionID: request.id });
+            const records = await exporter.load({ directory: request.directory, sessionID: request.id }).catch(() => { throw titleFailure('history_unavailable'); });
             assertCurrent();
-            if (!records) throw new Error('Thread history could not be loaded');
-            return { session, turns: collectSessionTitleTurns(records, session.revert?.messageID) };
+            if (!records) throw titleFailure('history_unavailable');
+            const turns = collectSessionTitleTurns(records, session.revert?.messageID);
+            if (!turns.length) throw titleFailure('empty_history');
+            return { session, turns };
           },
-          generate: (turns, signal) => { assertCurrent(); return generateSessionTitle({ turns, directory: request.directory, sessionID: request.id, signal }); },
+          generate: async (turns, signal) => {
+            for (let attempt = 0; attempt < 2; attempt++) {
+              assertCurrent(); signal.throwIfAborted();
+              let title: string;
+              try { title = await generateSessionTitle({ turns, directory: request.directory, sessionID: request.id, signal }); }
+              catch (error) { signal.throwIfAborted(); throw titleFailure(error instanceof z.ZodError ? 'invalid_title' : 'provider_failed'); }
+              try { return validateTwinCatGeneratedTitle(title); }
+              catch (error) { if (attempt === 1) throw error; }
+            }
+            throw titleFailure('invalid_title');
+          },
           readSession: () => { assertCurrent(); return opencodeClient.getSession(request.id, request.directory); },
           saveTitle: (title, signal) => { assertCurrent(); return updateSessionTitle(request.id, title, { directory: request.directory, expectedRuntimeKey: runtimeKey, signal }); },
         });

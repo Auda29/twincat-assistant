@@ -1,4 +1,8 @@
-param([string]$OutputDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) 'local-data/native-view'))
+param(
+    [string]$OutputDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) 'local-data/native-view'),
+    # Built X86 host to render; defaults to the regular Release output.
+    [string]$BinDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) 'native/IdeHost/X86/bin/Release/net472')
+)
 $ErrorActionPreference = 'Stop'
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
     throw 'Run in Windows PowerShell STA: powershell.exe -NoProfile -STA -File scripts/Test-NativeView.ps1'
@@ -8,7 +12,7 @@ if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
 # There is no IDE attachment, WebView initialization, source transport or live
 # editor evidence. Shell thread initialization below applies only to this process.
 $taskRoot = Split-Path $PSScriptRoot -Parent
-$taskBin = Join-Path $taskRoot 'native/IdeHost/X86/bin/Release/net472'
+$taskBin = $BinDirectory
 $taskAssets = Get-Content (Join-Path $taskRoot 'native/IdeHost/X86/obj/project.assets.json') -Raw | ConvertFrom-Json
 $taskPackageRoot = @($taskAssets.packageFolders.PSObject.Properties)[0].Name
 $global:taskNativeViewReferences = @{}
@@ -40,6 +44,34 @@ function Assert-View([bool]$Result, [string]$Name) {
 }
 function Get-ViewField([string]$Name) { $taskControl.GetType().GetField($Name, $taskFlags).GetValue($taskControl) }
 function Set-ViewField([string]$Name,$Value) { $taskControl.GetType().GetField($Name,$taskFlags).SetValue($taskControl,$Value) }
+function Set-ViewWidth([double]$Width) {
+    $taskControl.Width = $Width
+    $taskControl.Height = 760
+    # The strip collapses the attach label from its SizeChanged handler; the
+    # second pass lays out that compact state.
+    foreach ($taskPass in 1..2) {
+        $taskControl.Measure((New-Object Windows.Size($Width,760)))
+        $taskControl.Arrange((New-Object Windows.Rect(0,0,$Width,760)))
+        $taskControl.UpdateLayout()
+    }
+}
+# IsVisible needs a window; the fixture renders without one, so walk the
+# visual parents instead.
+function Test-Shown([Windows.UIElement]$Element) {
+    for ($taskNode = $Element; $taskNode -ne $null; $taskNode = [Windows.Media.VisualTreeHelper]::GetParent($taskNode)) {
+        if ($taskNode -is [Windows.UIElement] -and $taskNode.Visibility -ne [Windows.Visibility]::Visible) { return $false }
+    }
+    return $true
+}
+function Get-ViewBounds([Windows.FrameworkElement]$Element) {
+    $Element.TransformToAncestor($taskControl).TransformBounds((New-Object Windows.Rect(0,0,$Element.ActualWidth,$Element.ActualHeight)))
+}
+function Get-TextWidth([Windows.Controls.TextBlock]$Text) {
+    $taskTypeface = New-Object Windows.Media.Typeface($Text.FontFamily,$Text.FontStyle,$Text.FontWeight,$Text.FontStretch)
+    $taskFormatted = New-Object Windows.Media.FormattedText($Text.Text,[Globalization.CultureInfo]::CurrentUICulture,
+        [Windows.FlowDirection]::LeftToRight,$taskTypeface,$Text.FontSize,[Windows.Media.Brushes]::Black,1.0)
+    $taskFormatted.WidthIncludingTrailingWhitespace
+}
 function Save-View([string]$State) {
     foreach ($taskWidth in @(340,520,900)) {
         $taskControl.Width = $taskWidth
@@ -245,6 +277,69 @@ try {
     Assert-View ((Get-ViewField '_source').Text -eq '') 'chat error does not attach or restore native source'
     Save-View 'chat-refused-dark'
     $taskRender.Invoke($taskControl,[object[]]@($taskSnapshot,$null))
+
+    # Attach button: every state label keeps the rendered button and its
+    # neighbours in place, in the compact icon-only and in the labelled strip.
+    # The labels come from the state renderer itself, so a new label that
+    # does not fit the reserved width fails here.
+    $taskBindingSource = [IO.File]::ReadAllText((Join-Path $taskRoot 'native/IdeHost/ChatIntegration.cs'),[Text.Encoding]::UTF8)
+    $taskLabelLine = ($taskBindingSource -split "`n" | Where-Object { $_ -match '_attachLabel\.Text\s*=' } | Select-Object -First 1)
+    $taskAttachLabels = @([regex]::Matches($taskLabelLine,'"([^"]+)"') | ForEach-Object { $_.Groups[1].Value })
+    Assert-View ($taskAttachLabels.Count -ge 5) "attach state labels are read from the state renderer ($($taskAttachLabels.Count))"
+    $taskAttach = Get-ViewField '_attachPouButton'
+    $taskAttachText = Get-ViewField '_attachLabel'
+    $taskAttachIcon = Get-ViewField '_attachIcon'
+    $taskNeighbours = @{ history = (Get-ViewField '_historyButton'); new = (Get-ViewField '_newChatButton'); more = (Get-ViewField '_moreButton') }
+    $taskSavedLabel = $taskAttachText.Text
+    $taskSavedIcon = $taskAttachIcon.Data
+    $taskIcons = @('attach','check','refresh')
+    $taskThemeType = $taskAssembly.GetType('TwinCatAssistant.Native.AssistantTheme')
+    $taskWidths = @{}
+    try {
+        foreach ($taskWidth in @(340,459,460,520,900)) {
+            $taskCompact = $taskWidth -lt 460
+            $taskReference = $null
+            for ($taskIndex = 0; $taskIndex -lt $taskAttachLabels.Count; $taskIndex++) {
+                $taskLabel = $taskAttachLabels[$taskIndex]
+                $taskAttachText.Text = $taskLabel
+                $taskAttachIcon.Data = $taskThemeType.GetMethod('Icon').Invoke($null,[object[]]@($taskIcons[$taskIndex % 3]))
+                Set-ViewWidth $taskWidth
+                $taskBounds = @{ attach = (Get-ViewBounds $taskAttach) }
+                foreach ($taskKey in @($taskNeighbours.Keys)) { $taskBounds[$taskKey] = Get-ViewBounds $taskNeighbours[$taskKey] }
+                $taskIconBounds = Get-ViewBounds $taskAttachIcon
+                Assert-View ((Test-Shown $taskAttach) -and (Test-Shown $taskAttachIcon) -and $taskBounds.attach.Width -gt 0 -and [Math]::Abs($taskIconBounds.Width - 16) -lt 0.01 -and
+                    $taskIconBounds.Left -ge $taskBounds.attach.Left -and $taskIconBounds.Right -le $taskBounds.attach.Right) "attach icon is inside the button at $taskWidth px: $taskLabel"
+                if ($taskCompact) {
+                    Assert-View (-not (Test-Shown $taskAttachText) -and $taskAttach.ToolTip -ne $null) "compact strip keeps the attach button icon-only with its tooltip at $taskWidth px: $taskLabel"
+                } else {
+                    $taskTextBounds = Get-ViewBounds $taskAttachText
+                    Assert-View ((Test-Shown $taskAttachText) -and $taskAttachText.ActualWidth + 0.01 -ge (Get-TextWidth $taskAttachText) -and
+                        $taskTextBounds.Left -ge $taskIconBounds.Right -and $taskTextBounds.Right -le $taskBounds.attach.Right - 1) "attach label renders unclipped inside the button at $taskWidth px: $taskLabel"
+                }
+                Assert-View ($taskBounds.history.Right -le $taskBounds.new.Left + 0.01 -and $taskBounds.new.Right -le $taskBounds.attach.Left -and
+                    $taskBounds.attach.Right -le $taskBounds.more.Left + 0.01 -and $taskBounds.more.Right -le $taskWidth) "strip buttons do not overlap at $taskWidth px: $taskLabel"
+                if ($taskReference -eq $null) { $taskReference = $taskBounds } else {
+                    foreach ($taskKey in @('history','new','attach','more')) {
+                        $taskBefore = $taskReference[$taskKey]; $taskNow = $taskBounds[$taskKey]
+                        Assert-View ([Math]::Abs($taskBefore.Left - $taskNow.Left) -lt 0.01 -and [Math]::Abs($taskBefore.Width - $taskNow.Width) -lt 0.01 -and
+                            [Math]::Abs($taskBefore.Top - $taskNow.Top) -lt 0.01) "$taskKey keeps its rendered bounds at $taskWidth px: '$($taskAttachLabels[0])' -> '$taskLabel'"
+                    }
+                }
+                if ($taskWidth -eq 340 -or $taskWidth -eq 900) { Save-View ("attach-$taskIndex-dark") }
+            }
+            $taskWidths[$taskWidth] = $taskReference.attach.Width
+        }
+        Assert-View ($taskWidths[340] -lt $taskWidths[520] -and [Math]::Abs($taskWidths[340] - $taskWidths[459]) -lt 0.01 -and
+            [Math]::Abs($taskWidths[460] - $taskWidths[900]) -lt 0.01) 'the attach button has one width per responsive mode, compact narrower than labelled'
+        # A label outside the known set grows the button instead of clipping.
+        $taskAttachText.Text = $taskAttachLabels[3] + ' (' + [char]0x00E4 + 'ltere Revision ' + [char]0x2013 + ' Gr' + [char]0x00F6 + [char]0x00DF + 'e)'
+        Set-ViewWidth 900
+        Assert-View ($taskAttachText.ActualWidth + 0.01 -ge (Get-TextWidth $taskAttachText) -and
+            (Get-ViewBounds $taskAttachText).Right -le (Get-ViewBounds $taskAttach).Right - 1 -and
+            (Get-ViewBounds $taskAttach).Right -le (Get-ViewBounds $taskNeighbours.more).Left + 0.01) 'an unknown longer attach label grows the button without clipping'
+    } finally {
+        $taskAttachText.Text = $taskSavedLabel; $taskAttachIcon.Data = $taskSavedIcon
+    }
     (Get-ViewField '_diagnostics').Visibility = [Windows.Visibility]::Visible
     Save-View 'diagnostics-dark'
     $taskControl.GetType().GetField('_origin',$taskFlags).SetValue($taskControl,[Uri]'http://127.0.0.1:3123/')

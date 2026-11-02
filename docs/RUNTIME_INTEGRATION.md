@@ -81,8 +81,9 @@ active conversation's row menu. It uses OpenChamber's original complete-history
 loader, completed-turn selection, small-model title request and guarded title
 save. Busy/archived chats are excluded. A missing completed exchange or failed
 request preserves the existing title. Generation starts only on an explicit
-click, not while listing conversations; there is no bulk rename. This follow-up
-is not part of the installed `dfb50b1` reference until separately deployed.
+click, not while listing conversations; there is no bulk rename. The first
+title/attachment follow-up was installed locally at `5720c5a` on 2026-11-02.
+The corrections below still need their own deployment and manual acceptance.
 
 The same follow-up corrects automatic attachment bookkeeping. A failed fresh
 editor read or unconfirmed composer queue no longer counts as a successful
@@ -93,6 +94,41 @@ After confirmed staging, removing the chip still suppresses replay in the same
 unchanged context. PRG/PROGRAM uses the same attachment path as FB/FUNCTION;
 the parser already accepted all three. A synthetic WebView case makes the first
 fresh PRG read fail, then verifies recovery without changing its revision.
+
+The existing-conversation regression uses completed synthetic user/assistant
+messages instead of testing only empty chats. It reproduced a missing attachment
+with the prior composer implementation: after switching sessions, the original
+guest-attachment callback retained the initial reference setter. That setter is
+now scoped to a draft identity, so the callback must depend on it. The overlay
+updates that dependency; it keeps captured async draft operations associated with
+their original chat. Automatic attachment also waits for committed history/input
+readiness. Native source attachment preserves the project permission key and
+active-object metadata, rather than temporarily changing history scope to a
+source revision or clearing the active context.
+
+The attachment button reserves the measured space for every current label in
+each responsive mode. Changing between attaching, staged and update states keeps
+the clock, new-chat and overflow controls at the same rendered positions. Compact
+mode remains icon-only. The picker de-duplicates a repeated leading error
+sentence while retaining useful controlled host details.
+
+The reported generated title contained an unbalanced `】【。` sequence in the
+stored title itself; WPF did not introduce those characters. Generated-title
+validation preserves Unicode and checks control/replacement/unpaired-surrogate
+characters and malformed paired CJK punctuation. One malformed punctuation
+result gets one further request through the original generator. Repeated invalid
+output preserves the existing title. Manual titles and stored historical titles
+are not bulk-rewritten. Empty history, unavailable history, a busy chat, failed
+provider requests and invalid generated titles have distinct controlled error
+codes and German messages.
+
+`Test-ExistingChat.ps1` exercises real history loading, the actual original title
+pipeline and durable title updates with canned model HTTP responses. Its two
+completed messages are synthetic and seeded only into a guarded private fixture
+database. No customer transcript is copied or submitted. The fixture also
+overrides native preferences before startup so its auto-attach setting never
+writes the operator's preferences. It runs as part of the combined source test
+and can be selected directly with `-TestExistingChat`.
 
 Selection metadata is stored atomically as
 `native-chat/threads/project-<profile-and-project-hash>.selection` below the
@@ -330,6 +366,23 @@ retain the object they referred to when queued; delivery does not replace it
 with the editor's later active object.
 
 ## Validation scope
+
+The existing-chat/layout/title correction passes 146 combined real-source
+WebView checks and a separate 37-check existing-chat run with synthetic completed
+history and model HTTP responses. The prior callback implementation fails the
+existing-chat attachment case; changing only readiness/budget checks does not
+fix it. Updating the guest callback's setter dependency restores the reference
+to the selected conversation. The positive title test verifies actual durable
+Unicode title updates, one invalid-output retry, preservation after repeated
+invalid output, and distinct provider-failure reporting. Both themes pass.
+
+Both native builds and 106 native policy/context checks pass. WPF fixtures verify
+the actual neighbouring toolbar bounds across the five labels and responsive
+widths, error de-duplication and unchanged Unicode titles. The layout regression
+fails against the prior build. The 97 Node cases, eight browser contracts,
+UI/web type checks, overlay lint and four original composer test files pass.
+No customer transcript or paid model request is used for these tests. Real IDE
+acceptance of this correction follows deployment separately.
 
 The title/automatic-attachment follow-up passes 97 Node cases, eight browser
 contracts, both native builds, 106 native policy/context cases, 52 WPF checks,

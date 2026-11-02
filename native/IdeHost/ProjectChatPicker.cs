@@ -1139,12 +1139,24 @@ namespace TwinCatAssistant.Native
 
         // Only InvalidOperationException carries a user-facing host message;
         // anything else gets the neutral fallback. Cancellation stays silent.
+        // A host message that already opens with the fallback sentence is
+        // shown once, as sent, instead of repeating that sentence.
         private static string Describe(string fallback, Exception error)
         {
             if (error is AggregateException aggregate && aggregate.InnerExceptions.Count == 1) error = aggregate.InnerExceptions[0];
             if (error is OperationCanceledException) return null;
             var detail = error is InvalidOperationException ? error.Message?.Trim() : null;
-            return string.IsNullOrEmpty(detail) ? fallback : fallback + " " + detail;
+            if (string.IsNullOrEmpty(detail)) return fallback;
+            return RepeatsFallback(detail, fallback) ? detail : fallback + " " + detail;
+        }
+
+        // True when the detail starts with the fallback sentence, with or
+        // without its closing period, followed by nothing or punctuation/space.
+        private static bool RepeatsFallback(string detail, string fallback)
+        {
+            var sentence = fallback.TrimEnd('.', ' ');
+            if (sentence.Length == 0 || !detail.StartsWith(sentence, StringComparison.OrdinalIgnoreCase)) return false;
+            return detail.Length == sentence.Length || !char.IsLetterOrDigit(detail[sentence.Length]);
         }
 
         // ---- Keyboard ----

@@ -88,6 +88,10 @@
       [
         "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);",
         "const [linkedReferences, setLinkedReferences] = useTwinCatComposerReferences(chatDraftIdentity);"
+      ],
+      [
+        "        useGuestDialogStore.getState().close();\n    }, []);\n    React.useEffect(() => {\n        if (!pendingGuestIssue || columnPinned)",
+        "        useGuestDialogStore.getState().close();\n    }, [setLinkedReferences]);\n    React.useEffect(() => {\n        if (!pendingGuestIssue || columnPinned)"
       ]
     ]
   },

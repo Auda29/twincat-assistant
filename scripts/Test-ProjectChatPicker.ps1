@@ -252,9 +252,112 @@ namespace TwinCatAssistant.Native
             Pump();
             _gate.SetException(new InvalidOperationException("Für leere Chats kann kein Titel erzeugt werden."));
             Pump();
-            Check((Field<string>("_actionError") ?? "").EndsWith("Für leere Chats kann kein Titel erzeugt werden.") && Title("s5") == "regler Kaskade – Stellgrößenbegrenzung",
+            Check(Field<string>("_actionError") == "Der Titel konnte nicht generiert werden. Für leere Chats kann kein Titel erzeugt werden." && Title("s5") == "regler Kaskade – Stellgrößenbegrenzung",
                 "host message is shown and the title stays unchanged");
             Snap("generate-error-light", 390);
+
+            // A host message that already opens with the fallback sentence is
+            // shown once; the banner the user sees carries the same text.
+            const string TitleFallback = "Der Titel konnte nicht generiert werden.";
+            foreach (var hostMessage in new[] {
+                TitleFallback,
+                "  " + TitleFallback + "  ",
+                TitleFallback + " Das Modell hat keine Antwort geliefert.",
+                "Der Titel konnte nicht generiert werden: Zeitüberschreitung beim lokalen Modell (60 s).",
+                "der titel konnte nicht generiert werden. Größe der Unterhaltung überschreitet das Limit." })
+            {
+                foreach (var wrapped in new[] { false, true })
+                {
+                    Call("GenerateTitleEntryAsync", "s5");
+                    Pump();
+                    Exception thrown = new InvalidOperationException(hostMessage);
+                    if (wrapped) thrown = new AggregateException(thrown);
+                    _gate.SetException(thrown);
+                    Pump();
+                    var shown = Field<string>("_actionError") ?? "";
+                    var banner = Field<TextBlock>("_bannerText");
+                    Check(shown == hostMessage.Trim() && Occurrences(shown, "konnte nicht generiert werden") == 1
+                        && banner.Text == shown && banner.IsVisible && Pending("s5") == null,
+                        "fallback sentence appears once" + (wrapped ? " (aggregate)" : "") + ": " + hostMessage.Trim());
+                }
+            }
+            Snap("generate-duplicate-error-light", 390);
+            Call("GenerateTitleEntryAsync", "s5");
+            Pump();
+            _gate.SetException(new InvalidOperationException("Der Titel konnte nicht generiert werdenden Zustand prüfen."));
+            Pump();
+            Check(Field<string>("_actionError") == TitleFallback + " Der Titel konnte nicht generiert werdenden Zustand prüfen.",
+                "only a whole leading fallback sentence counts as a repeat");
+            Call("GenerateTitleEntryAsync", "s5");
+            Pump();
+            _gate.SetException(new InvalidOperationException("Für diesen Chat fehlt der Modellzugang. Der Titel konnte nicht generiert werden."));
+            Pump();
+            Check(Field<string>("_actionError") == TitleFallback + " Für diesen Chat fehlt der Modellzugang. Der Titel konnte nicht generiert werden.",
+                "a host detail that does not lead with the fallback keeps its full text");
+            Call("GenerateTitleEntryAsync", "s5");
+            Pump();
+            _gate.SetException(new InvalidOperationException("   "));
+            Pump();
+            Check(Field<string>("_actionError") == TitleFallback, "a blank host message falls back to the neutral sentence");
+            Call("GenerateTitleEntryAsync", "s5");
+            Pump();
+            Check(Field<string>("_actionError") == null, "a new generation clears the previous error");
+            _gate.SetException(new OperationCanceledException(TitleFallback));
+            Pump();
+            Check(Field<string>("_actionError") == null && Pending("s5") == null && More("s5") != null, "cancelled generation stays silent and frees the row");
+            Call("GenerateTitleEntryAsync", "s5");
+            Pump();
+            _gate.SetException(new AggregateException(new TaskCanceledException()));
+            Pump();
+            Check(Field<string>("_actionError") == null, "a wrapped cancellation stays silent");
+            Call("GenerateTitleEntryAsync", "s5");
+            Pump();
+            _gate.SetException(new TimeoutException(TitleFallback + " intern"));
+            Pump();
+            Check(Field<string>("_actionError") == TitleFallback, "non-host exceptions never leak their text, even when it repeats the fallback");
+
+            // The shared formatter covers the other actions in the same way.
+            Call("ArchiveEntryAsync", "s6");
+            Pump();
+            _gate.SetException(new InvalidOperationException("Archivieren fehlgeschlagen. Der Chat wird gerade beantwortet."));
+            Pump();
+            Check(Field<string>("_actionError") == "Archivieren fehlgeschlagen. Der Chat wird gerade beantwortet.", "archive host message repeating the fallback is shown once");
+            Call("BeginRename", "s3");
+            Pump();
+            Field<TextBox>("_renameBox").Text = "Größe prüfen";
+            Call("CommitRenameAsync");
+            Pump();
+            _gate.SetException(new InvalidOperationException("Umbenennen fehlgeschlagen."));
+            Pump();
+            Check(Field<string>("_renameError") == "Umbenennen fehlgeschlagen.", "rename host message equal to the fallback is shown once");
+            Call("CancelRename");
+            Pump();
+
+            // Unicode titles render exactly as the host sends them: no
+            // character is stripped, replaced or normalized by the picker.
+            var unicodeTitles = new[] {
+                "Alternativer Fix für Anschnitt-Klinkungen in TwinCAT ST",
+                "Größe prüfen – Rückzug",
+                "Ä Ö Ü ä ö ü ß ẞ – „Zitat“ · µs ± 5 % · Ø 12 mm · 25 °C",
+                "Messwert 𝛼 ≤ 0,5 ✓ 東京 Linie №3 🚀",
+                "Combining: Größe prüfen" };
+            var unicodeItems = Items().ToList();
+            for (var i = 0; i < unicodeTitles.Length; i++) unicodeItems.Insert(0, Item("u" + i, unicodeTitles[i], 0.5 + i, false, false));
+            _picker.Show("Anlage_Linie3", "u0", unicodeItems.ToArray());
+            Pump();
+            for (var i = 0; i < unicodeTitles.Length; i++)
+            {
+                var expected = unicodeTitles[i];
+                var blocks = Descendants<TextBlock>(Field<StackPanel>("_list")).Where(block => block.Text == expected).ToList();
+                var block0 = blocks.FirstOrDefault();
+                Check(Title("u" + i) == expected && blocks.Count == 1 && block0.IsVisible && block0.ActualWidth > 0 && block0.ActualHeight > 0
+                    && (expected.Length <= 36 || (block0.ToolTip as string) == expected),
+                    "unicode title renders unchanged: " + expected);
+            }
+            Snap("unicode-titles-light", 390);
+            Snap("unicode-titles-light", 900);
+            _picker.Show("Anlage_Linie3", "s2", Items());
+            Pump();
 
             // The delegate alone provides the row action button; without it the item is hidden.
             var renameHandler = _picker.RenameAsync;
@@ -457,6 +560,23 @@ namespace TwinCatAssistant.Native
             var list = (System.Collections.IList)Field<object>("_targets");
             var target = list.Cast<object>().FirstOrDefault(t => (string)t.GetType().GetField("Id").GetValue(t) == id);
             return target == null ? null : (Button)target.GetType().GetField("More").GetValue(target);
+        }
+
+        static int Occurrences(string text, string part)
+        {
+            var count = 0;
+            for (var at = text.IndexOf(part, StringComparison.OrdinalIgnoreCase); at >= 0; at = text.IndexOf(part, at + part.Length, StringComparison.OrdinalIgnoreCase)) count++;
+            return count;
+        }
+
+        static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
+        {
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            {
+                var child = VisualTreeHelper.GetChild(root, i);
+                if (child is T match) yield return match;
+                foreach (var nested in Descendants<T>(child)) yield return nested;
+            }
         }
 
         static Button MenuButton(string name)

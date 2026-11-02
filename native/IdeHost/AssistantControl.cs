@@ -41,6 +41,11 @@ namespace TwinCatAssistant.Native
         private Button _historyButton, _newChatButton, _attachPouButton, _moreButton;
         private readonly ShapePath _attachIcon = new ShapePath { Width = 16, Height = 16, StrokeThickness = 1.6, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round, Margin = new Thickness(0, 0, 6, 0) };
         private readonly TextBlock _attachLabel = new TextBlock { FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center };
+        // Every label the attach button shows (see RenderChatBinding). Hidden
+        // copies reserve the widest one, so a state change neither resizes the
+        // button nor moves the history, new-chat and overflow buttons.
+        private static readonly string[] AttachLabels = { "Anhängen", "Wird angehängt", "Vorgemerkt", "Erneut anhängen", "Aktualisieren" };
+        private readonly Grid _attachLabelSizers = new Grid { IsHitTestVisible = false };
         // Banner: at most one actionable message, only when something needs attention.
         private readonly Border _banner = new Border { BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(12, 7, 8, 7), Visibility = Visibility.Collapsed };
         private readonly TextBlock _bannerText = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center };
@@ -153,7 +158,12 @@ namespace TwinCatAssistant.Native
             _newChatButton = IconButton("plus", "Neuer Chat", NewProjectChatAsync);
             _attachPouButton = AsyncButton(null, AttachClickAsync);
             _attachPouButton.SetResourceReference(StyleProperty, "Tc.PrimaryButton");
-            _attachPouButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { _attachIcon, _attachLabel } };
+            foreach (var label in AttachLabels)
+                _attachLabelSizers.Children.Add(new TextBlock { Text = label, FontSize = _attachLabel.FontSize, Visibility = Visibility.Hidden,
+                    Margin = new Thickness(_attachIcon.Width + 6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+            _attachPouButton.Content = new Grid { Children = { _attachLabelSizers,
+                new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Children = { _attachIcon, _attachLabel } } } };
+            _attachPouButton.SetBinding(System.Windows.Automation.AutomationProperties.NameProperty, new System.Windows.Data.Binding("Text") { Source = _attachLabel });
             _attachIcon.SetBinding(Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = _attachPouButton });
             _attachLabel.SetBinding(TextBlock.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { Source = _attachPouButton });
             _attachPouButton.Margin = new Thickness(6, 0, 2, 0);
@@ -229,6 +239,7 @@ namespace TwinCatAssistant.Native
         private void FitStrip(double width)
         {
             _attachLabel.Visibility = width < 460 ? Visibility.Collapsed : Visibility.Visible;
+            _attachLabelSizers.Visibility = _attachLabel.Visibility;
             _attachIcon.Margin = width < 460 ? new Thickness(0) : new Thickness(0, 0, 6, 0);
             _statusText.Visibility = width < 380 ? Visibility.Collapsed : Visibility.Visible;
             _statusDot.Margin = width < 380 ? new Thickness(0) : new Thickness(0, 0, 5, 0);

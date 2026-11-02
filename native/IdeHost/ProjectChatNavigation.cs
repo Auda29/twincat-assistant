@@ -154,15 +154,20 @@ namespace TwinCatAssistant.Native
             {
                 await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatManage={id:'" + slot + "',phase:'pending'};window.__twinCatChat.manageSession("
                     + serializer.Serialize(expected) + "," + serializer.Serialize(request) + ").then(()=>{if(window.__twinCatManage?.id==='" + slot
-                    + "')window.__twinCatManage.phase='ready'},()=>{if(window.__twinCatManage?.id==='" + slot + "')window.__twinCatManage.phase='failed'});");
+                    + "')window.__twinCatManage.phase='ready'},error=>{if(window.__twinCatManage?.id==='" + slot
+                    + "'){window.__twinCatManage.phase='failed';window.__twinCatManage.code=['empty_history','history_unavailable','chat_busy','archived','invalid_title','provider_failed'].includes(error?.code)?error.code:'unknown'}});");
                 var deadline = DateTime.UtcNow.AddSeconds(action == "generate-title" ? 100 : 30);
                 while (PickerCurrent(scope) && DateTime.UtcNow < deadline)
                 {
                     var phase = await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatManage?.id==='" + slot + "'?window.__twinCatManage.phase:null");
                     if (phase == "\"ready\"") break;
-                    if (phase == "\"failed\"") throw new InvalidOperationException(action == "generate-title"
-                        ? "Der Titel konnte nicht generiert werden. Der Chat braucht einen abgeschlossenen Austausch und einen verfügbaren Modellanbieter. Der bisherige Titel bleibt erhalten."
-                        : "Die Änderung wurde nicht bestätigt. Bitte den Verlauf erneut laden.");
+                    if (phase == "\"failed\"")
+                    {
+                        var codeRaw = await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatManage?.id==='" + slot + "'?window.__twinCatManage.code:null");
+                        var code = codeRaw != null && codeRaw.Length < 100 ? serializer.Deserialize<string>(codeRaw) : null;
+                        throw new InvalidOperationException(action == "generate-title" ? TitleFailureMessage(code)
+                            : "Die Änderung wurde nicht bestätigt. Bitte den Verlauf erneut laden.");
+                    }
                     await Task.Delay(100);
                 }
                 if (!PickerCurrent(scope)) throw new OperationCanceledException();
@@ -185,6 +190,19 @@ namespace TwinCatAssistant.Native
         {
             try { _chatBindings.Bind(binding); }
             catch (InvalidOperationException) { throw new InvalidOperationException("Dieser Chat gehört zu einem anderen Projekt oder wird in einer anderen IDE verwendet."); }
+        }
+        private static string TitleFailureMessage(string code)
+        {
+            switch (code)
+            {
+                case "empty_history": return "Dieser Chat enthält noch keinen abgeschlossenen Austausch. Der bisherige Titel bleibt erhalten.";
+                case "history_unavailable": return "Der gespeicherte Chatverlauf konnte nicht vollständig geladen werden. Bitte erneut versuchen.";
+                case "chat_busy": return "In diesem Chat läuft noch eine Antwort oder sein Status ist noch nicht bestätigt. Bitte kurz warten.";
+                case "archived": return "Bitte zuerst den archivierten Chat wiederherstellen.";
+                case "invalid_title": return "Der Modellanbieter hat einen fehlerhaften Titel geliefert. Der bisherige Titel bleibt erhalten. Bitte erneut versuchen.";
+                case "provider_failed": return "Der Modellanbieter konnte die Titelanfrage nicht abschließen. Bitte Anbieter und Modell prüfen. Der bisherige Titel bleibt erhalten.";
+                default: return "Die Titelanfrage wurde nicht bestätigt. Bitte den Verlauf neu laden und erneut versuchen. Der bisherige Titel bleibt erhalten.";
+            }
         }
     }
 }

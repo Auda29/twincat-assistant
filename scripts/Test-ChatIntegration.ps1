@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath,[switch]$TestKnowledgeSetup,[string]$KnowledgeStateSource,[switch]$TestExistingThemeProfile,[switch]$TestProjectNavigation)
+param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath,[switch]$TestKnowledgeSetup,[string]$KnowledgeStateSource,[switch]$TestExistingThemeProfile,[switch]$TestProjectNavigation,[switch]$TestExistingChat)
 $ErrorActionPreference = 'Stop'
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'Run with powershell.exe -NoProfile -STA.' }
 # Actual built host + WebView2 + pinned runtime. Only the editor snapshots and
@@ -236,6 +236,8 @@ try {
     $taskCredentials.Save($taskPassword)
     Set-Field '_chatCredentials' $taskCredentials
     Set-Field '_chatSnapshotReader' ([Func[TwinCatAssistant.Native.ActiveEditorSnapshot]]{ return $global:taskIntegrationSnapshot })
+    $taskPrivatePreferences=[Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatPreferences'),[object[]]@([string](Join-Path $taskRoot 'preferences')))
+    Set-Field '_chatPreferences' $taskPrivatePreferences
     Set-Field '_chatProjectReader' ([Func[TwinCatAssistant.Native.NativeProjectIdentity]]{ return $global:taskIntegrationProject })
     (Field '_port').Text = [string]$taskPort
     Set-Snapshot 'PLC_A'
@@ -329,6 +331,12 @@ console.log(JSON.stringify({ backendStarts: status.backendStarts, backendConnect
         $taskBrokerCheck | & $taskConfig.NodePath --input-type=module - $taskConfig.StateRoot $taskRepo
         if ($LASTEXITCODE -ne 0) { throw 'Ordinary cold corpus startup must reuse one backend.' }
         Write-Output 'Real corpus/native runtime startup passed; no operator credentials or model requests used.'
+        return
+    }
+    if ($TestExistingChat) {
+        . ([ScriptBlock]::Create([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Test-ExistingChat.ps1'),[Text.Encoding]::UTF8)))
+        Test-ExistingChat
+        Write-Output "$taskCount existing-chat integration checks passed. Synthetic history and model responses."
         return
     }
     if ($TestProjectNavigation) {
@@ -650,6 +658,10 @@ console.log(JSON.stringify({ backendStarts: status.backendStarts, backendConnect
     if ((JS 'window.__twinCatChat.state().canManage===true') -eq 'true') {
         . (Join-Path $PSScriptRoot 'Test-ProjectChatNavigation.ps1')
         Test-ProjectChatNavigation
+    }
+    if ((JS 'window.__twinCatChat.state().canManage===true') -eq 'true') {
+        . ([ScriptBlock]::Create([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Test-ExistingChat.ps1'),[Text.Encoding]::UTF8)))
+        Test-ExistingChat
     }
     Write-Output "$taskCount native embedded integration checks passed. Synthetic editor snapshots; no IDE/compiler/model acceptance claimed."
     Write-Output ('Fixture evidence: '+$taskRoot)
