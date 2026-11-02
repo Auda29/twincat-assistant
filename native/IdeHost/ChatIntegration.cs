@@ -155,6 +155,8 @@ namespace TwinCatAssistant.Native
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_disposed || _browser.CoreWebView2 == null || !Allowed(_browser.CoreWebView2.Source)) return null;
+            var documentGeneration = _chatDocumentGeneration;
+            var browser = _browser.CoreWebView2;
             var serializer = new JavaScriptSerializer();
             // Operational readiness lets automation select/bind the project.
             // Presentation additionally waits for that selection's committed
@@ -166,7 +168,7 @@ namespace TwinCatAssistant.Native
                 + "const loading=!!document.querySelector('#initial-loading,[data-chat-hydration-skeleton],[data-twincat-startup-overlay]');"
                 + "return {...s,ready:s.ready && (!s.authenticated || mounted),"
                 + "presentationReady:s.presentationReady === true && mounted && !loading};})())");
-            if (raw == null || raw.Length > 12000) return null;
+            if (_disposed || documentGeneration != _chatDocumentGeneration || !ReferenceEquals(browser, _browser.CoreWebView2) || raw == null || raw.Length > 12000) return null;
             var json = serializer.Deserialize<string>(raw);
             return serializer.Deserialize<ChatSelection>(json);
         }
@@ -177,10 +179,11 @@ namespace TwinCatAssistant.Native
             if (_chatPolling || _disposed || _browser.CoreWebView2 == null) return;
             _chatPolling = true;
             var generation = _chatConnection.Generation;
+            var documentGeneration = _chatDocumentGeneration;
             try
             {
                 var selection = await ReadChatSelectionAsync();
-                if (_disposed || generation != _chatConnection.Generation) return;
+                if (_disposed || generation != _chatConnection.Generation || documentGeneration != _chatDocumentGeneration || OlderChatSelection(selection)) return;
                 _chatSelection = selection; _chatAdapterReady = selection?.ready == true;
                 if (selection?.theme != null) ApplyTheme(selection.theme);
                 try { _chatBinding = selection?.IsSelected == true ? _chatBindings.Read(_origin.AbsoluteUri, selection.sessionId) : null; }
@@ -235,10 +238,10 @@ namespace TwinCatAssistant.Native
                     var generalChat = _chatBinding?.IsGeneral == true && CanPromptCurrentChat();
                     if (key != _autoProjectKey)
                     {
-                        // Opening or switching to a PLC project selects its newest
+                        // Opening or switching to a PLC project restores its chosen
                         // conversation. A deliberately used general chat stays open.
                         _autoProjectKey = key;
-                        if (!HasCurrentChatBinding() && (!generalChat || (_mcpEnabled && !_explicitGeneralRequested))) { await OpenProjectChatAsync(); return; }
+                        if (!generalChat || !_explicitGeneralRequested) { await OpenProjectChatAsync(); return; }
                     }
                     else if (selected && !HasCurrentChatBinding() && !generalChat
                         && (_chatBinding == null || _chatBinding.IsGeneral || _chatBinding.SameProjectContext(identity))
@@ -467,12 +470,14 @@ namespace TwinCatAssistant.Native
         private void ToggleMenu()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            CloseProjectChats();
             _previewPopup.IsOpen = false;
             if (_menuPopup.IsOpen || JustClosed(_menuClosedAt)) { _menuPopup.IsOpen = false; return; }
             _menuItems.Children.Clear();
             var ready = _chatAdapterReady && _chatSelection?.authenticated == true && !_chatActionPending;
             // Chat: actions and the one disclosure preference.
             MenuRow("chat", "Neuer allgemeiner Chat", "Ohne Projekt- und Bausteinkontext", ready, () => NewChatAsync(true));
+            MenuRow("history", "Allgemeine Chats …", "Getrennter Verlauf ohne Projektkontext", ready, () => ShowProjectChatsAsync(true));
             var exportReady = ready && _chatSelection?.IsSelected == true && _chatSelection.canExport && !_threadExporting;
             MenuRow("copy", "Gesamten Chat kopieren", "Alle gespeicherten Nachrichten als Markdown", exportReady, () => ExportThreadAsync(false));
             MenuRow("download", "Chat als Markdown speichern …", "Vollständigen Verlauf als .md-Datei exportieren", exportReady, () => ExportThreadAsync(true));
@@ -626,7 +631,7 @@ namespace TwinCatAssistant.Native
         private async Task OpenHistoryAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (_chatAdapterReady && !_disposed) await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat.toggleChats()");
+            await ShowProjectChatsAsync(false);
         }
 
         private async Task OpenProviderSettingsAsync()
@@ -702,7 +707,7 @@ namespace TwinCatAssistant.Native
 
         private Task NewProjectChatAsync() { return NewChatAsync(false); }
 
-        // Reopen the newest conversation this project already has; only create
+        // Restore the chosen conversation, with newest active chat as fallback; create
         // a new one when none exists or it is held by another live IDE.
         private async Task OpenProjectChatAsync()
         {
@@ -710,7 +715,8 @@ namespace TwinCatAssistant.Native
             var project = ReadProjectIdentity();
             if (project == null || _chatActionPending || !await PrepareProjectWorkspaceAsync(project)) return;
             HashSet<string> known;
-            try { known = _chatBindings.SessionsForProject(_origin.AbsoluteUri, project); }
+            string remembered;
+            try { known = _chatBindings.SessionsForProject(_origin.AbsoluteUri, project); remembered = _chatBindings.SelectedForProject(project); }
             catch
             {
                 Notify("Die gespeicherte Projektzuordnung konnte nicht gelesen werden. Es wurde kein neuer Chat angelegt.", "error");
@@ -725,11 +731,14 @@ namespace TwinCatAssistant.Native
                     // independently of the UI's still-empty bootstrap cache.
                     var entries = await ReadRecentSessionsAsync();
                     if (_disposed || documentGeneration != _chatDocumentGeneration || !project.Equals(ReadProjectIdentity())) return;
-                    foreach (var latest in entries.Where(entry => known.Contains(entry.id) || _mcpEnabled))
+                    foreach (var latest in entries.Where(entry => !entry.archived && (known.Contains(entry.id) || _mcpEnabled))
+                        .OrderByDescending(entry => entry.id == remembered).ThenByDescending(entry => entry.updated))
                     {
                         if (_mcpEnabled && !SameDirectory(latest.directory, _projectWorkspace)
                             && !await PrepareProjectWorkspaceAsync(project, latest.directory))
                             throw new InvalidOperationException("Gespeicherter Projektkontext noch nicht verfügbar.");
+                        try { _chatBindings.Bind(ChatContextBinding.CreateProject(project, _chatIdeInstance, _origin.AbsoluteUri, latest.id)); }
+                        catch (InvalidOperationException) { continue; }
                         if (!await SelectSessionAsync(latest.id)) throw new InvalidOperationException("Gespeicherte Unterhaltung noch nicht auswählbar.");
                         if (_disposed || documentGeneration != _chatDocumentGeneration || !project.Equals(ReadProjectIdentity())) return;
                         try { await BindSelectionAsync(FreshProjectIdentity()); return; }
@@ -751,45 +760,54 @@ namespace TwinCatAssistant.Native
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var selection = await ReadChatSelectionAsync();
-            if (_disposed || selection == null) return;
+            if (_disposed || selection == null || OlderChatSelection(selection)) return;
             _chatSelection = selection;
             try { _chatBinding = selection.IsSelected ? _chatBindings.Read(_origin.AbsoluteUri, selection.sessionId) : null; } catch { _chatBinding = null; }
             await PermitCurrentChatAsync();
             RenderChatBinding();
         }
 
-        private async Task<ChatSessionEntry[]> ReadRecentSessionsAsync()
+        private bool OlderChatSelection(ChatSelection selection)
         {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            var serializer = new JavaScriptSerializer();
-            var generation = _chatDocumentGeneration;
-            var directory = _projectWorkspace ?? _chatWorkspace();
-            var directories = _projectWorkspaces ?? new[] { directory };
-            var requestId = Guid.NewGuid().ToString("N");
-            await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatHistory={id:'" + requestId + "',phase:'pending'};window.__twinCatChat.storedSessions("
-                + serializer.Serialize(directories) + ").then(items=>{if(window.__twinCatHistory?.id==='" + requestId
-                + "')window.__twinCatHistory={id:'" + requestId + "',phase:'ready',items};},()=>{if(window.__twinCatHistory?.id==='"
-                + requestId + "')window.__twinCatHistory={id:'" + requestId + "',phase:'failed'};});");
-            var deadline = DateTime.UtcNow.AddSeconds(30);
-            while (!_disposed && generation == _chatDocumentGeneration && SameDirectory(directory, _projectWorkspace ?? _chatWorkspace()) && DateTime.UtcNow < deadline)
-            {
-                var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.__twinCatHistory)");
-                if (raw == null || raw.Length > 4000000) throw new InvalidOperationException("Projektverlauf nicht bestätigt.");
-                var result = serializer.Deserialize<ChatHistoryResult>(serializer.Deserialize<string>(raw));
-                if (result?.id != requestId || result.phase == "failed") throw new InvalidOperationException("Projektverlauf nicht verfügbar.");
-                if (result.phase == "ready" && result.items != null) return result.items;
-                await Task.Delay(150);
-            }
-            throw new InvalidOperationException("Projektverlauf noch nicht geladen.");
+            return selection != null && _chatSelection != null && selection.documentId == _chatSelection.documentId && selection.epoch < _chatSelection.epoch;
         }
 
-        private async Task<bool> SelectSessionAsync(string sessionId)
+        private async Task<ChatSessionEntry[]> ReadRecentSessionsAsync(bool includeArchived = false, string[] selectedDirectories = null)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var serializer = new JavaScriptSerializer { MaxJsonLength = 24000000 };
+            var generation = _chatDocumentGeneration;
+            var directory = _projectWorkspace ?? _chatWorkspace();
+            var directories = selectedDirectories ?? _projectWorkspaces ?? new[] { directory };
+            var requestId = Guid.NewGuid().ToString("N");
+            var slot = "window.__twinCatHistories['" + requestId + "']";
+            await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatHistories??={};" + slot + "={id:'" + requestId + "',phase:'pending'};window.__twinCatChat.storedSessions("
+                + serializer.Serialize(directories) + "," + (includeArchived ? "true" : "false") + ").then(items=>{if(" + slot + ")" + slot
+                + "={id:'" + requestId + "',phase:'ready',items};},()=>{if(" + slot + ")" + slot + "={id:'" + requestId + "',phase:'failed'};});");
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            try
+            {
+                while (!_disposed && generation == _chatDocumentGeneration && (selectedDirectories != null || SameDirectory(directory, _projectWorkspace ?? _chatWorkspace())) && DateTime.UtcNow < deadline)
+                {
+                    var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify(" + slot + ")");
+                    if (raw == null || raw.Length > 24000000) throw new InvalidOperationException("Projektverlauf nicht bestätigt.");
+                    var result = serializer.Deserialize<ChatHistoryResult>(serializer.Deserialize<string>(raw));
+                    if (result?.id != requestId || result.phase == "failed") throw new InvalidOperationException("Projektverlauf nicht verfügbar.");
+                    if (result.phase == "ready" && result.items != null) return result.items;
+                    await Task.Delay(150);
+                }
+                throw new InvalidOperationException("Projektverlauf noch nicht geladen.");
+            }
+            finally { if (!_disposed && generation == _chatDocumentGeneration) await _browser.CoreWebView2.ExecuteScriptAsync("delete " + slot); }
+        }
+
+        private async Task<bool> SelectSessionAsync(string sessionId, string directory = null)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (!ChatSelection.ValidSession(sessionId)) return false;
             var serializer = new JavaScriptSerializer();
             await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat.selectSession(" + serializer.Serialize(sessionId) + ","
-                + serializer.Serialize(_projectWorkspace ?? _chatWorkspace()) + ")");
+                + serializer.Serialize(directory ?? _projectWorkspace ?? _chatWorkspace()) + ")");
             var deadline = DateTime.UtcNow.AddSeconds(5);
             while (!_disposed && DateTime.UtcNow < deadline)
             {
@@ -809,7 +827,7 @@ namespace TwinCatAssistant.Native
             _chatActionPending = true; RenderChatBinding();
             try
             {
-                var options = new { title = identity == null ? "Allgemeiner TwinCAT-Chat" : System.IO.Path.GetFileNameWithoutExtension(identity.ProjectFile),
+                var options = new { title = (string)null,
                     directory = identity == null ? _chatWorkspace() : (_projectWorkspace ?? _chatWorkspace()) };
                 var serializer = new JavaScriptSerializer();
                 // ExecuteScriptAsync does not await a JS promise. Poll a narrow,
@@ -857,6 +875,7 @@ namespace TwinCatAssistant.Native
             if (!fresh.Equals(project) || !SameDirectory(selected.directory, _projectWorkspace ?? _chatWorkspace())) throw new InvalidOperationException("Projekt oder Arbeitsbereich gewechselt. Chat nicht zugeordnet.");
             var binding = ChatContextBinding.CreateProject(fresh, _chatIdeInstance, _origin.AbsoluteUri, selected.sessionId);
             _chatBindings.Bind(binding);
+            _chatBindings.RememberProjectSelection(fresh, _origin.AbsoluteUri, selected.sessionId);
             _chatSelection = selected; _chatBinding = binding;
         }
 

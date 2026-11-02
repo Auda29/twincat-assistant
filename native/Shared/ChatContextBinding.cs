@@ -30,6 +30,9 @@ namespace TwinCatAssistant.Native
         public string id { get; set; }
         public double updated { get; set; }
         public string directory { get; set; }
+        public string title { get; set; }
+        public bool archived { get; set; }
+        public bool busy { get; set; }
     }
     public sealed class ChatHistoryResult
     {
@@ -64,6 +67,7 @@ namespace TwinCatAssistant.Native
         public bool ready;
         public bool presentationReady;
         public bool canExport;
+        public bool canManage;
         public bool authenticated;
         public string sessionId;
         public string directory;
@@ -152,6 +156,12 @@ namespace TwinCatAssistant.Native
 
     public static class ChatContextPolicy
     {
+        public static string ProjectSelectionKey(string stateRoot, NativeProjectIdentity project)
+        {
+            if (string.IsNullOrWhiteSpace(stateRoot) || project == null) throw new ArgumentException("Exact profile and project required.");
+            Func<string, string> normalize = value => value.Replace('\\', '/').TrimEnd('/').ToLowerInvariant();
+            return Hash(normalize(Path.GetFullPath(stateRoot)) + "\0" + normalize(project.SolutionFile) + "\0" + normalize(project.ProjectFile));
+        }
         public static string Hash(string text)
         {
             using (var algorithm = SHA256.Create())

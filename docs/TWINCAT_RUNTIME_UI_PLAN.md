@@ -110,10 +110,12 @@ Projektchat. Beim erneuten Öffnen wird der zuletzt ausgewählte Chat
 wiederhergestellt. Ein Baustein- oder Memberwechsel bleibt im aktuellen Chat.
 Allgemeine Chats bleiben getrennt über das Menü erreichbar. Projektwerkzeuge und
 Knowledge-Verbindung werden gemeinsam genutzt, bestehende Chats bleiben erhalten.
-Diese Navigationsänderung ist noch umzusetzen; der aktuelle Stand öffnet über
-die Uhr weiterhin die allgemeine OpenChamber-Seitenleiste. Die
-[genauen Regeln und die Abgrenzung zum heutigen Verhalten](RUNTIME_INTEGRATION.md#agreed-project-chat-navigation-2026-10-30)
-sind festgehalten.
+Diese Navigation ist seit 02.11.2026 auf `feat/project-chat-navigation`
+implementiert: Die kompakte Auswahl ersetzt die allgemeine Seitenleiste und
+ergänzt Titelsuche, Umbenennen, Archivieren und Wiederherstellen. Die letzte
+Auswahl bleibt über einen Laufzeit-Neustart erhalten. Die
+[genauen Regeln und Abnahmegrenzen](RUNTIME_INTEGRATION.md#agreed-project-chat-navigation-2026-10-30)
+sind festgehalten. Installation und reale IDE-Abnahme stehen noch aus.
 
 ### Kontext und Anhänge eindeutig behandeln
 

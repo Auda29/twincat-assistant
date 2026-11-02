@@ -156,4 +156,5 @@ design.
 Before rollout, publish a new Knowledge software version with green CI, update
 the Assistant's verified pin, and rerun the combined checks before installation.
 Chat-history copy and Markdown export were manually accepted by the operator on
-2026-11-02. Project-chat navigation remains a separate implementation task.
+2026-11-02. Project-chat navigation is implemented separately on
+`feat/project-chat-navigation`; its installation and IDE acceptance remain pending.

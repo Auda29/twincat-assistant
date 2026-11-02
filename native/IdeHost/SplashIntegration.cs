@@ -42,6 +42,8 @@ namespace TwinCatAssistant.Native
 
         private void ResetLoading()
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            CloseProjectChats();
             _chatPresented = false;
             _chatReadyTimeout.Stop();
             _menuPopup.IsOpen = false;

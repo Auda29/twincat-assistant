@@ -123,6 +123,44 @@ namespace TwinCatAssistant.Native
                 finally { gate.ReleaseMutex(); }
             }
         }
+        private sealed class ProjectSelection
+        {
+            public int Version { get; set; }
+            public string Key { get; set; }
+            public string SessionId { get; set; }
+        }
+        private string SelectionFile(NativeProjectIdentity project)
+        {
+            return Path.Combine(_directory, "project-" + ChatContextPolicy.ProjectSelectionKey(StateRoot, project) + ".selection");
+        }
+        public string SelectedForProject(NativeProjectIdentity project)
+        {
+            var file = SelectionFile(project);
+            if (!Directory.Exists(_directory)) return null;
+            VerifyDirectory();
+            if (!File.Exists(file)) return null;
+            var value = new JavaScriptSerializer().Deserialize<ProjectSelection>(Encoding.UTF8.GetString(NativeChatFiles.Read(file)));
+            if (value?.Version != 1 || value.Key != ChatContextPolicy.ProjectSelectionKey(StateRoot, project) || !ChatSelection.ValidSession(value.SessionId))
+                throw new IOException("Stored project selection is invalid.");
+            return value.SessionId;
+        }
+        public void RememberProjectSelection(NativeProjectIdentity project, string origin, string session)
+        {
+            var binding = Read(origin, session);
+            if (binding == null || !binding.SameProjectContext(project)) throw new InvalidOperationException("Chat belongs to another project.");
+            EnsureDirectory();
+            var destination = SelectionFile(project);
+            var temporary = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".tmp");
+            try
+            {
+                var bytes = Encoding.UTF8.GetBytes(new JavaScriptSerializer().Serialize(new ProjectSelection {
+                    Version = 1, Key = ChatContextPolicy.ProjectSelectionKey(StateRoot, project), SessionId = session }));
+                using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { file.Write(bytes, 0, bytes.Length); file.Flush(true); }
+                if (File.Exists(destination)) NativeChatFiles.Read(destination); // refuse a redirected existing destination
+                if (File.Exists(destination)) File.Replace(temporary, destination, null); else File.Move(temporary, destination);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
         private void VerifyDirectory()
         {
             if ((new DirectoryInfo(_directory).Attributes & FileAttributes.ReparsePoint) != 0

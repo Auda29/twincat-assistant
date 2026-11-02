@@ -9,6 +9,10 @@ internal static class ChatBindingTests
         var first = new ActiveEditorIdentity(10, "C:/Test/Context.sln", "C:/Test/PLC_A.plcproj", "C:/Test/FB_Motor.TcPOU", "TIPC/PLC_A/POUs/FB_Motor");
         var second = new ActiveEditorIdentity(10, first.SolutionFile, "C:/Test/PLC_B.plcproj", first.DocumentMoniker, first.TreePath);
         var otherIde = new ActiveEditorIdentity(11, first.SolutionFile, first.ProjectFile, first.DocumentMoniker, first.TreePath);
+        var profile = Path.GetFullPath("selection-test-profile");
+        Check(ChatContextPolicy.ProjectSelectionKey(profile, first.ProjectIdentity) == ChatContextPolicy.ProjectSelectionKey(profile, otherIde.ProjectIdentity), "last selected project chat survives IDE lifetime and PID changes");
+        Check(ChatContextPolicy.ProjectSelectionKey(profile, first.ProjectIdentity) != ChatContextPolicy.ProjectSelectionKey(profile, second.ProjectIdentity), "last selected chat is separate for each PLC project");
+        Check(ChatContextPolicy.ProjectSelectionKey(profile, first.ProjectIdentity) != ChatContextPolicy.ProjectSelectionKey(profile + "-other", first.ProjectIdentity), "last selected chat is separate for each operator profile");
         var binding = ChatContextBinding.Create(first, "instance-one", "http://127.0.0.1:3123/", "ses_one");
         Check(binding.Matches(first, "instance-one", binding.Origin, "ses_one"), "exact IDE/project/thread binding accepted");
         Check(!binding.Matches(second, "instance-one", binding.Origin, "ses_one"), "same-name POU in another PLC cannot reuse chat binding");

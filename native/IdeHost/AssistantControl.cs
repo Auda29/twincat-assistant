@@ -117,7 +117,7 @@ namespace TwinCatAssistant.Native
             grid.Children.Add(_browser);
             dock.Children.Add(grid);
             Content = dock;
-            _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; };
+            _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; _projectChatPicker?.Close(); };
             _chatHealth = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(3) };
             _chatHealth.Tick += CheckChatHealth;
             _viewHold.Tick += (sender, args) => { _viewHold.Stop(); if (_holdingView) { _holdingView = false; RenderContext(_chatActive, _heldReason); } };
@@ -142,6 +142,7 @@ namespace TwinCatAssistant.Native
             _pouButton.Content = identity;
             _pouButton.SetResourceReference(StyleProperty, "Tc.Button");
             _pouButton.Click += (sender, args) => {
+                CloseProjectChats();
                 _menuPopup.IsOpen = false;
                 if (!JustClosed(_previewClosedAt)) _previewPopup.IsOpen = !_previewPopup.IsOpen && _chatActive != null;
             };
@@ -338,7 +339,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _chatActive = snapshot;
-            if (snapshot?.Identity != null) _chatProject = snapshot.Identity.ProjectIdentity;
+            if (snapshot?.Identity != null) { CloseProjectChatsOnChange(snapshot.Identity.ProjectIdentity); _chatProject = snapshot.Identity.ProjectIdentity; }
             if (_disposed) return;
             if (snapshot == null && _showingPou && ActiveEditorTracker.IsTransient(reason))
             {
@@ -374,6 +375,7 @@ namespace TwinCatAssistant.Native
         private void RenderProjectContext(NativeProjectIdentity project, string reason)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            CloseProjectChatsOnChange(project);
             _chatProject = project;
             if (_disposed || _holdingView) return;
             if (_chatActive != null && !_chatActive.Identity.ProjectIdentity.Equals(project))
@@ -491,7 +493,7 @@ namespace TwinCatAssistant.Native
                     var oldBrowser = _browser;
                     var grid = (Grid)oldBrowser.Parent;
                     _browser = new WebView2CompositionControl();
-                    _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; };
+                    _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; _projectChatPicker?.Close(); };
                     grid.Children.Remove(oldBrowser);
                     oldBrowser.Dispose();
                     grid.Children.Insert(0, _browser);
@@ -686,6 +688,7 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
             _disposed = true;
+            _projectChatPicker?.Dispose();
             _chatConnection.Dispose();
             _chatHealth.Stop();
             _chatHealth.Tick -= CheckChatHealth;

@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath,[switch]$TestKnowledgeSetup,[string]$KnowledgeStateSource,[switch]$TestExistingThemeProfile)
+param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath,[switch]$TestKnowledgeSetup,[string]$KnowledgeStateSource,[switch]$TestExistingThemeProfile,[switch]$TestProjectNavigation)
 $ErrorActionPreference = 'Stop'
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'Run with powershell.exe -NoProfile -STA.' }
 # Actual built host + WebView2 + pinned runtime. Only the editor snapshots and
@@ -277,6 +277,11 @@ try {
         (Field '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'hidden WebView initializes and authenticates, then reveals chat and bar together'
     Assert-Integration (Field '_attachPouButton').IsEnabled 'opening a POU creates and binds its project chat automatically'
     if ((JS '!!window.__twinCatSource') -eq 'true') {
+        # Do not let an already-running poll publish the old readiness value
+        # after the synthetic presentation delay has been installed.
+        (Field '_chatHealth').Stop()
+        $taskPresentationDeadline=[DateTime]::UtcNow.AddSeconds(20)
+        while (((Field '_chatPolling') -or (Field '_automating') -or (Field '_chatActionPending')) -and [DateTime]::UtcNow -lt $taskPresentationDeadline) { Pump 50 }
         JS 'window.__fixturePresentation=window.__twinCatSource.presentationReady;window.__twinCatSource.presentationReady=()=>false' | Out-Null
         $taskControl.GetType().GetMethod('ResetLoading',$taskFlags).Invoke($taskControl,@())
         Invoke-Chat 'PollChatSelectionAsync'
@@ -285,6 +290,7 @@ try {
             (Field '_splash').Visibility -eq [Windows.Visibility]::Visible) 'authenticated mounted chat still waits for committed history readiness'
         JS 'window.__twinCatSource.presentationReady=window.__fixturePresentation;delete window.__fixturePresentation' | Out-Null
         Wait-Native { (Field '_browser').Visibility -eq [Windows.Visibility]::Visible } 'history readiness releases startup presentation'
+        (Field '_chatHealth').Start()
     }
     # Simulate the gap between adapter installation and React mounting its chat.
     # Keep the real adapter/authentication alive; only withhold the UI markers.
@@ -323,6 +329,13 @@ console.log(JSON.stringify({ backendStarts: status.backendStarts, backendConnect
         $taskBrokerCheck | & $taskConfig.NodePath --input-type=module - $taskConfig.StateRoot $taskRepo
         if ($LASTEXITCODE -ne 0) { throw 'Ordinary cold corpus startup must reuse one backend.' }
         Write-Output 'Real corpus/native runtime startup passed; no operator credentials or model requests used.'
+        return
+    }
+    if ($TestProjectNavigation) {
+        if ((JS 'window.__twinCatChat.state().canManage===true') -ne 'true') { throw 'Project navigation checks require the source contract.' }
+        . (Join-Path $PSScriptRoot 'Test-ProjectChatNavigation.ps1')
+        Test-ProjectChatNavigation
+        Write-Output "$taskCount project navigation integration checks passed. Private runtime and synthetic projects."
         return
     }
     $taskFirstSession = (Field '_chatSelection').sessionId
@@ -620,6 +633,10 @@ console.log(JSON.stringify({ backendStarts: status.backendStarts, backendConnect
             $taskScreenshot = [IO.File]::Create((Join-Path $taskEvidence ('assistant-'+$taskVariant+'-'+$taskWidth+'.png')))
             try { $taskEncoder.Save($taskScreenshot) } finally { $taskScreenshot.Dispose() }
         }
+    }
+    if ((JS 'window.__twinCatChat.state().canManage===true') -eq 'true') {
+        . (Join-Path $PSScriptRoot 'Test-ProjectChatNavigation.ps1')
+        Test-ProjectChatNavigation
     }
     Write-Output "$taskCount native embedded integration checks passed. Synthetic editor snapshots; no IDE/compiler/model acceptance claimed."
     Write-Output ('Fixture evidence: '+$taskRoot)

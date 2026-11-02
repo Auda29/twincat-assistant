@@ -21,8 +21,9 @@ operator credential contents.
 New project indexes use canonical solution and PLC-project paths, excluding
 model choice, MCP configuration and IDE process ID. The index adopts the most
 recent matching 0.1.9 workspace in place. All matching historical configuration
-directories participate in restoration, ordered by the actual session update
-time. Selecting an older conversation revalidates its workspace against this
+directories participate in restoration. The last selected chat is preferred;
+the most recently updated active conversation is the fallback. Selecting an
+older conversation revalidates its workspace against this
 exact project and supplies the current reviewed MCP configuration there. Existing
 directories, session IDs and chat records stay in place. No automatic project
 move/rename migration is introduced.
@@ -44,9 +45,10 @@ chat. Each asynchronous result is checked against the current page/project.
 
 ### Agreed project chat navigation, 2026-10-30
 
-This decision is accepted; its navigation changes are not yet implemented. The
-current clock still toggles the general OpenChamber sidebar, and project
-restoration currently prefers the most recently updated stored conversation.
+Implemented on `feat/project-chat-navigation` on 2026-11-02. The native clock
+opens a compact WPF picker; the embedded source UI no longer mounts the generic
+OpenChamber sidebar or its project/folder controls, statistics, info and updater.
+Existing model/provider settings remain reachable through the native menu.
 
 - Each PLC project may have multiple persistent conversations, with one shown
   at a time. Separate topics do not need to share one ever-growing transcript.
@@ -61,8 +63,40 @@ restoration currently prefers the most recently updated stored conversation.
   editor independently.
 - General chats remain separate and accessible through the existing menu.
 
-Reuse the existing conversation storage, paged history loading and project
-binding checks. Preserve existing chats and IDs. Remember selection under the
+The picker searches chat titles and provides inline rename, archive and restore
+through the original session actions. It shows the current chat and observed
+running responses. Switching chats does not send an abort request. Active chats
+cannot be archived through the picker; the action also checks current host
+status before submitting an archive. There is no permanent-delete command.
+New chats use the original default-title path instead of forcing the PLC name
+as a manually supplied title.
+
+Selection metadata is stored atomically as
+`native-chat/threads/project-<profile-and-project-hash>.selection` below the
+Assistant's local application-data directory. The key includes the operator
+state root, solution and PLC-project paths. It excludes IDE PID, listener port,
+model and MCP configuration. Conversation IDs and bodies stay in the existing
+OpenCode database; archive state remains owned by the existing OpenChamber
+session actions. A metadata lookup failure does not create a replacement chat.
+
+Text/file drafts continue to use the original per-chat stores. Linked composer
+references are scoped to the same runtime/directory/session identity, and a
+manual reference still in the input mailbox is retained for its original chat.
+Neither is transferred to the newly selected chat. Linked-reference drafts are
+kept in memory for chat switches; this does not add durable snapshot-draft
+storage across a full browser or IDE restart. Sent attachments remain part of
+the durable transcript as before.
+
+Each history request has its own bounded completion slot. Project/page changes
+invalidate native picker actions; late metadata cannot open a closed popup or
+authorize a management action in a different project. General history has a
+separate menu entry and remains filtered out of the PLC picker. Live IDE
+ownership and exact project/workspace checks still apply to selection and
+management. No model request or agent permission change is needed to manage
+conversation metadata.
+
+The implementation reuses the existing conversation storage, paged history
+loading and project binding checks, preserving existing chats and IDs. It remembers selection under the
 stable operator/project identity, independently of IDE PID, port and model.
 History errors retain their retry behavior and must not create replacement
 conversations. Project chats share their configured project tools and Knowledge
@@ -271,6 +305,29 @@ retain the object they referred to when queued; delivery does not replace it
 with the editor's later active object.
 
 ## Validation scope
+
+The 2026-11-02 navigation change passes 96 Node component cases, eight browser
+contracts, both native host builds, 100 shared native policy/context cases and
+52 WPF view checks. UI and web TypeScript checks, source-overlay lint and four
+original composer test files pass. The picker UI fixture passes 41 checks for
+light/dark layouts, search, actions, errors, keyboard handling and stale results.
+
+The combined real-source WebView2 run passes 131 checks with both MCPs and
+synthetic projects/help. An additional 62-check focused navigation run also
+exercises the final picker New action. These runs verify durable rename,
+archive/restore under the original IDs, separate PLC/general history, per-chat
+text/manual-reference drafts, and restoration of an older selected chat after
+another chat gets a newer update and the actual owned runtime restarts. History
+failures preserve conversations; project changes close the picker and reject
+stale actions. Readbacks from older selection epochs cannot overwrite a newer
+native observation.
+
+The integration fixture keeps its picker frame hidden so backend tests do not
+capture the operator's mouse; the separate 41-case UI fixture renders the actual
+popup. These are local results, not GitHub CI or installed IDE acceptance. Manual
+acceptance still needs real TwinCAT selection, keyboard routing, light-dismiss
+over the composition WebView, auto-hidden/floating panes and high DPI. No real
+provider request, PLC edit or operator-database migration is performed.
 
 The 2026-10-30 combined pass builds both native hosts and the updated source UI.
 It passes 92 Node tests, eight browser checks, 97 shared native policy/context

@@ -20,7 +20,7 @@ function store(initial) {
 function fixture(options = {}) {
   const ui = store({});
   for (const key of ['setSidebarOpen', 'setDraftStartersVisible', 'setShowOpenCodeUpdateNotifications', 'setContextRailHiddenSurfaces', 'toggleSidebar']) {
-    ui.getState()[key] = value => ui.set({ [key + 'Value']: value });
+    ui.getState()[key] = value => ui.set({ [key + 'Value']: value, ...(key === 'setSidebarOpen' ? { isSidebarOpen: value } : {}) });
   }
   const sessions = store({ currentSessionId: 'session-one', currentSessionDirectory: '/isolated' });
   sessions.getState().createSession = async () => { sessions.set({ currentSessionId: 'session-two' }); return { id: 'session-two' }; };
@@ -70,6 +70,65 @@ test('stored history is authoritative even before the UI cache loads, and errors
   assert.deepEqual(await adapter.storedSessions('/isolated'), [{ id: 'persisted', updated: 23, directory: '/isolated' }]);
   const failed = fixture({ loadSessions: async () => { throw new Error('runtime unavailable'); } }).adapter;
   await assert.rejects(failed.storedSessions('/isolated'), /unavailable/);
+});
+
+test('project history management is limited to reviewed metadata and the unchanged native selection', async () => {
+  const calls = [];
+  const source = { setContext() {}, composer: () => ({ references: [], submitted: [] }), async manageSession(request, assertCurrent) { assertCurrent(); calls.push(request); return true; } };
+  const { adapter, sessions } = fixture({ source, loadSessions: async () => [{ id: 'older', updated: 7, title: 'Alter Chat', archived: false, busy: true }] });
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'PLC_A' };
+  adapter.permit(expected);
+  assert.equal(adapter.state().canManage, true);
+  assert.deepEqual(await adapter.storedSessions('/isolated', true), [{ id: 'older', updated: 7, title: 'Alter Chat', archived: false, busy: true, directory: '/isolated' }]);
+  await adapter.manageSession(expected, { id: 'older', directory: '/isolated', action: 'rename', title: ' Neuer Titel ', unreviewed: 'ignored' });
+  assert.deepEqual(calls, [{ id: 'older', directory: '/isolated', action: 'rename', title: 'Neuer Titel' }]);
+  for (const request of [
+    { id: 'foreign', directory: '/isolated', action: 'archive' },
+    { id: 'older', directory: '/another-project', action: 'archive' },
+    { id: 'older', directory: '/isolated', action: 'delete' },
+    { id: 'older', directory: '/isolated', action: 'rename', title: '\n' },
+  ]) await assert.rejects(adapter.manageSession(expected, request));
+  sessions.set({ currentSessionId: 'session-two' });
+  await assert.rejects(adapter.manageSession(expected, { id: 'older', directory: '/isolated', action: 'archive' }), /changed/);
+  assert.equal(calls.length, 1);
+});
+
+test('pending manual context stays with its chat, while automatic context never transfers', () => {
+  const { adapter, sessions, input, ui } = fixture();
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'PLC_A' };
+  adapter.permit(expected); adapter.attach({ ...expected, item });
+  sessions.set({ currentSessionId: 'session-two' });
+  assert.equal(input.getState().pendingGuestIssue, null);
+  sessions.set({ currentSessionId: 'session-one' });
+  assert.equal(input.getState().pendingGuestIssue.text, item.text);
+  input.getState().setPendingGuestIssue({ ...item, id: 'Aktiver Baustein', data: { mode: 'following' } });
+  sessions.set({ currentSessionId: 'session-two' }); sessions.set({ currentSessionId: 'session-one' });
+  assert.equal(input.getState().pendingGuestIssue, null);
+  ui.set({ isSidebarOpen: true });
+  assert.equal(ui.getState().setSidebarOpenValue, false, 'legacy navigation cannot reopen the generic sidebar');
+});
+
+test('late history from a previous project cannot authorize management in the next project', async () => {
+  let finish;
+  let mutations = 0;
+  const source = { setContext() {}, manageSession: async () => { mutations++; } };
+  const { adapter } = fixture({ source, loadSessions: () => new Promise(resolve => { finish = resolve; }) });
+  const before = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'PLC_A' };
+  adapter.permit(before);
+  const loading = adapter.storedSessions('/PLC_A');
+  const after = { ...before, contextKey: 'PLC_B' };
+  adapter.permit(after);
+  finish([{ id: 'old', updated: 5 }]); await loading;
+  await assert.rejects(adapter.manageSession(after, { id: 'old', directory: '/PLC_A', action: 'archive' }));
+  assert.equal(mutations, 0);
+});
+
+test('project chat creation preserves the original automatic title path', async () => {
+  const { adapter, sessions } = fixture();
+  let title;
+  sessions.getState().createSession = async value => { title = value; return { id: 'new' }; };
+  await adapter.newChat({ title: null, directory: '/isolated' });
+  assert.equal(title, undefined);
 });
 
 test('source auto-chip retains POU identity through replacement and submission with identical titles', () => {
