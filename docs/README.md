@@ -7,7 +7,7 @@ and exit gates. The current planning branch describes the
 Native acceptance and future engineering write/build milestones remain separate.
 
 - [Installation and real local checks](INSTALLATION.md)
-- [Agreed product priorities, including German and English translations](ROADMAP.md#agreed-priorities-2026-11-02)
+- [Agreed product priorities and host compatibility planning](ROADMAP.md#agreed-priorities-2026-11-02)
 - [Planned OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md)
 - [Source runtime, persistent project chats and context states](RUNTIME_INTEGRATION.md)
 - [Backend server inventory and Core/Chat/Host ownership](BACKEND_SERVER_INVENTORY.md)

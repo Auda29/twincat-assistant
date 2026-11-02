@@ -10,7 +10,7 @@ prototype. No delivery dates or effort estimates are committed.
 
 Die folgenden Zukunftsthemen sind in dieser Reihenfolge vereinbart. Sie sind
 geplant, nicht als umgesetzt oder abgenommen markiert. Die Liste legt keinen
-gemeinsamen Release-Termin für alle sechs Punkte fest.
+gemeinsamen Release-Termin für alle sieben Punkte fest.
 
 1. **Backend aufräumen und Produktnamen vereinheitlichen.** Auf Basis der
    [Server-Bestandsaufnahme](BACKEND_SERVER_INVENTORY.md) ungenutzte Funktionen,
@@ -65,6 +65,20 @@ gemeinsamen Release-Termin für alle sechs Punkte fest.
    Beide Sprachen auf vollständige Übersetzungen und passende Darstellung prüfen.
    Quellcode und vorhandene Gesprächsinhalte bleiben in ihrer Originalsprache;
    die Antwortsprache des Agenten bei der Prüfung der Profilprompts berücksichtigen.
+
+7. **Kompatibilität mit weiteren TwinCAT-/IDE-Varianten klären.** TwinCAT 4026,
+   die 64-Bit-TwinCAT-Shell und TwinCAT innerhalb von Visual Studio getrennt
+   untersuchen. Eine Kompatibilitätsmatrix mit konkretem TwinCAT-/XAE-Build,
+   Shell- beziehungsweise Visual-Studio-Version, Prozessarchitektur und
+   Windows-Version führen. Benötigte Anpassungen und Installationspakete je
+   Kombination bestimmen und Installation, Start, Andocken, WebView/Chat,
+   Projekt- und Editorbindung, Baustein-/Member-Erkennung, Anhänge sowie beide
+   MCPs im jeweiligen echten Host prüfen. Unterschiede beim Zugriff auf
+   ungespeicherten Editorinhalt ausdrücklich erfassen. Erfolgreiche Builds und
+   vorhandene x86-Abnahmen belegen noch keine Kompatibilität der anderen Hosts.
+   Die Ergebnisse bei CI-Installer, Editor-Profil und Inline-Vervollständigung
+   berücksichtigen; Unterstützung erst für tatsächlich geprüfte Kombinationen
+   ausweisen.
 
 Die offene [Knowledge-Startzeit-Untersuchung](KNOWLEDGE_STARTUP_INVESTIGATION.md)
 bleibt separat dokumentiert. Die neue Prioritätenliste erklärt sie nicht für

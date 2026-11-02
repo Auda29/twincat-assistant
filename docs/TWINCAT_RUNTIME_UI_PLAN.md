@@ -25,9 +25,10 @@ Die am 02.11.2026 vereinbarten
 [nächsten Prioritäten](ROADMAP.md#agreed-priorities-2026-11-02) führen diesen
 Umbau weiter: zuerst Backend-Bereinigung und Produktnamen, danach eine einfache
 CI-basierte Installation, die Prüfung der Profil-Systemprompts, ein Editor-Profil,
-Inline-Codevervollständigung und Mehrsprachigkeit mit Deutsch und Englisch.
-Die Roadmap hält Umfang und Grenzen
-dieser geplanten Schritte fest. Bestehender Chatbestand und die übernommenen
+Inline-Codevervollständigung, Mehrsprachigkeit mit Deutsch und Englisch und die
+Klärung der Kompatibilität mit TwinCAT 4026, der 64-Bit-Shell und TwinCAT in
+Visual Studio. Die Roadmap hält Umfang und Grenzen dieser geplanten Schritte
+fest. Bestehender Chatbestand und die übernommenen
 Kernfunktionen bleiben bei der Bereinigung erhalten.
 
 ## Vereinbarte Richtung
