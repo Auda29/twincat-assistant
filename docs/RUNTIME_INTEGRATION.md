@@ -215,11 +215,10 @@ a partial export. Results are limited to eight million UTF-16 code units; they a
 never silently truncated. The bridge passes text and a safe suggested filename;
 it does not expose a native filesystem API or change the download-deny policy.
 
-The overlay handoff and thread-export additions on `feat/thread-export-startup`
-are prepared changes awaiting the next combined build/test pass. That pass needs
-actual hidden-WebView startup checks, a paginated history export, clipboard/save
-and cancellation, plus stale-selection and failure/size cases. The validation
-results for 2026-10-30 below describe the preceding merged `e328df4` stand.
+The overlay handoff and thread-export additions were merged through PR #12 and
+installed on 2026-10-30 at `8eebfb0`. On 2026-11-02, the operator manually
+accepted both copying the chat history and saving its Markdown export in the
+installed Assistant. Manual acceptance of these two features is complete.
 
 Startup presentation and branding are covered by the combined checks below,
 including delayed history readiness, page reload and both themes in WebView2.
