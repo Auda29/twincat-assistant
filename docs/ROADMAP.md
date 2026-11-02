@@ -12,7 +12,26 @@ Die folgenden Zukunftsthemen sind in dieser Reihenfolge vereinbart. Sie sind
 geplant, nicht als umgesetzt oder abgenommen markiert. Die Liste legt keinen
 gemeinsamen Release-Termin für alle sieben Punkte fest.
 
-1. **Backend aufräumen und Produktnamen vereinheitlichen.** Auf Basis der
+1. **Kompatibilität eingrenzen und Zielhosts festlegen.** Die unterstützte
+   Hostkombination für die erste installierbare Alpha bestimmen. Ausgangspunkt
+   ist die bisher praktisch geprüfte TcXaeShell/x86. Technische Unterschiede zu
+   TwinCAT 4026, der 64-Bit-TwinCAT-Shell und TwinCAT innerhalb von Visual Studio
+   untersuchen. Eine Kompatibilitätsmatrix mit konkretem TwinCAT-/XAE-Build,
+   Shell- beziehungsweise Visual-Studio-Version, Prozessarchitektur und
+   Windows-Version führen. Benötigte Anpassungen und Installationspakete je
+   Kombination bestimmen und Installation, Start, Andocken, WebView/Chat,
+   Projekt- und Editorbindung, Baustein-/Member-Erkennung, Anhänge sowie beide
+   MCPs im jeweiligen echten Host prüfen. Unterschiede beim Zugriff auf
+   ungespeicherten Editorinhalt ausdrücklich erfassen. Erfolgreiche Builds und
+   vorhandene x86-Abnahmen belegen noch keine Kompatibilität der anderen Hosts.
+   Die erste Installerversion kann den bereits geprüften Host bedienen, während
+   weitere Varianten ihre eigene Umsetzung und Abnahme erhalten. Die Ergebnisse
+   auch bei Editor-Profil und Inline-Vervollständigung berücksichtigen.
+
+2. **Backend für die Auslieferung vorbereiten und schrittweise bereinigen.**
+   Zuerst den Produktstart vom Entwickler-Checkout lösen, Installationspfade
+   vereinheitlichen und die benötigten Bestandteile als gebautes Anwendungspaket
+   mit einem geprüften Manifest abgrenzen. Auf Basis der
    [Server-Bestandsaufnahme](BACKEND_SERVER_INVENTORY.md) ungenutzte Funktionen,
    Routen und Abhängigkeiten prüfen und schrittweise entfernen. Sichtbare und
    interne OpenCode-/OpenChamber-Bezeichnungen dort ersetzen, wo sie unsere
@@ -22,17 +41,21 @@ gemeinsamen Release-Termin für alle sieben Punkte fest.
    Werkzeugaufrufe, beide MCPs und Gesprächsspeicherung bleiben erhalten.
    Speicherpfade, Konfigurationsschlüssel und Datenformate nur mit geprüfter
    Migration ändern; vorhandene Chats, Projektbindungen und Anmeldungen erhalten.
+   Die weitere Bereinigung wird in kleinen Schritten fortgeführt; ihre komplette
+   Fertigstellung ist keine Voraussetzung für den ersten Installer.
 
-2. **Einfache Installation aus der CI bereitstellen.** Ein versioniertes,
+3. **Einfache Installation aus der CI bereitstellen.** Ein versioniertes,
    für Nutzer direkt installierbares Paket aus den geprüften CI-Builds erzeugen.
-   Die Installation soll keinen eigenen Quellcode-Build erfordern. Paketformat,
-   unterstützte IDE-/Architekturvarianten und benötigte Laufzeitkomponenten vor
-   der Umsetzung festlegen. Erstinstallation, Update und Rückkehr zum vorherigen
-   Stand prüfen; vorhandene Konfiguration und Chats bei Updates erhalten.
+   Host, Core, Chat, beide MCPs und ihre Laufzeitvoraussetzungen gemeinsam
+   berücksichtigen. Die Installation soll ohne Git-Checkout, npm oder eigenes
+   Kompilieren möglich sein. Paketformat, die zunächst unterstützte
+   IDE-/Architekturvariante und benötigte Laufzeitkomponenten vor der Umsetzung
+   festlegen. Erstinstallation, Update und Rückkehr zum vorherigen Stand prüfen;
+   vorhandene Konfiguration, Chats und Anmeldungen bei Updates erhalten.
    Aufbauend auf [Installation](INSTALLATION.md) und
    [Startvertrag](START_CONTRACT.md) dokumentieren, was der Nutzer tun muss.
 
-3. **Systemprompts der Profile prüfen.** Mit dem Analyse-Profil beginnen und
+4. **Systemprompts der Profile prüfen.** Mit dem Analyse-Profil beginnen und
    gemeinsame Regeln für spätere Profile festhalten. Prüfen, ob der Agent
    TwinCAT-/Structured-Text-Code lesbar und im vorhandenen Renderer korrekt
    darstellt: passende Codeblöcke, Einrückung, klare Zuordnung von Deklaration,
@@ -40,23 +63,16 @@ gemeinsamen Release-Termin für alle sieben Punkte fest.
    Ausschnitte. Gespeicherter Code, angehängter Snapshot und verifizierter
    Editorinhalt müssen sprachlich unterscheidbar bleiben. An repräsentativen
    TwinCAT-Fragen prüfen, einschließlich Quellenangaben, Unsicherheit und der
-   tatsächlichen Werkzeuge und Rechte des jeweiligen Profils.
+   tatsächlichen Werkzeuge und Rechte des jeweiligen Profils. Die Promptprüfung
+   kann unabhängig vom Installer auch früher durchgeführt werden.
 
-4. **Editor-Profil als Gegenpart zu Analyse ergänzen.** Kontrollierte Änderungen
+5. **Editor-Profil als Gegenpart zu Analyse ergänzen.** Kontrollierte Änderungen
    am eindeutig gebundenen PLC-Projekt ermöglichen. Analyse bleibt lesend.
    Bestehende Agenten- und Werkzeuglogik weiterverwenden; die Schreibanbindung
    mit Vorschau/Diff, Freigabe, Prüfung des Ausgangsstands und Wiederherstellung
    gemäß [Engineering Safety](ENGINEERING_SAFETY.md) umsetzen. Ungespeicherte
    Änderungen und Projektwechsel berücksichtigen. Das Profil allein erteilt
    noch keine Schreibrechte und schaltet keine PLC-Runtime-Aktionen frei.
-
-5. **Inline-Codevervollständigung ergänzen.** Vorschläge direkt im TwinCAT-Editor
-   anbieten, getrennt vom Chatablauf. Vorab unterstützte Editoren und ST-Objekte,
-   Auslösung, Kontextumfang, Modellanbindung und akzeptable Antwortzeit festlegen.
-   Vorschläge müssen sich ausdrücklich übernehmen oder verwerfen lassen und bei
-   weiterem Tippen oder Editorwechsel veralten beziehungsweise abbrechen.
-   Ungespeicherter Text und dessen Übertragung brauchen einen eindeutigen Vertrag;
-   keine automatische Übernahme oder Speicherung von Vorschlägen.
 
 6. **Mehrsprachigkeit ergänzen, zunächst Deutsch und Englisch.** Die Oberfläche
    von Host und Chat einschließlich Menüs, Dialogen, Status- und Fehlermeldungen
@@ -66,19 +82,17 @@ gemeinsamen Release-Termin für alle sieben Punkte fest.
    Quellcode und vorhandene Gesprächsinhalte bleiben in ihrer Originalsprache;
    die Antwortsprache des Agenten bei der Prüfung der Profilprompts berücksichtigen.
 
-7. **Kompatibilität mit weiteren TwinCAT-/IDE-Varianten klären.** TwinCAT 4026,
-   die 64-Bit-TwinCAT-Shell und TwinCAT innerhalb von Visual Studio getrennt
-   untersuchen. Eine Kompatibilitätsmatrix mit konkretem TwinCAT-/XAE-Build,
-   Shell- beziehungsweise Visual-Studio-Version, Prozessarchitektur und
-   Windows-Version führen. Benötigte Anpassungen und Installationspakete je
-   Kombination bestimmen und Installation, Start, Andocken, WebView/Chat,
-   Projekt- und Editorbindung, Baustein-/Member-Erkennung, Anhänge sowie beide
-   MCPs im jeweiligen echten Host prüfen. Unterschiede beim Zugriff auf
-   ungespeicherten Editorinhalt ausdrücklich erfassen. Erfolgreiche Builds und
-   vorhandene x86-Abnahmen belegen noch keine Kompatibilität der anderen Hosts.
-   Die Ergebnisse bei CI-Installer, Editor-Profil und Inline-Vervollständigung
-   berücksichtigen; Unterstützung erst für tatsächlich geprüfte Kombinationen
-   ausweisen.
+7. **Inline-Codevervollständigung ergänzen.** Vorschläge direkt im TwinCAT-Editor
+   anbieten, getrennt vom Chatablauf. Vorab unterstützte Editoren und ST-Objekte,
+   Auslösung, Kontextumfang, Modellanbindung und akzeptable Antwortzeit festlegen.
+   Vorschläge müssen sich ausdrücklich übernehmen oder verwerfen lassen und bei
+   weiterem Tippen oder Editorwechsel veralten beziehungsweise abbrechen.
+   Ungespeicherter Text und dessen Übertragung brauchen einen eindeutigen Vertrag;
+   keine automatische Übernahme oder Speicherung von Vorschlägen.
+
+Der nächste größere Meilenstein ist eine einfach installierbare Version mit
+einem verlässlichen Analyse-Profil. Editor-Profil und Inline-Vervollständigung
+bauen auf diesem Stand auf.
 
 Die offene [Knowledge-Startzeit-Untersuchung](KNOWLEDGE_STARTUP_INVESTIGATION.md)
 bleibt separat dokumentiert. Die neue Prioritätenliste erklärt sie nicht für

@@ -23,13 +23,15 @@ Themes und Commands müssen vor dem ersten Chat-Bootstrap vorbereitet sein.
 
 Die am 02.11.2026 vereinbarten
 [nächsten Prioritäten](ROADMAP.md#agreed-priorities-2026-11-02) führen diesen
-Umbau weiter: zuerst Backend-Bereinigung und Produktnamen, danach eine einfache
-CI-basierte Installation, die Prüfung der Profil-Systemprompts, ein Editor-Profil,
-Inline-Codevervollständigung, Mehrsprachigkeit mit Deutsch und Englisch und die
-Klärung der Kompatibilität mit TwinCAT 4026, der 64-Bit-Shell und TwinCAT in
-Visual Studio. Die Roadmap hält Umfang und Grenzen dieser geplanten Schritte
-fest. Bestehender Chatbestand und die übernommenen
-Kernfunktionen bleiben bei der Bereinigung erhalten.
+Umbau weiter: zuerst die Zielhosts und Unterschiede zu TwinCAT 4026, der
+64-Bit-Shell und TwinCAT in Visual Studio klären, dann das Backend für ein
+gebautes Anwendungspaket vorbereiten und den CI-Installer erstellen. Danach
+folgen Profil-Systemprompts, Editor-Profil, Deutsch und Englisch sowie
+Inline-Codevervollständigung. Die Promptprüfung kann unabhängig vom Installer
+früher beginnen. Eine vollständige Backend-Bereinigung und die Abnahme sämtlicher
+Hostvarianten sind keine Voraussetzung für einen ersten Installer des bereits
+geprüften Hosts. Die Roadmap hält Umfang und Grenzen fest. Bestehender
+Chatbestand und die übernommenen Kernfunktionen bleiben erhalten.
 
 ## Vereinbarte Richtung
 

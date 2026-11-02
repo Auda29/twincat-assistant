@@ -6,7 +6,7 @@ Explain Structured Text, explore PLC project code and find relevant Beckhoff
 documentation in a docked chat window. TwinCAT Assistant connects the active
 project and POU to a conversation that you can return to later.
 
-**Alpha preview · Read-only**
+**0.2.0 Preview · Read-only**
 
 [Get started](#getting-started) · [Documentation](docs/README.md) · [Releases](https://github.com/Auda29/twincat-assistant/releases)
 
@@ -76,6 +76,7 @@ indexes and user project files are not bundled with the application.
 
 ## Documentation
 
+- [0.2.0 Preview release notes](docs/releases/native-v0.2.0-preview.1.md)
 - [Installation and configuration](docs/INSTALLATION.md)
 - [Using project chats and attachments](docs/CHAT_INTEGRATION.md)
 - [Setting up Beckhoff documentation search](docs/KNOWLEDGE_SETUP.md)

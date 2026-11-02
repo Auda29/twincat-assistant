@@ -21,6 +21,7 @@ Native acceptance and future engineering write/build milestones remain separate.
 - [Automatic Beckhoff documentation setup, 0.1.9](KNOWLEDGE_SETUP.md)
 - [Project-bound native chat and compact UI, 0.1.6 candidate](CHAT_INTEGRATION.md)
 - [Dependency audit and release blockers](SECURITY_AUDIT.md)
+- [TwinCAT Assistant 0.2.0 Preview release notes](releases/native-v0.2.0-preview.1.md)
 - [Native 0.1.3 preview release notes](releases/native-v0.1.3.md)
 - [Native 0.1.6 preview release notes](releases/native-v0.1.6.md)
 - [Native 0.1.8 preview release notes](releases/native-v0.1.8.md)
