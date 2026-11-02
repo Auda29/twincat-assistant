@@ -306,7 +306,8 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
       const target = knownHistory.get(request?.id);
       if (!target || target.contextKey !== expected.contextKey || target.directory !== request.directory || typeof source?.manageSession !== 'function')
         throw new Error('Chat is outside the reviewed history');
-      if (!['rename', 'archive', 'restore'].includes(request.action)) throw new Error('Unsupported chat action');
+      if (!['rename', 'generate-title', 'archive', 'restore'].includes(request.action)) throw new Error('Unsupported chat action');
+      if (request.action === 'generate-title' && (target.archived || target.busy)) throw new Error('Chat is archived or busy');
       if (request.action === 'rename' && (typeof request.title !== 'string' || !request.title.trim() || request.title.length > 512 || /[\x00-\x1f\x7f]/.test(request.title)))
         throw new Error('Invalid chat title');
       return await source.manageSession({ id: target.id, directory: target.directory, action: request.action,

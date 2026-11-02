@@ -12,6 +12,9 @@ import { getChatDraftIdentityKey, type ChatDraftIdentity } from '@/lib/chatDraft
 import { useGlobalSessionsStore, resolveGlobalSessionDirectory } from '@/stores/useGlobalSessionsStore';
 import { archiveSession, unarchiveSession, updateSessionTitle } from '@/sync/session-actions';
 import { registerSessionDirectory } from '@/sync/sync-refs';
+import { collectSessionTitleTurns, generateSessionTitle } from '@/lib/sessionTitle';
+import { generateAndSaveSessionTitle, runSessionTitleGeneration } from '@/sync/session-title-generation';
+import { getRuntimeKey } from '@/lib/runtime-switch';
 
 type Reference = { id: string; title: string; revision: string | null; reference: string; mode: 'following' | 'manual' };
 type Context = { project: string; object: string | null; treePath: string | null; sourceKind: string | null; reference?: string | null;
@@ -201,7 +204,7 @@ export const twinCatSource = {
     } while (cursor);
     return items;
   },
-  async manageSession(request: { id: string; directory: string; action: 'rename' | 'archive' | 'restore'; title?: string }, assertCurrent: () => void) {
+  async manageSession(request: { id: string; directory: string; action: 'rename' | 'generate-title' | 'archive' | 'restore'; title?: string }, assertCurrent: () => void) {
     assertCurrent();
     const session = await opencodeClient.getSession(request.id, request.directory);
     const actual = resolveGlobalSessionDirectory(session);
@@ -210,7 +213,31 @@ export const twinCatSource = {
     assertCurrent();
     useGlobalSessionsStore.getState().upsertSession(session);
     registerSessionDirectory(session.id, request.directory);
-    if (request.action === 'rename') await updateSessionTitle(request.id, request.title!, { directory: request.directory });
+    if (request.action === 'generate-title') {
+      const exporter = threadExport;
+      if (!active || !exporter || session.time.archived) throw new Error('Chat title generation is unavailable');
+      const status = await opencodeClient.getHostSessionStatusSnapshot();
+      const state = status?.sessions[request.id]?.status;
+      if (!status || (state && !['idle', 'completed', 'error', 'aborted'].includes(state))) throw new Error('Chat is active or its status is unknown');
+      assertCurrent();
+      const runtimeKey = getRuntimeKey();
+      await runSessionTitleGeneration({ runtimeKey, directory: request.directory, sessionID: request.id }, async signal => {
+        await generateAndSaveSessionTitle({
+          signal,
+          prepare: async () => {
+            assertCurrent();
+            const records = await exporter.load({ directory: request.directory, sessionID: request.id });
+            assertCurrent();
+            if (!records) throw new Error('Thread history could not be loaded');
+            return { session, turns: collectSessionTitleTurns(records, session.revert?.messageID) };
+          },
+          generate: (turns, signal) => { assertCurrent(); return generateSessionTitle({ turns, directory: request.directory, sessionID: request.id, signal }); },
+          readSession: () => { assertCurrent(); return opencodeClient.getSession(request.id, request.directory); },
+          saveTitle: (title, signal) => { assertCurrent(); return updateSessionTitle(request.id, title, { directory: request.directory, expectedRuntimeKey: runtimeKey, signal }); },
+        });
+      });
+    }
+    else if (request.action === 'rename') await updateSessionTitle(request.id, request.title!, { directory: request.directory });
     else if (request.action === 'archive') {
       const status = await opencodeClient.getHostSessionStatusSnapshot();
       const state = status?.sessions[request.id]?.status;

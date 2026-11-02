@@ -38,6 +38,14 @@ function Test-ProjectChatNavigation {
     Open-FixtureHistory
     Invoke-PickerAction 'RenameAsync' @($taskA,'Umbenannter älterer Projektchat')
     Assert-Integration (@(Picker-Entries | Where-Object { $_.id -eq $taskA -and $_.title -eq 'Umbenannter älterer Projektchat' }).Count -eq 1) 'rename is confirmed by durable history, not only the picker label'
+    try {
+        Invoke-PickerAction 'GenerateTitleAsync' @($taskA)
+        throw 'An empty conversation unexpectedly generated a title.'
+    } catch [System.InvalidOperationException] {
+        Assert-Integration ($_.Exception.Message.Contains('abgeschlossenen Austausch')) 'native title action uses original completed-history validation and reports an empty conversation'
+    }
+    Open-FixtureHistory
+    Assert-Integration (@(Picker-Entries | Where-Object { $_.id -eq $taskA -and $_.title -eq 'Umbenannter älterer Projektchat' }).Count -eq 1) 'failed title generation preserves the prior durable title and chat identity'
     $taskStore=Field '_chatBindings'
     $taskIdentity=$global:taskIntegrationSnapshot.Identity.ProjectIdentity
     Assert-Integration ($taskStore.SelectedForProject($taskIdentity) -eq $taskB) 'updating an older chat does not overwrite the explicitly selected chat'

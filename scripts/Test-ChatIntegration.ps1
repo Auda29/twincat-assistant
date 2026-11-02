@@ -166,7 +166,7 @@ function Assert-DockingOverlays {
         $taskSurface.Children.Remove($taskControl); $taskWindow.Content=$null; $taskWindow.Content=$taskControl; $taskWindow.Width=$taskOriginalWidth; Pump 150
     }
 }
-function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; // synthetic context fixture',[string]$Object='FB_Motor') {
+function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; // synthetic context fixture',[string]$Object='FB_Motor',[string]$Declaration) {
     $global:taskIntegrationSnapshot = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorSnapshot'))
     $taskIdentityType = $taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorIdentity')
     $taskIdentityConstructor = $taskIdentityType.GetConstructor([type[]]@([int],[string],[string],[string],[string]))
@@ -174,14 +174,14 @@ function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; //
         [int]$PID,[string](Join-Path $taskRoot 'ContextChecks.sln'),[string](Join-Path $taskRoot ($Project+'.plcproj')),
         [string](Join-Path $taskRoot ($Project+'/'+$Object+'.TcPOU')),[string]('TIPC/'+$Project+'/POUs/'+$Object)))
     $global:taskIntegrationSnapshot.ObjectName = $Object
-    $global:taskIntegrationSnapshot.Declaration = 'FUNCTION_BLOCK '+$Object
+    $global:taskIntegrationSnapshot.Declaration = if($Declaration){$Declaration}else{'FUNCTION_BLOCK '+$Object}
     $global:taskIntegrationSnapshot.Implementation = $Implementation
     $global:taskIntegrationSnapshot.SourceKind = 'Automation Interface snapshot'
     $global:taskIntegrationProject = $global:taskIntegrationSnapshot.Identity.ProjectIdentity
     [IO.Directory]::CreateDirectory((Join-Path $taskRoot $Project)) | Out-Null
     [IO.File]::WriteAllText((Join-Path $taskRoot 'ContextChecks.sln'),'Synthetic fixture solution')
     [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'.plcproj')),('<Project><ItemGroup><Compile Include="'+$Project+'/'+$Object+'.TcPOU" /></ItemGroup></Project>'))
-    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'/'+$Object+'.TcPOU')),('<TcPlcObject><POU Name="'+$Object+'" Id="{7317284c-267c-4963-959d-8629b64f2090}"><Declaration><![CDATA[FUNCTION_BLOCK '+$Object+']]></Declaration><Implementation><ST><![CDATA['+$Implementation+']]></ST></Implementation></POU></TcPlcObject>'))
+    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'/'+$Object+'.TcPOU')),('<TcPlcObject><POU Name="'+$Object+'" Id="{7317284c-267c-4963-959d-8629b64f2090}"><Declaration><![CDATA['+$global:taskIntegrationSnapshot.Declaration+']]></Declaration><Implementation><ST><![CDATA['+$Implementation+']]></ST></Implementation></POU></TcPlcObject>'))
     $taskControl.GetType().GetMethod('RenderContext',$taskFlags).Invoke($taskControl,[object[]]@($global:taskIntegrationSnapshot,$null))
 }
 $taskConfig = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatConfiguration'))
@@ -524,6 +524,19 @@ console.log(JSON.stringify({ backendStarts: status.backendStarts, backendConnect
     $taskSavedPreferences = $taskPreferencesType.GetMethod('Load').Invoke($null,[object[]]@([string](Join-Path $taskRoot 'preferences')))
     Assert-Integration ($taskPreferences.AutoAttach -and $taskSavedPreferences.AutoAttach) 'the real menu action enables and persists automatic attachment'
     Assert-Integration ((JS 'document.body.innerText.includes("FB_Motor / PLC_A")') -eq 'true') 'auto-attach stages the active POU when the operator enabled it'
+    $taskOriginalSnapshotReader=Field '_chatSnapshotReader'
+    $global:taskAutomaticSnapshotFailures=1
+    $global:taskAutomaticSnapshotReads=0
+    Set-Field '_chatSnapshotReader' ([Func[TwinCatAssistant.Native.ActiveEditorSnapshot]]{
+        $global:taskAutomaticSnapshotReads++
+        if($global:taskAutomaticSnapshotFailures -gt 0){$global:taskAutomaticSnapshotFailures--;return $null}
+        return $global:taskIntegrationSnapshot
+    })
+    try {
+        Set-Snapshot 'PLC_A' 'bRun := TRUE; // PRG after a transient unavailable editor' 'PRG_Ablauf' 'PROGRAM PRG_Ablauf'
+        Wait-Native { (Field '_kindText').Text -eq 'PRG' -and (JS 'window.__twinCatChat.state().attachedObject') -eq '"PRG_Ablauf / PLC_A"' } 'automatic PROGRAM attachment recovers from the first failed fresh snapshot read'
+        Assert-Integration ($global:taskAutomaticSnapshotFailures -eq 0 -and $global:taskAutomaticSnapshotReads -ge 3) 'PROGRAM/PRG is attached automatically with the original revision after a bounded retry'
+    } finally { Set-Field '_chatSnapshotReader' $taskOriginalSnapshotReader }
     $taskAutoRevision = JS 'window.__twinCatChat.state().attachedRevision'
     Set-Snapshot 'PLC_A' 'bRun := FALSE; // edited synthetic fixture'
     Wait-Native { (JS 'window.__twinCatChat.state().attachedRevision') -ne $taskAutoRevision } 'auto-attach of a changed revision'

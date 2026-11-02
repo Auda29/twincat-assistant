@@ -42,7 +42,8 @@ namespace TwinCatAssistant.Native
         private DispatcherTimer _chatReconnect, _automationKick, _noticeTimer;
         private int _chatReconnectAttempts, _signInAttempts;
         private long _chatDocumentGeneration;
-        private string _autoProjectKey, _autoAttachedKey;
+        private string _autoProjectKey;
+        private readonly AutoAttachmentAttempts _autoAttachment = new AutoAttachmentAttempts();
         private bool _autoAttaching;
         private readonly HashSet<string> _autoBindAttempted = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _consentAttempted = new HashSet<string>(StringComparer.Ordinal);
@@ -216,8 +217,8 @@ namespace TwinCatAssistant.Native
             await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat?.permit(" + new JavaScriptSerializer().Serialize(permission) + ")");
         }
 
-        // One pass of automatic steps. Each step is attempted at most once per
-        // context so a failure is reported instead of retried in a loop.
+        // One pass of automatic steps. Attachment retries are bounded and
+        // delayed; confirmed staging is not replayed in the same context.
         private async Task RunAutomationAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -264,16 +265,18 @@ namespace TwinCatAssistant.Native
                 }
                 var provider = ChatContextPolicy.ProviderToEnable(_chatSelection);
                 if (provider != null && CanPromptCurrentChat() && _consentAttempted.Add(provider)) { await AllowProviderAsync(provider); return; }
+                if (!HasCurrentChatBinding() || _chatActive == null) _autoAttachment.Reset();
                 if (_chatPreferences.AutoAttach && HasCurrentChatBinding() && _chatActive != null && !_chatSelection.manualAttachmentPending)
                 {
                     var revision = ChatContextPolicy.Revision(_chatActive);
-                    var attempt = _chatSelection.sessionId + "\0" + revision;
-                    if (ActiveChip()?.revision != revision && attempt != _autoAttachedKey)
+                    var attempt = AutoAttachmentKey(revision);
+                    if (ActiveChip()?.revision != revision && _autoAttachment.CanAttempt(attempt, DateTime.UtcNow))
                     {
-                        // A chip the operator removed stays removed until the
-                        // POU changes or another POU becomes active.
-                        _autoAttachedKey = attempt;
-                        await AttachActivePouAsync(true);
+                        _autoAttachment.Begin(attempt, DateTime.UtcNow);
+                        if (await AttachActivePouAsync(true)) _autoAttachment.Confirm(attempt);
+                        else if (_autoAttachment.Exhausted(attempt))
+                            Notify("Der automatische Anhang konnte nicht bestätigt werden. Bitte den aktiven Baustein prüfen und erneut versuchen.", "warning", "Erneut versuchen",
+                                () => { _autoAttachment.Reset(); DismissNotice(); KickAutomation(); });
                     }
                 }
             }
@@ -313,6 +316,7 @@ namespace TwinCatAssistant.Native
         }
 
         private string ProjectName(string projectFile) { return string.IsNullOrEmpty(projectFile) ? "" : System.IO.Path.GetFileNameWithoutExtension(projectFile); }
+        private string AutoAttachmentKey(string revision) { return revision == null || _chatSelection?.IsSelected != true ? null : _chatSelection.sessionId + "\0" + _chatSelection.documentId + "\0" + revision; }
 
         private void RenderChatBinding()
         {
@@ -334,7 +338,7 @@ namespace TwinCatAssistant.Native
             // Keep one auto-chip, but do not claim it is staged until the input
             // queue or the original composer confirms its exact POU revision.
             var autoPending = _chatPreferences.AutoAttach && revision != null && chip?.revision != revision && HasCurrentChatBinding()
-                && (_autoAttaching || _autoAttachedKey != _chatSelection.sessionId + "\0" + revision);
+                && (_autoAttaching || _autoAttachment.CanAttempt(AutoAttachmentKey(revision), DateTime.UtcNow));
             var attachedCurrent = revision != null && chip?.revision == revision;
             var staging = autoPending || (attachedCurrent && _chatSelection.attachmentState == "staging");
             var reference = _chatActive?.Identity == null ? null : ChatContextPolicy.ReferenceId(_chatActive);
@@ -618,7 +622,7 @@ namespace TwinCatAssistant.Native
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             _chatPreferences.AutoAttach = !_chatPreferences.AutoAttach;
             try { _chatPreferences.Save(); } catch { Notify("Einstellung konnte nicht gespeichert werden; sie gilt bis zum Schließen der IDE.", "warning"); }
-            _autoAttachedKey = null;
+            _autoAttachment.Reset();
             if (_chatPreferences.AutoAttach) Notify("Der aktive Baustein wird jetzt automatisch angehängt, sobald er sich ändert. Erst Absenden überträgt ihn.");
             else
             {
@@ -937,11 +941,13 @@ namespace TwinCatAssistant.Native
             if (HasCurrentChatBinding()) await AttachActivePouAsync();
         }
 
-        private async Task AttachActivePouAsync(bool auto = false)
+        private async Task<bool> AttachActivePouAsync(bool auto = false)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (_chatActionPending || !HasCurrentChatBinding()) return;
+            if (_chatActionPending || !HasCurrentChatBinding()) return false;
             _chatActionPending = true; _autoAttaching = auto;
+            var attached = false;
+            string requestedRevision = null, requestedSession = null, requestedDocument = null;
             if (!auto) RenderChatBinding();
             try
             {
@@ -949,9 +955,9 @@ namespace TwinCatAssistant.Native
                 var revision = ChatContextPolicy.Revision(snapshot);
                 var documentGeneration = _chatDocumentGeneration;
                 var selection = await ReadChatSelectionAsync();
+                requestedRevision = revision; requestedSession = selection?.sessionId; requestedDocument = selection?.documentId;
                 if (auto && selection?.manualAttachmentPending == true)
                 {
-                    _autoAttachedKey = null; // Resume when the original composer consumes the manual item.
                     throw new InvalidOperationException("Ein manueller Anhang wird noch verarbeitet.");
                 }
                 if (selection?.IsSelected != true || !SameDirectory(selection.directory, _projectWorkspace)
@@ -975,15 +981,18 @@ namespace TwinCatAssistant.Native
                 var outcome = await _browser.CoreWebView2.ExecuteScriptAsync("(()=>{try{if(!window.__twinCatChat.permit(" + serializer.Serialize(permission)
                     + "))return false;window.__twinCatChat.attach(" + serializer.Serialize(request) + ");return true;}catch{return false;}})()");
                 if (outcome != "true") throw new InvalidOperationException("Unterhaltung gewechselt oder Anhang noch nicht verarbeitet. Kein neuer Anhang bestätigt.");
+                attached = true;
                 _noticeText = null;
             }
-            // A quick POU switch can outdate an automatic attempt; the next POU
-            // starts its own. Only operator clicks report failures.
+            // A quick POU switch can outdate an automatic attempt. The caller
+            // owns its retry budget and reports exhaustion; clicks fail visibly.
             catch (Exception error) { if (!_disposed && !auto) Notify(error is InvalidOperationException ? error.Message : "Kontext konnte nicht angehängt werden. Keine automatische Wiederholung.", "error"); }
             finally { _chatActionPending = false; }
             if (!_disposed) await PollChatSelectionAsync();
             _autoAttaching = false;
             if (!_disposed && auto) RenderChatBinding();
+            return attached && (!auto || (_chatSelection?.sessionId == requestedSession && _chatSelection.documentId == requestedDocument
+                && _chatSelection.attachments?.Any(item => item?.id == ChatContextPolicy.ActiveReferenceId && item.revision == requestedRevision) == true));
         }
 
         // Enables exactly one connected provider for the Assistant's read-only context.

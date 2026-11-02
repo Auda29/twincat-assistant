@@ -19,7 +19,7 @@ if (-not (Test-Path -LiteralPath $refs)) { throw 'Restore the native host once s
 [IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
 $harness = Join-Path $OutputDirectory 'PickerHarness.cs'
 $exe = Join-Path $OutputDirectory 'PickerHarness.exe'
-Set-Content -LiteralPath $harness -Encoding UTF8 -Value @'
+$harnessSource = @'
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,6 +28,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -112,6 +113,7 @@ namespace TwinCatAssistant.Native
             _picker.RestoreAsync = id => Gate("restore:" + id);
             _picker.RetryAsync = () => Gate("retry");
             _picker.NewAsync = () => Gate("new");
+            _picker.GenerateTitleAsync = id => Gate("generate:" + id);
 
             Check(!_picker.IsOpen, "picker starts closed");
             _picker.Show("Ignored", null, Items());
@@ -191,6 +193,96 @@ namespace TwinCatAssistant.Native
             Call("CancelRename");
             Pump();
 
+            // Title generation: only an explicit menu click starts it; the
+            // host refresh via Show decides the title, never the picker.
+            const string GenerateLabel = "Titel automatisch generieren";
+            var before = _calls.Count;
+            Call("OpenMenu", "s3");
+            Pump();
+            var generateItem = MenuButton(GenerateLabel);
+            Check(generateItem != null && generateItem.IsEnabled && MenuButton("Umbenennen") != null, "row menu offers title generation next to rename");
+            Call("CloseMenu", false);
+            Pump();
+            Check(_calls.Count == before, "opening and closing the menu does not generate");
+            Call("OpenMenu", "s1");
+            Pump();
+            var busyItem = MenuButton(GenerateLabel);
+            Check(busyItem != null && !busyItem.IsEnabled, "busy chat cannot generate a title");
+            Call("CloseMenu", false);
+            Call("GenerateTitleEntryAsync", "s1");
+            Call("GenerateTitleEntryAsync", "a1");
+            Pump();
+            Check(_calls.Count == before, "busy and archived chats are guarded against generation");
+            Call("OpenMenu", "s4");
+            Pump();
+            MenuButton(GenerateLabel).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Pump();
+            Check(_calls.Count == before + 1 && _calls.Last() == "generate:s4", "explicit click delegates the original session id");
+            Check(_picker.IsOpen && Field<string>("_menuId") == null && Field<Canvas>("_overlay").Visibility == Visibility.Collapsed, "menu closes, picker stays open while generating");
+            Check(Pending("s4") == "generate" && More("s4") == null, "pending generation shows the row spinner instead of actions");
+            Snap("generate-pending-light", 390);
+            var generating = _gate;
+            Call("GenerateTitleEntryAsync", "s4");
+            Call("BeginRename", "s4");
+            Call("ArchiveEntryAsync", "s4");
+            Call("SelectEntryAsync", "s4");
+            Call("OpenMenu", "s4");
+            Pump();
+            Check(_calls.Count == before + 1 && Field<string>("_renameId") == null && Field<string>("_menuId") == null, "pending generation blocks duplicate and competing row actions");
+            Call("BeginRename", "s5");
+            Pump();
+            Check(Field<string>("_renameId") == "s5", "manual rename of another chat stays available");
+            Call("CancelRename");
+            Pump();
+            _picker.Show("Anlage_Linie3", "s2", ItemsWith("s4", "Zählerüberlauf in GVL_Zaehler beheben"));
+            Pump();
+            Check(Pending("s4") == "generate" && Title("s4") == "Zählerüberlauf in GVL_Zaehler beheben", "host refresh during generation keeps the pending row");
+            generating.SetResult(true);
+            Pump();
+            Check(_picker.IsOpen && Pending("s4") == null && More("s4") != null && Title("s4") == "Zählerüberlauf in GVL_Zaehler beheben" && Field<string>("_actionError") == null,
+                "completed generation keeps the refreshed title and the open picker");
+
+            // Generation failures free the row; only host messages are shown.
+            Call("GenerateTitleEntryAsync", "s5");
+            Pump();
+            _gate.SetException(new TimeoutException("internal"));
+            Pump();
+            Check(Field<string>("_actionError") == "Der Titel konnte nicht generiert werden." && Pending("s5") == null && More("s5") != null, "failed generation shows the neutral message and frees the row");
+            Call("GenerateTitleEntryAsync", "s5");
+            Pump();
+            _gate.SetException(new InvalidOperationException("Für leere Chats kann kein Titel erzeugt werden."));
+            Pump();
+            Check((Field<string>("_actionError") ?? "").EndsWith("Für leere Chats kann kein Titel erzeugt werden.") && Title("s5") == "regler Kaskade – Stellgrößenbegrenzung",
+                "host message is shown and the title stays unchanged");
+            Snap("generate-error-light", 390);
+
+            // The delegate alone provides the row action button; without it the item is hidden.
+            var renameHandler = _picker.RenameAsync;
+            var archiveHandler = _picker.ArchiveAsync;
+            var generateHandler = _picker.GenerateTitleAsync;
+            _picker.RenameAsync = null;
+            _picker.ArchiveAsync = null;
+            Call("Render");
+            Pump();
+            Call("OpenMenu", "s3");
+            Pump();
+            Check(More("s3") != null && Field<StackPanel>("_menuItems").Children.Count == 1 && MenuButton(GenerateLabel) != null, "generation alone provides the row action menu");
+            Call("CloseMenu", false);
+            _picker.GenerateTitleAsync = null;
+            Call("Render");
+            Pump();
+            Check(More("s3") == null, "no row action button without any action delegate");
+            _picker.RenameAsync = renameHandler;
+            _picker.ArchiveAsync = archiveHandler;
+            Call("Render");
+            Call("OpenMenu", "s3");
+            Pump();
+            Check(MenuButton(GenerateLabel) == null && MenuButton("Umbenennen") != null, "generation item hidden without its delegate");
+            Call("CloseMenu", false);
+            _picker.GenerateTitleAsync = generateHandler;
+            Call("Render");
+            Pump();
+
             // Archive failure shows the banner; success moves the row.
             Call("ArchiveEntryAsync", "s6");
             Pump();
@@ -245,6 +337,37 @@ namespace TwinCatAssistant.Native
             _picker.ShowError("late error");
             _picker.Show("Anlage_Linie3", "s2", Items());
             Check(!_picker.IsOpen, "late Show/ShowError after close are ignored");
+
+            // Late generation results never reopen, unblock or overwrite a newer session.
+            _picker.ShowLoading("Anlage_Linie3");
+            _picker.Show("Anlage_Linie3", "s2", Items());
+            Pump();
+            Call("GenerateTitleEntryAsync", "s3");
+            Pump();
+            var lateGenerate = _gate;
+            _picker.Close();
+            Pump();
+            Check(!_picker.IsOpen && Pending("s3") == null, "closing drops the pending generation");
+            _picker.ShowLoading("Anlage_Linie3");
+            _picker.Show("Anlage_Linie3", "s2", ItemsWith("s3", "Neu geladener Titel"));
+            Pump();
+            Call("GenerateTitleEntryAsync", "s3");
+            Pump();
+            var currentGenerate = _gate;
+            lateGenerate.SetException(new InvalidOperationException("late"));
+            Pump();
+            Check(_picker.IsOpen && Pending("s3") == "generate" && Field<string>("_actionError") == null && Title("s3") == "Neu geladener Titel",
+                "late generation failure leaves the refreshed session untouched");
+            currentGenerate.SetResult(true);
+            Pump();
+            Check(Pending("s3") == null && Title("s3") == "Neu geladener Titel", "current generation completes against the refreshed list");
+            Call("GenerateTitleEntryAsync", "s4");
+            Pump();
+            lateGenerate = _gate;
+            _picker.Close();
+            lateGenerate.SetResult(true);
+            Pump();
+            Check(!_picker.IsOpen, "late generation success after close does not reopen");
 
             // Project switch inside an open picker starts a new session.
             _picker.ShowLoading("Anlage_Linie3");
@@ -320,6 +443,32 @@ namespace TwinCatAssistant.Native
             _picker.Dispose();
             _picker.ShowLoading("Anlage_Linie3");
             Check(!_picker.IsOpen, "disposed picker stays closed");
+            Check(_picker.GenerateTitleAsync == null && _picker.RenameAsync == null, "dispose clears the action delegates");
+        }
+
+        static string Pending(string id)
+        {
+            string pending;
+            return Field<Dictionary<string, string>>("_pending").TryGetValue(id, out pending) ? pending : null;
+        }
+
+        static Button More(string id)
+        {
+            var list = (System.Collections.IList)Field<object>("_targets");
+            var target = list.Cast<object>().FirstOrDefault(t => (string)t.GetType().GetField("Id").GetValue(t) == id);
+            return target == null ? null : (Button)target.GetType().GetField("More").GetValue(target);
+        }
+
+        static Button MenuButton(string name)
+        {
+            return Field<StackPanel>("_menuItems").Children.OfType<Button>().FirstOrDefault(button => AutomationProperties.GetName(button) == name);
+        }
+
+        static ProjectChatPickerItem[] ItemsWith(string id, string title)
+        {
+            var items = Items();
+            items.First(item => item.Id == id).Title = title;
+            return items;
         }
 
         static long Millis(DateTime local) { return new DateTimeOffset(local).ToUnixTimeMilliseconds(); }
@@ -435,6 +584,13 @@ namespace TwinCatAssistant.Native
     }
 }
 '@
+# Windows PowerShell reads this BOM-less UTF-8 script with the ANSI code page,
+# which garbles the umlauts of the harness; take its text from a UTF-8 parse.
+if ($PSVersionTable.PSEdition -ne 'Core') {
+    $ast = [Management.Automation.Language.Parser]::ParseInput([IO.File]::ReadAllText($PSCommandPath, [Text.Encoding]::UTF8), [ref]$null, [ref]$null)
+    $harnessSource = $ast.Find({ param($node) $node -is [Management.Automation.Language.StringConstantExpressionAst] -and $node.StringConstantType -eq 'SingleQuotedHereString' }, $true).Value
+}
+Set-Content -LiteralPath $harness -Encoding UTF8 -Value $harnessSource
 
 $sources = @(
     (Join-Path $root 'native/IdeHost/ProjectChatPicker.cs'),

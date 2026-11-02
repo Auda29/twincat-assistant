@@ -71,6 +71,7 @@ namespace TwinCatAssistant.Native
             };
             _projectChatPicker.RetryAsync = () => LoadPickerAsync(scope, true);
             _projectChatPicker.RenameAsync = _chatSelection.canManage ? (Func<string, string, Task>)((id, title) => ManagePickerChatAsync(scope, id, "rename", title)) : null;
+            _projectChatPicker.GenerateTitleAsync = _chatSelection.canManage ? (Func<string, Task>)(id => ManagePickerChatAsync(scope, id, "generate-title")) : null;
             _projectChatPicker.ArchiveAsync = _chatSelection.canManage ? (Func<string, Task>)(id => ManagePickerChatAsync(scope, id, "archive")) : null;
             _projectChatPicker.RestoreAsync = _chatSelection.canManage ? (Func<string, Task>)(id => ManagePickerChatAsync(scope, id, "restore")) : null;
             await LoadPickerAsync(scope, true);
@@ -134,7 +135,8 @@ namespace TwinCatAssistant.Native
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var target = (await PickerEntriesAsync(scope)).SingleOrDefault(entry => entry.id == id);
             if (target == null) throw new InvalidOperationException("Dieser Chat gehört nicht zum ausgewählten Verlauf.");
-            if (action == "archive" && target.busy) throw new InvalidOperationException("In diesem Chat läuft noch eine Antwort.");
+            if ((action == "archive" || action == "generate-title") && target.busy) throw new InvalidOperationException("In diesem Chat läuft noch eine Antwort.");
+            if (action == "generate-title" && target.archived) throw new InvalidOperationException("Zuerst den archivierten Chat wiederherstellen.");
             // Retain the existing live-IDE ownership check for management too.
             BindPickerChat(scope.General ? ChatContextBinding.CreateGeneral(_chatIdeInstance, System.Diagnostics.Process.GetCurrentProcess().Id, _origin.AbsoluteUri, id)
                 : ChatContextBinding.CreateProject(scope.Project, _chatIdeInstance, _origin.AbsoluteUri, id));
@@ -153,12 +155,14 @@ namespace TwinCatAssistant.Native
                 await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatManage={id:'" + slot + "',phase:'pending'};window.__twinCatChat.manageSession("
                     + serializer.Serialize(expected) + "," + serializer.Serialize(request) + ").then(()=>{if(window.__twinCatManage?.id==='" + slot
                     + "')window.__twinCatManage.phase='ready'},()=>{if(window.__twinCatManage?.id==='" + slot + "')window.__twinCatManage.phase='failed'});");
-                var deadline = DateTime.UtcNow.AddSeconds(30);
+                var deadline = DateTime.UtcNow.AddSeconds(action == "generate-title" ? 100 : 30);
                 while (PickerCurrent(scope) && DateTime.UtcNow < deadline)
                 {
                     var phase = await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatManage?.id==='" + slot + "'?window.__twinCatManage.phase:null");
                     if (phase == "\"ready\"") break;
-                    if (phase == "\"failed\"") throw new InvalidOperationException("Die Änderung wurde nicht bestätigt. Bitte den Verlauf erneut laden.");
+                    if (phase == "\"failed\"") throw new InvalidOperationException(action == "generate-title"
+                        ? "Der Titel konnte nicht generiert werden. Der Chat braucht einen abgeschlossenen Austausch und einen verfügbaren Modellanbieter. Der bisherige Titel bleibt erhalten."
+                        : "Die Änderung wurde nicht bestätigt. Bitte den Verlauf erneut laden.");
                     await Task.Delay(100);
                 }
                 if (!PickerCurrent(scope)) throw new OperationCanceledException();

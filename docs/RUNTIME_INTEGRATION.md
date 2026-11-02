@@ -71,6 +71,29 @@ status before submitting an archive. There is no permanent-delete command.
 New chats use the original default-title path instead of forcing the PLC name
 as a manually supplied title.
 
+The original Core title generator remains in use. It starts from the first
+admitted user prompt while the chat still has the exact original fallback
+title. The earlier native host supplied the PLC name as an explicit title, so
+those existing conversations are considered named and do not automatically get
+retitled. New chats created by the installed `dfb50b1` use the original untitled
+creation path. The follow-up exposes **Titel automatisch generieren** in each
+active conversation's row menu. It uses OpenChamber's original complete-history
+loader, completed-turn selection, small-model title request and guarded title
+save. Busy/archived chats are excluded. A missing completed exchange or failed
+request preserves the existing title. Generation starts only on an explicit
+click, not while listing conversations; there is no bulk rename. This follow-up
+is not part of the installed `dfb50b1` reference until separately deployed.
+
+The same follow-up corrects automatic attachment bookkeeping. A failed fresh
+editor read or unconfirmed composer queue no longer counts as a successful
+attachment. The host retries at most three times per session/page/revision with
+a minimum one-second interval, then offers an explicit retry action. A new page,
+changed POU revision or restored project context gets its own attempt state.
+After confirmed staging, removing the chip still suppresses replay in the same
+unchanged context. PRG/PROGRAM uses the same attachment path as FB/FUNCTION;
+the parser already accepted all three. A synthetic WebView case makes the first
+fresh PRG read fail, then verifies recovery without changing its revision.
+
 Selection metadata is stored atomically as
 `native-chat/threads/project-<profile-and-project-hash>.selection` below the
 Assistant's local application-data directory. The key includes the operator
@@ -254,9 +277,11 @@ combine an independent browser screenshot over the native capture, since that
 would conceal an HWND airspace failure.
 
 The panels in this regression are synthetic Properties/Toolbox stand-ins.
-The actual TwinCAT docking manager, physical keyboard/mouse use, floating and
-auto-hidden IDE panes still need a manual check after installation. This local
-change has not been installed in the running IDE.
+The change was installed as part of the local `dfb50b1` test build on
+2026-11-02. The operator subsequently accepted the requested docking fix in
+TwinCAT; the supplied Properties screenshot shows the IDE pane drawing above
+the chat. This acceptance does not establish every floating-pane, DPI or
+long-running input/scrolling scenario.
 
 ## Thread copy and Markdown export
 
@@ -306,6 +331,19 @@ with the editor's later active object.
 
 ## Validation scope
 
+The title/automatic-attachment follow-up passes 97 Node cases, eight browser
+contracts, both native builds, 106 native policy/context cases, 52 WPF checks,
+62 picker UI checks and 138 combined real-source WebView2 checks with both MCPs
+and synthetic data. The combined run verifies PRG attachment after a deliberately
+failed first fresh editor read, and that the new native title action rejects an
+empty conversation without changing its stored title or session identity.
+The 21 original OpenChamber title tests pass, covering completed-turn context,
+title cleanup, generation, failure/cancellation, manual edits and runtime changes.
+UI/web type checks and overlay lint pass. No paid model request was made; actual
+provider-generated titles and the updated menu still require installed manual
+acceptance. This run also passes both themes, but does not explain the earlier
+installed combined-run theme timeout or prove that intermittent issue resolved.
+
 The 2026-11-02 navigation change passes 96 Node component cases, eight browser
 contracts, both native host builds, 100 shared native policy/context cases and
 52 WPF view checks. UI and web TypeScript checks, source-overlay lint and four
@@ -324,10 +362,25 @@ native observation.
 
 The integration fixture keeps its picker frame hidden so backend tests do not
 capture the operator's mouse; the separate 41-case UI fixture renders the actual
-popup. These are local results, not GitHub CI or installed IDE acceptance. Manual
-acceptance still needs real TwinCAT selection, keyboard routing, light-dismiss
-over the composition WebView, auto-hidden/floating panes and high DPI. No real
-provider request, PLC edit or operator-database migration is performed.
+popup. These are local results, not GitHub CI. No real provider request, PLC edit
+or operator-database migration is performed by these fixtures.
+
+The local test build `dfb50b1` was installed on 2026-11-02 with all 13 native
+payload hashes verified and 38 protected operator files unchanged during the
+installation and isolated tests. The installed navigation run passed 62 checks;
+a separate installed theme/docking probe passed 32 checks. The installed
+combined run passed 96 checks before timing out on the light-to-dark transition
+after the resize/capture sequence. That run failed; its cause remains unresolved
+despite the independent dark-light-dark probe passing. This is separate from
+the earlier 131-check source-worktree result.
+
+After installation, the operator reported that the requested manual checks work:
+project-chat navigation and management, per-chat drafts/attachments, restoration
+after restarting the IDE, and Properties/Toolbox overlap. This is the manual
+functional acceptance for the local X86 build. It does not close the combined
+theme-test timeout or establish exhaustive keyboard, DPI, floating-pane or
+long-running acceptance. The repeated project names in historical chat titles
+were reported separately and are explained by the earlier explicit title rule.
 
 The 2026-10-30 combined pass builds both native hosts and the updated source UI.
 It passes 92 Node tests, eight browser checks, 97 shared native policy/context

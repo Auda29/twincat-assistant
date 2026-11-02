@@ -115,7 +115,12 @@ implementiert: Die kompakte Auswahl ersetzt die allgemeine Seitenleiste und
 ergänzt Titelsuche, Umbenennen, Archivieren und Wiederherstellen. Die letzte
 Auswahl bleibt über einen Laufzeit-Neustart erhalten. Die
 [genauen Regeln und Abnahmegrenzen](RUNTIME_INTEGRATION.md#agreed-project-chat-navigation-2026-10-30)
-sind festgehalten. Installation und reale IDE-Abnahme stehen noch aus.
+sind festgehalten. Der lokale Stand `dfb50b1` wurde am 02.11.2026 installiert.
+Der Nutzer hat Projektchat-Navigation, getrennte Entwürfe/Anhänge,
+Wiederherstellung nach IDE-Neustart und den Überdeckungsfix für Properties/Toolbox
+manuell abgenommen. Ein Timeout des kombinierten Theme-Tests bleibt separat
+offen. Ältere Chats tragen noch den zuvor fest vergebenen Projektnamen; neue
+Chats lassen die ursprüngliche automatische Titelgenerierung zu.
 
 ### Kontext und Anhänge eindeutig behandeln
 

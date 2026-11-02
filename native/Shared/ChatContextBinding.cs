@@ -6,6 +6,26 @@ using System.IO;
 
 namespace TwinCatAssistant.Native
 {
+    // Failed reads do not consume the same revision forever. Successful
+    // staging still respects removal by the operator until the context changes.
+    public sealed class AutoAttachmentAttempts
+    {
+        private string _key;
+        private int _attempts;
+        private bool _confirmed;
+        private DateTime _retryAfter;
+        public bool CanAttempt(string key, DateTime now) { return key != null && (key != _key || (!_confirmed && _attempts < 3 && now >= _retryAfter)); }
+        public void Begin(string key, DateTime now)
+        {
+            if (key != _key) { Reset(); _key = key; }
+            _attempts++;
+            _retryAfter = now.AddSeconds(1);
+        }
+        public void Confirm(string key) { if (key == _key) _confirmed = true; }
+        public bool Exhausted(string key) { return key == _key && !_confirmed && _attempts >= 3; }
+        public void Reset() { _key = null; _attempts = 0; _confirmed = false; _retryAfter = DateTime.MinValue; }
+    }
+
     public sealed class ChatProviderChoice
     {
         public string id { get; set; }

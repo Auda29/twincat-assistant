@@ -45,12 +45,14 @@ namespace TwinCatAssistant.Native
     // a closed one, so late results after Escape, a click elsewhere or a
     // project switch are dropped. Closing, or a different project name,
     // starts a new session; completions of actions started earlier are ignored.
+    // Title generation never writes a title locally: the host refreshes the
+    // list through Show once its delegate has stored the generated title.
     internal sealed class ProjectChatPicker : IDisposable
     {
         private const double WideFrame = 400, MinFrame = 280, EdgeGap = 6, CompactBelow = 360;
         private static readonly Thickness ShadowMargin = new Thickness(8, 2, 8, 12);
         private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
-        private const string Selecting = "select", Renaming = "rename", Archiving = "archive", Restoring = "restore";
+        private const string Selecting = "select", Renaming = "rename", Archiving = "archive", Restoring = "restore", Generating = "generate";
 
         private enum PickerView { Loading, Ready, Error }
 
@@ -75,7 +77,7 @@ namespace TwinCatAssistant.Native
         private readonly Border _frame = new Border { CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), Margin = ShadowMargin, Focusable = true,
             Effect = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 4, Opacity = 0.16, Direction = 270 } };
         private readonly Canvas _overlay = new Canvas { Visibility = Visibility.Collapsed, Background = Brushes.Transparent };
-        private readonly Border _menu = new Border { CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1), Padding = new Thickness(3), Width = 196,
+        private readonly Border _menu = new Border { CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1), Padding = new Thickness(3), Width = 224,
             Effect = new DropShadowEffect { BlurRadius = 12, ShadowDepth = 2, Opacity = 0.18, Direction = 270 } };
         private readonly StackPanel _menuItems = new StackPanel();
         // Header
@@ -173,6 +175,8 @@ namespace TwinCatAssistant.Native
         public Func<string, string, Task> RenameAsync { get; set; }
         public Func<string, Task> ArchiveAsync { get; set; }
         public Func<string, Task> RestoreAsync { get; set; }
+        // Generates and stores a title for the chat; hidden when null.
+        public Func<string, Task> GenerateTitleAsync { get; set; }
         public Func<Task> RetryAsync { get; set; }
         public Func<Task> NewAsync { get; set; }
 
@@ -258,7 +262,7 @@ namespace TwinCatAssistant.Native
             _anchor.IsVisibleChanged -= OnAnchorVisibleChanged;
             _anchor.Unloaded -= OnAnchorUnloaded;
             WatchHost(null);
-            SelectAsync = null; RenameAsync = null; ArchiveAsync = null; RestoreAsync = null; RetryAsync = null; NewAsync = null;
+            SelectAsync = null; RenameAsync = null; ArchiveAsync = null; RestoreAsync = null; RetryAsync = null; NewAsync = null; GenerateTitleAsync = null;
             _list.Children.Clear();
             _entries = new List<Entry>();
             _popup.Child = null;
@@ -629,7 +633,7 @@ namespace TwinCatAssistant.Native
                     row.Children.Add(accent);
                 }
                 if (pending != null) row.Children.Add(Trailing(Spinner(14), new Thickness(0, 0, 11, 0)));
-                else if (CanRename(entry) || ArchiveAsync != null)
+                else if (CanRename(entry) || CanGenerate(entry) || ArchiveAsync != null)
                 {
                     var more = IconButton("more", "Aktionen für „" + DisplayTitle(entry) + "“", () => { OpenMenu(id); return Task.CompletedTask; });
                     more.Width = 24; more.Height = 24;
@@ -691,7 +695,7 @@ namespace TwinCatAssistant.Native
             {
                 Separator();
                 meta.Inlines.Add(new Run(pending == Selecting ? "Wird geöffnet …" : pending == Renaming ? "Wird umbenannt …"
-                    : pending == Archiving ? "Wird archiviert …" : "Wird wiederhergestellt …"));
+                    : pending == Generating ? "Titel wird generiert …" : pending == Archiving ? "Wird archiviert …" : "Wird wiederhergestellt …"));
             }
             if (selected)
             {
@@ -827,6 +831,9 @@ namespace TwinCatAssistant.Native
             if (entry == null || entry.Archived || target == null || _pending.ContainsKey(id) || _view != PickerView.Ready) return;
             _menuItems.Children.Clear();
             if (CanRename(entry)) MenuItem("pencil", "Umbenennen", "F2", true, null, () => BeginRename(id));
+            if (CanGenerate(entry))
+                MenuItem("refresh", "Titel automatisch generieren", null, !entry.Busy, entry.Busy ? "Erst nach Abschluss der laufenden Antwort möglich." : "Titel aus dem Chatverlauf erzeugen und speichern.",
+                    () => Run(() => GenerateTitleEntryAsync(id)));
             if (ArchiveAsync != null)
                 MenuItem("archive", "Archivieren", null, !entry.Busy, entry.Busy ? "Erst nach Abschluss der laufenden Antwort möglich." : "Aus der Liste nehmen; jederzeit wiederherstellbar.",
                     () => Run(() => ArchiveEntryAsync(id)));
@@ -980,6 +987,48 @@ namespace TwinCatAssistant.Native
             if (_renameId == id) EndRename();
             Render();
             FocusRow(id);
+        }
+
+        private bool CanGenerate(Entry entry) { return GenerateTitleAsync != null && !entry.Archived; }
+
+        // The host stores the title and answers with Show; the picker only
+        // reports progress and failures and never invents a title.
+        private async Task GenerateTitleEntryAsync(string id)
+        {
+            var entry = Find(id);
+            var handler = GenerateTitleAsync;
+            if (_disposed || !_popup.IsOpen || _view != PickerView.Ready || entry == null || entry.Archived || entry.Busy || handler == null
+                || _pending.ContainsKey(id) || _renameId == id) return;
+            var session = _session;
+            _pending[id] = Generating;
+            _actionError = null;
+            Render();
+            KeepFocusOnRow(id);
+            try { await handler(id); }
+            catch (Exception error)
+            {
+                if (session != _session) return;
+                _pending.Remove(id);
+                Fail("Der Titel konnte nicht generiert werden.", error);
+                KeepFocusOnRow(id);
+                return;
+            }
+            if (session != _session) return;
+            _pending.Remove(id);
+            Render();
+            KeepFocusOnRow(id);
+        }
+
+        // Focus that the row lost to a rebuild or the closed menu returns to
+        // the row; focus the user moved elsewhere in the popup stays there.
+        private void KeepFocusOnRow(string id)
+        {
+            Defer(() => {
+                var focused = Keyboard.FocusedElement as DependencyObject;
+                if (focused != null && focused != _frame && IsWithin(focused, _frame) && !IsWithin(focused, _overlay)) return;
+                var target = _targets.FirstOrDefault(row => row.Id == id);
+                if (target == null || !FocusElement(target.Primary)) FocusElement(_search);
+            });
         }
 
         private async Task ArchiveEntryAsync(string id)

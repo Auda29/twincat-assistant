@@ -108,6 +108,24 @@ test('pending manual context stays with its chat, while automatic context never 
   assert.equal(ui.getState().setSidebarOpenValue, false, 'legacy navigation cannot reopen the generic sidebar');
 });
 
+test('generated chat titles require an explicit action on a reviewed idle conversation', async () => {
+  const calls = [];
+  const source = { setContext() {}, async manageSession(request, assertCurrent) { assertCurrent(); calls.push(request); return true; } };
+  const { adapter } = fixture({ source, loadSessions: async () => [
+    { id: 'older', title: 'PLC_A', updated: 1, archived: false, busy: false },
+    { id: 'busy', updated: 2, busy: true }, { id: 'archived', updated: 3, archived: true },
+  ] });
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'PLC_A' };
+  adapter.permit(expected);
+  await assert.rejects(adapter.manageSession(expected, { id: 'older', directory: '/isolated', action: 'generate-title' }));
+  await adapter.storedSessions('/isolated', true);
+  assert.equal(calls.length, 0, 'loading history never calls a model');
+  await adapter.manageSession(expected, { id: 'older', directory: '/isolated', action: 'generate-title', title: 'untrusted', prompt: 'ignored' });
+  assert.deepEqual(calls, [{ id: 'older', directory: '/isolated', action: 'generate-title' }]);
+  for (const id of ['busy', 'archived']) await assert.rejects(adapter.manageSession(expected, { id, directory: '/isolated', action: 'generate-title' }));
+  assert.equal(calls.length, 1);
+});
+
 test('late history from a previous project cannot authorize management in the next project', async () => {
   let finish;
   let mutations = 0;
