@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation;
@@ -32,27 +33,31 @@ namespace TwinCatAssistant.Native
         // Last activity, Unix epoch milliseconds (0 = unknown).
         public long Updated { get; set; }
         public bool Busy { get; set; }
+        // Stored as OpenChamber's archive flag; shown as "erledigt".
         public bool Archived { get; set; }
     }
 
-    // Compact chat list of the active TwinCAT project, anchored to the history
-    // button of the native context bar. Pure presentation: the host supplies
+    // Chat bar of the active TwinCAT project (or of the general chats), drawn
+    // as an ordinary WPF element inside the tool window: no OS popup, so it
+    // composes with the WebView2 composition control and IDE auto-hide panes.
+    // The host places View either docked beside the conversation (Docked) or
+    // as an overlay on narrow windows. Pure presentation: the host supplies
     // metadata and performs every action through the delegates; nothing here
     // reads projects, sessions, the network or the browser.
     //
-    // Lifecycle: ShowLoading opens the picker (it is the answer to the user's
-    // click). Show and ShowError only update an open picker and never reopen
-    // a closed one, so late results after Escape, a click elsewhere or a
-    // project switch are dropped. Closing, or a different project name,
-    // starts a new session; completions of actions started earlier are ignored.
-    // Title generation never writes a title locally: the host refreshes the
-    // list through Show once its delegate has stored the generated title.
+    // Lifecycle: ShowLoading opens the bar (an answer to the user or to a
+    // restored preference). Show, ShowError and SetSelected only update an
+    // open bar and never reopen a closed one, so late results after closing
+    // or a project switch are dropped. Closing, a new session or a different
+    // project name start a new session; completions of actions started
+    // earlier are ignored. Title generation never writes a title locally:
+    // the host refreshes the list through Show once the title is stored.
     internal sealed class ProjectChatPicker : IDisposable
     {
-        private const double WideFrame = 400, MinFrame = 280, EdgeGap = 6, CompactBelow = 360;
-        private static readonly Thickness ShadowMargin = new Thickness(8, 2, 8, 12);
         private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
         private const string Selecting = "select", Renaming = "rename", Archiving = "archive", Restoring = "restore", Generating = "generate";
+        // Keyboard target of the "Erledigte Chats" section toggle; never a session id.
+        private const string DoneToggleId = "\0done";
 
         private enum PickerView { Loading, Ready, Error }
 
@@ -73,22 +78,23 @@ namespace TwinCatAssistant.Native
         }
 
         private readonly FrameworkElement _anchor;
-        private readonly Popup _popup = new Popup { StaysOpen = false, AllowsTransparency = true, Placement = PlacementMode.Relative, PopupAnimation = PopupAnimation.None };
-        private readonly Border _frame = new Border { CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), Margin = ShadowMargin, Focusable = true,
-            Effect = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 4, Opacity = 0.16, Direction = 270 } };
+        private readonly Border _frame = new Border { BorderThickness = new Thickness(0, 0, 1, 0), Focusable = true, ClipToBounds = true };
+        // Quiet tint over the background: the bar reads as its own plane in
+        // the live palette without a new colour.
+        private readonly Border _tint = new Border { IsHitTestVisible = false, Opacity = 0.55 };
         private readonly Canvas _overlay = new Canvas { Visibility = Visibility.Collapsed, Background = Brushes.Transparent };
         private readonly Border _menu = new Border { CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1), Padding = new Thickness(3), Width = 224,
             Effect = new DropShadowEffect { BlurRadius = 12, ShadowDepth = 2, Opacity = 0.18, Direction = 270 } };
         private readonly StackPanel _menuItems = new StackPanel();
         // Header
-        private readonly TextBlock _title = new TextBlock { FontSize = 12.5, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _title = new TextBlock { FontSize = 13, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         private readonly ShapePath _titleIcon = Glyph("chat");
-        private Button _backButton, _newButton;
-        private readonly TextBlock _newLabel = new TextBlock { Text = "Neuer Chat", FontSize = 12, Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        private Button _backButton, _collapseButton, _newButton;
+        private readonly TextBlock _newLabel = new TextBlock { Text = "Neuer Chat", FontSize = 12.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         private readonly ShapePath _newIcon = Glyph("plus");
         private readonly FrameworkElement _newSpinner = Spinner(14);
         // Search
-        private readonly Border _searchFrame = new Border { CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1), Margin = new Thickness(8, 0, 8, 6), Height = 28 };
+        private readonly Border _searchFrame = new Border { CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1), Margin = new Thickness(8, 0, 8, 8), Height = 28 };
         private readonly TextBox _search = new TextBox { BorderThickness = new Thickness(0), Background = Brushes.Transparent, Padding = new Thickness(2, 0, 2, 0),
             VerticalContentAlignment = VerticalAlignment.Center, FontSize = 12.5, MaxLength = 200 };
         private readonly TextBlock _searchPlaceholder = new TextBlock { Text = "Chats durchsuchen", FontSize = 12.5, IsHitTestVisible = false,
@@ -99,13 +105,9 @@ namespace TwinCatAssistant.Native
         private readonly TextBlock _bannerText = new TextBlock { FontSize = 11.5, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
         // Body
         private readonly ScrollViewer _scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Focusable = false, Padding = new Thickness(0, 0, 2, 4) };
+            Focusable = false, Padding = new Thickness(0, 0, 2, 8) };
         private readonly StackPanel _list = new StackPanel();
         private readonly Border _state = new Border { Padding = new Thickness(18, 22, 18, 24), Visibility = Visibility.Collapsed };
-        // Footer
-        private readonly Border _footer = new Border { BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(5, 4, 5, 4) };
-        private Button _archiveToggle;
-        private readonly TextBlock _archiveToggleText = new TextBlock { FontSize = 11.5, Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         // Inline rename editor, reused across renders so text and caret survive a refresh.
         private readonly StackPanel _renameEditor = new StackPanel();
         private readonly Border _renameFrame = new Border { CornerRadius = new CornerRadius(5), BorderThickness = new Thickness(1), Height = 26 };
@@ -119,17 +121,16 @@ namespace TwinCatAssistant.Native
         private readonly Dictionary<string, string> _pending = new Dictionary<string, string>(StringComparer.Ordinal);
         private List<Entry> _entries = new List<Entry>();
         private PickerView _view = PickerView.Loading;
-        private string _projectName, _selectedId, _errorMessage, _actionError, _renameId, _renameError, _menuId;
-        private bool _showArchived, _newPending, _retryPending, _disposed, _suppressSearch, _revealSelected, _keyboardClose, _programmaticClose;
+        private string _projectName, _selectedId, _errorMessage, _actionError, _renameId, _renameError, _menuId, _signature;
+        // _showArchived: the "Erledigte Chats" section is expanded.
+        private bool _open, _docked, _general, _showArchived, _newPending, _retryPending, _disposed, _suppressSearch, _revealSelected;
         private int _session, _content;
-        private DateTime _closedAt = DateTime.MinValue;
-        private FrameworkElement _host;
 
         public ProjectChatPicker(FrameworkElement anchor, ResourceDictionary theme)
         {
             _anchor = anchor ?? throw new ArgumentNullException(nameof(anchor));
             _anchor.Dispatcher.VerifyAccess();
-            // Shared with the host: live palette changes reach the popup too.
+            // Shared with the host: live palette changes reach the bar too.
             _frame.Resources = theme ?? throw new ArgumentNullException(nameof(theme));
             _frame.SetResourceReference(Border.BackgroundProperty, "Tc.Background");
             _frame.SetResourceReference(Border.BorderBrushProperty, "Tc.Border");
@@ -140,15 +141,15 @@ namespace TwinCatAssistant.Native
             _frame.UseLayoutRounding = true;
             _frame.SnapsToDevicePixels = true;
             TextOptions.SetTextFormattingMode(_frame, TextFormattingMode.Display);
-            KeyboardNavigation.SetTabNavigation(_frame, KeyboardNavigationMode.Cycle);
             KeyboardNavigation.SetDirectionalNavigation(_frame, KeyboardNavigationMode.None);
-            AutomationProperties.SetName(_frame, "Projektchats");
+            AutomationProperties.SetName(_frame, "Chatleiste");
+            _tint.SetResourceReference(Border.BackgroundProperty, "Tc.HoverOverlay");
 
             var layout = new DockPanel { LastChildFill = true };
-            layout.Children.Add(Docked(BuildHeader(), Dock.Top));
-            layout.Children.Add(Docked(BuildSearch(), Dock.Top));
-            layout.Children.Add(Docked(BuildBanner(), Dock.Top));
-            layout.Children.Add(Docked(BuildFooter(), Dock.Bottom));
+            layout.Children.Add(DockTo(BuildHeader(), Dock.Top));
+            layout.Children.Add(DockTo(BuildNew(), Dock.Top));
+            layout.Children.Add(DockTo(BuildSearch(), Dock.Top));
+            layout.Children.Add(DockTo(BuildBanner(), Dock.Top));
             _scroll.Resources = (ResourceDictionary)XamlReader.Parse(ScrollBarXaml);
             _scroll.Content = _list;
             layout.Children.Add(new Grid { Children = { _scroll, _state } });
@@ -159,79 +160,122 @@ namespace TwinCatAssistant.Native
             KeyboardNavigation.SetTabNavigation(_menu, KeyboardNavigationMode.Cycle);
             _overlay.Children.Add(_menu);
             _overlay.MouseDown += (sender, args) => { if (args.OriginalSource == _overlay) { CloseMenu(false); args.Handled = true; } };
-            _frame.Child = new Grid { Children = { layout, _overlay } };
-            _popup.Child = _frame;
+            _frame.Child = new Grid { Children = { _tint, layout, _overlay } };
+            ApplyMode();
 
             _frame.PreviewKeyDown += OnPreviewKeyDown;
-            _popup.Opened += OnOpened;
-            _popup.Closed += OnClosed;
             _anchor.IsVisibleChanged += OnAnchorVisibleChanged;
-            _anchor.Unloaded += OnAnchorUnloaded;
         }
 
-        public bool IsOpen => _popup.IsOpen;
+        // The element the host places beside or above the conversation.
+        public FrameworkElement View => _frame;
+        public bool IsOpen => _open;
+
+        // Docked: the bar sits beside the conversation and stays open after
+        // selecting or creating a chat; Tab continues into the chat. Overlay
+        // (narrow windows): selection, Escape and the host's outside click
+        // close it and Tab cycles inside it.
+        public bool Docked
+        {
+            get { return _docked; }
+            set { _anchor.Dispatcher.VerifyAccess(); if (_docked == value) return; _docked = value; ApplyMode(); }
+        }
+
+        // The general chat history rather than one PLC project; wording only.
+        public bool General
+        {
+            get { return _general; }
+            set { _anchor.Dispatcher.VerifyAccess(); if (_general == value) return; _general = value; if (!_disposed) Render(); }
+        }
 
         public Func<string, Task> SelectAsync { get; set; }
         public Func<string, string, Task> RenameAsync { get; set; }
+        // Marks a chat as done (stored through the existing archive flag).
         public Func<string, Task> ArchiveAsync { get; set; }
+        // Reopens a done chat (existing restore action).
         public Func<string, Task> RestoreAsync { get; set; }
         // Generates and stores a title for the chat; hidden when null.
         public Func<string, Task> GenerateTitleAsync { get; set; }
         public Func<Task> RetryAsync { get; set; }
         public Func<Task> NewAsync { get; set; }
+        // Back from another history to the project chats; hidden when null.
+        public Func<Task> BackAsync { get; set; }
+        // Called after the bar closed; true when the user closed it (collapse
+        // button or Escape), false for programmatic and post-action closes.
+        public Action<bool> Closed { get; set; }
 
-        // Opens the picker with a loading state; when already open, it reloads
-        // in place (search text survives for the same project). A click on the
-        // anchor that has just dismissed the picker does not reopen it, so
-        // callers check IsOpen afterwards before they start a load.
-        public void ShowLoading(string projectName)
+        public void ShowLoading(string projectName) { ShowLoading(projectName, true, false); }
+
+        // Opens the bar with a loading state; when already open, it reloads in
+        // place (search text survives for the same project) unless newSession
+        // asks for a clean list. focus moves the keyboard into the search box.
+        public void ShowLoading(string projectName, bool focus, bool newSession)
         {
             _anchor.Dispatcher.VerifyAccess();
             if (_disposed) return;
-            if (!_popup.IsOpen)
-            {
-                if ((DateTime.UtcNow - _closedAt).TotalMilliseconds < 300 && _anchor.IsMouseOver) return;
-                BeginSession(projectName);
-            }
-            else if (!SameProject(projectName)) BeginSession(projectName);
+            var opening = !_open;
+            if (opening || newSession || !SameProject(projectName)) BeginSession(projectName);
+            _open = true;
             _content++;
             _view = PickerView.Loading;
             _errorMessage = null;
+            _signature = null;
             Render();
-            if (!_popup.IsOpen) Open();
+            if (focus && (opening || !_frame.IsKeyboardFocusWithin))
+                Defer(() => { if (!_frame.IsKeyboardFocusWithin && !FocusElement(_search)) FocusElement(_frame); });
         }
 
-        // Updates an open picker with the project's chats (active and archived).
-        // Ignored while closed.
+        // Updates an open bar with the chats (open and done). Ignored while
+        // closed. An unchanged list does not rebuild the rows, so hover,
+        // scroll position and focus stay where they are.
         public void Show(string projectName, string selectedSessionId, ProjectChatPickerItem[] items)
         {
             _anchor.Dispatcher.VerifyAccess();
-            if (_disposed || !_popup.IsOpen) return;
+            if (_disposed || !_open) return;
             if (!SameProject(projectName)) BeginSession(projectName);
             _content++;
-            _selectedId = string.IsNullOrEmpty(selectedSessionId) ? null : selectedSessionId;
             var seen = new HashSet<string>(StringComparer.Ordinal);
             _entries = (items ?? new ProjectChatPickerItem[0])
-                .Where(item => item != null && !string.IsNullOrEmpty(item.Id) && seen.Add(item.Id))
+                .Where(item => item != null && !string.IsNullOrEmpty(item.Id) && item.Id != DoneToggleId && seen.Add(item.Id))
                 .Select(item => new Entry { Id = item.Id, Title = item.Title, Updated = item.Updated, Busy = item.Busy, Archived = item.Archived })
                 .OrderByDescending(entry => entry.Updated).ThenBy(entry => DisplayTitle(entry), StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
+            var wasReady = _view == PickerView.Ready;
             _view = PickerView.Ready;
             _errorMessage = null;
+            _selectedId = string.IsNullOrEmpty(selectedSessionId) ? null : selectedSessionId;
             if (_renameId != null)
             {
                 var renamed = Find(_renameId);
                 if (renamed == null || renamed.Archived) EndRename();
             }
             if (_menuId != null && Find(_menuId) == null) CloseMenu(false);
+            if (wasReady && Signature() == _signature) return;
             Render();
         }
 
-        // Shows a load failure with a retry action in an open picker. Never opens it.
+        // Highlights the chat that is open in the conversation. Returns false
+        // when the bar is closed or does not list that chat (yet), so the host
+        // can refresh the list.
+        public bool SetSelected(string sessionId)
+        {
+            _anchor.Dispatcher.VerifyAccess();
+            if (_disposed || !_open || _view != PickerView.Ready) return false;
+            var id = string.IsNullOrEmpty(sessionId) ? null : sessionId;
+            if (id != _selectedId)
+            {
+                _selectedId = id;
+                _revealSelected = true;
+                Render();
+            }
+            return id == null || Find(id) != null;
+        }
+
+        // Shows a load failure with a retry action in an open bar. Never opens it.
         public void ShowError(string message)
         {
             _anchor.Dispatcher.VerifyAccess();
-            if (_disposed || !_popup.IsOpen) return;
+            if (_disposed || !_open) return;
             _content++;
             _view = PickerView.Error;
             _errorMessage = string.IsNullOrWhiteSpace(message) ? null : message.Trim();
@@ -240,36 +284,27 @@ namespace TwinCatAssistant.Native
             Render();
         }
 
-        public void Close()
-        {
-            _anchor.Dispatcher.VerifyAccess();
-            if (!_popup.IsOpen) return;
-            _programmaticClose = true;
-            try { _popup.IsOpen = false; }
-            finally { _programmaticClose = false; }
-        }
+        public void Close() { _anchor.Dispatcher.VerifyAccess(); CloseCore(false); }
 
         public void Dispose()
         {
             _anchor.Dispatcher.VerifyAccess();
             if (_disposed) return;
-            Close();
+            CloseCore(false);
             _disposed = true;
             _session++;
             _frame.PreviewKeyDown -= OnPreviewKeyDown;
-            _popup.Opened -= OnOpened;
-            _popup.Closed -= OnClosed;
             _anchor.IsVisibleChanged -= OnAnchorVisibleChanged;
-            _anchor.Unloaded -= OnAnchorUnloaded;
-            WatchHost(null);
             SelectAsync = null; RenameAsync = null; ArchiveAsync = null; RestoreAsync = null; RetryAsync = null; NewAsync = null; GenerateTitleAsync = null;
+            BackAsync = null; Closed = null;
             _list.Children.Clear();
             _entries = new List<Entry>();
-            _popup.Child = null;
+            if (_frame.Parent is Decorator decorator && decorator.Child == _frame) decorator.Child = null;
+            else if (_frame.Parent is Panel panel) panel.Children.Remove(_frame);
             _frame.Resources = new ResourceDictionary(); // release the shared palette
         }
 
-        // ---- Session and popup lifecycle ----
+        // ---- Session and lifecycle ----
 
         private bool SameProject(string projectName) { return string.Equals(_projectName, projectName, StringComparison.Ordinal); }
 
@@ -284,122 +319,71 @@ namespace TwinCatAssistant.Native
             _showArchived = false;
             _actionError = null;
             _revealSelected = true;
+            _signature = null;
             CloseMenu(false);
             EndRename();
             _suppressSearch = true;
             _search.Text = "";
             _suppressSearch = false;
+            _scroll.ScrollToVerticalOffset(0);
         }
 
-        private void Open()
+        private void CloseCore(bool byUser)
         {
-            WatchHost(FindHost());
-            Place();
-            _popup.IsOpen = true;
-        }
-
-        private void OnOpened(object sender, EventArgs args)
-        {
-            Place();
-            _frame.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => {
-                if (!_popup.IsOpen || _frame.IsKeyboardFocusWithin) return;
-                if (!FocusElement(_search)) FocusElement(_frame);
-            }));
-        }
-
-        private void OnClosed(object sender, EventArgs args)
-        {
-            _closedAt = DateTime.UtcNow;
+            if (!_open) return;
+            var focused = _frame.IsKeyboardFocusWithin;
+            _open = false;
             _session++;
             _pending.Clear();
             _newPending = false; _retryPending = false;
             CloseMenu(false);
             EndRename();
-            WatchHost(null);
-            // Focus returns to the anchor after Escape, or after a programmatic
-            // close that left focus inside the hidden popup. A click elsewhere
-            // (light dismiss) keeps focus where the user put it.
-            var restore = _keyboardClose || (_programmaticClose && _frame.IsKeyboardFocusWithin);
-            _keyboardClose = false;
-            if (restore && !_disposed && _anchor.IsVisible && _anchor.Focusable) _anchor.Focus();
+            // Focus inside the closing bar returns to the anchor (the clock);
+            // focus the user put elsewhere stays there.
+            if (focused && !_disposed && _anchor.IsVisible && _anchor.Focusable) _anchor.Focus();
+            var closed = Closed;
+            if (closed != null) { try { closed(byUser); } catch { /* Host layout never breaks the bar. */ } }
         }
 
-        private void OnAnchorVisibleChanged(object sender, DependencyPropertyChangedEventArgs args) { if (!_anchor.IsVisible) Close(); }
-        private void OnAnchorUnloaded(object sender, RoutedEventArgs args) { Close(); }
-
-        // The tool window content: nearest UserControl around the anchor.
-        private FrameworkElement FindHost()
+        private void ApplyMode()
         {
-            DependencyObject node = _anchor;
-            FrameworkElement last = _anchor;
-            while (node != null)
-            {
-                if (node is UserControl control) return control;
-                if (node is FrameworkElement element) last = element;
-                node = node is Visual ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node);
-            }
-            return last;
+            KeyboardNavigation.SetTabNavigation(_frame, _docked ? KeyboardNavigationMode.Continue : KeyboardNavigationMode.Cycle);
+            _collapseButton.ToolTip = _docked ? "Chatleiste schließen" : "Chatleiste schließen (Esc)";
         }
 
-        private void WatchHost(FrameworkElement host)
-        {
-            if (_host == host) return;
-            if (_host != null) _host.SizeChanged -= OnHostSizeChanged;
-            _host = host;
-            if (_host != null) _host.SizeChanged += OnHostSizeChanged;
-        }
-
-        private void OnHostSizeChanged(object sender, SizeChangedEventArgs args) { if (_popup.IsOpen) Place(); }
-
-        // Right edge follows the anchor, clamped into the tool window; narrow
-        // windows get a frame that spans the window minus a small gap.
-        private void Place()
-        {
-            var host = _host ?? FindHost();
-            var hostWidth = host.ActualWidth > 0 ? host.ActualWidth : WideFrame + 2 * EdgeGap;
-            var hostHeight = host.ActualHeight > 0 ? host.ActualHeight : 600;
-            var width = Math.Max(MinFrame, Math.Min(WideFrame, hostWidth - 2 * EdgeGap));
-            Point origin;
-            try { origin = _anchor.TranslatePoint(new Point(0, 0), host); }
-            catch (InvalidOperationException) { origin = new Point(hostWidth - width - EdgeGap, 0); }
-            var left = origin.X + _anchor.ActualWidth + 4 - width;
-            left = Math.Max(EdgeGap, Math.Min(left, hostWidth - EdgeGap - width));
-            var top = origin.Y + _anchor.ActualHeight + 4;
-            _frame.Width = width;
-            _popup.PlacementTarget = host;
-            _popup.Placement = PlacementMode.Relative;
-            _popup.HorizontalOffset = left - ShadowMargin.Left;
-            _popup.VerticalOffset = top - ShadowMargin.Top;
-            // Header, search and footer take about 112 px of the frame.
-            _scroll.MaxHeight = Math.Max(150, Math.Min(392, hostHeight - top - 8 - 112));
-            var compact = width < CompactBelow;
-            _newLabel.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-            _newButton.Padding = compact ? new Thickness(0) : new Thickness(6, 0, 8, 0);
-            _newButton.Width = compact ? 26 : double.NaN;
-        }
+        private void OnAnchorVisibleChanged(object sender, DependencyPropertyChangedEventArgs args) { if (!_anchor.IsVisible) CloseCore(false); }
 
         // ---- Building blocks ----
 
         private UIElement BuildHeader()
         {
-            _backButton = IconButton("back", "Zurück zu den Chats", () => { SetArchived(false); return Task.CompletedTask; });
+            _backButton = IconButton("back", "Zurück zu den Projektchats", () => BackAsync?.Invoke() ?? Task.CompletedTask);
             _backButton.Width = 24; _backButton.Height = 24;
             _backButton.Margin = new Thickness(0, 0, 4, 0);
+            _collapseButton = IconButton("sidebar", "Chatleiste schließen", () => { CloseCore(true); return Task.CompletedTask; });
+            _collapseButton.Width = 26; _collapseButton.Height = 26;
+            AutomationProperties.SetName(_collapseButton, "Chatleiste schließen");
             _titleIcon.SetResourceReference(Shape.StrokeProperty, "Tc.Muted");
-            _titleIcon.Margin = new Thickness(0, 0, 7, 0);
-            _newButton = new Button { Height = 26, ToolTip = "Neuer Chat in diesem Projekt", Margin = new Thickness(6, 0, 0, 0) };
-            _newButton.SetResourceReference(FrameworkElement.StyleProperty, "Tc.Button");
+            _titleIcon.Margin = new Thickness(0, 0, 8, 0);
+            var header = new DockPanel { LastChildFill = true, Margin = new Thickness(10, 8, 6, 6), MinHeight = 26 };
+            header.Children.Add(DockTo(_collapseButton, Dock.Right));
+            header.Children.Add(DockTo(_backButton, Dock.Left));
+            header.Children.Add(DockTo(_titleIcon, Dock.Left));
+            header.Children.Add(_title);
+            return header;
+        }
+
+        private UIElement BuildNew()
+        {
+            _newButton = new Button { Height = 30, Margin = new Thickness(8, 0, 8, 6), Padding = new Thickness(9, 0, 9, 0), HorizontalContentAlignment = HorizontalAlignment.Left };
+            _newButton.SetResourceReference(FrameworkElement.StyleProperty, "Tc.SecondaryButton");
+            _newButton.HorizontalContentAlignment = HorizontalAlignment.Left;
             _newIcon.SetBinding(Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = _newButton });
             _newSpinner.Visibility = Visibility.Collapsed;
             _newButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { new Grid { Children = { _newIcon, _newSpinner } }, _newLabel } };
             AutomationProperties.SetName(_newButton, "Neuer Chat");
             _newButton.Click += (sender, args) => Run(CreateChatAsync);
-            var header = new DockPanel { LastChildFill = true, Margin = new Thickness(8, 7, 6, 7), MinHeight = 26 };
-            header.Children.Add(Docked(_backButton, Dock.Left));
-            header.Children.Add(Docked(_newButton, Dock.Right));
-            header.Children.Add(Docked(_titleIcon, Dock.Left));
-            header.Children.Add(_title);
-            return header;
+            return _newButton;
         }
 
         private UIElement BuildSearch()
@@ -430,6 +414,7 @@ namespace TwinCatAssistant.Native
                 _searchClear.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
                 if (_suppressSearch) return;
                 CloseMenu(false);
+                _scroll.ScrollToVerticalOffset(0);
                 Render();
             };
             return _searchFrame;
@@ -446,26 +431,11 @@ namespace TwinCatAssistant.Native
             var dismiss = IconButton("close", "Meldung ausblenden", () => { _actionError = null; Render(); return Task.CompletedTask; });
             dismiss.Width = 22; dismiss.Height = 22; dismiss.VerticalAlignment = VerticalAlignment.Top; dismiss.Margin = new Thickness(4, -2, 0, -2);
             var row = new DockPanel { LastChildFill = true };
-            row.Children.Add(Docked(dismiss, Dock.Right));
-            row.Children.Add(Docked(icon, Dock.Left));
+            row.Children.Add(DockTo(dismiss, Dock.Right));
+            row.Children.Add(DockTo(icon, Dock.Left));
             row.Children.Add(_bannerText);
             _banner.Child = row;
             return _banner;
-        }
-
-        private UIElement BuildFooter()
-        {
-            _footer.SetResourceReference(Border.BorderBrushProperty, "Tc.Border");
-            _archiveToggle = new Button { Height = 24, Padding = new Thickness(6, 0, 8, 0), HorizontalAlignment = HorizontalAlignment.Left };
-            _archiveToggle.SetResourceReference(FrameworkElement.StyleProperty, "Tc.Button");
-            _archiveToggle.SetResourceReference(Control.ForegroundProperty, "Tc.Muted");
-            var icon = Glyph("archive");
-            icon.SetBinding(Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = _archiveToggle });
-            _archiveToggle.Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { icon, _archiveToggleText } };
-            _archiveToggle.ToolTip = "Archivierte Chats anzeigen und wiederherstellen";
-            _archiveToggle.Click += (sender, args) => SetArchived(true);
-            _footer.Child = _archiveToggle;
-            return _footer;
         }
 
         private void BuildRenameEditor()
@@ -508,12 +478,25 @@ namespace TwinCatAssistant.Native
 
         // ---- Rendering ----
 
+        // Everything a row shows, so an identical refresh can skip the rebuild.
+        private string Signature()
+        {
+            var now = DateTime.Now;
+            var text = new StringBuilder();
+            text.Append(_selectedId).Append('\u0001');
+            foreach (var entry in _entries)
+                text.Append(entry.Id).Append('\u0002').Append(entry.Title).Append('\u0002').Append(entry.Busy ? '1' : '0').Append(entry.Archived ? '1' : '0')
+                    .Append('\u0002').Append(FormatUpdated(entry.Updated, now)).Append('\u0001');
+            return text.ToString();
+        }
+
         private void Render()
         {
             if (_disposed) return;
             var focusId = FocusedRowId(out var focusMore);
             var renameFocused = _renameEditor.IsKeyboardFocusWithin;
             var searchFocused = _search.IsKeyboardFocusWithin;
+            var offset = _scroll.VerticalOffset;
             if (_renameHost != null) _renameHost.Child = null;
             _renameHost = null;
             _list.Children.Clear();
@@ -522,12 +505,10 @@ namespace TwinCatAssistant.Native
             var active = _entries.Where(entry => !entry.Archived).ToList();
             var archived = _entries.Where(entry => entry.Archived).ToList();
             if (_showArchived && _view == PickerView.Ready && archived.Count == 0 && !_pending.ContainsValue(Restoring)) _showArchived = false;
-            RenderHeader(archived.Count);
+            RenderHeader();
 
             var ready = _view == PickerView.Ready;
             _searchFrame.IsEnabled = _view != PickerView.Error;
-            _footer.Visibility = ready && !_showArchived && archived.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-            _archiveToggleText.Text = "Archiviert (" + archived.Count + ")";
             _banner.Visibility = _actionError == null ? Visibility.Collapsed : Visibility.Visible;
             _bannerText.Text = _actionError ?? "";
 
@@ -536,19 +517,31 @@ namespace TwinCatAssistant.Native
             else if (_view == PickerView.Error) state = ErrorState();
             else
             {
-                var pool = _showArchived ? archived : active;
                 var terms = Terms(_search.Text);
-                var visible = pool.Where(entry => Matches(entry, terms)).ToList();
-                if (pool.Count == 0) state = EmptyState();
-                else if (visible.Count == 0) state = NoMatchState();
-                else foreach (var entry in visible) _list.Children.Add(BuildRow(entry));
+                var openMatches = active.Where(entry => Matches(entry, terms)).ToList();
+                var doneMatches = archived.Where(entry => Matches(entry, terms)).ToList();
+                if (_entries.Count == 0) state = EmptyState();
+                else if (openMatches.Count == 0 && doneMatches.Count == 0) state = NoMatchState();
+                else
+                {
+                    if (openMatches.Count == 0) _list.Children.Add(InlineNote(terms.Length > 0 ? "Keine offenen Chats mit diesem Suchbegriff." : "Keine offenen Chats. Neuer Chat beginnt einen."));
+                    foreach (var entry in openMatches) _list.Children.Add(BuildRow(entry));
+                    if (doneMatches.Count > 0)
+                    {
+                        _list.Children.Add(BuildDoneToggle(doneMatches.Count, terms.Length > 0));
+                        if (_showArchived) foreach (var entry in doneMatches) _list.Children.Add(BuildRow(entry));
+                    }
+                }
             }
             _state.Child = state;
             _state.Visibility = state == null ? Visibility.Collapsed : Visibility.Visible;
             _scroll.Visibility = state == null ? Visibility.Visible : Visibility.Collapsed;
             RenderRenameEditor();
+            _signature = ready ? Signature() : null;
+            // The rebuilt rows keep the reading position of the list.
+            if (state == null && offset > 0) { _scroll.UpdateLayout(); _scroll.ScrollToVerticalOffset(offset); }
 
-            if (ready && _revealSelected && _selectedId != null && !_showArchived)
+            if (ready && _revealSelected && _selectedId != null)
             {
                 _revealSelected = false;
                 var target = _targets.FirstOrDefault(row => row.Id == _selectedId);
@@ -566,27 +559,49 @@ namespace TwinCatAssistant.Native
             else if (searchFocused && !_search.IsKeyboardFocusWithin) Defer(() => FocusElement(_search));
         }
 
-        private void RenderHeader(int archivedCount)
+        private void RenderHeader()
         {
-            var project = string.IsNullOrWhiteSpace(_projectName) ? "Aktives Projekt" : _projectName;
-            // Loading and load errors concern the whole project, not the archive.
-            var archiveView = _showArchived && _view == PickerView.Ready;
-            _title.Inlines.Clear();
-            if (archiveView)
-            {
-                _title.Inlines.Add(new Run("Archiviert") { FontWeight = FontWeights.SemiBold });
-                var scope = new Run("  " + project);
-                scope.SetResourceReference(TextElement.ForegroundProperty, "Tc.Muted");
-                _title.Inlines.Add(scope);
-            }
-            else _title.Inlines.Add(new Run(project) { FontWeight = FontWeights.SemiBold });
-            _title.ToolTip = (archiveView ? "Archivierte Chats im Projekt " : "Chats im Projekt ") + project;
-            _backButton.Visibility = archiveView ? Visibility.Visible : Visibility.Collapsed;
-            _titleIcon.Visibility = archiveView ? Visibility.Collapsed : Visibility.Visible;
-            _newButton.Visibility = NewAsync == null || archiveView ? Visibility.Collapsed : Visibility.Visible;
+            var name = string.IsNullOrWhiteSpace(_projectName) ? (_general ? "Allgemeine Chats" : "Aktives Projekt") : _projectName;
+            _title.Text = name;
+            _title.ToolTip = _general ? "Allgemeine Chats ohne Projekt- und Bausteinkontext" : "Chats im Projekt " + name;
+            _titleIcon.Data = _general ? Geometry.Parse("M4,2.5 L12,2.5 A1.5,1.5 0 0 1 13.5,4 L13.5,9.5 A1.5,1.5 0 0 1 12,11 L7,11 L4.5,13.5 L4.5,11 L4,11 A1.5,1.5 0 0 1 2.5,9.5 L2.5,4 A1.5,1.5 0 0 1 4,2.5 Z")
+                : AssistantTheme.Icon("chat");
+            _backButton.Visibility = BackAsync == null ? Visibility.Collapsed : Visibility.Visible;
+            _titleIcon.Visibility = BackAsync == null ? Visibility.Visible : Visibility.Collapsed;
+            _newButton.Visibility = NewAsync == null ? Visibility.Collapsed : Visibility.Visible;
             _newButton.IsEnabled = !_newPending && _view != PickerView.Loading;
+            _newButton.ToolTip = _general ? "Neuer allgemeiner Chat ohne Projektkontext" : "Neuer Chat in diesem Projekt";
+            _newLabel.Text = _newPending ? "Wird erstellt …" : "Neuer Chat";
             _newIcon.Visibility = _newPending ? Visibility.Collapsed : Visibility.Visible;
             _newSpinner.Visibility = _newPending ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private UIElement BuildDoneToggle(int count, bool searching)
+        {
+            var chevron = Glyph("chevron");
+            chevron.SetResourceReference(Shape.StrokeProperty, "Tc.Muted");
+            chevron.RenderTransformOrigin = new Point(0.5, 0.5);
+            chevron.RenderTransform = new RotateTransform(_showArchived ? 0 : -90);
+            var label = new TextBlock { Text = "Erledigte Chats", FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            label.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
+            var number = new TextBlock { Text = count.ToString(German), FontSize = 11.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            number.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
+            var content = new DockPanel { LastChildFill = false };
+            content.Children.Add(DockTo(chevron, Dock.Left));
+            content.Children.Add(DockTo(label, Dock.Left));
+            content.Children.Add(DockTo(number, Dock.Right));
+            var toggle = new Button { Content = content, Padding = new Thickness(8, 5, 10, 5) };
+            toggle.SetResourceReference(FrameworkElement.StyleProperty, "Tc.MenuRow");
+            toggle.ToolTip = _showArchived ? "Erledigte Chats einklappen" : "Als erledigt markierte Chats anzeigen und wieder öffnen";
+            AutomationProperties.SetName(toggle, "Erledigte Chats, " + count + (searching ? " Treffer" : "") + (_showArchived ? ", ausgeklappt" : ", eingeklappt"));
+            toggle.Click += (sender, args) => SetArchived(!_showArchived);
+            _targets.Add(new RowTarget { Id = DoneToggleId, Primary = toggle });
+            var line = new Border { Height = 1, Margin = new Thickness(10, 6, 10, 4) };
+            line.SetResourceReference(Border.BackgroundProperty, "Tc.Border");
+            var section = new StackPanel { Margin = new Thickness(4, 2, 4, 1) };
+            section.Children.Add(line);
+            section.Children.Add(toggle);
+            return section;
         }
 
         private UIElement BuildRow(Entry entry)
@@ -611,14 +626,22 @@ namespace TwinCatAssistant.Native
 
             var text = new StackPanel();
             text.Children.Add(TitleBlock(entry, selected));
-            text.Children.Add(MetaBlock(entry, selected, pending));
+            text.Children.Add(MetaBlock(entry, pending));
             var target = new RowTarget { Id = id };
 
             if (!entry.Archived)
             {
-                var select = new Button { Content = text, Tag = id, Padding = new Thickness(11, 6, 34, 6) };
+                if (selected)
+                {
+                    // The open chat: a primary-tinted plate and an accent bar,
+                    // legible in both palettes and without relying on colour alone.
+                    var plate = new Border { CornerRadius = new CornerRadius(7), Opacity = 0.13, IsHitTestVisible = false };
+                    plate.SetResourceReference(Border.BackgroundProperty, "Tc.Primary");
+                    Grid.SetColumnSpan(plate, 2);
+                    row.Children.Add(plate);
+                }
+                var select = new Button { Content = text, Tag = id, Padding = new Thickness(12, 6, 34, 6) };
                 select.SetResourceReference(FrameworkElement.StyleProperty, "Tc.MenuRow");
-                if (selected) select.SetResourceReference(Control.BackgroundProperty, "Tc.NeutralSurface");
                 Grid.SetColumnSpan(select, 2);
                 select.Click += (sender, args) => Run(() => SelectEntryAsync(id));
                 select.MouseRightButtonUp += (sender, args) => { args.Handled = true; OpenMenu(id); };
@@ -628,7 +651,7 @@ namespace TwinCatAssistant.Native
                 target.Primary = select;
                 if (selected)
                 {
-                    var accent = new Border { Width = 3, CornerRadius = new CornerRadius(1.5), Margin = new Thickness(2, 8, 0, 8), HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false };
+                    var accent = new Border { Width = 3, CornerRadius = new CornerRadius(1.5), Margin = new Thickness(2, 7, 0, 7), HorizontalAlignment = HorizontalAlignment.Left, IsHitTestVisible = false };
                     accent.SetResourceReference(Border.BackgroundProperty, "Tc.Primary");
                     row.Children.Add(accent);
                 }
@@ -648,15 +671,15 @@ namespace TwinCatAssistant.Native
             }
             else
             {
-                row.Children.Add(new Border { Padding = new Thickness(11, 6, 8, 6), Child = text });
+                row.Children.Add(new Border { Padding = new Thickness(12, 6, 8, 6), Child = text });
                 if (RestoreAsync != null)
                 {
-                    var restore = SmallButton(pending == Restoring ? "Wird wiederhergestellt …" : "Wiederherstellen", "Tc.SecondaryButton");
+                    var restore = SmallButton(pending == Restoring ? "Wird geöffnet …" : "Wieder öffnen", "Tc.SecondaryButton");
                     restore.FontSize = 11.5;
                     restore.IsEnabled = pending == null;
                     restore.Tag = id;
-                    restore.ToolTip = "Zurück in die Chatliste dieses Projekts";
-                    AutomationProperties.SetName(restore, "„" + DisplayTitle(entry) + "“ wiederherstellen");
+                    restore.ToolTip = "Zurück zu den offenen Chats; Verlauf und Anhänge bleiben erhalten";
+                    AutomationProperties.SetName(restore, "„" + DisplayTitle(entry) + "“ wieder öffnen");
                     restore.Click += (sender, args) => Run(() => RestoreEntryAsync(id));
                     row.Children.Add(Trailing(restore, new Thickness(4, 0, 6, 0)));
                     target.Primary = restore;
@@ -681,28 +704,21 @@ namespace TwinCatAssistant.Native
                 LineStackingStrategy = LineStackingStrategy.BlockLineHeight, LineHeight = 17, MaxHeight = 34,
                 FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal, FontStyle = untitled ? FontStyles.Italic : FontStyles.Normal };
             title.SetResourceReference(TextBlock.ForegroundProperty, entry.Archived || untitled ? "Tc.Muted" : "Tc.Foreground");
-            if (!untitled && entry.Title.Trim().Length > 36) title.ToolTip = entry.Title.Trim();
+            if (!untitled && entry.Title.Trim().Length > 30) title.ToolTip = entry.Title.Trim();
             return title;
         }
 
-        private TextBlock MetaBlock(Entry entry, bool selected, string pending)
+        private TextBlock MetaBlock(Entry entry, string pending)
         {
             var meta = new TextBlock { FontSize = 11, Margin = new Thickness(0, 1, 0, 0), TextWrapping = TextWrapping.Wrap };
             meta.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
             var parts = 0;
-            void Separator() { if (parts++ > 0) meta.Inlines.Add(new Run("  ·  ")); }
+            void Separator() { if (parts++ > 0) meta.Inlines.Add(new Run(", ")); }
             if (pending != null)
             {
                 Separator();
                 meta.Inlines.Add(new Run(pending == Selecting ? "Wird geöffnet …" : pending == Renaming ? "Wird umbenannt …"
-                    : pending == Generating ? "Titel wird generiert …" : pending == Archiving ? "Wird archiviert …" : "Wird wiederhergestellt …"));
-            }
-            if (selected)
-            {
-                Separator();
-                var open = new Run("Geöffnet") { FontWeight = FontWeights.SemiBold };
-                open.SetResourceReference(TextElement.ForegroundProperty, "Tc.Primary");
-                meta.Inlines.Add(open);
+                    : pending == Generating ? "Titel wird generiert …" : pending == Archiving ? "Wird als erledigt markiert …" : "Wird wieder geöffnet …"));
             }
             if (entry.Busy && !entry.Archived)
             {
@@ -723,7 +739,7 @@ namespace TwinCatAssistant.Native
                 meta.Inlines.Add(new Run(when));
                 if (meta.ToolTip == null) meta.ToolTip = FormatUpdatedFull(entry.Updated);
             }
-            if (parts == 0) meta.Inlines.Add(new Run(entry.Archived ? "Archiviert" : "Keine Aktivität bekannt"));
+            if (parts == 0) meta.Inlines.Add(new Run(entry.Archived ? "Erledigt" : "Keine Aktivität bekannt"));
             return meta;
         }
 
@@ -738,6 +754,13 @@ namespace TwinCatAssistant.Native
             _renameErrorText.Text = _renameError ?? "";
             _renameErrorText.Visibility = _renameError == null ? Visibility.Collapsed : Visibility.Visible;
             _renameHost.Child = _renameEditor;
+        }
+
+        private static UIElement InlineNote(string text)
+        {
+            var note = new TextBlock { Text = text, FontSize = 11.5, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(16, 4, 12, 8) };
+            note.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
+            return note;
         }
 
         private UIElement LoadingState()
@@ -769,18 +792,18 @@ namespace TwinCatAssistant.Native
                 retry.IsEnabled = !_retryPending;
                 retry.Click += (sender, args) => Run(RetryLoadAsync);
                 panel.Children.Add(retry);
-                Defer(() => { if (_frame.IsKeyboardFocusWithin && !_search.IsKeyboardFocusWithin) return; FocusElement(retry); });
+                Defer(() => { if (!_frame.IsKeyboardFocusWithin || _search.IsKeyboardFocusWithin) return; FocusElement(retry); });
             }
             return panel;
         }
 
         private UIElement EmptyState()
         {
-            var icon = Glyph(_showArchived ? "archive" : "chat", 1.4);
+            var icon = Glyph("chat", 1.4);
             icon.SetResourceReference(Shape.StrokeProperty, "Tc.Muted");
             icon.Margin = new Thickness(0, 0, 0, 8);
-            var panel = Centered(icon, Line(_showArchived ? "Keine archivierten Chats." : "In diesem Projekt gibt es noch keine Chats.", "Tc.Muted"));
-            if (!_showArchived && NewAsync != null)
+            var panel = Centered(icon, Line(_general ? "Noch keine allgemeinen Chats." : "In diesem Projekt gibt es noch keine Chats.", "Tc.Muted"));
+            if (NewAsync != null)
             {
                 var start = SmallButton(_newPending ? "Wird erstellt …" : "Neuen Chat beginnen", "Tc.SecondaryButton");
                 start.Margin = new Thickness(0, 12, 0, 0);
@@ -806,7 +829,7 @@ namespace TwinCatAssistant.Native
 
         private static StackPanel Centered(params UIElement[] children)
         {
-            var panel = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 300 };
+            var panel = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 260 };
             foreach (var child in children)
             {
                 if (child is FrameworkElement element) element.HorizontalAlignment = HorizontalAlignment.Center;
@@ -822,7 +845,7 @@ namespace TwinCatAssistant.Native
             return line;
         }
 
-        // ---- Row menu (inside the popup, so it never fights the popup for capture) ----
+        // ---- Row menu (inside the bar, so it composes with the chat) ----
 
         private void OpenMenu(string id)
         {
@@ -835,13 +858,15 @@ namespace TwinCatAssistant.Native
                 MenuItem("refresh", "Titel automatisch generieren", null, !entry.Busy, entry.Busy ? "Erst nach Abschluss der laufenden Antwort möglich." : "Titel aus dem Chatverlauf erzeugen und speichern.",
                     () => Run(() => GenerateTitleEntryAsync(id)));
             if (ArchiveAsync != null)
-                MenuItem("archive", "Archivieren", null, !entry.Busy, entry.Busy ? "Erst nach Abschluss der laufenden Antwort möglich." : "Aus der Liste nehmen; jederzeit wiederherstellbar.",
+                MenuItem("check", "Als erledigt markieren", null, !entry.Busy, entry.Busy ? "Erst nach Abschluss der laufenden Antwort möglich."
+                    : "Unter „Erledigte Chats“ ablegen. Verlauf und Anhänge bleiben erhalten; jederzeit wieder zu öffnen.",
                     () => Run(() => ArchiveEntryAsync(id)));
             if (_menuItems.Children.Count == 0) return;
             _menuId = id;
             _overlay.Visibility = Visibility.Visible;
             _frame.UpdateLayout();
             var anchor = (FrameworkElement)target.More ?? target.Primary;
+            _menu.Width = Math.Max(160, Math.Min(224, _overlay.ActualWidth - 8));
             _menu.Measure(new Size(_menu.Width, double.PositiveInfinity));
             var height = _menu.DesiredSize.Height;
             var corner = anchor.TranslatePoint(new Point(0, 0), _overlay);
@@ -864,7 +889,7 @@ namespace TwinCatAssistant.Native
             glyph.SetResourceReference(Shape.StrokeProperty, "Tc.Muted");
             glyph.HorizontalAlignment = HorizontalAlignment.Left;
             grid.Children.Add(glyph);
-            var text = new TextBlock { Text = label, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center };
+            var text = new TextBlock { Text = label, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
             Grid.SetColumn(text, 1);
             grid.Children.Add(text);
             if (shortcut != null)
@@ -896,10 +921,14 @@ namespace TwinCatAssistant.Native
 
         // ---- Actions ----
 
+        // A running answer in the previous chat continues; only the
+        // conversation shown in the chat changes.
         private async Task SelectEntryAsync(string id)
         {
-            if (_disposed || !_popup.IsOpen || _view != PickerView.Ready) return;
-            if (id == _selectedId) { Close(); return; }
+            if (_disposed || !_open || _view != PickerView.Ready) return;
+            var entry = Find(id);
+            if (entry == null || entry.Archived) return;
+            if (id == _selectedId) { if (!_docked) CloseCore(false); return; }
             var handler = SelectAsync;
             if (handler == null || _pending.ContainsKey(id) || _pending.ContainsValue(Selecting)) return;
             var session = _session;
@@ -916,7 +945,8 @@ namespace TwinCatAssistant.Native
             }
             if (session != _session) return;
             _pending.Remove(id);
-            Close();
+            // The host confirms the selection with SetSelected or Show.
+            if (!_docked) CloseCore(false); else Render();
         }
 
         private bool CanRename(Entry entry) { return RenameAsync != null && !entry.Archived; }
@@ -991,13 +1021,13 @@ namespace TwinCatAssistant.Native
 
         private bool CanGenerate(Entry entry) { return GenerateTitleAsync != null && !entry.Archived; }
 
-        // The host stores the title and answers with Show; the picker only
+        // The host stores the title and answers with Show; the bar only
         // reports progress and failures and never invents a title.
         private async Task GenerateTitleEntryAsync(string id)
         {
             var entry = Find(id);
             var handler = GenerateTitleAsync;
-            if (_disposed || !_popup.IsOpen || _view != PickerView.Ready || entry == null || entry.Archived || entry.Busy || handler == null
+            if (_disposed || !_open || _view != PickerView.Ready || entry == null || entry.Archived || entry.Busy || handler == null
                 || _pending.ContainsKey(id) || _renameId == id) return;
             var session = _session;
             _pending[id] = Generating;
@@ -1020,17 +1050,20 @@ namespace TwinCatAssistant.Native
         }
 
         // Focus that the row lost to a rebuild or the closed menu returns to
-        // the row; focus the user moved elsewhere in the popup stays there.
+        // the row; focus the user moved elsewhere in the bar stays there.
         private void KeepFocusOnRow(string id)
         {
             Defer(() => {
                 var focused = Keyboard.FocusedElement as DependencyObject;
                 if (focused != null && focused != _frame && IsWithin(focused, _frame) && !IsWithin(focused, _overlay)) return;
+                if (!_frame.IsKeyboardFocusWithin && focused != null && !IsWithin(focused, _overlay)) return;
                 var target = _targets.FirstOrDefault(row => row.Id == id);
                 if (target == null || !FocusElement(target.Primary)) FocusElement(_search);
             });
         }
 
+        // "Als erledigt markieren": the existing archive action. The host
+        // keeps the history and opens another chat when this one was open.
         private async Task ArchiveEntryAsync(string id)
         {
             var entry = Find(id);
@@ -1047,7 +1080,7 @@ namespace TwinCatAssistant.Native
             {
                 if (session != _session) return;
                 _pending.Remove(id);
-                Fail("Archivieren fehlgeschlagen.", error);
+                Fail("Als erledigt markieren fehlgeschlagen.", error);
                 return;
             }
             if (session != _session) return;
@@ -1073,12 +1106,12 @@ namespace TwinCatAssistant.Native
             {
                 if (session != _session) return;
                 _pending.Remove(id);
-                Fail("Wiederherstellen fehlgeschlagen.", error);
+                Fail("Wieder öffnen fehlgeschlagen.", error);
                 return;
             }
             if (session != _session) return;
             _pending.Remove(id);
-            if (content == _content) entry.Archived = false;
+            if (content == _content) (Find(id) ?? entry).Archived = false;
             Render();
             if (next != null) FocusRow(next); else Defer(() => FocusElement(_search));
         }
@@ -1086,7 +1119,7 @@ namespace TwinCatAssistant.Native
         private async Task CreateChatAsync()
         {
             var handler = NewAsync;
-            if (_disposed || !_popup.IsOpen || handler == null || _newPending) return;
+            if (_disposed || !_open || handler == null || _newPending) return;
             var session = _session;
             _newPending = true;
             _actionError = null;
@@ -1101,7 +1134,7 @@ namespace TwinCatAssistant.Native
             }
             if (session != _session) return;
             _newPending = false;
-            Close();
+            if (!_docked) CloseCore(false); else Render();
         }
 
         // The host reloads and answers with Show or ShowError; only a thrown
@@ -1109,7 +1142,7 @@ namespace TwinCatAssistant.Native
         private async Task RetryLoadAsync()
         {
             var handler = RetryAsync;
-            if (_disposed || !_popup.IsOpen || handler == null || _retryPending) return;
+            if (_disposed || !_open || handler == null || _retryPending) return;
             var session = _session;
             var content = _content;
             _retryPending = true;
@@ -1168,12 +1201,14 @@ namespace TwinCatAssistant.Native
             var source = args.OriginalSource as DependencyObject;
             if (key == Key.Escape)
             {
-                args.Handled = true;
-                if (_menuId != null) { CloseMenu(true); return; }
+                if (_menuId != null) { args.Handled = true; CloseMenu(true); return; }
                 if (_renameId != null && IsWithin(source, _renameEditor) && !(_pending.TryGetValue(_renameId, out var pending) && pending == Renaming))
-                { CancelRename(); return; }
-                _keyboardClose = true;
-                Close();
+                { args.Handled = true; CancelRename(); return; }
+                if (IsWithin(source, _search) && _search.Text.Length > 0) { args.Handled = true; ClearSearch(); return; }
+                // The docked bar is part of the layout; Escape leaves it open.
+                if (_docked) return;
+                args.Handled = true;
+                CloseCore(true);
                 return;
             }
             if (_menuId != null)
@@ -1189,8 +1224,11 @@ namespace TwinCatAssistant.Native
             if (IsWithin(source, _search))
             {
                 if (key == Key.Down && _targets.Count > 0) { args.Handled = true; FocusElement(_targets[0].Primary); }
-                else if (key == Key.Enter && _targets.Count > 0 && !_showArchived && _search.Text.Trim().Length > 0)
-                { args.Handled = true; var first = _targets[0].Id; Run(() => SelectEntryAsync(first)); }
+                else if (key == Key.Enter && _search.Text.Trim().Length > 0)
+                {
+                    var first = _targets.FirstOrDefault(row => Find(row.Id)?.Archived == false);
+                    if (first != null) { args.Handled = true; var id = first.Id; Run(() => SelectEntryAsync(id)); }
+                }
                 return;
             }
             var index = _targets.FindIndex(row => IsWithin(source, row.Primary) || (row.More != null && IsWithin(source, row.More)));
@@ -1211,6 +1249,12 @@ namespace TwinCatAssistant.Native
                     break;
                 case Key.End:
                     args.Handled = true; FocusElement(_targets[_targets.Count - 1].Primary);
+                    break;
+                case Key.Left:
+                    if (current.Id == DoneToggleId && _showArchived) { args.Handled = true; SetArchived(false); }
+                    break;
+                case Key.Right:
+                    if (current.Id == DoneToggleId && !_showArchived) { args.Handled = true; SetArchived(true); }
                     break;
                 case Key.F2:
                     args.Handled = true; BeginRename(current.Id);
@@ -1270,21 +1314,21 @@ namespace TwinCatAssistant.Native
         {
             var session = _session;
             _frame.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => {
-                if (_disposed || session != _session || !_popup.IsOpen) return;
+                if (_disposed || session != _session || !_open) return;
                 action();
             }));
         }
 
         // ---- Helpers ----
 
-        private void SetArchived(bool archived)
+        private void SetArchived(bool expanded)
         {
-            if (_showArchived == archived) return;
+            if (_showArchived == expanded) return;
             CloseMenu(false);
-            EndRename();
-            _showArchived = archived;
+            if (_renameId != null && Find(_renameId)?.Archived == true) EndRename();
+            _showArchived = expanded;
             Render();
-            Defer(() => { if (_targets.Count > 0) FocusElement(_targets[0].Primary); else FocusElement(_search); });
+            FocusRow(DoneToggleId);
         }
 
         private void ClearSearch()
@@ -1297,10 +1341,11 @@ namespace TwinCatAssistant.Native
 
         private string NeighbourId(string id)
         {
-            var index = _targets.FindIndex(row => row.Id == id);
+            var rows = _targets.Where(row => row.Id != DoneToggleId).ToList();
+            var index = rows.FindIndex(row => row.Id == id);
             if (index < 0) return null;
-            if (index + 1 < _targets.Count) return _targets[index + 1].Id;
-            return index > 0 ? _targets[index - 1].Id : null;
+            if (index + 1 < rows.Count) return rows[index + 1].Id;
+            return index > 0 ? rows[index - 1].Id : null;
         }
 
         private static string DisplayTitle(Entry entry) { return string.IsNullOrWhiteSpace(entry.Title) ? "Unbenannter Chat" : entry.Title.Trim(); }
@@ -1349,7 +1394,7 @@ namespace TwinCatAssistant.Native
         private static async void Run(Func<Task> action) { try { await action(); } catch { /* Never leak into the IDE. */ } }
 #pragma warning restore VSTHRD100
 
-        private static UIElement Docked(UIElement element, Dock dock) { DockPanel.SetDock(element, dock); return element; }
+        private static UIElement DockTo(UIElement element, Dock dock) { DockPanel.SetDock(element, dock); return element; }
 
         private Button IconButton(string icon, string tooltip, Func<Task> action)
         {
@@ -1378,10 +1423,11 @@ namespace TwinCatAssistant.Native
             switch (name)
             {
                 case "search": data = Geometry.Parse("M11.5,7 A4.5,4.5 0 1 1 2.5,7 A4.5,4.5 0 1 1 11.5,7 Z M10.3,10.3 L13.5,13.5"); break;
-                case "archive": data = Geometry.Parse("M2.5,3 L13.5,3 L13.5,5.5 L2.5,5.5 Z M3.5,5.5 L3.5,13 L12.5,13 L12.5,5.5 M6.5,8.2 L9.5,8.2"); break;
                 case "pencil": data = Geometry.Parse("M10.6,2.7 L13.3,5.4 L5.8,12.9 L2.6,13.4 L3.1,10.2 Z M9.3,4 L12,6.7"); break;
                 case "back": data = Geometry.Parse("M9.8,3.5 L5.3,8 L9.8,12.5"); break;
                 case "alert": data = Geometry.Parse("M14,8 A6,6 0 1 1 2,8 A6,6 0 1 1 14,8 Z M8,4.9 L8,8.7 M8,11 L8,11.1"); break;
+                // Panel with its left pane: the bar itself.
+                case "sidebar": data = Geometry.Parse("M3.5,2.5 L12.5,2.5 A1,1 0 0 1 13.5,3.5 L13.5,12.5 A1,1 0 0 1 12.5,13.5 L3.5,13.5 A1,1 0 0 1 2.5,12.5 L2.5,3.5 A1,1 0 0 1 3.5,2.5 Z M6.5,2.5 L6.5,13.5"); break;
                 default: data = AssistantTheme.Icon(name); break;
             }
             var path = new ShapePath { Data = data, Width = 16, Height = 16, Stretch = Stretch.None, StrokeThickness = name == "more" ? 2.4 : 1.5,
@@ -1391,7 +1437,7 @@ namespace TwinCatAssistant.Native
             return path;
         }
 
-        // Animations run only while visible, so a closed picker costs nothing.
+        // Animations run only while visible, so a closed bar costs nothing.
         private static FrameworkElement Spinner(double size)
         {
             var arc = new ShapePath { Data = Geometry.Parse("M8,2 A6,6 0 1 1 2,8"), Width = 16, Height = 16, Stretch = Stretch.None, StrokeThickness = 1.8,
@@ -1402,14 +1448,14 @@ namespace TwinCatAssistant.Native
             var box = new Viewbox { Width = size, Height = size, Child = arc, VerticalAlignment = VerticalAlignment.Center };
             AutomationProperties.SetName(box, "Wird geladen");
             box.IsVisibleChanged += (sender, args) => rotation.BeginAnimation(RotateTransform.AngleProperty,
-                box.IsVisible ? new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(900)) { RepeatBehavior = RepeatBehavior.Forever } : null);
+                box.IsVisible && SystemParameters.ClientAreaAnimation ? new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(900)) { RepeatBehavior = RepeatBehavior.Forever } : null);
             return box;
         }
 
         private static void Pulse(UIElement element)
         {
             element.IsVisibleChanged += (sender, args) => element.BeginAnimation(UIElement.OpacityProperty,
-                element.IsVisible ? new DoubleAnimation(1, 0.35, TimeSpan.FromMilliseconds(800)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever } : null);
+                element.IsVisible && SystemParameters.ClientAreaAnimation ? new DoubleAnimation(1, 0.35, TimeSpan.FromMilliseconds(800)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever } : null);
         }
 
         // Slim themed scrollbar for the list; the system scrollbar ignores the dark palette.

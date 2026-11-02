@@ -81,6 +81,13 @@ namespace TwinCatAssistant.Native
         private WebView2CompositionControl _browser = new WebView2CompositionControl();
         private bool _browserNeedsReset;
         private readonly StackPanel _toolbar = new StackPanel();
+        // Chat area: the chat bar column (docked) beside the conversation, or
+        // the bar above a scrim (overlay). Plain WPF composition, no popup.
+        private readonly Grid _chatArea = new Grid();
+        private readonly ColumnDefinition _sidebarColumn = new ColumnDefinition { Width = new GridLength(0) };
+        private readonly Border _sidebarHost = new Border { Visibility = Visibility.Collapsed };
+        private readonly Border _sidebarScrim = new Border { Visibility = Visibility.Collapsed, Background = FrozenScrim() };
+        private readonly DropShadowEffect _sidebarShadow = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 3, Direction = 0, Opacity = 0.22 };
         private readonly TextBox _diagnosticSource = new TextBox { IsReadOnly = true, AcceptsReturn = true,
             FontFamily = new FontFamily("Consolas, Courier New"), MaxHeight = 180, Visibility = Visibility.Collapsed,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -117,12 +124,21 @@ namespace TwinCatAssistant.Native
             _toolbar.Children.Add(_diagnostics);
             DockPanel.SetDock(_toolbar, Dock.Top);
             dock.Children.Add(_toolbar);
-            var grid = new Grid();
-            grid.Children.Add(BuildSplash());
-            grid.Children.Add(_browser);
-            dock.Children.Add(grid);
+            _chatArea.ColumnDefinitions.Add(_sidebarColumn);
+            _chatArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var splash = BuildSplash();
+            Grid.SetColumnSpan(splash, 2);
+            _chatArea.Children.Add(splash);
+            Grid.SetColumn(_browser, 1);
+            _chatArea.Children.Add(_browser);
+            Grid.SetColumnSpan(_sidebarScrim, 2);
+            _chatArea.Children.Add(_sidebarScrim);
+            _chatArea.Children.Add(_sidebarHost);
+            dock.Children.Add(_chatArea);
             Content = dock;
-            _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; _projectChatPicker?.Close(); };
+            _browser.GotFocus += OnBrowserGotFocus;
+            SizeChanged += OnSidebarSizeChanged;
+            PreviewMouseDown += OnSidebarOutsideMouseDown;
             _chatHealth = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(3) };
             _chatHealth.Tick += CheckChatHealth;
             _viewHold.Tick += (sender, args) => { _viewHold.Stop(); if (_holdingView) { _holdingView = false; RenderContext(_chatActive, _heldReason); } };
@@ -147,14 +163,14 @@ namespace TwinCatAssistant.Native
             _pouButton.Content = identity;
             _pouButton.SetResourceReference(StyleProperty, "Tc.Button");
             _pouButton.Click += (sender, args) => {
-                CloseProjectChats();
+                DismissProjectChatOverlay();
                 _menuPopup.IsOpen = false;
                 if (!JustClosed(_previewClosedAt)) _previewPopup.IsOpen = !_previewPopup.IsOpen && _chatActive != null;
             };
             _previewPopup.Closed += (sender, args) => _previewClosedAt = DateTime.UtcNow;
             _menuPopup.Closed += (sender, args) => _menuClosedAt = DateTime.UtcNow;
             _statusChip.Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { _statusDot, _statusText } };
-            _historyButton = IconButton("history", "Verlauf dieses Projekts", OpenHistoryAsync);
+            _historyButton = IconButton("history", "Chats dieses Projekts anzeigen", OpenHistoryAsync);
             _newChatButton = IconButton("plus", "Neuer Chat", NewProjectChatAsync);
             _attachPouButton = AsyncButton(null, AttachClickAsync);
             _attachPouButton.SetResourceReference(StyleProperty, "Tc.PrimaryButton");
@@ -251,6 +267,16 @@ namespace TwinCatAssistant.Native
         private static bool JustClosed(DateTime closedAt) { return (DateTime.UtcNow - closedAt).TotalMilliseconds < 300; }
 
         private static UIElement Docked(UIElement element, Dock dock) { DockPanel.SetDock(element, dock); return element; }
+
+        private static Brush FrozenScrim() { var brush = new SolidColorBrush(Color.FromArgb(0x47, 0, 0, 0)); brush.Freeze(); return brush; }
+
+        // The narrow overlay gives way to the conversation; the docked bar stays.
+        private void OnBrowserGotFocus(object sender, RoutedEventArgs args)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            _menuPopup.IsOpen = false; _previewPopup.IsOpen = false;
+            DismissProjectChatOverlay();
+        }
 
         private Border PopupFrame(UIElement content, double width)
         {
@@ -503,11 +529,14 @@ namespace TwinCatAssistant.Native
                 {
                     var oldBrowser = _browser;
                     var grid = (Grid)oldBrowser.Parent;
+                    var index = grid.Children.IndexOf(oldBrowser);
+                    oldBrowser.GotFocus -= OnBrowserGotFocus;
                     _browser = new WebView2CompositionControl();
-                    _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; _projectChatPicker?.Close(); };
+                    _browser.GotFocus += OnBrowserGotFocus;
                     grid.Children.Remove(oldBrowser);
                     oldBrowser.Dispose();
-                    grid.Children.Insert(0, _browser);
+                    Grid.SetColumn(_browser, 1);
+                    grid.Children.Insert(Math.Max(0, index), _browser);
                     _browserNeedsReset = false;
                 }
                 // Hidden, not collapsed: retain layout and initialization
@@ -671,6 +700,7 @@ namespace TwinCatAssistant.Native
                     {
                         await PollChatSelectionAsync();
                         ShowChatStatus();
+                        RefreshSidebar(false);
                     }
                 }
                 finally { _checkingChatHealth = false; }
@@ -699,7 +729,10 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
             _disposed = true;
+            SizeChanged -= OnSidebarSizeChanged;
+            PreviewMouseDown -= OnSidebarOutsideMouseDown;
             _projectChatPicker?.Dispose();
+            _sidebarHost.Child = null;
             _chatConnection.Dispose();
             _chatHealth.Stop();
             _chatHealth.Tick -= CheckChatHealth;

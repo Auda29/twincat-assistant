@@ -21,6 +21,15 @@ Nach Übernahme des fertigen Frontend-Designs hält der
 Lebenszyklen sowie die Anforderungen an die nächste Konsolidierung fest.
 Themes und Commands müssen vor dem ersten Chat-Bootstrap vorbereitet sein.
 
+Die am 02.11.2026 vereinbarten
+[nächsten Prioritäten](ROADMAP.md#agreed-priorities-2026-11-02) führen diesen
+Umbau weiter: zuerst Backend-Bereinigung und Produktnamen, danach eine einfache
+CI-basierte Installation, die Prüfung der Profil-Systemprompts, ein Editor-Profil,
+Inline-Codevervollständigung und Mehrsprachigkeit mit Deutsch und Englisch.
+Die Roadmap hält Umfang und Grenzen
+dieser geplanten Schritte fest. Bestehender Chatbestand und die übernommenen
+Kernfunktionen bleiben bei der Bereinigung erhalten.
+
 ## Vereinbarte Richtung
 
 Wir übernehmen die für den TwinCAT Assistant relevanten Funktionen aus OpenCode
@@ -110,6 +119,12 @@ Projektchat. Beim erneuten Öffnen wird der zuletzt ausgewählte Chat
 wiederhergestellt. Ein Baustein- oder Memberwechsel bleibt im aktuellen Chat.
 Allgemeine Chats bleiben getrennt über das Menü erreichbar. Projektwerkzeuge und
 Knowledge-Verbindung werden gemeinsam genutzt, bestehende Chats bleiben erhalten.
+Am 02.11.2026 wurde die nächste Darstellung festgelegt: Die Uhr schaltet eine
+linke Chatleiste ein und aus. Breit steht sie neben dem Gespräch, schmal darüber
+und schließt nach der Auswahl. Projektname, neuer Chat, Suche, aktuelle Auswahl
+und laufende Antworten sind darin sichtbar. Der offene Zustand wird pro Projekt
+gemerkt. „Als erledigt markieren“, „Erledigte Chats“ und „Wieder öffnen“ ersetzen
+die sichtbaren Archivbegriffe bei unveränderter Speicherung und erhaltenem Verlauf.
 Diese Navigation ist seit 02.11.2026 auf `feat/project-chat-navigation`
 implementiert: Die kompakte Auswahl ersetzt die allgemeine Seitenleiste und
 ergänzt Titelsuche, Umbenennen, Archivieren und Wiederherstellen. Die letzte

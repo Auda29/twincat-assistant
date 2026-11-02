@@ -1,19 +1,19 @@
 # Dot-sourced by Test-ChatIntegration.ps1: use its real runtime and private
-# profile. The picker frame is hidden here; Test-ProjectChatPicker.ps1 owns the
-# visible UI checks, so integration checks cannot capture the operator's mouse.
+# profile. Use the actual host-owned navigation view; the sidebar stays inside
+# the WPF tool window instead of creating a separate mouse-capturing popup.
 function Test-ProjectChatNavigation {
     Set-Snapshot 'PLC_A' 'bRun := TRUE; // navigation fixture'
     Wait-Native { (Field '_chatSelection').IsSelected -and (Field '_attachPouButton').IsEnabled -and (Field '_chatBinding').ProjectFile.EndsWith('PLC_A.plcproj') } 'project navigation fixture returns to PLC_A'
     $taskA=(Field '_chatSelection').sessionId
-    $taskPickerType=$taskAssembly.GetType('TwinCatAssistant.Native.ProjectChatPicker')
-    $taskPicker=[Activator]::CreateInstance($taskPickerType,[object[]]@((Field '_historyButton'),(Field '_theme')))
-    $taskPickerType.GetField('_popup',$taskFlags).GetValue($taskPicker).StaysOpen=$true
-    $taskPickerType.GetField('_frame',$taskFlags).GetValue($taskPicker).Visibility=[Windows.Visibility]::Collapsed
-    Set-Field '_projectChatPicker' $taskPicker
+    $taskControl.GetType().GetMethod('CloseProjectChats',$taskFlags).Invoke($taskControl,@()) | Out-Null
+    Invoke-Chat 'OpenHistoryAsync'
+    $taskPicker=Field '_projectChatPicker'
+    $taskPickerType=$taskPicker.GetType()
     function Open-FixtureHistory {
         $taskPicker.Close()
         Invoke-Chat 'OpenHistoryAsync'
-        Assert-Integration ($taskPicker.IsOpen) 'native clock opens the compact project picker'
+        $taskControl.UpdateLayout(); Pump 100
+        Assert-Integration ($taskPicker.IsOpen) 'native clock opens the project chat sidebar'
         Assert-Integration ((JS 'window.__twinCatSource.stores.ui.getState().isSidebarOpen') -eq 'false') 'clock leaves the generic OpenChamber sidebar closed'
     }
     function Invoke-PickerAction([string]$Name,[object[]]$Arguments) {
@@ -21,6 +21,32 @@ function Test-ProjectChatNavigation {
         Await-Task ($taskHandler.DynamicInvoke($Arguments)) | Out-Null
     }
     function Picker-Entries { return @($taskControl.GetType().GetField('_pickerScope',$taskFlags).GetValue($taskControl).Entries) }
+    $taskNavigationWidth=$taskWindow.Width
+    try {
+        $taskWindow.Width=1100; Pump 200
+        Open-FixtureHistory
+        $taskChatOrigin=$taskBrowser.TransformToAncestor($taskControl).Transform([Windows.Point]::new(0,0))
+        Assert-Integration ($taskChatOrigin.X -ge 220 -and $taskChatOrigin.X -le 400 -and $taskBrowser.ActualWidth -ge 600) 'wide project sidebar sits beside the actual WebView and preserves readable conversation width'
+        $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
+        Assert-Integration ($taskPicker.IsOpen) 'browser focus leaves the wide project sidebar open'
+        Invoke-Chat 'OpenHistoryAsync'
+        $taskControl.UpdateLayout(); Pump 100
+        Assert-Integration (-not $taskPicker.IsOpen) 'clock closes the wide project sidebar'
+        $taskViews=(Field '_chatBindings').ViewState()
+        Assert-Integration ($taskViews.SidebarOpen($global:taskIntegrationSnapshot.Identity.ProjectIdentity) -eq $false) 'closing the wide sidebar persists a separate project presentation preference'
+        $taskChatOrigin=$taskBrowser.TransformToAncestor($taskControl).Transform([Windows.Point]::new(0,0))
+        Assert-Integration ([Math]::Abs($taskChatOrigin.X) -lt 1) 'closing the sidebar returns its column to the actual conversation'
+        Open-FixtureHistory
+        Assert-Integration ($taskViews.SidebarOpen($global:taskIntegrationSnapshot.Identity.ProjectIdentity) -eq $true) 'opening the wide sidebar durably restores its project preference'
+        $taskWindow.Width=390; Pump 200
+        $taskChatOrigin=$taskBrowser.TransformToAncestor($taskControl).Transform([Windows.Point]::new(0,0))
+        Assert-Integration ($taskPicker.IsOpen -and [Math]::Abs($taskChatOrigin.X) -lt 1 -and $taskBrowser.ActualWidth -ge 370) 'narrow project sidebar overlays the conversation without shrinking the WebView'
+        $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
+        Assert-Integration (-not $taskPicker.IsOpen) 'browser focus dismisses the narrow sidebar overlay'
+    } finally {
+        $taskPicker.Close()
+        $taskWindow.Width=$taskNavigationWidth; Pump 150
+    }
     Open-FixtureHistory
     Assert-Integration ((Picker-Entries).Count -eq 1 -and (Picker-Entries)[0].id -eq $taskA) 'picker lists only this PLC project, excluding general and foreign chats'
     # The original composer mailbox populates its real controlled editor and
@@ -54,25 +80,26 @@ function Test-ProjectChatNavigation {
     Set-Snapshot 'PLC_A'; Wait-Native { (Field '_chatSelection').sessionId -eq $taskB } 'return restores the last selected chat rather than the most recently updated one'
     Open-FixtureHistory
     Invoke-PickerAction 'SelectAsync' @($taskA)
-    Wait-Native { (Field '_chatSelection').sessionId -eq $taskA } 'compact picker selects an older project conversation'
+    Wait-Native { (Field '_chatSelection').sessionId -eq $taskA } 'project sidebar selects an older project conversation'
     Wait-JS 'document.querySelector("[data-testid=chat-input]")?.textContent.includes("Entwurf Projektchat A")'
     Wait-Native { @((Field '_chatSelection').attachments | Where-Object { $_.reference -eq $taskReference }).Count -eq 1 } 'returning restores the manual snapshot belonging to that chat'
     Assert-Integration ($taskStore.SelectedForProject($taskIdentity) -eq $taskA) 'manual history selection is remembered durably'
     $taskStoreDirectory=$taskStore.GetType().GetField('_directory',$taskFlags).GetValue($taskStore)
     $taskNewStore=$taskStore.GetType().GetConstructor([type[]]@([string])).Invoke([object[]]@([string]$taskStoreDirectory))
     Assert-Integration ($taskNewStore.SelectedForProject($taskIdentity) -eq $taskA) 'a fresh binding store restores the saved project selection'
+    Assert-Integration ($taskNewStore.ViewState().SidebarOpen($taskIdentity) -eq $true) 'a fresh binding store restores the open sidebar independently of conversation selection'
     Set-Field '_chatBindings' $taskNewStore
     Set-Snapshot 'PLC_A' 'bRun := FALSE; // another member' 'FB_Other'
     Wait-Native { (Field '_objectName').Text -eq 'FB_Other' } 'editor moves to another POU in the same PLC'
     Assert-Integration ((Field '_chatSelection').sessionId -eq $taskA) 'POU changes retain the selected conversation'
     Open-FixtureHistory
     Invoke-PickerAction 'ArchiveAsync' @($taskB)
-    Assert-Integration (@(Picker-Entries | Where-Object { $_.id -eq $taskB -and $_.archived }).Count -eq 1 -and (Field '_chatSelection').sessionId -eq $taskA) 'archiving another chat preserves the current conversation and retains its history'
+    Assert-Integration (@(Picker-Entries | Where-Object { $_.id -eq $taskB -and $_.archived }).Count -eq 1 -and (Field '_chatSelection').sessionId -eq $taskA) 'marking another chat as done preserves the current conversation and retains its history'
     Invoke-PickerAction 'RestoreAsync' @($taskB)
-    Assert-Integration (@(Picker-Entries | Where-Object { $_.id -eq $taskB -and -not $_.archived }).Count -eq 1) 'archived conversation is restored under its original ID'
-    # The originally approved archive action also covers the selected chat.
+    Assert-Integration (@(Picker-Entries | Where-Object { $_.id -eq $taskB -and -not $_.archived }).Count -eq 1) 'a done conversation is reopened under its original ID'
+    # Marking the selected chat as done uses the same durable archive action.
     Invoke-PickerAction 'ArchiveAsync' @($taskA)
-    Wait-Native { (Field '_chatSelection').sessionId -eq $taskB } 'archiving the selected chat opens another existing project chat'
+    Wait-Native { (Field '_chatSelection').sessionId -eq $taskB } 'marking the selected chat as done opens another existing project chat'
     Open-FixtureHistory
     Invoke-PickerAction 'RestoreAsync' @($taskA)
     Invoke-PickerAction 'SelectAsync' @($taskA)
@@ -81,7 +108,7 @@ function Test-ProjectChatNavigation {
     Open-FixtureHistory
     $taskScope=(Field '_pickerScope')
     Set-Snapshot 'PLC_B'
-    Assert-Integration (-not $taskPicker.IsOpen) 'changing projects closes the old picker even for asynchronous history work'
+    Assert-Integration (-not [object]::ReferenceEquals((Field '_pickerScope'),$taskScope)) 'changing projects invalidates the previous sidebar scope before asynchronous history can act'
     $taskStale=$taskControl.GetType().GetMethod('SelectPickerChatAsync',$taskFlags).Invoke($taskControl,[object[]]@($taskScope,$taskA))
     try { Await-Task $taskStale | Out-Null; throw 'A stale project action was accepted.' } catch [System.OperationCanceledException] { }
     Wait-Native { (Field '_chatBinding').ProjectFile.EndsWith('PLC_B.plcproj') } 'stale project picker cannot redirect the newly active PLC'
@@ -93,6 +120,10 @@ function Test-ProjectChatNavigation {
     $taskGeneralEntries=Picker-Entries
     Assert-Integration (@($taskGeneralEntries | Where-Object { $_.id -eq $taskGeneral }).Count -eq 1 -and
         @($taskGeneralEntries | Where-Object { $taskEntryBinding=(Field '_chatBindings').Read((Field '_origin').AbsoluteUri,$_.id); -not $taskEntryBinding.IsGeneral }).Count -eq 0) 'general history excludes project conversations'
+    $taskGeneralProject=$global:taskIntegrationSnapshot.Identity.ProjectIdentity
+    $taskBeforeGeneralClose=(Field '_chatBindings').ViewState().SidebarOpen($taskGeneralProject)
+    Await-Task ($taskControl.GetType().GetMethod('ShowProjectChatsAsync',$taskFlags).Invoke($taskControl,[object[]]@($true))) | Out-Null
+    Assert-Integration (-not $taskPicker.IsOpen -and (Field '_chatBindings').ViewState().SidebarOpen($taskGeneralProject) -eq $taskBeforeGeneralClose) 'closing general history leaves the active PLC sidebar preference unchanged'
     $taskPicker.Close()
     Set-Snapshot 'PLC_A'
     Wait-Native { (Field '_chatSelection').sessionId -eq $taskA } 'switching projects leaves the deliberately opened general conversation separate'

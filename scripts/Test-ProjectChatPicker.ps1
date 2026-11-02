@@ -1,12 +1,14 @@
-param([string]$OutputDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) 'local-data/project-chat-picker'))
+param([string]$OutputDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) 'local-data/sidebar-views/component'))
 $ErrorActionPreference = 'Stop'
 
-# UI fixture for the native project chat picker. It compiles only the WPF
-# component and the shared palette with a small harness, opens the real popup
-# next to a synthetic context bar, checks state and stale-completion behavior
-# and renders light, dark, narrow and wide states as PNG files. No IDE,
-# WebView, chat service, profile or session data is involved. The harness
-# window is transparent and never activated; the popup is shown briefly.
+# UI fixture for the native project chat bar. It compiles only the WPF
+# component and the shared palette with a small harness, places the real bar
+# beside (docked) or above (overlay) a synthetic conversation exactly as the
+# tool window does, checks states, actions, keyboard handling and late
+# completions, and renders light and dark states at 340, 390, 768 and 1100 px
+# as PNG files. No IDE, WebView, chat service, profile or session data is
+# involved; all chats are synthetic. The harness window is nearly transparent
+# and never activated.
 $root = Split-Path $PSScriptRoot -Parent
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 $msbuildRoot = & $vswhere -latest -products '*' -requires Microsoft.Component.MSBuild -property installationPath | Select-Object -First 1
@@ -17,8 +19,10 @@ $refs = Join-Path $packages 'microsoft.netframework.referenceassemblies.net472\1
 if (-not (Test-Path -LiteralPath $refs)) { throw 'Restore the native host once so the net472 reference assemblies are cached.' }
 
 [IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
-$harness = Join-Path $OutputDirectory 'PickerHarness.cs'
-$exe = Join-Path $OutputDirectory 'PickerHarness.exe'
+$buildDirectory = Join-Path $OutputDirectory 'harness'
+[IO.Directory]::CreateDirectory($buildDirectory) | Out-Null
+$harness = Join-Path $buildDirectory 'SidebarHarness.cs'
+$exe = Join-Path $buildDirectory 'SidebarHarness.exe'
 $harnessSource = @'
 using System;
 using System.Collections.Generic;
@@ -33,6 +37,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
@@ -55,17 +60,24 @@ namespace TwinCatAssistant.Native
         public string success { get; set; }
     }
 
-    internal static class PickerHarness
+    internal static class SidebarHarness
     {
+        // Same geometry as AssistantControl (ProjectChatNavigation.cs).
+        const double DockFrom = 760, DockedWidth = 272, OverlayMax = 304, OverlayGap = 44;
         static string _out;
-        static int _failures;
+        static int _failures, _checks;
         static Window _window;
         static UserControl _host;
         static Button _anchor;
+        static Grid _area;
+        static ColumnDefinition _column;
+        static Border _slot, _scrim;
         static ResourceDictionary _theme;
         static ProjectChatPicker _picker;
         static readonly List<string> _calls = new List<string>();
+        static readonly List<bool> _closes = new List<bool>();
         static TaskCompletionSource<bool> _gate;
+        static string _palette = "light";
 
         [STAThread]
         static int Main(string[] args)
@@ -75,12 +87,13 @@ namespace TwinCatAssistant.Native
             try { Run(); }
             catch (Exception error) { Console.WriteLine("FAIL harness: " + error); _failures++; }
             if (_window != null) _window.Close();
-            Console.WriteLine(_failures == 0 ? "All picker checks passed." : _failures + " picker check(s) failed.");
+            Console.WriteLine(_failures == 0 ? _checks + " chat bar checks passed." : _failures + " chat bar check(s) failed.");
             return _failures == 0 ? 0 : 1;
         }
 
-        static void Check(bool ok, string name) { Console.WriteLine((ok ? "PASS " : "FAIL ") + name); if (!ok) _failures++; }
+        static void Check(bool ok, string name) { _checks++; Console.WriteLine((ok ? "PASS " : "FAIL ") + name); if (!ok) _failures++; }
         static T Field<T>(string name) { return (T)typeof(ProjectChatPicker).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(_picker); }
+        static void SetField(string name, object value) { typeof(ProjectChatPicker).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(_picker, value); }
         static object Call(string name, params object[] args) { return typeof(ProjectChatPicker).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(_picker, args); }
 
         static void Pump()
@@ -104,9 +117,10 @@ namespace TwinCatAssistant.Native
         {
             _theme = AssistantTheme.CreateResources();
             AssistantTheme.Apply(_theme, AssistantTheme.Light);
-            BuildHost(520);
+            BuildHost();
             _picker = new ProjectChatPicker(_anchor, _theme);
-            Field<Popup>("_popup").StaysOpen = true; // never grab the user's mouse
+            _slot.Child = _picker.View;
+            _picker.Closed = byUser => { _closes.Add(byUser); Layout(); };
             _picker.SelectAsync = id => Gate("select:" + id);
             _picker.RenameAsync = (id, title) => Gate("rename:" + id + ":" + title);
             _picker.ArchiveAsync = id => Gate("archive:" + id);
@@ -114,52 +128,105 @@ namespace TwinCatAssistant.Native
             _picker.RetryAsync = () => Gate("retry");
             _picker.NewAsync = () => Gate("new");
             _picker.GenerateTitleAsync = id => Gate("generate:" + id);
+            SetWidth(1100);
 
-            Check(!_picker.IsOpen, "picker starts closed");
+            Check(!_picker.IsOpen, "bar starts closed");
             _picker.Show("Ignored", null, Items());
             _picker.ShowError("ignored");
-            Check(!_picker.IsOpen, "Show and ShowError never open a closed picker");
+            Check(!_picker.IsOpen && !_picker.SetSelected("s1"), "Show, ShowError and SetSelected never open a closed bar");
 
             _picker.ShowLoading("Anlage_Linie3");
+            Layout();
             Pump();
-            Check(_picker.IsOpen, "ShowLoading opens the picker");
+            Check(_picker.IsOpen && _picker.Docked, "ShowLoading opens the bar, docked on a wide tool window");
             Check(Field<Border>("_state").Visibility == Visibility.Visible && Field<ScrollViewer>("_scroll").Visibility == Visibility.Collapsed, "loading state replaces the list");
-            Snap("loading-light", 390);
+            Check(Field<TextBlock>("_title").Text == "Anlage_Linie3" && !Field<Button>("_newButton").IsEnabled, "header names the project; Neuer Chat waits for the list");
+            Shots("loading", 390, 1100);
 
             _picker.Show("Anlage_Linie3", "s2", Items());
             Pump();
             var targets = Targets();
-            Check(targets.Count == 8, "only active chats are listed (" + targets.Count + ")");
+            Check(targets.Count == 9 && targets.Last() == "\0done", "open chats are listed, then the collapsed Erledigte Chats toggle (" + targets.Count + ")");
             Check(targets.First() == "s1", "newest chat first");
-            Check(Field<Border>("_footer").Visibility == Visibility.Visible, "archive switch visible when archived chats exist");
-            foreach (var width in new[] { 340, 390, 520, 900 }) Snap("list-light", width);
+            Check(!targets.Contains("a1") && !targets.Contains("a2"), "Erledigte Chats starts collapsed");
+            var toggle = Primary("\0done");
+            Check(AutomationProperties.GetName(toggle) == "Erledigte Chats, 2, eingeklappt", "done section names its count and state for assistive technology");
+            var open = Primary("s2");
+            Check(AutomationProperties.GetName(open).Contains(", geöffnet") && HasPlate(open), "the open chat is named and highlighted");
+            Check(!HasPlate(Primary("s3")), "other chats are not highlighted");
+            Check(MetaText("s1").Contains("Antwort läuft") && AutomationProperties.GetName(Primary("s1")).Contains("Antwort läuft"), "a running answer is visible on its row");
+            Check(MetaText("s8") == "Keine Aktivität bekannt", "rows without activity say so");
+            foreach (var width in new[] { 340, 390, 768, 1100 }) Shot("list", width);
 
-            // Search: local, case and accent insensitive, multiple terms.
+            // Docked geometry: the conversation keeps a readable width.
+            SetWidth(768);
+            Check(_picker.Docked && Math.Abs(_slot.ActualWidth - DockedWidth) < 1 && ConversationWidth() >= 488, "docked at 768 px with a 272 px bar and at least 488 px allocated to the conversation");
+            SetWidth(759);
+            Check(!_picker.Docked && _picker.IsOpen && ConversationWidth() >= 758, "below 760 px the open bar becomes an overlay and the conversation keeps its full width");
+            SetWidth(390);
+            Check(Math.Abs(_slot.ActualWidth - 304) < 1 && _scrim.Visibility == Visibility.Visible, "overlay at 390 px is 304 px wide above a scrim");
+            SetWidth(340);
+            Check(Math.Abs(_slot.ActualWidth - 296) < 1 && Field<Button>("_newButton").ActualWidth > 200, "overlay at 340 px leaves a visible strip of the conversation");
+            SetWidth(1100);
+            Check(_picker.Docked && _scrim.Visibility == Visibility.Collapsed, "widening returns the open bar to the docked column");
+
+            // Live refresh: identical lists keep the rows, changes update them in place.
+            var before = Primary("s3");
+            _picker.Show("Anlage_Linie3", "s2", Items());
+            Pump();
+            Check(ReferenceEquals(before, Primary("s3")), "an identical refresh does not rebuild rows (hover, focus and scroll stay)");
             var search = Field<TextBox>("_search");
+            search.Text = "e";
+            Pump();
+            var scroll = Field<ScrollViewer>("_scroll");
+            SetWidth(1100, 420);
+            scroll.ScrollToVerticalOffset(60);
+            Pump();
+            var offset = scroll.VerticalOffset;
+            _picker.Show("Anlage_Linie3", "s2", ItemsWith("s3", "PID-Regler Temperaturzone 2 abstimmen (neu)", busy: true));
+            Pump();
+            Check(Title("s3") == "PID-Regler Temperaturzone 2 abstimmen (neu)" && MetaText("s3").Contains("Antwort läuft"), "a new title and answer state appear on refresh");
+            Check(offset > 0 && Math.Abs(scroll.VerticalOffset - offset) < 1 && search.Text == "e", "refresh keeps the scroll position and the search text (" + offset + " -> " + scroll.VerticalOffset + ")");
+            search.Text = "";
+            SetWidth(1100);
+            Check(_picker.SetSelected("s3") && HasPlate(Primary("s3")) && !HasPlate(Primary("s2")), "SetSelected moves the highlight to the newly opened chat");
+            Check(!_picker.SetSelected("unknown"), "SetSelected reports a chat the list does not know yet");
+            _picker.Show("Anlage_Linie3", "s2", Items());
+            Pump();
+
+            // Search: local, case and accent insensitive, multiple terms; done chats count separately.
             search.Text = "regler";
             Pump();
             Check(Targets().SequenceEqual(new[] { "s3", "s5" }), "search filters titles case-insensitively");
             search.Text = "uberlauf";
             Pump();
             Check(Targets().SequenceEqual(new[] { "s4" }), "search ignores umlaut accents");
+            search.Text = "inbetriebnahme";
+            Pump();
+            Check(Targets().SequenceEqual(new[] { "\0done" }) && AutomationProperties.GetName(Primary("\0done")).Contains("1 Treffer"), "a match among done chats shows in their section count");
+            Shot("search-done-only", 390);
             search.Text = "zzz";
             Pump();
             Check(Targets().Count == 0 && Field<Border>("_state").Visibility == Visibility.Visible, "no-match state");
-            Snap("nomatch-light", 390);
+            Shot("nomatch", 390);
             search.Text = "";
             Pump();
 
-            // Row menu, busy chats cannot be archived.
+            // Row menu: labels, busy chats cannot be marked done.
             Call("OpenMenu", "s2");
             Pump();
-            Check(Field<Canvas>("_overlay").Visibility == Visibility.Visible, "row menu opens inside the popup");
-            Snap("menu-light", 390);
+            Check(Field<Canvas>("_overlay").Visibility == Visibility.Visible && MenuButton("Umbenennen") != null && MenuButton("Titel automatisch generieren") != null
+                && MenuButton("Als erledigt markieren") != null && MenuButton("Archivieren") == null, "row menu offers rename, title generation and Als erledigt markieren");
+            Shot("menu", 390);
+            Shot("menu", 1100);
             Call("CloseMenu", false);
             Call("OpenMenu", "s1");
             Pump();
-            var archiveItem = Field<StackPanel>("_menuItems").Children.OfType<Button>().Last();
-            Check(!archiveItem.IsEnabled, "busy chat cannot be archived");
+            Check(!MenuButton("Als erledigt markieren").IsEnabled && !MenuButton("Titel automatisch generieren").IsEnabled, "a chat with a running answer can be neither marked done nor retitled");
             Call("CloseMenu", false);
+            Call("ArchiveEntryAsync", "s1");
+            Pump();
+            Check(!_calls.Contains("archive:s1"), "marking a busy chat done is refused even without the menu");
 
             // Rename: inline editor, success applies the confirmed title.
             Call("BeginRename", "s3");
@@ -169,9 +236,12 @@ namespace TwinCatAssistant.Native
             renameBox.Text = "";
             Call("CommitRenameAsync");
             Pump();
-            Check(Field<string>("_renameError") != null && _calls.Count == 0, "empty title is rejected locally");
+            Check(Field<string>("_renameError") == "Bitte einen Titel eingeben." && _calls.Count == 0, "empty title is rejected locally");
             renameBox.Text = "Temperaturregler Zone 2";
-            Snap("rename-light", 390);
+            _picker.Show("Anlage_Linie3", "s2", ItemsWith("s1", "Warum springt MAIN.fbAxis in 0x4260?", busy: false));
+            Pump();
+            Check(Field<string>("_renameId") == "s3" && renameBox.Text == "Temperaturregler Zone 2", "a refresh while renaming keeps the editor and its text");
+            Shot("rename", 390);
             Call("CommitRenameAsync");
             Pump();
             Check(_calls.LastOrDefault() == "rename:s3:Temperaturregler Zone 2", "rename delegate receives id and trimmed title");
@@ -179,8 +249,6 @@ namespace TwinCatAssistant.Native
             _gate.SetResult(true);
             Pump();
             Check(Field<string>("_renameId") == null && Title("s3") == "Temperaturregler Zone 2", "confirmed rename updates the row");
-
-            // Rename failure keeps the editor with the host message.
             Call("BeginRename", "s4");
             Pump();
             renameBox.Text = "Neu";
@@ -188,309 +256,222 @@ namespace TwinCatAssistant.Native
             Pump();
             _gate.SetException(new InvalidOperationException("Titel konnte nicht gespeichert werden."));
             Pump();
-            Check(Field<string>("_renameId") == "s4" && (Field<string>("_renameError") ?? "").Contains("Titel konnte nicht gespeichert werden."), "failed rename stays editable with the error");
-            Check(Title("s4") != "Neu", "failed rename does not pretend success");
+            Check(Field<string>("_renameId") == "s4" && (Field<string>("_renameError") ?? "").Contains("Titel konnte nicht gespeichert werden.") && Title("s4") != "Neu", "failed rename stays editable with the error");
             Call("CancelRename");
             Pump();
+            _picker.Show("Anlage_Linie3", "s2", Items());
+            Pump();
 
-            // Title generation: only an explicit menu click starts it; the
-            // host refresh via Show decides the title, never the picker.
-            const string GenerateLabel = "Titel automatisch generieren";
-            var before = _calls.Count;
-            Call("OpenMenu", "s3");
-            Pump();
-            var generateItem = MenuButton(GenerateLabel);
-            Check(generateItem != null && generateItem.IsEnabled && MenuButton("Umbenennen") != null, "row menu offers title generation next to rename");
-            Call("CloseMenu", false);
-            Pump();
-            Check(_calls.Count == before, "opening and closing the menu does not generate");
-            Call("OpenMenu", "s1");
-            Pump();
-            var busyItem = MenuButton(GenerateLabel);
-            Check(busyItem != null && !busyItem.IsEnabled, "busy chat cannot generate a title");
-            Call("CloseMenu", false);
-            Call("GenerateTitleEntryAsync", "s1");
-            Call("GenerateTitleEntryAsync", "a1");
-            Pump();
-            Check(_calls.Count == before, "busy and archived chats are guarded against generation");
+            // Title generation: explicit, pending row, host refresh decides the title.
             Call("OpenMenu", "s4");
             Pump();
-            MenuButton(GenerateLabel).RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            MenuButton("Titel automatisch generieren").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Pump();
-            Check(_calls.Count == before + 1 && _calls.Last() == "generate:s4", "explicit click delegates the original session id");
-            Check(_picker.IsOpen && Field<string>("_menuId") == null && Field<Canvas>("_overlay").Visibility == Visibility.Collapsed, "menu closes, picker stays open while generating");
-            Check(Pending("s4") == "generate" && More("s4") == null, "pending generation shows the row spinner instead of actions");
-            Snap("generate-pending-light", 390);
+            Check(_calls.Last() == "generate:s4" && Pending("s4") == "generate" && More("s4") == null && Field<string>("_menuId") == null, "explicit click generates; the row shows progress instead of actions");
+            Check(MetaText("s4").Contains("Titel wird generiert"), "generation progress is named on the row");
+            Shot("generating", 390);
+            Shot("generating", 1100);
             var generating = _gate;
+            var count = _calls.Count;
             Call("GenerateTitleEntryAsync", "s4");
             Call("BeginRename", "s4");
             Call("ArchiveEntryAsync", "s4");
             Call("SelectEntryAsync", "s4");
-            Call("OpenMenu", "s4");
             Pump();
-            Check(_calls.Count == before + 1 && Field<string>("_renameId") == null && Field<string>("_menuId") == null, "pending generation blocks duplicate and competing row actions");
-            Call("BeginRename", "s5");
-            Pump();
-            Check(Field<string>("_renameId") == "s5", "manual rename of another chat stays available");
-            Call("CancelRename");
-            Pump();
+            Check(_calls.Count == count, "pending generation blocks competing row actions");
             _picker.Show("Anlage_Linie3", "s2", ItemsWith("s4", "Zählerüberlauf in GVL_Zaehler beheben"));
             Pump();
             Check(Pending("s4") == "generate" && Title("s4") == "Zählerüberlauf in GVL_Zaehler beheben", "host refresh during generation keeps the pending row");
             generating.SetResult(true);
             Pump();
-            Check(_picker.IsOpen && Pending("s4") == null && More("s4") != null && Title("s4") == "Zählerüberlauf in GVL_Zaehler beheben" && Field<string>("_actionError") == null,
-                "completed generation keeps the refreshed title and the open picker");
-
-            // Generation failures free the row; only host messages are shown.
+            Check(Pending("s4") == null && More("s4") != null && Field<string>("_actionError") == null, "completed generation frees the row");
             Call("GenerateTitleEntryAsync", "s5");
             Pump();
             _gate.SetException(new TimeoutException("internal"));
             Pump();
-            Check(Field<string>("_actionError") == "Der Titel konnte nicht generiert werden." && Pending("s5") == null && More("s5") != null, "failed generation shows the neutral message and frees the row");
-            Call("GenerateTitleEntryAsync", "s5");
-            Pump();
-            _gate.SetException(new InvalidOperationException("Für leere Chats kann kein Titel erzeugt werden."));
-            Pump();
-            Check(Field<string>("_actionError") == "Der Titel konnte nicht generiert werden. Für leere Chats kann kein Titel erzeugt werden." && Title("s5") == "regler Kaskade – Stellgrößenbegrenzung",
-                "host message is shown and the title stays unchanged");
-            Snap("generate-error-light", 390);
-
-            // A host message that already opens with the fallback sentence is
-            // shown once; the banner the user sees carries the same text.
+            Check(Field<string>("_actionError") == "Der Titel konnte nicht generiert werden." && Pending("s5") == null, "non-host failures show the neutral message");
             const string TitleFallback = "Der Titel konnte nicht generiert werden.";
-            foreach (var hostMessage in new[] {
-                TitleFallback,
-                "  " + TitleFallback + "  ",
-                TitleFallback + " Das Modell hat keine Antwort geliefert.",
-                "Der Titel konnte nicht generiert werden: Zeitüberschreitung beim lokalen Modell (60 s).",
-                "der titel konnte nicht generiert werden. Größe der Unterhaltung überschreitet das Limit." })
+            foreach (var hostMessage in new[] { TitleFallback, TitleFallback + " Das Modell hat keine Antwort geliefert.", "der titel konnte nicht generiert werden: Zeitüberschreitung." })
             {
-                foreach (var wrapped in new[] { false, true })
-                {
-                    Call("GenerateTitleEntryAsync", "s5");
-                    Pump();
-                    Exception thrown = new InvalidOperationException(hostMessage);
-                    if (wrapped) thrown = new AggregateException(thrown);
-                    _gate.SetException(thrown);
-                    Pump();
-                    var shown = Field<string>("_actionError") ?? "";
-                    var banner = Field<TextBlock>("_bannerText");
-                    Check(shown == hostMessage.Trim() && Occurrences(shown, "konnte nicht generiert werden") == 1
-                        && banner.Text == shown && banner.IsVisible && Pending("s5") == null,
-                        "fallback sentence appears once" + (wrapped ? " (aggregate)" : "") + ": " + hostMessage.Trim());
-                }
+                Call("GenerateTitleEntryAsync", "s5");
+                Pump();
+                _gate.SetException(new AggregateException(new InvalidOperationException(hostMessage)));
+                Pump();
+                Check(Field<string>("_actionError") == hostMessage.Trim() && Field<TextBlock>("_bannerText").Text == hostMessage.Trim(), "fallback sentence appears once: " + hostMessage);
             }
-            Snap("generate-duplicate-error-light", 390);
+            Shot("action-error", 390);
             Call("GenerateTitleEntryAsync", "s5");
             Pump();
-            _gate.SetException(new InvalidOperationException("Der Titel konnte nicht generiert werdenden Zustand prüfen."));
-            Pump();
-            Check(Field<string>("_actionError") == TitleFallback + " Der Titel konnte nicht generiert werdenden Zustand prüfen.",
-                "only a whole leading fallback sentence counts as a repeat");
-            Call("GenerateTitleEntryAsync", "s5");
-            Pump();
-            _gate.SetException(new InvalidOperationException("Für diesen Chat fehlt der Modellzugang. Der Titel konnte nicht generiert werden."));
-            Pump();
-            Check(Field<string>("_actionError") == TitleFallback + " Für diesen Chat fehlt der Modellzugang. Der Titel konnte nicht generiert werden.",
-                "a host detail that does not lead with the fallback keeps its full text");
-            Call("GenerateTitleEntryAsync", "s5");
-            Pump();
-            _gate.SetException(new InvalidOperationException("   "));
-            Pump();
-            Check(Field<string>("_actionError") == TitleFallback, "a blank host message falls back to the neutral sentence");
-            Call("GenerateTitleEntryAsync", "s5");
-            Pump();
-            Check(Field<string>("_actionError") == null, "a new generation clears the previous error");
             _gate.SetException(new OperationCanceledException(TitleFallback));
             Pump();
-            Check(Field<string>("_actionError") == null && Pending("s5") == null && More("s5") != null, "cancelled generation stays silent and frees the row");
-            Call("GenerateTitleEntryAsync", "s5");
-            Pump();
-            _gate.SetException(new AggregateException(new TaskCanceledException()));
-            Pump();
-            Check(Field<string>("_actionError") == null, "a wrapped cancellation stays silent");
-            Call("GenerateTitleEntryAsync", "s5");
-            Pump();
-            _gate.SetException(new TimeoutException(TitleFallback + " intern"));
-            Pump();
-            Check(Field<string>("_actionError") == TitleFallback, "non-host exceptions never leak their text, even when it repeats the fallback");
+            Check(Field<string>("_actionError") == null && Pending("s5") == null, "cancelled generation stays silent");
 
-            // The shared formatter covers the other actions in the same way.
-            Call("ArchiveEntryAsync", "s6");
-            Pump();
-            _gate.SetException(new InvalidOperationException("Archivieren fehlgeschlagen. Der Chat wird gerade beantwortet."));
-            Pump();
-            Check(Field<string>("_actionError") == "Archivieren fehlgeschlagen. Der Chat wird gerade beantwortet.", "archive host message repeating the fallback is shown once");
-            Call("BeginRename", "s3");
-            Pump();
-            Field<TextBox>("_renameBox").Text = "Größe prüfen";
-            Call("CommitRenameAsync");
-            Pump();
-            _gate.SetException(new InvalidOperationException("Umbenennen fehlgeschlagen."));
-            Pump();
-            Check(Field<string>("_renameError") == "Umbenennen fehlgeschlagen.", "rename host message equal to the fallback is shown once");
-            Call("CancelRename");
-            Pump();
-
-            // Unicode titles render exactly as the host sends them: no
-            // character is stripped, replaced or normalized by the picker.
-            var unicodeTitles = new[] {
-                "Alternativer Fix für Anschnitt-Klinkungen in TwinCAT ST",
-                "Größe prüfen – Rückzug",
-                "Ä Ö Ü ä ö ü ß ẞ – „Zitat“ · µs ± 5 % · Ø 12 mm · 25 °C",
-                "Messwert 𝛼 ≤ 0,5 ✓ 東京 Linie №3 🚀",
-                "Combining: Größe prüfen" };
+            // Unicode titles render exactly as the host sends them.
+            var unicode = new[] { "Größe prüfen – Rückzug", "Ä Ö Ü ä ö ü ß ẞ – „Zitat“ · µs ± 5 % · Ø 12 mm · 25 °C", "Messwert 𝛼 ≤ 0,5 ✓ 東京 Linie №3 🚀" };
             var unicodeItems = Items().ToList();
-            for (var i = 0; i < unicodeTitles.Length; i++) unicodeItems.Insert(0, Item("u" + i, unicodeTitles[i], 0.5 + i, false, false));
+            for (var i = 0; i < unicode.Length; i++) unicodeItems.Insert(0, Item("u" + i, unicode[i], 0.5 + i, false, false));
             _picker.Show("Anlage_Linie3", "u0", unicodeItems.ToArray());
             Pump();
-            for (var i = 0; i < unicodeTitles.Length; i++)
+            for (var i = 0; i < unicode.Length; i++)
             {
-                var expected = unicodeTitles[i];
-                var blocks = Descendants<TextBlock>(Field<StackPanel>("_list")).Where(block => block.Text == expected).ToList();
-                var block0 = blocks.FirstOrDefault();
-                Check(Title("u" + i) == expected && blocks.Count == 1 && block0.IsVisible && block0.ActualWidth > 0 && block0.ActualHeight > 0
-                    && (expected.Length <= 36 || (block0.ToolTip as string) == expected),
-                    "unicode title renders unchanged: " + expected);
+                var blocks = Descendants<TextBlock>(Field<StackPanel>("_list")).Where(block => block.Text == unicode[i]).ToList();
+                Check(Title("u" + i) == unicode[i] && blocks.Count == 1 && blocks[0].ActualWidth > 0, "unicode title renders unchanged: " + unicode[i]);
             }
-            Snap("unicode-titles-light", 390);
-            Snap("unicode-titles-light", 900);
+            Shot("unicode", 390);
             _picker.Show("Anlage_Linie3", "s2", Items());
             Pump();
 
-            // The delegate alone provides the row action button; without it the item is hidden.
-            var renameHandler = _picker.RenameAsync;
-            var archiveHandler = _picker.ArchiveAsync;
-            var generateHandler = _picker.GenerateTitleAsync;
-            _picker.RenameAsync = null;
-            _picker.ArchiveAsync = null;
-            Call("Render");
-            Pump();
-            Call("OpenMenu", "s3");
-            Pump();
-            Check(More("s3") != null && Field<StackPanel>("_menuItems").Children.Count == 1 && MenuButton(GenerateLabel) != null, "generation alone provides the row action menu");
-            Call("CloseMenu", false);
-            _picker.GenerateTitleAsync = null;
-            Call("Render");
-            Pump();
-            Check(More("s3") == null, "no row action button without any action delegate");
-            _picker.RenameAsync = renameHandler;
-            _picker.ArchiveAsync = archiveHandler;
-            Call("Render");
-            Call("OpenMenu", "s3");
-            Pump();
-            Check(MenuButton(GenerateLabel) == null && MenuButton("Umbenennen") != null, "generation item hidden without its delegate");
-            Call("CloseMenu", false);
-            _picker.GenerateTitleAsync = generateHandler;
-            Call("Render");
-            Pump();
-
-            // Archive failure shows the banner; success moves the row.
+            // Als erledigt markieren: failure keeps the row, success moves it to the section.
             Call("ArchiveEntryAsync", "s6");
             Pump();
+            Check(MetaText("s6").Contains("Wird als erledigt markiert"), "marking done shows its progress on the row");
             _gate.SetException(new TimeoutException("internal"));
             Pump();
-            Check(Field<string>("_actionError") == "Archivieren fehlgeschlagen.", "non-host exceptions show only the neutral message");
-            Check(Targets().Contains("s6"), "failed archive keeps the row");
-            Snap("action-error-light", 390);
+            Check(Field<string>("_actionError") == "Als erledigt markieren fehlgeschlagen." && Targets().Contains("s6"), "failed marking keeps the row with a neutral message");
+            Call("ArchiveEntryAsync", "s6");
+            Pump();
+            _gate.SetException(new InvalidOperationException("In diesem Chat läuft noch eine Antwort."));
+            Pump();
+            Check(Field<string>("_actionError") == "Als erledigt markieren fehlgeschlagen. In diesem Chat läuft noch eine Antwort.", "host refusal for a running answer is shown");
             Call("ArchiveEntryAsync", "s6");
             Pump();
             _gate.SetResult(true);
             Pump();
-            Check(!Targets().Contains("s6"), "archived chat leaves the active list");
+            Check(!Targets().Contains("s6") && AutomationProperties.GetName(Primary("\0done")).StartsWith("Erledigte Chats, 3"), "a chat marked done leaves the open list and joins Erledigte Chats");
 
-            // Archived view and restore.
-            Call("SetArchived", true);
+            // Expanding the section, reopening.
+            Primary("\0done").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Pump();
-            Check(Targets().SequenceEqual(new[] { "s6", "a1", "a2" }), "archived view lists archived chats");
-            Snap("archived-light", 390);
+            Check(Targets().Skip(Targets().IndexOf("\0done") + 1).SequenceEqual(new[] { "s6", "a1", "a2" }), "expanded section lists the done chats");
+            var reopen = Primary("a1") as Button;
+            Check(reopen != null && (string)reopen.Content == "Wieder öffnen" && AutomationProperties.GetName(reopen) == "„Alte Inbetriebnahme Notizen“ wieder öffnen", "done chats offer Wieder öffnen");
+            Check(MetaText("a1").Length > 0 && Field<StackPanel>("_list").Children.Count > 0, "done chats keep their activity time");
+            foreach (var width in new[] { 390, 1100 }) Shot("done-expanded", width);
+            Call("RestoreEntryAsync", "a1");
+            Pump();
+            Check((string)((Button)Primary("a1")).Content == "Wird geöffnet …" && !Primary("a1").IsEnabled, "reopening shows progress and blocks a second click");
+            Shot("reopening", 390);
+            _gate.SetException(new InvalidOperationException("Wieder öffnen fehlgeschlagen. Der Verlauf ist nicht erreichbar."));
+            Pump();
+            Check(Field<string>("_actionError") == "Wieder öffnen fehlgeschlagen. Der Verlauf ist nicht erreichbar." && Primary("a1").IsEnabled, "failed reopening keeps the done row usable");
             Call("RestoreEntryAsync", "a1");
             Pump();
             _gate.SetResult(true);
             Pump();
-            Check(!Targets().Contains("a1"), "restored chat leaves the archive view");
-            Call("SetArchived", false);
+            Check(Targets().IndexOf("a1") >= 0 && Targets().IndexOf("a1") < Targets().IndexOf("\0done") && ((Primary("a1") as Button)?.Content is StackPanel), "a reopened chat is an open chat again");
+            Key(Primary("\0done"), System.Windows.Input.Key.Left);
             Pump();
-            Check(Targets().Contains("a1"), "restored chat is active again");
+            Check(!Targets().Contains("a2"), "Left arrow on the section toggle collapses it");
+            Key(Primary("\0done"), System.Windows.Input.Key.Right);
+            Pump();
+            Check(Targets().Contains("a2"), "Right arrow expands it again");
 
-            // Selection: failure is reported, success closes.
+            // All chats done: an inline note, the section stays reachable.
+            var allDone = Items().Select(item => { item.Archived = true; item.Busy = false; return item; }).ToArray();
+            _picker.Show("Anlage_Linie3", null, allDone);
+            Pump();
+            Check(Targets().First() == "\0done" && Descendants<TextBlock>(Field<StackPanel>("_list")).Any(block => block.Text.StartsWith("Keine offenen Chats")), "only done chats: an inline note above the section");
+            Shot("all-done", 390);
+            _picker.Show("Anlage_Linie3", "s2", Items());
+            Pump();
+
+            // Selection: docked stays open, overlay closes; failures are reported.
             Call("SelectEntryAsync", "s5");
             Pump();
+            Check(MetaText("s5").Contains("Wird geöffnet"), "opening shows progress on the row");
             _gate.SetException(new InvalidOperationException("Der Chat gehört zu einem anderen Projekt."));
             Pump();
-            Check(_picker.IsOpen && (Field<string>("_actionError") ?? "").Contains("anderen Projekt"), "failed selection keeps the picker open with the message");
+            Check(_picker.IsOpen && (Field<string>("_actionError") ?? "").Contains("anderen Projekt"), "failed selection keeps the bar open with the message");
             Call("SelectEntryAsync", "s5");
             Pump();
             _gate.SetResult(true);
             Pump();
-            Check(!_picker.IsOpen, "successful selection closes the picker");
-
-            // Stale completions: a closed picker is never reopened or changed.
-            _picker.ShowLoading("Anlage_Linie3");
-            _picker.Show("Anlage_Linie3", "s2", Items());
+            Check(_picker.IsOpen && _closes.Count == 0 && Pending("s5") == null, "docked: a selected chat keeps the bar open");
+            Call("CreateChatAsync");
             Pump();
+            Check(Field<TextBlock>("_newLabel").Text == "Wird erstellt …" && !Field<Button>("_newButton").IsEnabled, "Neuer Chat shows its progress");
+            Shot("creating", 1100);
+            _gate.SetResult(true);
+            Pump();
+            Check(_picker.IsOpen && _closes.Count == 0, "docked: Neuer Chat keeps the bar open");
+            Key(Field<TextBox>("_search"), System.Windows.Input.Key.Escape);
+            Pump();
+            Check(_picker.IsOpen, "docked: Escape does not close the bar");
+            search.Text = "zone";
+            Key(Field<TextBox>("_search"), System.Windows.Input.Key.Escape);
+            Pump();
+            Check(_picker.IsOpen && search.Text == "", "Escape in the search box clears the search first");
+
+            SetWidth(390);
+            Check(!_picker.Docked && KeyboardNavigation.GetTabNavigation(_picker.View) == KeyboardNavigationMode.Cycle, "overlay keeps Tab inside the bar");
+            Call("SelectEntryAsync", "s4");
+            Pump();
+            _gate.SetResult(true);
+            Pump();
+            Check(!_picker.IsOpen && _closes.LastOrDefault() == false && _slot.Visibility == Visibility.Collapsed, "overlay: a selected chat closes the bar (not a user close)");
+            Reopen("s4");
+            Call("SelectEntryAsync", "s4");
+            Pump();
+            Check(!_picker.IsOpen && _closes.Count == 2, "overlay: choosing the already open chat closes the bar without a delegate call");
+            Reopen("s4");
+            Call("CreateChatAsync");
+            Pump();
+            _gate.SetResult(true);
+            Pump();
+            Check(!_picker.IsOpen, "overlay: Neuer Chat closes the bar after the chat exists");
+            Reopen("s4");
+            Call("OpenMenu", "s3");
+            Pump();
+            Key(MenuButton("Umbenennen"), System.Windows.Input.Key.Escape);
+            Pump();
+            Check(_picker.IsOpen && Field<string>("_menuId") == null, "Escape closes the row menu first");
+            Key(Field<TextBox>("_search"), System.Windows.Input.Key.Escape);
+            Pump();
+            Check(!_picker.IsOpen && _closes.LastOrDefault() == true, "overlay: Escape closes the bar as a user close");
+            Reopen("s4");
+            Field<Button>("_collapseButton").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Pump();
+            Check(!_picker.IsOpen && _closes.LastOrDefault() == true, "the collapse button closes the bar as a user close");
+            SetWidth(1100);
+
+            // Late completions: a closed bar or a new session is never changed.
+            Reopen("s2");
             Call("SelectEntryAsync", "s4");
             Pump();
             var stale = _gate;
             _picker.Close();
             stale.SetException(new InvalidOperationException("late"));
             Pump();
-            Check(!_picker.IsOpen, "late failure after close does not reopen");
             _picker.ShowError("late error");
             _picker.Show("Anlage_Linie3", "s2", Items());
-            Check(!_picker.IsOpen, "late Show/ShowError after close are ignored");
-
-            // Late generation results never reopen, unblock or overwrite a newer session.
-            _picker.ShowLoading("Anlage_Linie3");
-            _picker.Show("Anlage_Linie3", "s2", Items());
-            Pump();
+            Check(!_picker.IsOpen, "late failure, Show and ShowError after closing are ignored");
+            Reopen("s2");
             Call("GenerateTitleEntryAsync", "s3");
             Pump();
             var lateGenerate = _gate;
-            _picker.Close();
+            // Same project name, another PLC project (other solution): the host starts a new session.
+            _picker.ShowLoading("Anlage_Linie3", false, true);
+            _picker.Show("Anlage_Linie3", null, new[] { Item("p1", "Achsen referenzieren", 5, false, false), Item("s3", "Gleiche ID im gleichnamigen Projekt", 9, false, false) });
             Pump();
-            Check(!_picker.IsOpen && Pending("s3") == null, "closing drops the pending generation");
-            _picker.ShowLoading("Anlage_Linie3");
-            _picker.Show("Anlage_Linie3", "s2", ItemsWith("s3", "Neu geladener Titel"));
-            Pump();
-            Call("GenerateTitleEntryAsync", "s3");
-            Pump();
-            var currentGenerate = _gate;
+            Check(Pending("s3") == null && !Targets().Contains("s2") && Title("s3") == "Gleiche ID im gleichnamigen Projekt", "a new session for a same-named project drops the pending work and the previous rows");
             lateGenerate.SetException(new InvalidOperationException("late"));
             Pump();
-            Check(_picker.IsOpen && Pending("s3") == "generate" && Field<string>("_actionError") == null && Title("s3") == "Neu geladener Titel",
-                "late generation failure leaves the refreshed session untouched");
-            currentGenerate.SetResult(true);
-            Pump();
-            Check(Pending("s3") == null && Title("s3") == "Neu geladener Titel", "current generation completes against the refreshed list");
-            Call("GenerateTitleEntryAsync", "s4");
-            Pump();
-            lateGenerate = _gate;
-            _picker.Close();
-            lateGenerate.SetResult(true);
-            Pump();
-            Check(!_picker.IsOpen, "late generation success after close does not reopen");
-
-            // Project switch inside an open picker starts a new session.
-            _picker.ShowLoading("Anlage_Linie3");
-            _picker.Show("Anlage_Linie3", "s2", Items());
-            Pump();
-            Call("ArchiveEntryAsync", "s7");
+            Check(Field<string>("_actionError") == null && Pending("s3") == null, "late generation failure from the previous project is ignored");
+            Call("ArchiveEntryAsync", "p1");
             Pump();
             var old = _gate;
             _picker.ShowLoading("Pruefstand");
-            _picker.Show("Pruefstand", null, new[] { Item("p1", "Achsen referenzieren", 5, false, false), Item("s7", "Gleiche ID, anderes Projekt", 9, false, false) });
+            _picker.Show("Pruefstand", null, new[] { Item("p1", "Gleiche ID, anderes Projekt", 9, false, false) });
             Pump();
             old.SetResult(true);
             Pump();
-            Check(Targets().Contains("s7"), "completion from the previous project is ignored");
+            Check(Targets().Contains("p1") && Field<TextBlock>("_title").Text == "Pruefstand", "a different project name starts a new session; old completions are ignored");
 
             // Load error and retry.
             _picker.ShowError("Der lokale Chat-Dienst antwortet nicht.");
             Pump();
             Check(Field<Border>("_state").Visibility == Visibility.Visible && !Field<Border>("_searchFrame").IsEnabled, "error state with disabled search");
-            Snap("error-light", 390);
+            Shots("error", 390, 1100);
             Call("RetryLoadAsync");
             Pump();
             Check(_calls.LastOrDefault() == "retry", "retry delegate called");
@@ -498,44 +479,57 @@ namespace TwinCatAssistant.Native
             Pump();
             Check((Field<string>("_errorMessage") ?? "").Contains("Projekt nicht eindeutig."), "failed retry stays in the error state");
 
-            // Empty project.
+            // Empty project and the general history.
             _picker.Show("Pruefstand", null, new ProjectChatPickerItem[0]);
             Pump();
-            Check(Targets().Count == 0 && Field<Border>("_footer").Visibility == Visibility.Collapsed, "empty state without archive switch");
-            Snap("empty-light", 340);
-
-            // Keyboard: Escape closes; anchor-toggle guard does not apply without the mouse.
-            _picker.Show("Anlage_Linie3", "s2", Items());
+            Check(Targets().Count == 0 && Field<Border>("_state").Visibility == Visibility.Visible, "empty state");
+            Shots("empty", 340, 768);
+            _picker.General = true;
+            _picker.BackAsync = () => { _calls.Add("back"); return Task.CompletedTask; };
+            _picker.ShowLoading("Allgemeine Chats", false, true);
+            _picker.Show("Allgemeine Chats", "g1", new[] { Item("g1", "Allgemeine Frage zu IEC 61131-3", 3, false, false), Item("g2", "Vergleich ST und CFC", 60 * 30, false, false) });
             Pump();
-            Key(Field<TextBox>("_search"), System.Windows.Input.Key.Escape);
+            Check(Field<Button>("_backButton").Visibility == Visibility.Visible && (string)Field<Button>("_newButton").ToolTip == "Neuer allgemeiner Chat ohne Projektkontext", "general history: own scope wording and a way back to the project chats");
+            Shot("general", 1100);
+            Field<Button>("_backButton").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Pump();
-            Check(!_picker.IsOpen, "Escape closes the picker");
+            Check(_calls.Last() == "back", "back button calls the host");
+            _picker.General = false;
+            _picker.BackAsync = null;
 
             // Dark palette follows the shared dictionary live.
-            _picker.ShowLoading("Anlage_Linie3");
-            _picker.Show("Anlage_Linie3", "s2", Items());
+            _palette = "dark";
             AssistantTheme.Apply(_theme, AssistantTheme.Dark);
+            _picker.ShowLoading("Anlage_Linie3", false, true);
+            _picker.Show("Anlage_Linie3", "s2", Items());
             Pump();
-            var frame = Field<Border>("_frame");
-            Check(AssistantTheme.IsDark(frame.Background), "dark palette reaches the popup");
-            foreach (var width in new[] { 340, 520, 900 }) Snap("list-dark", width);
+            Check(AssistantTheme.IsDark(((Border)_picker.View).Background), "dark palette reaches the bar");
+            foreach (var width in new[] { 340, 390, 768, 1100 }) Shot("list", width);
             Call("OpenMenu", "s3");
             Pump();
-            Snap("menu-dark", 390);
+            Shot("menu", 390);
             Call("CloseMenu", false);
             Call("BeginRename", "s3");
             Pump();
-            Snap("rename-dark", 390);
+            Shot("rename", 390);
             Call("CancelRename");
-            Call("SetArchived", true);
+            Primary("\0done").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Pump();
-            Snap("archived-dark", 390);
+            Shots("done-expanded", 390, 1100);
+            Call("GenerateTitleEntryAsync", "s4");
+            Pump();
+            Shot("generating", 768);
+            _gate.SetResult(true);
+            Pump();
             _picker.ShowError("Der lokale Chat-Dienst antwortet nicht.");
             Pump();
-            Snap("error-dark", 390);
+            Shot("error", 390);
             _picker.ShowLoading("Anlage_Linie3");
             Pump();
-            Snap("loading-dark", 390);
+            Shot("loading", 1100);
+            _picker.Show("Pruefstand", null, new ProjectChatPickerItem[0]);
+            Pump();
+            Shot("empty", 390);
 
             Check(ProjectChatPicker.FormatUpdated(0, DateTime.Now) == "", "unknown activity has no time");
             var now = new DateTime(2026, 11, 2, 15, 0, 0, DateTimeKind.Local);
@@ -545,8 +539,16 @@ namespace TwinCatAssistant.Native
 
             _picker.Dispose();
             _picker.ShowLoading("Anlage_Linie3");
-            Check(!_picker.IsOpen, "disposed picker stays closed");
-            Check(_picker.GenerateTitleAsync == null && _picker.RenameAsync == null, "dispose clears the action delegates");
+            Check(!_picker.IsOpen && _slot.Child == null, "disposed bar stays closed and leaves the layout");
+            Check(_picker.GenerateTitleAsync == null && _picker.RenameAsync == null && _picker.Closed == null, "dispose clears the delegates");
+        }
+
+        static void Reopen(string selected)
+        {
+            _picker.ShowLoading("Anlage_Linie3");
+            _picker.Show("Anlage_Linie3", selected, Items());
+            Layout();
+            Pump();
         }
 
         static string Pending(string id)
@@ -555,18 +557,29 @@ namespace TwinCatAssistant.Native
             return Field<Dictionary<string, string>>("_pending").TryGetValue(id, out pending) ? pending : null;
         }
 
-        static Button More(string id)
+        static object Target(string id)
         {
             var list = (System.Collections.IList)Field<object>("_targets");
-            var target = list.Cast<object>().FirstOrDefault(t => (string)t.GetType().GetField("Id").GetValue(t) == id);
-            return target == null ? null : (Button)target.GetType().GetField("More").GetValue(target);
+            return list.Cast<object>().FirstOrDefault(t => (string)t.GetType().GetField("Id").GetValue(t) == id);
+        }
+        static Control Primary(string id) { var t = Target(id); return t == null ? null : (Control)t.GetType().GetField("Primary").GetValue(t); }
+        static Button More(string id) { var t = Target(id); return t == null ? null : (Button)t.GetType().GetField("More").GetValue(t); }
+
+        // The highlight plate sits under the row's button in the same grid.
+        static bool HasPlate(Control primary)
+        {
+            var row = primary == null ? null : VisualTreeHelper.GetParent(primary) as Grid;
+            return row != null && row.Children.OfType<Border>().Any(border => Math.Abs(border.Opacity - 0.13) < 0.001);
         }
 
-        static int Occurrences(string text, string part)
+        static string MetaText(string id)
         {
-            var count = 0;
-            for (var at = text.IndexOf(part, StringComparison.OrdinalIgnoreCase); at >= 0; at = text.IndexOf(part, at + part.Length, StringComparison.OrdinalIgnoreCase)) count++;
-            return count;
+            var primary = Primary(id);
+            var row = primary == null ? null : VisualTreeHelper.GetParent(primary) as Grid;
+            if (row == null) return "";
+            var blocks = Descendants<TextBlock>(row).ToList();
+            var meta = blocks.FirstOrDefault(block => Math.Abs(block.FontSize - 11) < 0.01);
+            return meta == null ? "" : new System.Windows.Documents.TextRange(meta.ContentStart, meta.ContentEnd).Text;
         }
 
         static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
@@ -584,10 +597,12 @@ namespace TwinCatAssistant.Native
             return Field<StackPanel>("_menuItems").Children.OfType<Button>().FirstOrDefault(button => AutomationProperties.GetName(button) == name);
         }
 
-        static ProjectChatPickerItem[] ItemsWith(string id, string title)
+        static ProjectChatPickerItem[] ItemsWith(string id, string title, bool? busy = null)
         {
             var items = Items();
-            items.First(item => item.Id == id).Title = title;
+            var item = items.First(entry => entry.Id == id);
+            item.Title = title;
+            if (busy.HasValue) item.Busy = busy.Value;
             return items;
         }
 
@@ -630,76 +645,125 @@ namespace TwinCatAssistant.Native
                 Item("s7", "Sehr langer Titel einer Unterhaltung über die Umstellung der kompletten Schrittkette von SFC auf eine Zustandsmaschine in strukturiertem Text mit Enumerationen", 60 * 24 * 40, false, false),
                 Item("s8", "Kommunikation EtherCAT-Slave", -1, false, false),
                 Item("a1", "Alte Inbetriebnahme Notizen", 60 * 24 * 90, false, true),
-                Item("a2", "Test", 60 * 24 * 400, false, true),
+                Item("a2", "Test Achsfreigabe", 60 * 24 * 400, false, true),
             };
         }
 
-        static void BuildHost(double width)
+        // ---- Synthetic tool window: context bar, chat area, conversation ----
+
+        static FrameworkElement Conversation() { return (FrameworkElement)_area.Children[0]; }
+        // The synthetic conversation includes content gutters; measure its
+        // allocated column, as the real WebView fixture measures its surface.
+        static double ConversationWidth() { var view = Conversation(); return view.ActualWidth + view.Margin.Left + view.Margin.Right; }
+
+        static void BuildHost()
         {
-            _host = new UserControl { Resources = _theme, Width = width, Height = 640 };
+            _host = new UserControl { Resources = _theme, Width = 1100, Height = 640 };
             _host.SetResourceReference(Control.BackgroundProperty, "Tc.Background");
+            _host.SetResourceReference(Control.ForegroundProperty, "Tc.Foreground");
             var strip = new Border { BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(8, 6, 8, 6) };
             strip.SetResourceReference(Border.BorderBrushProperty, "Tc.Border");
             var row = new Grid();
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             for (var i = 0; i < 4; i++) row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var name = new TextBlock { Text = "MAIN  ·  Anlage_Linie3", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) };
-            name.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Foreground");
+            var name = new TextBlock { Text = "MAIN  Anlage_Linie3", FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0), TextTrimming = TextTrimming.CharacterEllipsis };
             row.Children.Add(name);
             var column = 1;
             foreach (var icon in new[] { "history", "plus", "attach", "more" })
             {
                 var button = new Button { Content = new System.Windows.Shapes.Path { Data = AssistantTheme.Icon(icon), Width = 16, Height = 16, StrokeThickness = 1.6 } };
                 button.SetResourceReference(FrameworkElement.StyleProperty, "Tc.IconButton");
-                ((System.Windows.Shapes.Path)button.Content).SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "Tc.Muted");
+                ((System.Windows.Shapes.Path)button.Content).SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, icon == "history" ? "Tc.Primary" : "Tc.Muted");
                 Grid.SetColumn(button, column++);
                 row.Children.Add(button);
                 if (_anchor == null) _anchor = button;
             }
             strip.Child = row;
+            _area = new Grid();
+            _column = new ColumnDefinition { Width = new GridLength(0) };
+            _area.ColumnDefinitions.Add(_column);
+            _area.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var conversation = BuildConversation();
+            Grid.SetColumn(conversation, 1);
+            _area.Children.Add(conversation);
+            _scrim = new Border { Background = new SolidColorBrush(Color.FromArgb(0x47, 0, 0, 0)), Visibility = Visibility.Collapsed };
+            Grid.SetColumnSpan(_scrim, 2);
+            _area.Children.Add(_scrim);
+            _slot = new Border { Visibility = Visibility.Collapsed };
+            _area.Children.Add(_slot);
             var dock = new DockPanel { LastChildFill = true };
             DockPanel.SetDock(strip, Dock.Top);
             dock.Children.Add(strip);
-            dock.Children.Add(new Border());
+            dock.Children.Add(_area);
             _host.Content = dock;
             var area = SystemParameters.WorkArea;
             _window = new Window { WindowStyle = WindowStyle.None, AllowsTransparency = true, Background = Brushes.Transparent, Opacity = 0.01,
                 ShowActivated = false, ShowInTaskbar = false, SizeToContent = SizeToContent.WidthAndHeight, Content = _host,
-                Left = area.Right - 960, Top = area.Bottom - 700 };
+                Left = area.Right - 1160, Top = area.Bottom - 700 };
             _window.Show();
         }
 
-        static void Snap(string state, double width)
+        static UIElement BuildConversation()
         {
-            _host.Width = width;
-            _window.UpdateLayout();
-            Pump();
-            var popup = Field<Popup>("_popup");
-            var frame = Field<Border>("_frame");
-            DependencyObject top = frame;
-            while (VisualTreeHelper.GetParent(top) != null) top = VisualTreeHelper.GetParent(top);
-            var popupRoot = (FrameworkElement)top;
-            popupRoot.UpdateLayout();
-            var hostBitmap = Render(_host, _host.ActualWidth, _host.ActualHeight);
-            var popupBitmap = Render(popupRoot, popupRoot.ActualWidth, popupRoot.ActualHeight);
-            var visual = new DrawingVisual();
-            using (var context = visual.RenderOpen())
+            var panel = new DockPanel { LastChildFill = false, Margin = new Thickness(18, 14, 18, 14) };
+            var composer = new Border { CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 10, 0, 0) };
+            composer.SetResourceReference(Border.BorderBrushProperty, "Tc.Border");
+            composer.SetResourceReference(Border.BackgroundProperty, "Tc.Surface");
+            var hint = new TextBlock { Text = "Nachricht an den Assistant …", FontSize = 13 };
+            hint.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
+            composer.Child = hint;
+            DockPanel.SetDock(composer, Dock.Bottom);
+            panel.Children.Add(composer);
+            foreach (var line in new[] {
+                "Warum geht die Anlauframpe von FB_Foerderband nach einem Notaus nicht wieder hoch?",
+                "Nach dem Notaus bleibt bEnable gesetzt, während fbRampe.bReset nur auf der steigenden Flanke ausgewertet wird. Setze bReset im ersten Zyklus nach der Quittierung, dann startet die Rampe bei 0 % und läuft in 2,5 s auf den Sollwert." })
             {
-                context.DrawImage(hostBitmap, new Rect(0, 0, _host.ActualWidth, _host.ActualHeight));
-                context.DrawImage(popupBitmap, new Rect(popup.HorizontalOffset, popup.VerticalOffset, popupRoot.ActualWidth, popupRoot.ActualHeight));
+                var bubble = new Border { CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 9, 12, 9), Margin = new Thickness(0, 0, 0, 10), MaxWidth = 560, HorizontalAlignment = HorizontalAlignment.Left };
+                bubble.SetResourceReference(Border.BackgroundProperty, "Tc.NeutralSurface");
+                bubble.Child = new TextBlock { Text = line, TextWrapping = TextWrapping.Wrap, FontSize = 13 };
+                DockPanel.SetDock(bubble, Dock.Top);
+                panel.Children.Add(bubble);
             }
-            var output = new RenderTargetBitmap((int)Math.Ceiling(_host.ActualWidth), (int)Math.Ceiling(_host.ActualHeight), 96, 96, PixelFormats.Pbgra32);
-            output.Render(visual);
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(output));
-            using (var file = File.Create(Path.Combine(_out, state + "-" + width + ".png"))) encoder.Save(file);
+            return panel;
         }
 
-        static BitmapSource Render(FrameworkElement element, double width, double height)
+        // Mirror of AssistantControl.LayoutSidebar for the synthetic window.
+        static void Layout()
         {
-            var bitmap = new RenderTargetBitmap(Math.Max(1, (int)Math.Ceiling(width)), Math.Max(1, (int)Math.Ceiling(height)), 96, 96, PixelFormats.Pbgra32);
-            bitmap.Render(element);
-            return bitmap;
+            var width = _host.Width;
+            var docked = width >= DockFrom;
+            if (_picker != null && _picker.Docked != docked) _picker.Docked = docked;
+            var open = _picker != null && _picker.IsOpen;
+            _slot.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            _scrim.Visibility = open && !docked ? Visibility.Visible : Visibility.Collapsed;
+            _column.Width = new GridLength(open && docked ? DockedWidth : 0);
+            Grid.SetColumnSpan(_slot, docked ? 1 : 2);
+            _slot.HorizontalAlignment = docked ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
+            _slot.Width = docked ? double.NaN : Math.Max(220, Math.Min(OverlayMax, width - OverlayGap));
+            _slot.Effect = docked ? null : new DropShadowEffect { BlurRadius = 18, ShadowDepth = 3, Direction = 0, Opacity = 0.22 };
+        }
+
+        static void SetWidth(double width, double height = 640)
+        {
+            _host.Width = width;
+            _host.Height = height;
+            Layout();
+            _window.UpdateLayout();
+            Pump();
+        }
+
+        static void Shots(string state, params double[] widths) { foreach (var width in widths) Shot(state, width); }
+
+        static void Shot(string state, double width)
+        {
+            var oldWidth = _host.Width;
+            SetWidth(width);
+            var bitmap = new RenderTargetBitmap((int)Math.Ceiling(_host.ActualWidth), (int)Math.Ceiling(_host.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(_host);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using (var file = File.Create(Path.Combine(_out, state + "-" + _palette + "-" + width + ".png"))) encoder.Save(file);
+            SetWidth(oldWidth);
         }
     }
 }
@@ -719,7 +783,7 @@ $sources = @(
 $references = @('mscorlib.dll', 'System.dll', 'System.Core.dll', 'System.Xaml.dll', 'WindowsBase.dll', 'PresentationCore.dll', 'PresentationFramework.dll') |
     ForEach-Object { '/reference:' + (Join-Path $refs $_) }
 & $csc /nologo /utf8output /noconfig /nostdlib+ /target:exe /platform:anycpu /langversion:latest /warnaserror+ /nowarn:1701,1702 "/out:$exe" @references @sources
-if ($LASTEXITCODE -ne 0) { throw 'Picker fixture compilation failed.' }
+if ($LASTEXITCODE -ne 0) { throw 'Chat bar fixture compilation failed.' }
 & $exe $OutputDirectory
-if ($LASTEXITCODE -ne 0) { throw 'Picker fixture checks failed.' }
+if ($LASTEXITCODE -ne 0) { throw 'Chat bar fixture checks failed.' }
 Write-Output "Screenshots: $OutputDirectory"

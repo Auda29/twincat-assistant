@@ -161,6 +161,9 @@ namespace TwinCatAssistant.Native
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
+        // Presentation preferences (chat bar open or closed) beside the
+        // bindings, keyed by the same stable project and profile key.
+        public ProjectChatViewState ViewState() { return new ProjectChatViewState(_directory, StateRoot); }
         private void VerifyDirectory()
         {
             if ((new DirectoryInfo(_directory).Attributes & FileAttributes.ReparsePoint) != 0

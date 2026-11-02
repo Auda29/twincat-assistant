@@ -13,5 +13,6 @@
     <Compile Include="../Shared/ActiveEditorContext.cs" Link="ActiveEditorContext.cs" />
     <Compile Include="../Shared/ActivePouSource.cs" Link="ActivePouSource.cs" />
     <Compile Include="../Shared/ChatConnectionState.cs" Link="ChatConnectionState.cs" />
+    <Compile Include="../IdeHost/ProjectChatViewState.cs" Link="ProjectChatViewState.cs" />
   </ItemGroup>
 </Project>

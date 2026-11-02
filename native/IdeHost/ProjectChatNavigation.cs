@@ -1,37 +1,258 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using ThreadHelper = Microsoft.VisualStudio.Shell.ThreadHelper;
 
 namespace TwinCatAssistant.Native
 {
+    // Host side of the chat bar. The bar is an ordinary WPF element in the
+    // chat area (no OS popup): docked beside the conversation on wide tool
+    // windows, an overlay on narrow ones. Every list and action goes through
+    // the existing session selection, binding and management paths below;
+    // the bar keeps no chats of its own.
     public sealed partial class AssistantControl
     {
+        // Docked from this tool window width on; the conversation keeps at
+        // least SidebarDockFrom - SidebarWidth (488 px) beside the bar.
+        internal const double SidebarWidth = 272, SidebarDockFrom = 760, SidebarOverlayMax = 304, SidebarOverlayGap = 44;
         private ProjectChatPicker _projectChatPicker;
         private PickerScope _pickerScope;
         private long _pickerRequest;
+        private int _pickerRefreshing;
+        private DateTime _pickerRefreshedAt = DateTime.MinValue;
+        private string _pickerUnknownSelection;
+        private NativeProjectIdentity _sidebarProject;
+        private bool _sidebarWasDocked;
+        // Restores attempted per project and chat document; preferences per project.
+        private readonly HashSet<string> _sidebarRestored = new HashSet<string>(StringComparer.Ordinal);
+        private readonly Dictionary<string, bool> _sidebarPreferences = new Dictionary<string, bool>(StringComparer.Ordinal);
         private sealed class PickerScope
         {
             public NativeProjectIdentity Project;
-            public bool General;
+            public bool General, Started, Focus;
             public long Document, Request;
             public string[] Directories;
             public string Name;
             public ChatSessionEntry[] Entries;
         }
+
+        // ---- Layout ----
+
+        private bool SidebarDocked()
+        {
+            var width = ActualWidth > 0 ? ActualWidth : double.IsNaN(Width) ? 0 : Width;
+            return width >= SidebarDockFrom;
+        }
+
+        private ProjectChatPicker EnsureProjectChatPicker()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_projectChatPicker == null) _projectChatPicker = new ProjectChatPicker(_historyButton, _theme);
+            var picker = _projectChatPicker;
+            picker.Closed = byUser => OnSidebarClosed(picker, byUser);
+            AttachSidebarView(picker);
+            return picker;
+        }
+
+        private void AttachSidebarView(ProjectChatPicker picker)
+        {
+            var view = picker.View;
+            if (_sidebarHost.Child == view) return;
+            if (view.Parent is Decorator decorator) decorator.Child = null;
+            else if (view.Parent is Panel panel) panel.Children.Remove(view);
+            _sidebarHost.Child = view;
+        }
+
+        private void LayoutSidebar()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_disposed) return;
+            var picker = _projectChatPicker;
+            var docked = SidebarDocked();
+            if (picker != null) picker.Docked = docked;
+            var open = picker?.IsOpen == true && _strip.Visibility == Visibility.Visible && _browser.Visibility == Visibility.Visible;
+            if (open) AttachSidebarView(picker);
+            _sidebarHost.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            _sidebarScrim.Visibility = open && !docked ? Visibility.Visible : Visibility.Collapsed;
+            var column = open && docked ? SidebarWidth : 0;
+            if (_sidebarColumn.Width.Value != column) _sidebarColumn.Width = new GridLength(column);
+            Grid.SetColumnSpan(_sidebarHost, docked ? 1 : 2);
+            _sidebarHost.HorizontalAlignment = docked ? HorizontalAlignment.Stretch : HorizontalAlignment.Left;
+            var area = ActualWidth > 0 ? ActualWidth : SidebarOverlayMax + SidebarOverlayGap;
+            _sidebarHost.Width = docked ? double.NaN : Math.Max(220, Math.Min(SidebarOverlayMax, area - SidebarOverlayGap));
+            _sidebarHost.Effect = docked ? null : _sidebarShadow;
+            var shown = picker?.IsOpen == true;
+            _historyButton.ToolTip = shown ? "Chatleiste schließen" : _chatProject == null ? "Chats anzeigen" : "Chats dieses Projekts anzeigen";
+            System.Windows.Automation.AutomationProperties.SetName(_historyButton, (string)_historyButton.ToolTip);
+            if (shown) _historyButton.SetResourceReference(ForegroundProperty, "Tc.Primary");
+            else _historyButton.ClearValue(ForegroundProperty);
+        }
+
+        private void OnSidebarSizeChanged(object sender, SizeChangedEventArgs args)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_disposed || !args.WidthChanged) return;
+            var docked = SidebarDocked();
+            if (docked != _sidebarWasDocked)
+            {
+                _sidebarWasDocked = docked;
+                // An open bar stays open and turns into the overlay (or back);
+                // a wider window may restore the docked preference again.
+                if (docked) _sidebarRestored.Clear();
+            }
+            LayoutSidebar();
+            MaintainSidebar();
+        }
+
+        // Overlay only: a click outside the bar and the clock closes it.
+        private void OnSidebarOutsideMouseDown(object sender, MouseButtonEventArgs args)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_projectChatPicker?.IsOpen != true || SidebarDocked()) return;
+            var source = args.OriginalSource as DependencyObject;
+            if (Within(source, _sidebarHost) || Within(source, _historyButton)) return;
+            CloseProjectChats();
+            if (Within(source, _sidebarScrim)) args.Handled = true;
+        }
+
+        private static bool Within(DependencyObject node, DependencyObject container)
+        {
+            for (; node != null; node = node is Visual || node is System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(node) : LogicalTreeHelper.GetParent(node))
+                if (node == container) return true;
+            return false;
+        }
+
+        private void OnSidebarClosed(ProjectChatPicker picker, bool byUser)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_disposed || picker != _projectChatPicker) return;
+            var projectHistory = _pickerScope?.General == false;
+            _pickerRequest++;
+            _pickerScope = null;
+            if (byUser && projectHistory && SidebarDocked() && _chatProject != null) RememberSidebar(_chatProject, false);
+            LayoutSidebar();
+        }
+
+        // ---- Open state per PLC project and profile ----
+
+        private bool SidebarPreference(NativeProjectIdentity project)
+        {
+            var key = ProjectKey(project);
+            if (_sidebarPreferences.TryGetValue(key, out var open)) return open;
+            bool? stored = null;
+            try { stored = _chatBindings.ViewState().SidebarOpen(project); } catch { }
+            // Like T3: the bar is open beside the chat until the operator closes it.
+            open = stored ?? true;
+            _sidebarPreferences[key] = open;
+            return open;
+        }
+
+        private void RememberSidebar(NativeProjectIdentity project, bool open)
+        {
+            _sidebarPreferences[ProjectKey(project)] = open;
+            try { _chatBindings.ViewState().RememberSidebar(project, open); }
+            catch { /* The preference still applies until the IDE closes. */ }
+        }
+
+        // Reopens the docked bar for the active project when its stored (or
+        // default) preference says so, once per project and chat document.
+        private void MaintainSidebar()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_disposed || !_chatPresented || !SidebarDocked() || _strip.Visibility != Visibility.Visible || _browser.Visibility != Visibility.Visible) return;
+            if (!_chatAdapterReady || _chatSelection?.authenticated != true || _chatActionPending) return;
+            var project = _chatProject;
+            if (project == null || (_projectChatPicker?.IsOpen == true && _pickerScope != null)) return;
+            if (!SidebarPreference(project)) { AbandonSidebarRestore(); return; }
+            if (!_sidebarRestored.Add(ProjectKey(project) + "\0" + _chatDocumentGeneration)) return;
+            RunAction(() => ShowProjectChatsCoreAsync(false, true));
+        }
+
+        // A bar kept open across a project switch waits for its new list;
+        // when that list cannot be shown it closes instead of showing stale chats.
+        private void AbandonSidebarRestore()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_pickerScope == null && _projectChatPicker?.IsOpen == true) CloseProjectChats();
+        }
+
+        // Keeps the open bar current: highlight of the open chat at once,
+        // titles and answer state through a throttled quiet reload.
+        private void UpdateSidebar()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_disposed) return;
+            var picker = _projectChatPicker;
+            if (picker?.IsOpen == true && _pickerScope != null && _pickerScope.Started)
+            {
+                var selected = _chatSelection?.IsSelected == true ? _chatSelection.sessionId : null;
+                if (!picker.SetSelected(selected) && selected != _pickerUnknownSelection)
+                {
+                    // A chat created or opened elsewhere: list it soon.
+                    _pickerUnknownSelection = selected;
+                    RefreshSidebar(true);
+                }
+            }
+            MaintainSidebar();
+        }
+
+        private void RefreshSidebar(bool now)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            var scope = _pickerScope;
+            if (_disposed || scope == null || !scope.Started || _projectChatPicker?.IsOpen != true || _pickerRefreshing > 0
+                || _chatActionPending || !_chatAdapterReady || !PickerCurrent(scope)) return;
+            if (!now && (DateTime.UtcNow - _pickerRefreshedAt).TotalSeconds < 5) return;
+            _pickerRefreshedAt = DateTime.UtcNow;
+            RunAction(() => LoadPickerAsync(scope, false, true));
+        }
+
+        // ---- Scope lifecycle ----
+
         private void CloseProjectChats()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _pickerRequest++;
             _pickerScope = null;
             _projectChatPicker?.Close();
+            if (!_disposed) LayoutSidebar();
         }
+
+        // Transient closes (other popups, browser focus, the context bar) only
+        // concern the narrow overlay; the docked bar is part of the layout.
+        private void DismissProjectChatOverlay()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_projectChatPicker?.IsOpen == true && !SidebarDocked()) CloseProjectChats();
+        }
+
         private void CloseProjectChatsOnChange(NativeProjectIdentity project)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (!SameProject(_chatProject, project)) { _autoProjectKey = null; _explicitGeneralRequested = false; }
-            if (_pickerScope != null && !SameProject(_pickerScope.Project, project)) CloseProjectChats();
+            var picker = _projectChatPicker;
+            var stale = (_pickerScope != null && !SameProject(_pickerScope.Project, project))
+                || (_pickerScope == null && picker?.IsOpen == true && !SameProject(_sidebarProject, project));
+            if (!stale) return;
+            if (picker?.IsOpen == true && SidebarDocked() && project != null && SidebarPreference(project) && !_disposed)
+            {
+                // The docked bar stays in place: a new session with the new
+                // project's name and no rows, until its own list is confirmed.
+                _pickerRequest++;
+                _pickerScope = null;
+                _sidebarProject = project;
+                picker.BackAsync = null;
+                picker.General = false;
+                picker.ShowLoading(ProjectName(project.ProjectFile), false, true);
+                return;
+            }
+            CloseProjectChats();
         }
         private static bool SameProject(NativeProjectIdentity a, NativeProjectIdentity b) { return a == null ? b == null : a.Equals(b); }
         private bool PickerCurrent(PickerScope scope)
@@ -46,51 +267,97 @@ namespace TwinCatAssistant.Native
             if (!PickerCurrent(scope)) throw new OperationCanceledException();
             if (!_chatAdapterReady || _chatActionPending) throw new InvalidOperationException("Der Chat wird gerade vorbereitet. Bitte kurz warten.");
         }
-        private async Task ShowProjectChatsAsync(bool general)
+
+        // The clock (general: false) and the "Allgemeine Chats" menu entry
+        // (general: true). The same history again closes the bar; the other
+        // history switches it.
+        private Task ShowProjectChatsAsync(bool general) { return ShowProjectChatsCoreAsync(general, false); }
+
+        private async Task ShowProjectChatsCoreAsync(bool general, bool restore)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (_disposed || !_chatAdapterReady || _chatSelection?.authenticated != true || _chatActionPending) return;
-            if (_projectChatPicker?.IsOpen == true) { CloseProjectChats(); return; }
+            if (_disposed || !_chatAdapterReady || _chatSelection?.authenticated != true || _chatActionPending) { if (restore) AbandonSidebarRestore(); return; }
             var project = ReadProjectIdentity();
-            if (!general && project == null) general = true;
-            if (!general && !await PrepareProjectWorkspaceAsync(project)) return;
-            _menuPopup.IsOpen = false; _previewPopup.IsOpen = false;
-            var scope = new PickerScope { Project = project, General = general, Document = _chatDocumentGeneration,
+            if (!general && project == null)
+            {
+                if (restore) { AbandonSidebarRestore(); return; }
+                general = true;
+            }
+            var current = _pickerScope;
+            if (!restore && _projectChatPicker?.IsOpen == true && current != null && current.General == general && SameProject(current.Project, project))
+            {
+                CloseProjectChats();
+                if (SidebarDocked() && project != null && !general) RememberSidebar(project, false);
+                return;
+            }
+            if (restore && _projectChatPicker?.IsOpen == true && current != null) return;
+            // Preparation may finish after the page changes or after a user
+            // closes/switches the list, including an A -> B -> A project trip.
+            var openingRequest = _pickerRequest;
+            var openingDocument = _chatDocumentGeneration;
+            var prepared = general || await PrepareProjectWorkspaceAsync(project);
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (_disposed || openingRequest != _pickerRequest || openingDocument != _chatDocumentGeneration) return;
+            if (!prepared) { if (restore) AbandonSidebarRestore(); return; }
+            if (_disposed || !SameProject(project, ReadProjectIdentity()) || (restore && _projectChatPicker?.IsOpen == true && _pickerScope != null))
+            { if (restore) AbandonSidebarRestore(); return; }
+            if (!restore) { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; }
+            var scope = new PickerScope { Project = project, General = general, Document = _chatDocumentGeneration, Focus = !restore,
                 Request = ++_pickerRequest, Directories = general ? new[] { _chatWorkspace() } : (_projectWorkspaces ?? new[] { _projectWorkspace ?? _chatWorkspace() }),
                 Name = general ? "Allgemeine Chats" : ProjectName(project.ProjectFile) };
             _pickerScope = scope;
-            if (_projectChatPicker == null) _projectChatPicker = new ProjectChatPicker(_historyButton, _theme);
-            _projectChatPicker.SelectAsync = id => SelectPickerChatAsync(scope, id);
-            _projectChatPicker.NewAsync = async () => {
+            var canManage = _chatSelection?.canManage == true;
+            var picker = EnsureProjectChatPicker();
+            picker.SelectAsync = id => SelectPickerChatAsync(scope, id);
+            picker.NewAsync = async () => {
                 CheckPicker(scope);
                 var before = _chatSelection?.sessionId;
                 await NewChatAsync(scope.General);
                 if (!PickerCurrent(scope)) throw new OperationCanceledException();
                 if (_chatSelection?.IsSelected != true || _chatSelection.sessionId == before || !CanPromptCurrentChat())
                     throw new InvalidOperationException("Der neue Chat wurde nicht bestätigt. Bitte zuerst den Verlauf neu laden.");
+                // The docked bar stays open and lists the new chat at once.
+                if (SidebarDocked()) await LoadPickerAsync(scope, false);
             };
-            _projectChatPicker.RetryAsync = () => LoadPickerAsync(scope, true);
-            _projectChatPicker.RenameAsync = _chatSelection.canManage ? (Func<string, string, Task>)((id, title) => ManagePickerChatAsync(scope, id, "rename", title)) : null;
-            _projectChatPicker.GenerateTitleAsync = _chatSelection.canManage ? (Func<string, Task>)(id => ManagePickerChatAsync(scope, id, "generate-title")) : null;
-            _projectChatPicker.ArchiveAsync = _chatSelection.canManage ? (Func<string, Task>)(id => ManagePickerChatAsync(scope, id, "archive")) : null;
-            _projectChatPicker.RestoreAsync = _chatSelection.canManage ? (Func<string, Task>)(id => ManagePickerChatAsync(scope, id, "restore")) : null;
+            picker.RetryAsync = () => LoadPickerAsync(scope, true);
+            picker.BackAsync = general && project != null ? (Func<Task>)(() => ShowProjectChatsAsync(false)) : null;
+            picker.RenameAsync = canManage ? (Func<string, string, Task>)((id, title) => ManagePickerChatAsync(scope, id, "rename", title)) : null;
+            picker.GenerateTitleAsync = canManage ? (Func<string, Task>)(id => ManagePickerChatAsync(scope, id, "generate-title")) : null;
+            picker.ArchiveAsync = canManage ? (Func<string, Task>)(id => ManagePickerChatAsync(scope, id, "archive")) : null;
+            picker.RestoreAsync = canManage ? (Func<string, Task>)(id => ManagePickerChatAsync(scope, id, "restore")) : null;
+            if (!restore && SidebarDocked() && project != null && !general) RememberSidebar(project, true);
             await LoadPickerAsync(scope, true);
         }
-        private async Task LoadPickerAsync(PickerScope scope, bool loading)
+        private Task LoadPickerAsync(PickerScope scope, bool loading) { return LoadPickerAsync(scope, loading, false); }
+        // quiet: a background refresh; a failure keeps the shown list.
+        private async Task LoadPickerAsync(PickerScope scope, bool loading, bool quiet)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (!PickerCurrent(scope)) return;
-            if (loading) _projectChatPicker.ShowLoading(scope.Name);
-            if (!_projectChatPicker.IsOpen) return;
+            var picker = _projectChatPicker;
+            if (picker == null) return;
+            if (loading)
+            {
+                picker.General = scope.General;
+                picker.ShowLoading(scope.Name, scope.Focus, !scope.Started);
+                scope.Started = true;
+                _sidebarProject = scope.Project;
+                _pickerUnknownSelection = null;
+                LayoutSidebar();
+            }
+            if (!picker.IsOpen) return;
+            _pickerRefreshing++;
             try
             {
                 scope.Entries = await PickerEntriesAsync(scope);
                 if (!PickerCurrent(scope)) return;
-                _projectChatPicker.Show(scope.Name, _chatSelection?.sessionId, scope.Entries.Select(entry => new ProjectChatPickerItem {
+                _pickerRefreshedAt = DateTime.UtcNow;
+                picker.Show(scope.Name, _chatSelection?.IsSelected == true ? _chatSelection.sessionId : null, scope.Entries.Select(entry => new ProjectChatPickerItem {
                     Id = entry.id, Title = entry.title, Updated = (long)Math.Max(0, Math.Min(entry.updated, 253402300799999d)), Busy = entry.busy, Archived = entry.archived }).ToArray());
             }
             catch (OperationCanceledException) { }
-            catch { if (PickerCurrent(scope)) _projectChatPicker.ShowError("Der Verlauf konnte nicht geladen werden. Deine Chats bleiben erhalten."); }
+            catch { if (!quiet && PickerCurrent(scope)) picker.ShowError("Der Verlauf konnte nicht geladen werden. Deine Chats bleiben erhalten."); }
+            finally { _pickerRefreshing--; }
         }
         private async Task<ChatSessionEntry[]> PickerEntriesAsync(PickerScope scope)
         {
@@ -106,12 +373,13 @@ namespace TwinCatAssistant.Native
                     : binding == null ? _mcpEnabled : binding.SameProjectContext(scope.Project);
             }).GroupBy(entry => entry.id).Select(group => group.First()).ToArray();
         }
+        // Switching conversations never stops an answer running in the previous one.
         private async Task SelectPickerChatAsync(PickerScope scope, string id)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var entries = await PickerEntriesAsync(scope);
             var target = entries.SingleOrDefault(entry => entry.id == id && !entry.archived);
-            if (target == null) throw new InvalidOperationException("Dieser Chat ist nicht mehr im ausgewählten Verlauf verfügbar.");
+            if (target == null) throw new InvalidOperationException("Dieser Chat ist nicht mehr unter den offenen Chats verfügbar.");
             CheckPicker(scope);
             // Bind first: another live IDE's conversation cannot be selected
             // and accidentally receive this window's context or prompt.
@@ -130,13 +398,15 @@ namespace TwinCatAssistant.Native
             }
             finally { _chatActionPending = false; if (!_disposed) await PollChatSelectionStateAsync(); }
         }
+        // "archive" and "restore" are the stored form of "Als erledigt
+        // markieren" and "Wieder öffnen"; history and attachments stay.
         private async Task ManagePickerChatAsync(PickerScope scope, string id, string action, string title = null)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var target = (await PickerEntriesAsync(scope)).SingleOrDefault(entry => entry.id == id);
             if (target == null) throw new InvalidOperationException("Dieser Chat gehört nicht zum ausgewählten Verlauf.");
             if ((action == "archive" || action == "generate-title") && target.busy) throw new InvalidOperationException("In diesem Chat läuft noch eine Antwort.");
-            if (action == "generate-title" && target.archived) throw new InvalidOperationException("Zuerst den archivierten Chat wiederherstellen.");
+            if (action == "generate-title" && target.archived) throw new InvalidOperationException("Zuerst den erledigten Chat wieder öffnen.");
             // Retain the existing live-IDE ownership check for management too.
             BindPickerChat(scope.General ? ChatContextBinding.CreateGeneral(_chatIdeInstance, System.Diagnostics.Process.GetCurrentProcess().Id, _origin.AbsoluteUri, id)
                 : ChatContextBinding.CreateProject(scope.Project, _chatIdeInstance, _origin.AbsoluteUri, id));
@@ -175,6 +445,8 @@ namespace TwinCatAssistant.Native
                 if (confirmed != "true") throw new InvalidOperationException("Änderung nicht bestätigt. Bitte vor einem erneuten Versuch den Verlauf laden.");
             }
             finally { _chatActionPending = false; if (!_disposed) await PollChatSelectionStateAsync(); }
+            // The open chat was marked done: show another open chat of this
+            // history (or a new one) and keep the bar in step.
             if (action == "archive" && selection.sessionId == id && PickerCurrent(scope))
             {
                 if (scope.General)
@@ -198,7 +470,7 @@ namespace TwinCatAssistant.Native
                 case "empty_history": return "Dieser Chat enthält noch keinen abgeschlossenen Austausch. Der bisherige Titel bleibt erhalten.";
                 case "history_unavailable": return "Der gespeicherte Chatverlauf konnte nicht vollständig geladen werden. Bitte erneut versuchen.";
                 case "chat_busy": return "In diesem Chat läuft noch eine Antwort oder sein Status ist noch nicht bestätigt. Bitte kurz warten.";
-                case "archived": return "Bitte zuerst den archivierten Chat wiederherstellen.";
+                case "archived": return "Bitte zuerst den erledigten Chat wieder öffnen.";
                 case "invalid_title": return "Der Modellanbieter hat einen fehlerhaften Titel geliefert. Der bisherige Titel bleibt erhalten. Bitte erneut versuchen.";
                 case "provider_failed": return "Der Modellanbieter konnte die Titelanfrage nicht abschließen. Bitte Anbieter und Modell prüfen. Der bisherige Titel bleibt erhalten.";
                 default: return "Die Titelanfrage wurde nicht bestätigt. Bitte den Verlauf neu laden und erneut versuchen. Der bisherige Titel bleibt erhalten.";

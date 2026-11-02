@@ -37,6 +37,7 @@
     <Compile Include="../NativeModelConsent.cs" Link="Shared/NativeModelConsent.cs" />
     <Compile Include="../ThreadExportIntegration.cs" Link="Shared/ThreadExportIntegration.cs" />
     <Compile Include="../ProjectChatPicker.cs" Link="Shared/ProjectChatPicker.cs" />
+    <Compile Include="../ProjectChatViewState.cs" Link="Shared/ProjectChatViewState.cs" />
     <Compile Include="../ProjectChatNavigation.cs" Link="Shared/ProjectChatNavigation.cs" />
     <VSCTCompile Include="../Commands.vsct"><ResourceName>Menus.ctmenu</ResourceName></VSCTCompile>
     <None Include="source.extension.vsixmanifest"><SubType>Designer</SubType></None>

@@ -14,12 +14,10 @@ function Test-ExistingChat {
     Set-Snapshot 'PLC_A' 'bRun := TRUE; // existing-chat PRG' 'PRG_Ablauf' 'PROGRAM PRG_Ablauf'
     if(-not (Field '_chatPreferences').AutoAttach){Invoke-Chat 'ToggleAutoAttachAsync'}
     Wait-Native { (JS 'window.__twinCatChat.state().attachedObject') -eq '"PRG_Ablauf / PLC_A"' } 'automatic attachment works in the new neighbouring chat'
-    $taskPickerType=$taskAssembly.GetType('TwinCatAssistant.Native.ProjectChatPicker')
-    $taskPicker=[Activator]::CreateInstance($taskPickerType,[object[]]@((Field '_historyButton'),(Field '_theme')))
-    $taskPickerType.GetField('_popup',$taskFlags).GetValue($taskPicker).StaysOpen=$true
-    $taskPickerType.GetField('_frame',$taskFlags).GetValue($taskPicker).Visibility=[Windows.Visibility]::Collapsed
-    Set-Field '_projectChatPicker' $taskPicker
+    $taskControl.GetType().GetMethod('CloseProjectChats',$taskFlags).Invoke($taskControl,@()) | Out-Null
     Invoke-Chat 'OpenHistoryAsync'
+    $taskPicker=Field '_projectChatPicker'
+    $taskPickerType=$taskPicker.GetType()
     Await-Task ($taskPickerType.GetProperty('SelectAsync').GetValue($taskPicker).DynamicInvoke([object[]]@($taskExisting)))|Out-Null
     Wait-Native { (Field '_chatSelection').sessionId -eq $taskExisting -and (Field '_chatSelection').presentationReady } 'selected historical conversation finishes loading'
     $taskPicker.Close()

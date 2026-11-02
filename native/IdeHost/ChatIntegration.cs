@@ -324,7 +324,7 @@ namespace TwinCatAssistant.Native
         private void RenderChatBinding()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_attachPouButton != null && !_disposed) RenderLoading();
+            if (_attachPouButton != null && !_disposed) { RenderLoading(); LayoutSidebar(); }
             if (_attachPouButton == null || _disposed || _holdingView) return;
             RenderKnowledge();
             // Automatic attachment runs quietly; only operator actions disable the bar.
@@ -388,6 +388,7 @@ namespace TwinCatAssistant.Native
                         + " PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.";
             RenderBanner(ready, identity, foreign);
             RenderDiagnostics();
+            UpdateSidebar();
         }
 
         private void RenderBanner(bool ready, NativeProjectIdentity identity, bool foreign)
@@ -477,7 +478,7 @@ namespace TwinCatAssistant.Native
         private void ToggleMenu()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            CloseProjectChats();
+            DismissProjectChatOverlay();
             _previewPopup.IsOpen = false;
             if (_menuPopup.IsOpen || JustClosed(_menuClosedAt)) { _menuPopup.IsOpen = false; return; }
             _menuItems.Children.Clear();

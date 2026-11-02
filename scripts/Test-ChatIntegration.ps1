@@ -341,7 +341,7 @@ console.log(JSON.stringify({ backendStarts: status.backendStarts, backendConnect
     }
     if ($TestProjectNavigation) {
         if ((JS 'window.__twinCatChat.state().canManage===true') -ne 'true') { throw 'Project navigation checks require the source contract.' }
-        . (Join-Path $PSScriptRoot 'Test-ProjectChatNavigation.ps1')
+        . ([ScriptBlock]::Create([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Test-ProjectChatNavigation.ps1'),[Text.Encoding]::UTF8)))
         Test-ProjectChatNavigation
         Write-Output "$taskCount project navigation integration checks passed. Private runtime and synthetic projects."
         return
@@ -656,7 +656,7 @@ console.log(JSON.stringify({ backendStarts: status.backendStarts, backendConnect
         }
     }
     if ((JS 'window.__twinCatChat.state().canManage===true') -eq 'true') {
-        . (Join-Path $PSScriptRoot 'Test-ProjectChatNavigation.ps1')
+        . ([ScriptBlock]::Create([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Test-ProjectChatNavigation.ps1'),[Text.Encoding]::UTF8)))
         Test-ProjectChatNavigation
     }
     if ((JS 'window.__twinCatChat.state().canManage===true') -eq 'true') {
