@@ -41,6 +41,11 @@ namespace TwinCatAssistant.Native
         private Button _historyButton, _newChatButton, _attachPouButton, _moreButton;
         private readonly ShapePath _attachIcon = new ShapePath { Width = 16, Height = 16, StrokeThickness = 1.6, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round, Margin = new Thickness(0, 0, 6, 0) };
         private readonly TextBlock _attachLabel = new TextBlock { FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center };
+        // Every label the attach button shows (see RenderChatBinding). Hidden
+        // copies reserve the widest one, so a state change neither resizes the
+        // button nor moves the history, new-chat and overflow buttons.
+        private static readonly string[] AttachLabels = { "Anhängen", "Wird angehängt", "Vorgemerkt", "Erneut anhängen", "Aktualisieren" };
+        private readonly Grid _attachLabelSizers = new Grid { IsHitTestVisible = false };
         // Banner: at most one actionable message, only when something needs attention.
         private readonly Border _banner = new Border { BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(12, 7, 8, 7), Visibility = Visibility.Collapsed };
         private readonly TextBlock _bannerText = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center };
@@ -48,7 +53,7 @@ namespace TwinCatAssistant.Native
         private Action _bannerCommand;
         private Button _bannerDismiss;
         private DateTime _previewClosedAt, _menuClosedAt;
-        // Popups: own HWNDs, so they render above the WebView2 airspace.
+        // Popups stay anchored to the context bar and close on browser focus.
         private readonly Popup _previewPopup = new Popup { Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true, VerticalOffset = 4 };
         private readonly TextBlock _previewTitle = new TextBlock { FontWeight = FontWeights.SemiBold, FontSize = 12.5 };
         private readonly TextBlock _sourceNotice = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
@@ -71,9 +76,18 @@ namespace TwinCatAssistant.Native
         private readonly TextBlock _inventoryStatus = new TextBlock { Text = "Inventar nicht geladen. Die Editor-Verfolgung nutzt diesen Katalog nicht.", TextWrapping = TextWrapping.Wrap };
         private readonly TextBox _port = new TextBox { Text = "3123", Width = 70, Margin = new Thickness(4), VerticalContentAlignment = VerticalAlignment.Center };
         private readonly ComboBox _targets = new ComboBox { MinWidth = 180, Margin = new Thickness(4), DisplayMemberPath = "Name" };
-        private WebView2 _browser = new WebView2();
+        // Participate in WPF composition so IDE auto-hide panes can cover chat.
+        // The windowed WebView2 HwndHost draws above overlapping WPF panels.
+        private WebView2CompositionControl _browser = new WebView2CompositionControl();
         private bool _browserNeedsReset;
         private readonly StackPanel _toolbar = new StackPanel();
+        // Chat area: the chat bar column (docked) beside the conversation, or
+        // the bar above a scrim (overlay). Plain WPF composition, no popup.
+        private readonly Grid _chatArea = new Grid();
+        private readonly ColumnDefinition _sidebarColumn = new ColumnDefinition { Width = new GridLength(0) };
+        private readonly Border _sidebarHost = new Border { Visibility = Visibility.Collapsed };
+        private readonly Border _sidebarScrim = new Border { Visibility = Visibility.Collapsed, Background = FrozenScrim() };
+        private readonly DropShadowEffect _sidebarShadow = new DropShadowEffect { BlurRadius = 18, ShadowDepth = 3, Direction = 0, Opacity = 0.22 };
         private readonly TextBox _diagnosticSource = new TextBox { IsReadOnly = true, AcceptsReturn = true,
             FontFamily = new FontFamily("Consolas, Courier New"), MaxHeight = 180, Visibility = Visibility.Collapsed,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -110,12 +124,21 @@ namespace TwinCatAssistant.Native
             _toolbar.Children.Add(_diagnostics);
             DockPanel.SetDock(_toolbar, Dock.Top);
             dock.Children.Add(_toolbar);
-            var grid = new Grid();
-            grid.Children.Add(BuildSplash());
-            grid.Children.Add(_browser);
-            dock.Children.Add(grid);
+            _chatArea.ColumnDefinitions.Add(_sidebarColumn);
+            _chatArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var splash = BuildSplash();
+            Grid.SetColumnSpan(splash, 2);
+            _chatArea.Children.Add(splash);
+            Grid.SetColumn(_browser, 1);
+            _chatArea.Children.Add(_browser);
+            Grid.SetColumnSpan(_sidebarScrim, 2);
+            _chatArea.Children.Add(_sidebarScrim);
+            _chatArea.Children.Add(_sidebarHost);
+            dock.Children.Add(_chatArea);
             Content = dock;
-            _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; };
+            _browser.GotFocus += OnBrowserGotFocus;
+            SizeChanged += OnSidebarSizeChanged;
+            PreviewMouseDown += OnSidebarOutsideMouseDown;
             _chatHealth = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(3) };
             _chatHealth.Tick += CheckChatHealth;
             _viewHold.Tick += (sender, args) => { _viewHold.Stop(); if (_holdingView) { _holdingView = false; RenderContext(_chatActive, _heldReason); } };
@@ -140,17 +163,23 @@ namespace TwinCatAssistant.Native
             _pouButton.Content = identity;
             _pouButton.SetResourceReference(StyleProperty, "Tc.Button");
             _pouButton.Click += (sender, args) => {
+                DismissProjectChatOverlay();
                 _menuPopup.IsOpen = false;
                 if (!JustClosed(_previewClosedAt)) _previewPopup.IsOpen = !_previewPopup.IsOpen && _chatActive != null;
             };
             _previewPopup.Closed += (sender, args) => _previewClosedAt = DateTime.UtcNow;
             _menuPopup.Closed += (sender, args) => _menuClosedAt = DateTime.UtcNow;
             _statusChip.Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { _statusDot, _statusText } };
-            _historyButton = IconButton("history", "Verlauf dieses Projekts", OpenHistoryAsync);
+            _historyButton = IconButton("history", "Chats dieses Projekts anzeigen", OpenHistoryAsync);
             _newChatButton = IconButton("plus", "Neuer Chat", NewProjectChatAsync);
             _attachPouButton = AsyncButton(null, AttachClickAsync);
             _attachPouButton.SetResourceReference(StyleProperty, "Tc.PrimaryButton");
-            _attachPouButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { _attachIcon, _attachLabel } };
+            foreach (var label in AttachLabels)
+                _attachLabelSizers.Children.Add(new TextBlock { Text = label, FontSize = _attachLabel.FontSize, Visibility = Visibility.Hidden,
+                    Margin = new Thickness(_attachIcon.Width + 6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+            _attachPouButton.Content = new Grid { Children = { _attachLabelSizers,
+                new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Children = { _attachIcon, _attachLabel } } } };
+            _attachPouButton.SetBinding(System.Windows.Automation.AutomationProperties.NameProperty, new System.Windows.Data.Binding("Text") { Source = _attachLabel });
             _attachIcon.SetBinding(Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = _attachPouButton });
             _attachLabel.SetBinding(TextBlock.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { Source = _attachPouButton });
             _attachPouButton.Margin = new Thickness(6, 0, 2, 0);
@@ -226,6 +255,7 @@ namespace TwinCatAssistant.Native
         private void FitStrip(double width)
         {
             _attachLabel.Visibility = width < 460 ? Visibility.Collapsed : Visibility.Visible;
+            _attachLabelSizers.Visibility = _attachLabel.Visibility;
             _attachIcon.Margin = width < 460 ? new Thickness(0) : new Thickness(0, 0, 6, 0);
             _statusText.Visibility = width < 380 ? Visibility.Collapsed : Visibility.Visible;
             _statusDot.Margin = width < 380 ? new Thickness(0) : new Thickness(0, 0, 5, 0);
@@ -237,6 +267,16 @@ namespace TwinCatAssistant.Native
         private static bool JustClosed(DateTime closedAt) { return (DateTime.UtcNow - closedAt).TotalMilliseconds < 300; }
 
         private static UIElement Docked(UIElement element, Dock dock) { DockPanel.SetDock(element, dock); return element; }
+
+        private static Brush FrozenScrim() { var brush = new SolidColorBrush(Color.FromArgb(0x47, 0, 0, 0)); brush.Freeze(); return brush; }
+
+        // The narrow overlay gives way to the conversation; the docked bar stays.
+        private void OnBrowserGotFocus(object sender, RoutedEventArgs args)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            _menuPopup.IsOpen = false; _previewPopup.IsOpen = false;
+            DismissProjectChatOverlay();
+        }
 
         private Border PopupFrame(UIElement content, double width)
         {
@@ -336,7 +376,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _chatActive = snapshot;
-            if (snapshot?.Identity != null) _chatProject = snapshot.Identity.ProjectIdentity;
+            if (snapshot?.Identity != null) { CloseProjectChatsOnChange(snapshot.Identity.ProjectIdentity); _chatProject = snapshot.Identity.ProjectIdentity; }
             if (_disposed) return;
             if (snapshot == null && _showingPou && ActiveEditorTracker.IsTransient(reason))
             {
@@ -372,6 +412,7 @@ namespace TwinCatAssistant.Native
         private void RenderProjectContext(NativeProjectIdentity project, string reason)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            CloseProjectChatsOnChange(project);
             _chatProject = project;
             if (_disposed || _holdingView) return;
             if (_chatActive != null && !_chatActive.Identity.ProjectIdentity.Equals(project))
@@ -488,15 +529,18 @@ namespace TwinCatAssistant.Native
                 {
                     var oldBrowser = _browser;
                     var grid = (Grid)oldBrowser.Parent;
-                    _browser = new WebView2();
-                    _browser.GotFocus += (sender, args) => { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; };
+                    var index = grid.Children.IndexOf(oldBrowser);
+                    oldBrowser.GotFocus -= OnBrowserGotFocus;
+                    _browser = new WebView2CompositionControl();
+                    _browser.GotFocus += OnBrowserGotFocus;
                     grid.Children.Remove(oldBrowser);
                     oldBrowser.Dispose();
-                    grid.Children.Insert(0, _browser);
+                    Grid.SetColumn(_browser, 1);
+                    grid.Children.Insert(Math.Max(0, index), _browser);
                     _browserNeedsReset = false;
                 }
-                // Hidden, not collapsed: the control keeps its window for
-                // initialization while the loading screen stays visible.
+                // Hidden, not collapsed: retain layout and initialization
+                // while the loading screen stays visible.
                 _browser.Visibility = Visibility.Hidden;
                 if (_browser.CoreWebView2 == null)
                 {
@@ -656,6 +700,7 @@ namespace TwinCatAssistant.Native
                     {
                         await PollChatSelectionAsync();
                         ShowChatStatus();
+                        RefreshSidebar(false);
                     }
                 }
                 finally { _checkingChatHealth = false; }
@@ -684,6 +729,10 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
             _disposed = true;
+            SizeChanged -= OnSidebarSizeChanged;
+            PreviewMouseDown -= OnSidebarOutsideMouseDown;
+            _projectChatPicker?.Dispose();
+            _sidebarHost.Child = null;
             _chatConnection.Dispose();
             _chatHealth.Stop();
             _chatHealth.Tick -= CheckChatHealth;

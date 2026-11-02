@@ -35,7 +35,7 @@ const AGENT_COLOR_VARIABLES = Object.freeze(['--syntax-keyword', '--syntax-type'
 // Compatibility with the installed 0.1.9 distribution. Source builds use the
 // existing OpenCode SDK wrapper instead. This is a global session-list route;
 // reading history does not start an MCP location for every stored chat.
-export async function storedProjectSessions(fetch, directory) {
+export async function storedProjectSessions(fetch, directory, includeArchived = false) {
   const items = [];
   const seen = new Set();
   let cursor;
@@ -46,7 +46,9 @@ export async function storedProjectSessions(fetch, directory) {
     if (!response.ok) throw new Error('Stored project history unavailable');
     const page = await response.json();
     if (!Array.isArray(page.data)) throw new Error('Invalid stored project history');
-    items.push(...page.data.filter(item => !item.parentID && !item.time?.archived).map(item => ({ id: item.id, updated: item.time?.updated })));
+    items.push(...page.data.filter(item => !item.parentID && (includeArchived || !item.time?.archived)).map(item => ({ id: item.id, updated: item.time?.updated,
+      ...(typeof item.title === 'string' ? { title: item.title.slice(0, 512) } : {}),
+      ...(includeArchived ? { archived: Boolean(item.time?.archived) } : {}) })));
     cursor = page.cursor?.next;
     if (cursor && (typeof cursor !== 'string' || seen.has(cursor))) throw new Error('Invalid project history cursor');
     if (cursor) seen.add(cursor);
@@ -119,6 +121,8 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
   // Automatic attachment reuses one chip ID, so the composer replaces that
   // chip in place on every POU switch instead of adding another one.
   const staged = new Map();
+  const queuedDrafts = new Map();
+  const knownHistory = new Map();
   let creating = false;
   const pending = id => input.getState().pendingGuestIssue?.providerId === 'twincat-assistant' && input.getState().pendingGuestIssue.id === id;
   const present = () => {
@@ -141,6 +145,9 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
   };
   const unsubscribe = sessions.subscribe(state => {
     if (selected === state.currentSessionId) return;
+    const queued = input.getState().pendingGuestIssue;
+    if (queued?.providerId === 'twincat-assistant' && queued.id !== 'Aktiver Baustein' && queued.data?.mode !== 'following') queuedDrafts.set(selected, queued);
+    else queuedDrafts.delete(selected);
     selected = state.currentSessionId;
     epoch++;
     permission = null;
@@ -148,7 +155,10 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
     staged.clear();
     source?.setContext('', null);
     clearPending();
+    const restore = queuedDrafts.get(selected);
+    if (restore) { queuedDrafts.delete(selected); input.getState().setPendingGuestIssue(restore); }
   });
+  const unsubscribeUI = ui.subscribe(value => { if (value.isSidebarOpen) ui.getState().setSidebarOpen(false); });
   ui.getState().setSidebarOpen(false);
   ui.getState().setDraftStartersVisible(false);
   ui.getState().setShowOpenCodeUpdateNotifications(false);
@@ -178,7 +188,7 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
     // Source builds report committed history readiness. The older distribution
     // retains the native host's markup and project-binding checks.
     return { version: 1, ready: true, presentationReady: source ? source.presentationReady?.() === true : true,
-      authenticated: authenticated(), canExport: typeof source?.exportThread === 'function', documentId, sessionId: value.currentSessionId ?? null,
+      authenticated: authenticated(), canExport: typeof source?.exportThread === 'function', canManage: typeof source?.manageSession === 'function', documentId, sessionId: value.currentSessionId ?? null,
       directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(), mcp: mcp(), mcpObservation: mcpObservation(),
       manualAttachmentPending: !!pending && pending.id !== 'Aktiver Baustein' && pending.data?.mode !== 'following',
       model: model?.currentProviderId && model?.currentModelId ? model.currentProviderId + '/' + model.currentModelId : null,
@@ -204,7 +214,9 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
     },
     clearFollowing,
     permit(expected) {
-      permission = matches(expected) ? { ...expected } : null;
+      const next = matches(expected) ? { ...expected } : null;
+      if (permission?.contextKey !== next?.contextKey) knownHistory.clear();
+      permission = next;
       if (!permission) clearPending();
       const context = permission?.context;
       if (context && (Object.keys(context).some(key => !['project', 'object', 'treePath', 'sourceKind', 'reference', 'objectKind', 'owner', 'member'].includes(key))
@@ -246,10 +258,10 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
       return { sessionId: selected, epoch, attachedObject: item.title };
     },
     async newChat({ title, directory }) {
-      if (creating || typeof title !== 'string' || title.length > 200 || typeof directory !== 'string' || !directory) throw new Error('Invalid new chat');
+      if (creating || (title != null && (typeof title !== 'string' || title.length > 200)) || typeof directory !== 'string' || !directory) throw new Error('Invalid new chat');
       creating = true;
       try {
-        const result = await sessions.getState().createSession(title, directory);
+        const result = await sessions.getState().createSession(title ?? undefined, directory);
         if (!result?.id) throw new Error('Chat creation failed');
         return state();
       } finally { creating = false; }
@@ -263,28 +275,50 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
         .map(item => ({ id: item.id, updated: Number(item.time?.updated) || 0 }))
         .sort((a, b) => b.updated - a.updated).slice(0, 200);
     },
-    async storedSessions(directory) {
+    async storedSessions(directory, includeArchived = false) {
+      const historyContext = permission?.contextKey;
       const directories = Array.isArray(directory) ? directory : [directory];
       if (!directories.length || directories.length > 64 || directories.some(value => typeof value !== 'string' || !value || value.length > 2048) || typeof loadSessions !== 'function')
         throw new Error('Stored project history unavailable');
       const list = [];
       for (const value of [...new Set(directories)]) {
         const path = value.replace(/\\/g, '/');
-        const items = await loadSessions(path);
+        const items = await loadSessions(path, includeArchived);
         if (!Array.isArray(items)) throw new Error('Invalid stored project history');
         list.push(...items.map(item => ({ ...item, directory: path })));
         if (list.length > 20000) throw new Error('Project history exceeds the native metadata limit');
       }
-      return list.filter(item => typeof item?.id === 'string' && SESSION_ID.test(item.id))
-        .map(item => ({ id: item.id, updated: Number(item.updated) || 0, directory: item.directory }))
+      const result = list.filter(item => typeof item?.id === 'string' && SESSION_ID.test(item.id))
+        .map(item => ({ id: item.id, updated: Number(item.updated) || 0, directory: item.directory,
+          ...(typeof item.title === 'string' ? { title: item.title.slice(0, 512) } : {}),
+          ...(typeof item.archived === 'boolean' ? { archived: item.archived } : {}),
+          ...(typeof item.busy === 'boolean' ? { busy: item.busy } : {}) }))
         .sort((a, b) => b.updated - a.updated);
+      for (const item of result) knownHistory.set(item.id, { ...item, contextKey: historyContext });
+      return result;
+    },
+    async manageSession(expected, request) {
+      const assertCurrent = () => {
+        if (!authenticated() || !matches(expected) || !permission || !matches(permission) || permission.contextKey !== expected.contextKey)
+          throw new Error('Chat selection changed');
+      };
+      assertCurrent();
+      const target = knownHistory.get(request?.id);
+      if (!target || target.contextKey !== expected.contextKey || target.directory !== request.directory || typeof source?.manageSession !== 'function')
+        throw new Error('Chat is outside the reviewed history');
+      if (!['rename', 'generate-title', 'archive', 'restore'].includes(request.action)) throw new Error('Unsupported chat action');
+      if (request.action === 'generate-title' && (target.archived || target.busy)) throw new Error('Chat is archived or busy');
+      if (request.action === 'rename' && (typeof request.title !== 'string' || !request.title.trim() || request.title.length > 512 || /[\x00-\x1f\x7f]/.test(request.title)))
+        throw new Error('Invalid chat title');
+      return await source.manageSession({ id: target.id, directory: target.directory, action: request.action,
+        ...(request.action === 'rename' ? { title: request.title.trim() } : {}) }, assertCurrent);
     },
     selectSession(id, directory) {
       if (typeof id !== 'string' || !SESSION_ID.test(id) || typeof sessions.getState().setCurrentSession !== 'function') return false;
       if (selected !== id) sessions.getState().setCurrentSession(id, directory);
       return sessions.getState().currentSessionId === id;
     },
-    toggleChats() { ui.getState().toggleSidebar(); },
+    toggleChats() { ui.getState().setSidebarOpen(false); },
     openSettings() { ui.getState().setSettingsPage('providers'); ui.getState().setSettingsDialogOpen(true); },
     async refreshPolicy(expected, provider, model = null) {
       if (!matches(expected) || typeof reloadPolicy !== 'function') throw new Error('Chat selection changed');
@@ -294,7 +328,7 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
       if (!matches(expected)) throw new Error('Chat selection changed');
       return true;
     },
-    dispose() { unsubscribe(); clearPending(); source?.setContext('', null); permission = null; permissionChanged(false); },
+    dispose() { unsubscribe(); unsubscribeUI(); clearPending(); source?.setContext('', null); permission = null; permissionChanged(false); },
   });
 }
 
@@ -401,7 +435,7 @@ export async function installEmbeddedChat(scope = window) {
   const markComposer = () => {
     for (const form of scope.document.querySelectorAll('form:has([data-testid="chat-input"])')) form.inert = !composerAllowed;
   };
-  const loadSessions = source ? directory => source.sessions(directory) : directory => storedProjectSessions(scope.fetch.bind(scope), directory);
+  const loadSessions = source ? (directory, archived) => source.sessions(directory, archived) : (directory, archived) => storedProjectSessions(scope.fetch.bind(scope), directory, archived);
   const adapter = createChatAdapter({ ui: base.u, sessions: chat.z, input: chat.du, config: chat.l, source, loadSessions, reloadPolicy,
     providers: () => connectedProviders, allowed: () => enabledProviders,
     mcp: () => mcpDirectory === currentDirectory() ? connectedMcp : [],

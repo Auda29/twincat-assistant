@@ -7,6 +7,32 @@ import { opencodeClient } from '@/lib/opencode/client';
 import { z } from 'zod';
 import type { ComposerReference } from '@/components/chat/composer/composerReferences';
 import { buildExportFilename, formatSessionAsMarkdown, type SessionMessageRecord } from '@/lib/exportSession';
+import React from 'react';
+import { getChatDraftIdentityKey, type ChatDraftIdentity } from '@/lib/chatDraftPersistence';
+import { useGlobalSessionsStore, resolveGlobalSessionDirectory } from '@/stores/useGlobalSessionsStore';
+import { archiveSession, unarchiveSession, updateSessionTitle } from '@/sync/session-actions';
+import { registerSessionDirectory } from '@/sync/sync-refs';
+import { collectSessionTitleTurns, generateSessionTitle } from '@/lib/sessionTitle';
+import { generateAndSaveSessionTitle, runSessionTitleGeneration } from '@/sync/session-title-generation';
+import { getRuntimeKey } from '@/lib/runtime-switch';
+
+function titleFailure(code: string) { return Object.assign(new Error('Chat title operation failed'), { code }); }
+export function validateTwinCatGeneratedTitle(value: string): string {
+  const title = value.normalize('NFC').trim();
+  if (!title || /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\ufffd]|\p{Surrogate}/u.test(title)) throw titleFailure('invalid_title');
+  // Preserve valid Unicode, including CJK titles. Reject malformed paired
+  // punctuation observed in model output, rather than guessing missing text.
+  const pairs = new Map([['【', '】'], ['「', '」'], ['『', '』'], ['（', '）'], ['［', '］'], ['｛', '｝']]);
+  const closers = new Set(pairs.values());
+  const stack: string[] = [];
+  for (const char of title) {
+    const close = pairs.get(char);
+    if (close) stack.push(close);
+    else if (closers.has(char) && stack.pop() !== char) throw titleFailure('invalid_title');
+  }
+  if (stack.length) throw titleFailure('invalid_title');
+  return title;
+}
 
 type Reference = { id: string; title: string; revision: string | null; reference: string; mode: 'following' | 'manual' };
 type Context = { project: string; object: string | null; treePath: string | null; sourceKind: string | null; reference?: string | null;
@@ -14,6 +40,32 @@ type Context = { project: string; object: string | null; treePath: string | null
 let active = false;
 const embeddingListeners = new Set<() => void>();
 export const isTwinCatEmbedded = () => active;
+// Text and file drafts already use the original per-chat stores. Keep the
+// composer's linked references with that same identity instead of transferring
+// the local React array to whichever conversation mounts next.
+const referenceDrafts = new Map<string, ComposerReference[]>();
+const referenceListeners = new Set<() => void>();
+const emptyReferences: ComposerReference[] = [];
+export function useTwinCatComposerReferences(identity: ChatDraftIdentity | null) {
+  const [ordinary, setOrdinary] = React.useState<ComposerReference[]>([]);
+  const key = active && identity ? getChatDraftIdentityKey(identity) : null;
+  const references = React.useSyncExternalStore(
+    React.useCallback((listener: () => void) => { referenceListeners.add(listener); return () => { referenceListeners.delete(listener); }; }, []),
+    React.useCallback(() => key ? referenceDrafts.get(key) ?? emptyReferences : emptyReferences, [key]),
+    () => emptyReferences,
+  );
+  const update = React.useCallback<React.Dispatch<React.SetStateAction<ComposerReference[]>>>((value) => {
+    if (!key) { setOrdinary(value); return; }
+    const before = referenceDrafts.get(key) ?? emptyReferences;
+    // React defines SetStateAction as a value-or-updater union, not wire data.
+    // oxlint-disable-next-line anti-slop/no-runtime-typeof
+    const after = typeof value === 'function' ? value(before) : value;
+    if (after === before) return;
+    if (after.length) referenceDrafts.set(key, after); else referenceDrafts.delete(key);
+    for (const listener of referenceListeners) listener();
+  }, [key]);
+  return [key ? references : ordinary, update] as const;
+}
 export const TWINCAT_ANALYSIS_PROFILE = 'twincat-readonly';
 // One native profile policy for menus, keyboard cycling and @ mentions.
 // Keep the original catalog and stored profile IDs intact.
@@ -144,17 +196,88 @@ export const twinCatSource = {
     return { observed: composer?.sessionId === sessionId, references: composer?.sessionId === sessionId ? composer.references : [],
       submitted: sent.get(sessionId) ?? [] };
   },
-  async sessions(directory: string) {
+  async sessions(directory: string, includeArchived = false) {
     const items = [];
+    const status = await opencodeClient.getHostSessionStatusSnapshot();
+    const seen = new Set<string>();
     let cursor: string | undefined;
     do {
       const page = await opencodeClient.listSessionsPage({ directory, cursor, limit: 200 });
-      items.push(...page.sessions.filter(item => !item.parentID && !item.time?.archived)
-        .map(item => ({ id: item.id, updated: item.time.updated, directory })));
-      if (page.cursor.next === cursor && cursor) throw new Error('Project history cursor did not advance');
+      for (const item of page.sessions) {
+        // Populate the original action store, including archived records, so
+        // rename/archive/restore retain upstream reconciliation and semantics.
+        if (item.directory.replace(/\\/g, '/').toLowerCase() !== directory.replace(/\\/g, '/').toLowerCase()) throw new Error('Foreign project history');
+        useGlobalSessionsStore.getState().upsertSession(item);
+        registerSessionDirectory(item.id, directory);
+        if (!item.parentID && (includeArchived || !item.time?.archived)) {
+          const state = status?.sessions[item.id]?.status;
+          items.push({ id: item.id, updated: item.time.updated, directory, title: item.title.slice(0, 512),
+            archived: Boolean(item.time.archived), busy: Boolean(state && !['idle', 'completed', 'error', 'aborted'].includes(state)) });
+        }
+      }
+      if (page.cursor.next && seen.has(page.cursor.next)) throw new Error('Project history cursor did not advance');
+      if (page.cursor.next) seen.add(page.cursor.next);
       cursor = page.cursor.next;
       if (items.length > 20000) throw new Error('Project history exceeds the native metadata limit');
     } while (cursor);
     return items;
+  },
+  async manageSession(request: { id: string; directory: string; action: 'rename' | 'generate-title' | 'archive' | 'restore'; title?: string }, assertCurrent: () => void) {
+    assertCurrent();
+    const session = await opencodeClient.getSession(request.id, request.directory);
+    const actual = resolveGlobalSessionDirectory(session);
+    if (session.parentID || (actual && actual.replace(/\\/g, '/').toLowerCase() !== request.directory.replace(/\\/g, '/').toLowerCase()))
+      throw new Error('Chat belongs to another project');
+    assertCurrent();
+    useGlobalSessionsStore.getState().upsertSession(session);
+    registerSessionDirectory(session.id, request.directory);
+    if (request.action === 'generate-title') {
+      const exporter = threadExport;
+      if (!active || !exporter) throw titleFailure('history_unavailable');
+      if (session.time.archived) throw titleFailure('archived');
+      const status = await opencodeClient.getHostSessionStatusSnapshot();
+      const state = status?.sessions[request.id]?.status;
+      if (!status || (state && !['idle', 'completed', 'error', 'aborted'].includes(state))) throw titleFailure('chat_busy');
+      assertCurrent();
+      const runtimeKey = getRuntimeKey();
+      await runSessionTitleGeneration({ runtimeKey, directory: request.directory, sessionID: request.id }, async signal => {
+        await generateAndSaveSessionTitle({
+          signal,
+          prepare: async () => {
+            assertCurrent();
+            const records = await exporter.load({ directory: request.directory, sessionID: request.id }).catch(() => { throw titleFailure('history_unavailable'); });
+            assertCurrent();
+            if (!records) throw titleFailure('history_unavailable');
+            const turns = collectSessionTitleTurns(records, session.revert?.messageID);
+            if (!turns.length) throw titleFailure('empty_history');
+            return { session, turns };
+          },
+          generate: async (turns, signal) => {
+            for (let attempt = 0; attempt < 2; attempt++) {
+              assertCurrent(); signal.throwIfAborted();
+              let title: string;
+              try { title = await generateSessionTitle({ turns, directory: request.directory, sessionID: request.id, signal }); }
+              catch (error) { signal.throwIfAborted(); throw titleFailure(error instanceof z.ZodError ? 'invalid_title' : 'provider_failed'); }
+              try { return validateTwinCatGeneratedTitle(title); }
+              catch (error) { if (attempt === 1) throw error; }
+            }
+            throw titleFailure('invalid_title');
+          },
+          readSession: () => { assertCurrent(); return opencodeClient.getSession(request.id, request.directory); },
+          saveTitle: (title, signal) => { assertCurrent(); return updateSessionTitle(request.id, title, { directory: request.directory, expectedRuntimeKey: runtimeKey, signal }); },
+        });
+      });
+    }
+    else if (request.action === 'rename') await updateSessionTitle(request.id, request.title!, { directory: request.directory });
+    else if (request.action === 'archive') {
+      const status = await opencodeClient.getHostSessionStatusSnapshot();
+      const state = status?.sessions[request.id]?.status;
+      if (!status || (state && !['idle', 'completed', 'error', 'aborted'].includes(state))) throw new Error('Chat is active or its status is unknown');
+      assertCurrent();
+      if (!await archiveSession(request.id)) throw new Error('Archive failed');
+    } else if (request.action === 'restore') {
+      if (!await unarchiveSession(request.id)) throw new Error('Restore failed');
+    } else throw new Error('Unsupported chat action');
+    return true;
   },
 };

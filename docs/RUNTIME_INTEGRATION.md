@@ -21,8 +21,9 @@ operator credential contents.
 New project indexes use canonical solution and PLC-project paths, excluding
 model choice, MCP configuration and IDE process ID. The index adopts the most
 recent matching 0.1.9 workspace in place. All matching historical configuration
-directories participate in restoration, ordered by the actual session update
-time. Selecting an older conversation revalidates its workspace against this
+directories participate in restoration. The last selected chat is preferred;
+the most recently updated active conversation is the fallback. Selecting an
+older conversation revalidates its workspace against this
 exact project and supplies the current reviewed MCP configuration there. Existing
 directories, session IDs and chat records stay in place. No automatic project
 move/rename migration is introduced.
@@ -44,14 +45,21 @@ chat. Each asynchronous result is checked against the current page/project.
 
 ### Agreed project chat navigation, 2026-10-30
 
-This decision is accepted; its navigation changes are not yet implemented. The
-current clock still toggles the general OpenChamber sidebar, and project
-restoration currently prefers the most recently updated stored conversation.
+Implemented on `feat/project-chat-navigation` on 2026-11-02, initially as a
+compact WPF picker. The agreed follow-up replaces that popup with a collapsible
+native chat sidebar. The embedded source UI continues to omit the generic
+OpenChamber sidebar and its project/folder controls, statistics, info and updater.
+Existing model/provider settings remain reachable through the native menu.
 
 - Each PLC project may have multiple persistent conversations, with one shown
   at a time. Separate topics do not need to share one ever-growing transcript.
-- The clock opens a compact list of this PLC project's conversations, showing
-  their titles and last activity. It replaces the general folder/project sidebar.
+- The clock toggles a left-hand list of this PLC project's conversations,
+  showing titles, last activity and observed running responses. The header has
+  the project name, **Neuer Chat** and title search.
+- In a wide tool window the list sits beside the conversation and remains open
+  during selection. In a narrow window it overlays the conversation within the
+  tool window and closes after selection. Escape and an outside click dismiss
+  the overlay. Opening the list does not mount general repository controls.
 - The plus button explicitly starts another conversation in the current project.
 - Reopening or switching back to a project restores its last selected
   conversation. Selection must survive IDE/runtime restarts and is distinct
@@ -61,8 +69,114 @@ restoration currently prefers the most recently updated stored conversation.
   editor independently.
 - General chats remain separate and accessible through the existing menu.
 
-Reuse the existing conversation storage, paged history loading and project
-binding checks. Preserve existing chats and IDs. Remember selection under the
+The navigation provides inline rename and **Titel automatisch generieren**.
+**Als erledigt markieren** moves a chat to the initially collapsed **Erledigte
+Chats** section; **Wieder öffnen** returns it to the active list. These are UI
+terms for the original archive/restore session actions and stored archive flag;
+conversation IDs, contents and sent attachments are preserved without a data
+migration. Marking a chat as done describes the conversation's work state,
+not engineering approval of its contents. The selected chat is highlighted.
+Switching chats does not send an abort request. Chats with running responses
+cannot be marked as done; the action rechecks current host status before
+submitting the original archive request. There is no permanent-delete command.
+New chats use the original default-title path instead of forcing the PLC name
+as a manually supplied title.
+
+The original Core title generator remains in use. It starts from the first
+admitted user prompt while the chat still has the exact original fallback
+title. The earlier native host supplied the PLC name as an explicit title, so
+those existing conversations are considered named and do not automatically get
+retitled. New chats created by the installed `dfb50b1` use the original untitled
+creation path. The follow-up exposes **Titel automatisch generieren** in each
+active conversation's row menu. It uses OpenChamber's original complete-history
+loader, completed-turn selection, small-model title request and guarded title
+save. Busy/archived chats are excluded. A missing completed exchange or failed
+request preserves the existing title. Generation starts only on an explicit
+click, not while listing conversations; there is no bulk rename. The first
+title/attachment follow-up was installed locally at `5720c5a` on 2026-11-02.
+The corrections below were installed locally at `1140c66` on 2026-11-02.
+The operator subsequently reported that the remaining tested functions work,
+covering the existing-chat attachment, stable button sizing and generated-title
+follow-up. This is user-reported acceptance of that installed state, separate
+from the next navigation redesign and its automated fixture evidence.
+
+The same follow-up corrects automatic attachment bookkeeping. A failed fresh
+editor read or unconfirmed composer queue no longer counts as a successful
+attachment. The host retries at most three times per session/page/revision with
+a minimum one-second interval, then offers an explicit retry action. A new page,
+changed POU revision or restored project context gets its own attempt state.
+After confirmed staging, removing the chip still suppresses replay in the same
+unchanged context. PRG/PROGRAM uses the same attachment path as FB/FUNCTION;
+the parser already accepted all three. A synthetic WebView case makes the first
+fresh PRG read fail, then verifies recovery without changing its revision.
+
+The existing-conversation regression uses completed synthetic user/assistant
+messages instead of testing only empty chats. It reproduced a missing attachment
+with the prior composer implementation: after switching sessions, the original
+guest-attachment callback retained the initial reference setter. That setter is
+now scoped to a draft identity, so the callback must depend on it. The overlay
+updates that dependency; it keeps captured async draft operations associated with
+their original chat. Automatic attachment also waits for committed history/input
+readiness. Native source attachment preserves the project permission key and
+active-object metadata, rather than temporarily changing history scope to a
+source revision or clearing the active context.
+
+The attachment button reserves the measured space for every current label in
+each responsive mode. Changing between attaching, staged and update states keeps
+the clock, new-chat and overflow controls at the same rendered positions. Compact
+mode remains icon-only. The picker de-duplicates a repeated leading error
+sentence while retaining useful controlled host details.
+
+The reported generated title contained an unbalanced `】【。` sequence in the
+stored title itself; WPF did not introduce those characters. Generated-title
+validation preserves Unicode and checks control/replacement/unpaired-surrogate
+characters and malformed paired CJK punctuation. One malformed punctuation
+result gets one further request through the original generator. Repeated invalid
+output preserves the existing title. Manual titles and stored historical titles
+are not bulk-rewritten. Empty history, unavailable history, a busy chat, failed
+provider requests and invalid generated titles have distinct controlled error
+codes and German messages.
+
+`Test-ExistingChat.ps1` exercises real history loading, the actual original title
+pipeline and durable title updates with canned model HTTP responses. Its two
+completed messages are synthetic and seeded only into a guarded private fixture
+database. No customer transcript is copied or submitted. The fixture also
+overrides native preferences before startup so its auto-attach setting never
+writes the operator's preferences. It runs as part of the combined source test
+and can be selected directly with `-TestExistingChat`.
+
+Selection metadata is stored atomically as
+`native-chat/threads/project-<profile-and-project-hash>.selection` below the
+Assistant's local application-data directory. The key includes the operator
+state root, solution and PLC-project paths. It excludes IDE PID, listener port,
+model and MCP configuration. Conversation IDs and bodies stay in the existing
+OpenCode database; archive state remains owned by the existing OpenChamber
+session actions. A metadata lookup failure does not create a replacement chat.
+
+The sidebar's open/closed preference is separate presentation metadata in
+`native-chat/threads/project-<profile-and-project-hash>.view`, keyed by the same
+stable profile, solution and PLC-project identity. PID, listener port and a
+project's display name do not determine this preference. Invalid preference
+files fall back to the default view and cannot authorize chat operations.
+
+Text/file drafts continue to use the original per-chat stores. Linked composer
+references are scoped to the same runtime/directory/session identity, and a
+manual reference still in the input mailbox is retained for its original chat.
+Neither is transferred to the newly selected chat. Linked-reference drafts are
+kept in memory for chat switches; this does not add durable snapshot-draft
+storage across a full browser or IDE restart. Sent attachments remain part of
+the durable transcript as before.
+
+Each history request has its own bounded completion slot. Project/page changes
+invalidate native navigation actions; late metadata cannot reopen a closed bar or
+authorize a management action in a different project. General history has a
+separate menu entry and remains filtered out of the PLC list. Live IDE
+ownership and exact project/workspace checks still apply to selection and
+management. No model request or agent permission change is needed to manage
+conversation metadata.
+
+The implementation reuses the existing conversation storage, paged history
+loading and project binding checks, preserving existing chats and IDs. It remembers selection under the
 stable operator/project identity, independently of IDE PID, port and model.
 History errors retain their retry behavior and must not create replacement
 conversations. Project chats share their configured project tools and Knowledge
@@ -197,6 +311,35 @@ splash stays visible until both this handoff and the selected history are ready.
 Standalone web, Electron, VS Code, hosted mobile and Capacitor keep their existing
 startup animation; only the native host activates the TwinCAT embedding flag.
 
+## Docked IDE panels and browser composition
+
+The native chat uses `WebView2CompositionControl` from the existing pinned
+WebView2 SDK, including when recreating the browser after process failure.
+The windowed `WebView2` inherits `HwndHost` and can draw over WPF auto-hide panes,
+leaving only the upper part of Properties or Toolbox visible. The composition
+control participates in WPF drawing order, clipping and input routing. Microsoft
+documents it as the replacement for this
+[WPF airspace issue](https://learn.microsoft.com/en-us/microsoft-edge/webview2/platforms/wpf).
+The SDK version, chat API, private browser profile and navigation policy stay
+unchanged. Browser composition can have a lower frame rate than HWND hosting;
+scrolling, selection and text input remain part of installed IDE acceptance.
+
+The 2026-11-02 local check builds X86 and Amd64 and passes 97 native policy/context
+cases, 52 WPF view cases and 98 source-runtime WebView2 integration cases with
+both real MCPs and synthetic projects/help. The new regression renders the real
+browser and overlapping WPF panels into one WPF bitmap at 390 and 900 pixels.
+Pixel checks confirm both surfaces, WPF hit testing reaches each panel's button,
+and hiding it reveals the same browser document and chat session. This does not
+combine an independent browser screenshot over the native capture, since that
+would conceal an HWND airspace failure.
+
+The panels in this regression are synthetic Properties/Toolbox stand-ins.
+The change was installed as part of the local `dfb50b1` test build on
+2026-11-02. The operator subsequently accepted the requested docking fix in
+TwinCAT; the supplied Properties screenshot shows the IDE pane drawing above
+the chat. This acceptance does not establish every floating-pane, DPI or
+long-running input/scrolling scenario.
+
 ## Thread copy and Markdown export
 
 The native overflow menu exposes **Gesamten Chat kopieren** and **Chat als Markdown
@@ -215,11 +358,10 @@ a partial export. Results are limited to eight million UTF-16 code units; they a
 never silently truncated. The bridge passes text and a safe suggested filename;
 it does not expose a native filesystem API or change the download-deny policy.
 
-The overlay handoff and thread-export additions on `feat/thread-export-startup`
-are prepared changes awaiting the next combined build/test pass. That pass needs
-actual hidden-WebView startup checks, a paginated history export, clipboard/save
-and cancellation, plus stale-selection and failure/size cases. The validation
-results for 2026-10-30 below describe the preceding merged `e328df4` stand.
+The overlay handoff and thread-export additions were merged through PR #12 and
+installed on 2026-10-30 at `8eebfb0`. On 2026-11-02, the operator manually
+accepted both copying the chat history and saving its Markdown export in the
+installed Assistant. Manual acceptance of these two features is complete.
 
 Startup presentation and branding are covered by the combined checks below,
 including delayed history readiness, page reload and both themes in WebView2.
@@ -245,6 +387,89 @@ retain the object they referred to when queued; delivery does not replace it
 with the editor's later active object.
 
 ## Validation scope
+
+The 2026-11-02 collapsible-sidebar candidate passes 97 Node cases, eight browser
+contracts, both native host builds, 126 native policy/context/chat cases,
+210 WPF host checks and 94 sidebar-component checks. The component fixture
+renders light and dark views at 340, 390, 768 and 1100 px, including loading,
+errors, search, inline rename, running responses and completed conversations.
+The actual source WebView2 fixture passes 160 combined checks with both MCPs
+and private synthetic projects/history/help. It verifies sidebar/WebView bounds,
+focus and clock behavior in both width modes, persisted open state, separation
+of general/project preferences, completion/reopening under existing IDs, drafts,
+and restoration after an actual owned runtime restart. Existing-chat PRG
+attachment and title generation are retained, with synthetic model responses.
+The 49 monitored operator/profile/chat files remain unchanged during these
+isolated checks. These are local results; the new sidebar still needs installed
+manual IDE acceptance. No paid model call or PLC source change is involved.
+
+The existing-chat/layout/title correction passes 146 combined real-source
+WebView checks and a separate 37-check existing-chat run with synthetic completed
+history and model HTTP responses. The prior callback implementation fails the
+existing-chat attachment case; changing only readiness/budget checks does not
+fix it. Updating the guest callback's setter dependency restores the reference
+to the selected conversation. The positive title test verifies actual durable
+Unicode title updates, one invalid-output retry, preservation after repeated
+invalid output, and distinct provider-failure reporting. Both themes pass.
+
+Both native builds and 106 native policy/context checks pass. WPF fixtures verify
+the actual neighbouring toolbar bounds across the five labels and responsive
+widths, error de-duplication and unchanged Unicode titles. The layout regression
+fails against the prior build. The 97 Node cases, eight browser contracts,
+UI/web type checks, overlay lint and four original composer test files pass.
+No customer transcript or paid model request is used for these tests. Real IDE
+acceptance of this correction follows deployment separately.
+
+The title/automatic-attachment follow-up passes 97 Node cases, eight browser
+contracts, both native builds, 106 native policy/context cases, 52 WPF checks,
+62 picker UI checks and 138 combined real-source WebView2 checks with both MCPs
+and synthetic data. The combined run verifies PRG attachment after a deliberately
+failed first fresh editor read, and that the new native title action rejects an
+empty conversation without changing its stored title or session identity.
+The 21 original OpenChamber title tests pass, covering completed-turn context,
+title cleanup, generation, failure/cancellation, manual edits and runtime changes.
+UI/web type checks and overlay lint pass. No paid model request was made; actual
+provider-generated titles and the updated menu still require installed manual
+acceptance. This run also passes both themes, but does not explain the earlier
+installed combined-run theme timeout or prove that intermittent issue resolved.
+
+The 2026-11-02 navigation change passes 96 Node component cases, eight browser
+contracts, both native host builds, 100 shared native policy/context cases and
+52 WPF view checks. UI and web TypeScript checks, source-overlay lint and four
+original composer test files pass. The picker UI fixture passes 41 checks for
+light/dark layouts, search, actions, errors, keyboard handling and stale results.
+
+The combined real-source WebView2 run passes 131 checks with both MCPs and
+synthetic projects/help. An additional 62-check focused navigation run also
+exercises the final picker New action. These runs verify durable rename,
+archive/restore under the original IDs, separate PLC/general history, per-chat
+text/manual-reference drafts, and restoration of an older selected chat after
+another chat gets a newer update and the actual owned runtime restarts. History
+failures preserve conversations; project changes close the picker and reject
+stale actions. Readbacks from older selection epochs cannot overwrite a newer
+native observation.
+
+The integration fixture keeps its picker frame hidden so backend tests do not
+capture the operator's mouse; the separate 41-case UI fixture renders the actual
+popup. These are local results, not GitHub CI. No real provider request, PLC edit
+or operator-database migration is performed by these fixtures.
+
+The local test build `dfb50b1` was installed on 2026-11-02 with all 13 native
+payload hashes verified and 38 protected operator files unchanged during the
+installation and isolated tests. The installed navigation run passed 62 checks;
+a separate installed theme/docking probe passed 32 checks. The installed
+combined run passed 96 checks before timing out on the light-to-dark transition
+after the resize/capture sequence. That run failed; its cause remains unresolved
+despite the independent dark-light-dark probe passing. This is separate from
+the earlier 131-check source-worktree result.
+
+After installation, the operator reported that the requested manual checks work:
+project-chat navigation and management, per-chat drafts/attachments, restoration
+after restarting the IDE, and Properties/Toolbox overlap. This is the manual
+functional acceptance for the local X86 build. It does not close the combined
+theme-test timeout or establish exhaustive keyboard, DPI, floating-pane or
+long-running acceptance. The repeated project names in historical chat titles
+were reported separately and are explained by the earlier explicit title rule.
 
 The 2026-10-30 combined pass builds both native hosts and the updated source UI.
 It passes 92 Node tests, eight browser checks, 97 shared native policy/context

@@ -35,7 +35,7 @@
     "changes": [
       [
         "import React from 'react';",
-        "import React from 'react';\nimport { publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts, twinCatAttachmentMode, keepTwinCatReference, isTwinCatEmbedded, twinCatSelectableAgents, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { useTwinCatComposerReferences, publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts, twinCatAttachmentMode, keepTwinCatReference, isTwinCatEmbedded, twinCatSelectableAgents, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
       ],
       [
         "        if (!isPermissionAutoAcceptInteractive) return false;",
@@ -84,6 +84,14 @@
       [
         "    const currentAgentName = pinnedComposerSelection?.agent ?? configAgentName;",
         "    const currentAgentName = isTwinCatEmbedded() ? TWINCAT_ANALYSIS_PROFILE : pinnedComposerSelection?.agent ?? configAgentName;"
+      ],
+      [
+        "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);",
+        "const [linkedReferences, setLinkedReferences] = useTwinCatComposerReferences(chatDraftIdentity);"
+      ],
+      [
+        "        useGuestDialogStore.getState().close();\n    }, []);\n    React.useEffect(() => {\n        if (!pendingGuestIssue || columnPinned)",
+        "        useGuestDialogStore.getState().close();\n    }, [setLinkedReferences]);\n    React.useEffect(() => {\n        if (!pendingGuestIssue || columnPinned)"
       ]
     ]
   },
@@ -563,6 +571,31 @@
       [
         "    return list;\n  }, [\n    t,",
         "    return twinCatEmbedded\n      ? list.filter(command => !['toggle-terminal', 'open-notes', 'open-todos'].includes(command.id))\n      : list;\n  }, [\n    twinCatEmbedded,\n    t,"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/layout/MainLayout.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);",
+        "const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);"
+      ],
+      [
+        "<TitlebarLeftControls />",
+        "{!twinCatEmbedded && <TitlebarLeftControls />}"
+      ],
+      [
+        "<Sidebar\n",
+        "{!twinCatEmbedded && <Sidebar\n"
+      ],
+      [
+        "</Sidebar>",
+        "</Sidebar>}"
       ]
     ]
   }

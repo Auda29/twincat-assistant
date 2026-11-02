@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath,[switch]$TestKnowledgeSetup,[string]$KnowledgeStateSource,[switch]$TestExistingThemeProfile)
+param([Parameter(Mandatory=$true)][string]$DotNetRoot,[string]$McpSettingsPath,[switch]$TestKnowledgeSetup,[string]$KnowledgeStateSource,[switch]$TestExistingThemeProfile,[switch]$TestProjectNavigation,[switch]$TestExistingChat)
 $ErrorActionPreference = 'Stop'
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'Run with powershell.exe -NoProfile -STA.' }
 # Actual built host + WebView2 + pinned runtime. Only the editor snapshots and
@@ -95,7 +95,78 @@ function Wait-Native([scriptblock]$Condition,[string]$Name,[int]$Seconds=40) {
     Write-Output ('COMPOSER '+(JS 'JSON.stringify({state:window.__twinCatChat?.state(),composer:window.__twinCatSource?.composer(window.__twinCatChat?.state().sessionId)})'))
     throw ('Native automation did not reach: '+$Name)
 }
-function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; // synthetic context fixture',[string]$Object='FB_Motor') {
+function Assert-DockingOverlays {
+    # Real WPF/WebView rendering, not a browser-only CapturePreview composited
+    # over native controls. The latter cannot detect HWND airspace problems.
+    $taskSurface=New-Object Windows.Controls.Grid
+    $taskOriginalWidth=$taskWindow.Width
+    $taskDocument=JS 'window.__twinCatChat.state().documentId'
+    $taskSessionBefore=JS 'window.__twinCatChat.state().sessionId'
+    $taskEvidence=Join-Path $taskRepo 'local-data/chat-integration-views'
+    [IO.Directory]::CreateDirectory($taskEvidence) | Out-Null
+    $taskWindow.Content=$null; $taskSurface.Children.Add($taskControl) | Out-Null; $taskWindow.Content=$taskSurface
+    $taskPanel=New-Object Windows.Controls.Border
+    $taskPanel.Background=[Windows.Media.SolidColorBrush]::new([Windows.Media.Color]::FromRgb(113,206,134))
+    $taskPanel.HorizontalAlignment=[Windows.HorizontalAlignment]::Right
+    $taskPanel.VerticalAlignment=[Windows.VerticalAlignment]::Top
+    $taskPanel.Padding=[Windows.Thickness]::new(12)
+    $taskCaption=New-Object Windows.Controls.TextBlock
+    $taskCaption.Foreground=[Windows.Media.Brushes]::Black
+    $taskButton=New-Object Windows.Controls.Button
+    $taskButton.Content='Fixture action'; $taskButton.Margin=[Windows.Thickness]::new(0,12,0,0)
+    $script:taskDockingClicks=0
+    $taskButton.add_Click({ $script:taskDockingClicks++ })
+    $taskPanel.Child=[Windows.Controls.StackPanel]::new()
+    $taskPanel.Child.Children.Add($taskCaption) | Out-Null; $taskPanel.Child.Children.Add($taskButton) | Out-Null
+    $taskSurface.Children.Add($taskPanel) | Out-Null
+    function Capture-Docking {
+        $taskFrame=[Windows.Media.Imaging.RenderTargetBitmap]::new([int][Math]::Ceiling($taskSurface.ActualWidth),[int][Math]::Ceiling($taskSurface.ActualHeight),96,96,[Windows.Media.PixelFormats]::Pbgra32)
+        $taskFrame.Render($taskSurface)
+        return $taskFrame
+    }
+    function Docking-Pixel($Frame,[Windows.Point]$Point) {
+        $taskBytes=New-Object byte[] 4
+        $Frame.CopyPixels([Windows.Int32Rect]::new([int]$Point.X,[int]$Point.Y,1,1),$taskBytes,4,0)
+        return [Windows.Media.Color]::FromArgb($taskBytes[3],$taskBytes[2],$taskBytes[1],$taskBytes[0])
+    }
+    try {
+        JS '(()=>{const e=document.createElement("div");e.id="fixture-docking-marker";e.style.cssText="position:fixed;inset:0;z-index:2147483647;background:rgb(18,104,204)";document.body.append(e)})()' | Out-Null
+        foreach ($taskWidth in @(390,900)) {
+            $taskWindow.Width=$taskWidth; Pump 200
+            $taskOrigin=$taskBrowser.TransformToAncestor($taskSurface).Transform([Windows.Point]::new(0,0))
+            $taskPanel.Width=$taskSurface.ActualWidth*0.55
+            $taskPanel.Height=[Math]::Min(220,$taskBrowser.ActualHeight-20)
+            $taskPanel.Margin=[Windows.Thickness]::new(0,$taskOrigin.Y+10,0,0)
+            foreach ($taskName in @('Properties','Toolbox')) {
+                $taskCaption.Text=$taskName+' (synthetic docking panel)'; $taskPanel.Visibility=[Windows.Visibility]::Visible; Pump 150
+                $taskPanelOrigin=$taskPanel.TransformToAncestor($taskSurface).Transform([Windows.Point]::new(0,0))
+                $taskPanelPoint=[Windows.Point]::new($taskPanelOrigin.X+12,$taskPanelOrigin.Y+$taskPanel.ActualHeight-12)
+                $taskBrowserPoint=[Windows.Point]::new($taskOrigin.X+12,$taskPanelPoint.Y)
+                $taskDeadline=[DateTime]::UtcNow.AddSeconds(12)
+                do {
+                    Pump 100; $taskFrame=Capture-Docking; $taskBrowserPixel=Docking-Pixel $taskFrame $taskBrowserPoint
+                } while ($taskBrowserPixel.ToString() -ne '#FF1268CC' -and [DateTime]::UtcNow -lt $taskDeadline)
+                Assert-Integration ($taskBrowserPixel.ToString() -eq '#FF1268CC') ('real browser pixels participate in WPF composition at '+$taskWidth+'px')
+                Assert-Integration ((Docking-Pixel $taskFrame $taskPanelPoint).ToString() -eq '#FF71CE86') ($taskName+' renders above the browser at '+$taskWidth+'px')
+                $taskButtonPoint=$taskButton.TransformToAncestor($taskSurface).Transform([Windows.Point]::new($taskButton.ActualWidth/2,$taskButton.ActualHeight/2))
+                $taskHit=$taskSurface.InputHitTest($taskButtonPoint)
+                while ($taskHit -and $taskHit -ne $taskButton) { $taskHit=[Windows.Media.VisualTreeHelper]::GetParent($taskHit) }
+                Assert-Integration ($taskHit -eq $taskButton) ($taskName+' receives WPF input above the browser at '+$taskWidth+'px')
+                $taskButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+                $taskEncoder=[Windows.Media.Imaging.PngBitmapEncoder]::new(); $taskEncoder.Frames.Add([Windows.Media.Imaging.BitmapFrame]::Create($taskFrame))
+                $taskFile=[IO.File]::Create((Join-Path $taskEvidence ('docking-'+$taskName.ToLowerInvariant()+'-'+$taskWidth+'.png')))
+                try { $taskEncoder.Save($taskFile) } finally { $taskFile.Dispose() }
+                $taskPanel.Visibility=[Windows.Visibility]::Collapsed; Pump 150
+                Assert-Integration ((Docking-Pixel (Capture-Docking) $taskPanelPoint).ToString() -eq '#FF1268CC') ('closing '+$taskName+' reveals the same browser at '+$taskWidth+'px')
+            }
+        }
+        Assert-Integration ($script:taskDockingClicks -eq 4 -and (JS 'window.__twinCatChat.state().documentId') -eq $taskDocument -and (JS 'window.__twinCatChat.state().sessionId') -eq $taskSessionBefore) 'overlay actions preserve the existing chat document and session'
+    } finally {
+        JS 'document.getElementById("fixture-docking-marker")?.remove()' | Out-Null
+        $taskSurface.Children.Remove($taskControl); $taskWindow.Content=$null; $taskWindow.Content=$taskControl; $taskWindow.Width=$taskOriginalWidth; Pump 150
+    }
+}
+function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; // synthetic context fixture',[string]$Object='FB_Motor',[string]$Declaration) {
     $global:taskIntegrationSnapshot = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorSnapshot'))
     $taskIdentityType = $taskAssembly.GetType('TwinCatAssistant.Native.ActiveEditorIdentity')
     $taskIdentityConstructor = $taskIdentityType.GetConstructor([type[]]@([int],[string],[string],[string],[string]))
@@ -103,14 +174,14 @@ function Set-Snapshot([string]$Project,[string]$Implementation='bRun := TRUE; //
         [int]$PID,[string](Join-Path $taskRoot 'ContextChecks.sln'),[string](Join-Path $taskRoot ($Project+'.plcproj')),
         [string](Join-Path $taskRoot ($Project+'/'+$Object+'.TcPOU')),[string]('TIPC/'+$Project+'/POUs/'+$Object)))
     $global:taskIntegrationSnapshot.ObjectName = $Object
-    $global:taskIntegrationSnapshot.Declaration = 'FUNCTION_BLOCK '+$Object
+    $global:taskIntegrationSnapshot.Declaration = if($Declaration){$Declaration}else{'FUNCTION_BLOCK '+$Object}
     $global:taskIntegrationSnapshot.Implementation = $Implementation
     $global:taskIntegrationSnapshot.SourceKind = 'Automation Interface snapshot'
     $global:taskIntegrationProject = $global:taskIntegrationSnapshot.Identity.ProjectIdentity
     [IO.Directory]::CreateDirectory((Join-Path $taskRoot $Project)) | Out-Null
     [IO.File]::WriteAllText((Join-Path $taskRoot 'ContextChecks.sln'),'Synthetic fixture solution')
     [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'.plcproj')),('<Project><ItemGroup><Compile Include="'+$Project+'/'+$Object+'.TcPOU" /></ItemGroup></Project>'))
-    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'/'+$Object+'.TcPOU')),('<TcPlcObject><POU Name="'+$Object+'" Id="{7317284c-267c-4963-959d-8629b64f2090}"><Declaration><![CDATA[FUNCTION_BLOCK '+$Object+']]></Declaration><Implementation><ST><![CDATA['+$Implementation+']]></ST></Implementation></POU></TcPlcObject>'))
+    [IO.File]::WriteAllText((Join-Path $taskRoot ($Project+'/'+$Object+'.TcPOU')),('<TcPlcObject><POU Name="'+$Object+'" Id="{7317284c-267c-4963-959d-8629b64f2090}"><Declaration><![CDATA['+$global:taskIntegrationSnapshot.Declaration+']]></Declaration><Implementation><ST><![CDATA['+$Implementation+']]></ST></Implementation></POU></TcPlcObject>'))
     $taskControl.GetType().GetMethod('RenderContext',$taskFlags).Invoke($taskControl,[object[]]@($global:taskIntegrationSnapshot,$null))
 }
 $taskConfig = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatConfiguration'))
@@ -128,6 +199,19 @@ $taskPassword = 'synthetic-' + [Guid]::NewGuid().ToString('N')
 $taskSession = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatSession'))
 $taskControl = $null; $taskWindow = $null
 try {
+    if ($KnowledgeStateSource) {
+        # Seed the already activated corpus before starting the runtime. Copying
+        # active.json after broker startup tests activation and starts a second
+        # backend; it does not measure an ordinary cold start.
+        $taskEmptySettings=Join-Path $taskRoot 'initial-settings.json'
+        [IO.File]::WriteAllText($taskEmptySettings,'{}',[Text.UTF8Encoding]::new($false))
+        & $taskConfig.NodePath (Join-Path $taskRepo 'src\cli.mjs') init --settings $taskEmptySettings --state $taskConfig.StateRoot | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Could not initialize the isolated corpus fixture profile.' }
+        $taskKnowledgeTarget=Join-Path $taskConfig.StateRoot 'knowledge\state'
+        [IO.Directory]::CreateDirectory($taskKnowledgeTarget) | Out-Null
+        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'state\active.json') -Destination (Join-Path $taskKnowledgeTarget 'active.json')
+        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'receipt.json') -Destination (Join-Path $taskConfig.StateRoot 'knowledge\receipt.json')
+    }
     if ($TestExistingThemeProfile) {
         # Exercise a real previously initialized profile, not only settings.json
         # or a first-run browser. The canonical profile wins upstream reads.
@@ -136,13 +220,8 @@ try {
         $taskOldThemeProfile='{"version":1,"fields":{"lightThemeId":{"value":"openchamber-light","updatedAt":1,"surfaces":{"web":{"value":"openchamber-light","updatedAt":2}}},"darkThemeId":{"value":"openchamber-dark","updatedAt":3,"surfaces":{"web":{"value":"openchamber-dark","updatedAt":4}}}}}'
         [IO.File]::WriteAllText((Join-Path $taskConfig.StateRoot 'openchamber\preferences.json'),$taskOldThemeProfile,[Text.UTF8Encoding]::new($false))
     }
+    $taskStartupClock=[Diagnostics.Stopwatch]::StartNew()
     Await-Task ($taskSession.StartAsync($taskConfig,$taskPort,$taskPassword)) | Out-Null
-    if ($KnowledgeStateSource) {
-        $taskKnowledgeTarget=Join-Path $taskConfig.StateRoot 'knowledge\state'
-        [IO.Directory]::CreateDirectory($taskKnowledgeTarget) | Out-Null
-        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'state\active.json') -Destination (Join-Path $taskKnowledgeTarget 'active.json')
-        Copy-Item -LiteralPath (Join-Path $KnowledgeStateSource 'receipt.json') -Destination (Join-Path $taskConfig.StateRoot 'knowledge\receipt.json')
-    }
     $taskControl = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.AssistantControl'))
     $taskInitialPreferences = [Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatPreferences'),[object[]]@([string](Join-Path $taskRoot 'initial-preferences')))
     Set-Field '_chatPreferences' $taskInitialPreferences
@@ -157,6 +236,8 @@ try {
     $taskCredentials.Save($taskPassword)
     Set-Field '_chatCredentials' $taskCredentials
     Set-Field '_chatSnapshotReader' ([Func[TwinCatAssistant.Native.ActiveEditorSnapshot]]{ return $global:taskIntegrationSnapshot })
+    $taskPrivatePreferences=[Activator]::CreateInstance($taskAssembly.GetType('TwinCatAssistant.Native.NativeChatPreferences'),[object[]]@([string](Join-Path $taskRoot 'preferences')))
+    Set-Field '_chatPreferences' $taskPrivatePreferences
     Set-Field '_chatProjectReader' ([Func[TwinCatAssistant.Native.NativeProjectIdentity]]{ return $global:taskIntegrationProject })
     (Field '_port').Text = [string]$taskPort
     Set-Snapshot 'PLC_A'
@@ -198,6 +279,11 @@ try {
         (Field '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'hidden WebView initializes and authenticates, then reveals chat and bar together'
     Assert-Integration (Field '_attachPouButton').IsEnabled 'opening a POU creates and binds its project chat automatically'
     if ((JS '!!window.__twinCatSource') -eq 'true') {
+        # Do not let an already-running poll publish the old readiness value
+        # after the synthetic presentation delay has been installed.
+        (Field '_chatHealth').Stop()
+        $taskPresentationDeadline=[DateTime]::UtcNow.AddSeconds(20)
+        while (((Field '_chatPolling') -or (Field '_automating') -or (Field '_chatActionPending')) -and [DateTime]::UtcNow -lt $taskPresentationDeadline) { Pump 50 }
         JS 'window.__fixturePresentation=window.__twinCatSource.presentationReady;window.__twinCatSource.presentationReady=()=>false' | Out-Null
         $taskControl.GetType().GetMethod('ResetLoading',$taskFlags).Invoke($taskControl,@())
         Invoke-Chat 'PollChatSelectionAsync'
@@ -206,6 +292,7 @@ try {
             (Field '_splash').Visibility -eq [Windows.Visibility]::Visible) 'authenticated mounted chat still waits for committed history readiness'
         JS 'window.__twinCatSource.presentationReady=window.__fixturePresentation;delete window.__fixturePresentation' | Out-Null
         Wait-Native { (Field '_browser').Visibility -eq [Windows.Visibility]::Visible } 'history readiness releases startup presentation'
+        (Field '_chatHealth').Start()
     }
     # Simulate the gap between adapter installation and React mounting its chat.
     # Keep the real adapter/authentication alive; only withhold the UI markers.
@@ -222,13 +309,41 @@ try {
     Wait-Native { (Field '_strip').Visibility -eq [Windows.Visibility]::Visible } 'chat presentation after mounting' 15
     (Field '_chatHealth').Start()
     Assert-Integration ((Field '_strip').Visibility -eq [Windows.Visibility]::Visible -and (Field '_browser').Visibility -eq [Windows.Visibility]::Visible) 'mounting the real chat completes loading'
+    Assert-DockingOverlays
     if ($McpSettingsPath) {
         Wait-JS "window.__twinCatChat.state().mcp.filter(s=>s.status==='connected').length===2" $(if($KnowledgeStateSource){600}else{45})
         Assert-Integration ((Field '_chatSelection').directory.Replace('\','/').Contains('/projects/')) 'native project chat uses its isolated MCP workspace'
     }
     if ($KnowledgeStateSource) {
         Assert-Integration ((Field '_knowledgeState').ready -and (Field '_knowledgeState').topics -gt 49000) 'the real installed German corpus is recognized in an isolated native chat profile'
+        Write-Output ('KNOWLEDGE_NATIVE_CONNECTED elapsedMs='+$taskStartupClock.ElapsedMilliseconds)
+        $taskBrokerCheck=@'
+import assert from 'node:assert/strict';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const [state, repo] = process.argv.slice(2);
+const { knowledgeBrokerStatus } = await import(pathToFileURL(join(repo, 'src', 'knowledge-client.mjs')).href);
+const status = await knowledgeBrokerStatus(join(state, 'knowledge', 'broker.json'));
+assert.equal(status.backendStarts, 1, 'an already activated corpus must load once');
+assert.equal(status.backendConnected, true);
+console.log(JSON.stringify({ backendStarts: status.backendStarts, backendConnected: status.backendConnected }));
+'@
+        $taskBrokerCheck | & $taskConfig.NodePath --input-type=module - $taskConfig.StateRoot $taskRepo
+        if ($LASTEXITCODE -ne 0) { throw 'Ordinary cold corpus startup must reuse one backend.' }
         Write-Output 'Real corpus/native runtime startup passed; no operator credentials or model requests used.'
+        return
+    }
+    if ($TestExistingChat) {
+        . ([ScriptBlock]::Create([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Test-ExistingChat.ps1'),[Text.Encoding]::UTF8)))
+        Test-ExistingChat
+        Write-Output "$taskCount existing-chat integration checks passed. Synthetic history and model responses."
+        return
+    }
+    if ($TestProjectNavigation) {
+        if ((JS 'window.__twinCatChat.state().canManage===true') -ne 'true') { throw 'Project navigation checks require the source contract.' }
+        . ([ScriptBlock]::Create([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Test-ProjectChatNavigation.ps1'),[Text.Encoding]::UTF8)))
+        Test-ProjectChatNavigation
+        Write-Output "$taskCount project navigation integration checks passed. Private runtime and synthetic projects."
         return
     }
     $taskFirstSession = (Field '_chatSelection').sessionId
@@ -417,6 +532,19 @@ try {
     $taskSavedPreferences = $taskPreferencesType.GetMethod('Load').Invoke($null,[object[]]@([string](Join-Path $taskRoot 'preferences')))
     Assert-Integration ($taskPreferences.AutoAttach -and $taskSavedPreferences.AutoAttach) 'the real menu action enables and persists automatic attachment'
     Assert-Integration ((JS 'document.body.innerText.includes("FB_Motor / PLC_A")') -eq 'true') 'auto-attach stages the active POU when the operator enabled it'
+    $taskOriginalSnapshotReader=Field '_chatSnapshotReader'
+    $global:taskAutomaticSnapshotFailures=1
+    $global:taskAutomaticSnapshotReads=0
+    Set-Field '_chatSnapshotReader' ([Func[TwinCatAssistant.Native.ActiveEditorSnapshot]]{
+        $global:taskAutomaticSnapshotReads++
+        if($global:taskAutomaticSnapshotFailures -gt 0){$global:taskAutomaticSnapshotFailures--;return $null}
+        return $global:taskIntegrationSnapshot
+    })
+    try {
+        Set-Snapshot 'PLC_A' 'bRun := TRUE; // PRG after a transient unavailable editor' 'PRG_Ablauf' 'PROGRAM PRG_Ablauf'
+        Wait-Native { (Field '_kindText').Text -eq 'PRG' -and (JS 'window.__twinCatChat.state().attachedObject') -eq '"PRG_Ablauf / PLC_A"' } 'automatic PROGRAM attachment recovers from the first failed fresh snapshot read'
+        Assert-Integration ($global:taskAutomaticSnapshotFailures -eq 0 -and $global:taskAutomaticSnapshotReads -ge 3) 'PROGRAM/PRG is attached automatically with the original revision after a bounded retry'
+    } finally { Set-Field '_chatSnapshotReader' $taskOriginalSnapshotReader }
     $taskAutoRevision = JS 'window.__twinCatChat.state().attachedRevision'
     Set-Snapshot 'PLC_A' 'bRun := FALSE; // edited synthetic fixture'
     Wait-Native { (JS 'window.__twinCatChat.state().attachedRevision') -ne $taskAutoRevision } 'auto-attach of a changed revision'
@@ -526,6 +654,14 @@ try {
             $taskScreenshot = [IO.File]::Create((Join-Path $taskEvidence ('assistant-'+$taskVariant+'-'+$taskWidth+'.png')))
             try { $taskEncoder.Save($taskScreenshot) } finally { $taskScreenshot.Dispose() }
         }
+    }
+    if ((JS 'window.__twinCatChat.state().canManage===true') -eq 'true') {
+        . ([ScriptBlock]::Create([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Test-ProjectChatNavigation.ps1'),[Text.Encoding]::UTF8)))
+        Test-ProjectChatNavigation
+    }
+    if ((JS 'window.__twinCatChat.state().canManage===true') -eq 'true') {
+        . ([ScriptBlock]::Create([IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Test-ExistingChat.ps1'),[Text.Encoding]::UTF8)))
+        Test-ExistingChat
     }
     Write-Output "$taskCount native embedded integration checks passed. Synthetic editor snapshots; no IDE/compiler/model acceptance claimed."
     Write-Output ('Fixture evidence: '+$taskRoot)
