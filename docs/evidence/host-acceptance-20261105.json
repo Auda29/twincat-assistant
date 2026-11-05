@@ -1,0 +1,630 @@
+{
+  "schemaVersion": 1,
+  "recordedUtc": "2026-11-05T13:21:21.878837Z",
+  "sourceBaseline": "cebd35a",
+  "scope": "real x86 host, current-source out-of-process reader/policy; no installed UI or first-after-logon acceptance",
+  "runs": [
+    {
+      "run": "host-acceptance-0bba2f8fb51341e090a6b99c978f9768",
+      "records": [
+        {
+          "gate": "launch",
+          "expected": "new process, private registry suffix; no operator DTE access",
+          "observed": {
+            "pid": 7768,
+            "suffix": "AssistantAcceptance02346c1163204d13886eb90eea76fbfc"
+          },
+          "utc": "2026-11-05T13:02:02.773Z"
+        },
+        {
+          "gate": "isolation",
+          "expected": "DTE.RegistryRoot includes exact unique suffix before any solution operation",
+          "observed": {
+            "registry": "Software\\Beckhoff\\TcXaeShell\\15.0_IsoShell_AssistantAcceptance02346c1163204d13886eb90eea76fbfc",
+            "passed": true
+          },
+          "utc": "2026-11-05T13:02:15.061Z"
+        },
+        {
+          "gate": "runner-error",
+          "expected": "no unhandled host errors",
+          "observed": {
+            "type": "COMException",
+            "hresult": -1739522047
+          },
+          "utc": "2026-11-05T13:02:53.628Z"
+        },
+        {
+          "gate": "owned-host-shutdown",
+          "expected": "normal exit of owned shell",
+          "observed": {
+            "pid": 7768,
+            "passed": false,
+            "exitCode": null
+          },
+          "utc": "2026-11-05T13:03:03.734Z"
+        }
+      ],
+      "summary": {
+        "schemaVersion": 1,
+        "utc": "2026-11-05T13:03:13.4512414Z",
+        "runnerExit": 3,
+        "protectedFiles": 152,
+        "protectedFilesUnchanged": false,
+        "preexistingProcesses": [],
+        "scope": "own-root-suffix-host/direct-reader only; no UI, installed tracker, chat or cold-start acceptance"
+      },
+      "fingerprintChangedPaths": [
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-shm",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-wal"
+      ]
+    },
+    {
+      "run": "host-acceptance-7d87bf9eb09f462b8cfad19e16f7bacd",
+      "records": [
+        {
+          "gate": "launch",
+          "expected": "new process, private registry suffix; no operator DTE access",
+          "observed": {
+            "pid": 30380,
+            "suffix": "AssistantAcceptance833c9c7285ba483fa8d1048d61f0361f"
+          },
+          "utc": "2026-11-05T13:07:30.504Z"
+        },
+        {
+          "gate": "isolation",
+          "expected": "DTE.RegistryRoot includes exact unique suffix before any solution operation",
+          "observed": {
+            "registry": "Software\\Beckhoff\\TcXaeShell\\15.0_IsoShell_AssistantAcceptance833c9c7285ba483fa8d1048d61f0361f",
+            "passed": true
+          },
+          "utc": "2026-11-05T13:07:50.484Z"
+        },
+        {
+          "gate": "synthetic-project",
+          "expected": "resolve nested project without localized name assumption",
+          "observed": {
+            "plc": "PLC_A",
+            "path": "TIPC^PLC_A^PLC_A Projekt"
+          },
+          "utc": "2026-11-05T13:08:39.357Z"
+        },
+        {
+          "gate": "runner-error",
+          "expected": "no unhandled host errors",
+          "observed": {
+            "stage": "create-pou-PLC_B",
+            "type": "COMException",
+            "hresult": -2147418111,
+            "message": "Aufruf wurde durch Aufgerufenen abgelehnt. (Ausnahme von HRESULT: 0x80010001 (RPC_E_CALL_REJECTED))"
+          },
+          "utc": "2026-11-05T13:08:39.837Z"
+        },
+        {
+          "gate": "owned-host-shutdown",
+          "expected": "normal exit of owned shell",
+          "observed": {
+            "pid": 30380,
+            "passed": false,
+            "exitCode": null
+          },
+          "utc": "2026-11-05T13:08:49.852Z"
+        }
+      ],
+      "summary": {
+        "schemaVersion": 1,
+        "utc": "2026-11-05T13:08:52.2109553Z",
+        "runnerExit": 3,
+        "protectedFiles": 152,
+        "protectedFilesUnchanged": false,
+        "unreadableFingerprints": 0,
+        "preexistingProcesses": [
+          {
+            "pid": 7768,
+            "preserved": true
+          }
+        ],
+        "scope": "own-root-suffix-host/direct-reader only; no UI, installed tracker, chat or cold-start acceptance"
+      },
+      "fingerprintChangedPaths": [
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-shm",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-wal"
+      ]
+    },
+    {
+      "run": "host-acceptance-4d495a8981254a359133a22fac12d676",
+      "records": [
+        {
+          "gate": "launch",
+          "expected": "new process, private registry suffix; no operator DTE access",
+          "observed": {
+            "pid": 35064,
+            "suffix": "AssistantAcceptancea9c32877453743a7892f7ef407e30667"
+          },
+          "utc": "2026-11-05T13:10:13.144Z"
+        },
+        {
+          "gate": "isolation",
+          "expected": "DTE.RegistryRoot includes exact unique suffix before any solution operation",
+          "observed": {
+            "registry": "Software\\Beckhoff\\TcXaeShell\\15.0_IsoShell_AssistantAcceptancea9c32877453743a7892f7ef407e30667",
+            "passed": true
+          },
+          "utc": "2026-11-05T13:10:49.084Z"
+        },
+        {
+          "gate": "synthetic-project",
+          "expected": "resolve nested project without localized name assumption",
+          "observed": {
+            "plc": "PLC_A",
+            "path": "TIPC^PLC_A^PLC_A Projekt"
+          },
+          "utc": "2026-11-05T13:11:35.102Z"
+        },
+        {
+          "gate": "synthetic-project",
+          "expected": "resolve nested project without localized name assumption",
+          "observed": {
+            "plc": "PLC_B",
+            "path": "TIPC^PLC_B^PLC_B Projekt"
+          },
+          "utc": "2026-11-05T13:11:36.284Z"
+        },
+        {
+          "gate": "active-pou-direct-reader",
+          "expected": "PLC_A exact body and distinct identity",
+          "observed": {
+            "passed": true,
+            "ObjectName": "FB_Check",
+            "State": "unknown",
+            "SourceKind": "Automation Interface snapshot",
+            "ReadMilliseconds": 985.0961000000001
+          },
+          "utc": "2026-11-05T13:11:53.966Z"
+        },
+        {
+          "gate": "active-pou-direct-reader",
+          "expected": "PLC_B exact body and distinct identity",
+          "observed": {
+            "passed": true,
+            "ObjectName": "FB_Check",
+            "State": "unknown",
+            "SourceKind": "Automation Interface snapshot",
+            "ReadMilliseconds": 869.5234
+          },
+          "utc": "2026-11-05T13:11:55.512Z"
+        },
+        {
+          "gate": "no-editor-direct-reader",
+          "expected": "unbound",
+          "observed": {
+            "passed": true
+          },
+          "utc": "2026-11-05T13:11:55.626Z"
+        },
+        {
+          "gate": "owned-host-shutdown",
+          "expected": "normal exit of owned shell",
+          "observed": {
+            "pid": 35064,
+            "passed": true,
+            "exitCode": 0
+          },
+          "utc": "2026-11-05T13:12:04.572Z"
+        }
+      ],
+      "summary": {
+        "schemaVersion": 1,
+        "utc": "2026-11-05T13:12:07.5754879Z",
+        "runnerExit": 0,
+        "protectedFiles": 152,
+        "protectedFilesUnchanged": false,
+        "unreadableFingerprints": 0,
+        "preexistingProcesses": [
+          {
+            "pid": 7768,
+            "preserved": true
+          },
+          {
+            "pid": 30380,
+            "preserved": true
+          }
+        ],
+        "scope": "own-root-suffix-host/direct-reader only; no UI, installed tracker, chat or cold-start acceptance"
+      },
+      "fingerprintChangedPaths": [
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-shm",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-wal"
+      ]
+    },
+    {
+      "run": "host-acceptance-f823f76f09514ffd8815884ef49c54e2",
+      "records": [
+        {
+          "gate": "launch",
+          "expected": "new process, private registry suffix; no operator DTE access",
+          "observed": {
+            "pid": 7404,
+            "suffix": "AssistantAcceptance05c5f1b10b964dc6bf8a0b4185995bea"
+          },
+          "utc": "2026-11-05T13:13:22.745Z"
+        },
+        {
+          "gate": "isolation",
+          "expected": "DTE.RegistryRoot includes exact unique suffix before any solution operation",
+          "observed": {
+            "registry": "Software\\Beckhoff\\TcXaeShell\\15.0_IsoShell_AssistantAcceptance05c5f1b10b964dc6bf8a0b4185995bea",
+            "passed": true
+          },
+          "utc": "2026-11-05T13:13:51.97Z"
+        },
+        {
+          "gate": "synthetic-project",
+          "expected": "resolve nested project without localized name assumption",
+          "observed": {
+            "plc": "PLC_A",
+            "path": "TIPC^PLC_A^PLC_A Projekt"
+          },
+          "utc": "2026-11-05T13:14:40.9Z"
+        },
+        {
+          "gate": "synthetic-project",
+          "expected": "resolve nested project without localized name assumption",
+          "observed": {
+            "plc": "PLC_B",
+            "path": "TIPC^PLC_B^PLC_B Projekt"
+          },
+          "utc": "2026-11-05T13:14:41.954Z"
+        },
+        {
+          "gate": "active-pou-direct-reader",
+          "expected": "PLC_A exact body and distinct identity",
+          "observed": {
+            "passed": true,
+            "ObjectName": "FB_Check",
+            "State": "unknown",
+            "SourceKind": "Automation Interface snapshot",
+            "ReadMilliseconds": 1185.2369
+          },
+          "utc": "2026-11-05T13:15:01.903Z"
+        },
+        {
+          "gate": "active-pou-direct-reader",
+          "expected": "PLC_B exact body and distinct identity",
+          "observed": {
+            "passed": true,
+            "ObjectName": "FB_Check",
+            "State": "unknown",
+            "SourceKind": "Automation Interface snapshot",
+            "ReadMilliseconds": 616.0197000000001
+          },
+          "utc": "2026-11-05T13:15:03.518Z"
+        },
+        {
+          "gate": "dirty-saved-snapshot",
+          "expected": "AI edit changes snapshot without claiming keystroke buffer equivalence",
+          "observed": {
+            "passed": true,
+            "Saved": false,
+            "State": "known-dirty",
+            "SourceKind": "Automation Interface snapshot",
+            "SourceNotice": "Unsaved editor text is not verified. The matching IDE document reports unsaved changes."
+          },
+          "utc": "2026-11-05T13:15:04.822Z"
+        },
+        {
+          "gate": "saved-snapshot",
+          "expected": "explicit synthetic document save preserves snapshot content",
+          "observed": {
+            "passed": true,
+            "Saved": true,
+            "State": "unknown"
+          },
+          "utc": "2026-11-05T13:15:05.65Z"
+        },
+        {
+          "gate": "large-pou-saved-reference",
+          "expected": "real host snapshot yields exact saved-object reference without source body",
+          "observed": {
+            "passed": true,
+            "characters": 20043,
+            "IsSavedReference": true,
+            "ReadMilliseconds": 576.5627000000001,
+            "scope": "direct policy on real reader output; no installed composer or MCP call"
+          },
+          "utc": "2026-11-05T13:15:06.644Z"
+        }
+      ],
+      "summary": {
+        "schemaVersion": 1,
+        "utc": "2026-11-05T13:17:28.8661711Z",
+        "runnerExit": -1,
+        "protectedFiles": 152,
+        "protectedFilesUnchanged": false,
+        "unreadableFingerprints": 0,
+        "preexistingProcesses": [
+          {
+            "pid": 7768,
+            "preserved": true
+          },
+          {
+            "pid": 30380,
+            "preserved": true
+          }
+        ],
+        "scope": "own-root-suffix-host/direct-reader only; no UI, installed tracker, chat or cold-start acceptance"
+      },
+      "fingerprintChangedPaths": [
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-shm",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-wal"
+      ]
+    },
+    {
+      "run": "host-acceptance-afbc5d25520c4bc995363b87978634bb",
+      "records": [
+        {
+          "gate": "launch",
+          "expected": "new process, private registry suffix; no operator DTE access",
+          "observed": {
+            "pid": 29440,
+            "suffix": "AssistantAcceptance544012d06f2e4316afd2735324a8f5f2"
+          },
+          "utc": "2026-11-05T13:17:33.306Z"
+        },
+        {
+          "gate": "isolation",
+          "expected": "DTE.RegistryRoot includes exact unique suffix before any solution operation",
+          "observed": {
+            "registry": "Software\\Beckhoff\\TcXaeShell\\15.0_IsoShell_AssistantAcceptance544012d06f2e4316afd2735324a8f5f2",
+            "passed": true
+          },
+          "utc": "2026-11-05T13:17:55.184Z"
+        },
+        {
+          "gate": "synthetic-project",
+          "expected": "resolve nested project without localized name assumption",
+          "observed": {
+            "plc": "PLC_A",
+            "path": "TIPC^PLC_A^PLC_A Projekt"
+          },
+          "utc": "2026-11-05T13:18:36.599Z"
+        },
+        {
+          "gate": "synthetic-project",
+          "expected": "resolve nested project without localized name assumption",
+          "observed": {
+            "plc": "PLC_B",
+            "path": "TIPC^PLC_B^PLC_B Projekt"
+          },
+          "utc": "2026-11-05T13:18:37.297Z"
+        },
+        {
+          "gate": "active-pou-direct-reader",
+          "expected": "PLC_A exact body and distinct identity",
+          "observed": {
+            "passed": true,
+            "ObjectName": "FB_Check",
+            "State": "unknown",
+            "SourceKind": "Automation Interface snapshot",
+            "ReadMilliseconds": 958.1260000000001
+          },
+          "utc": "2026-11-05T13:18:55.49Z"
+        },
+        {
+          "gate": "active-pou-direct-reader",
+          "expected": "PLC_B exact body and distinct identity",
+          "observed": {
+            "passed": true,
+            "ObjectName": "FB_Check",
+            "State": "unknown",
+            "SourceKind": "Automation Interface snapshot",
+            "ReadMilliseconds": 909.889
+          },
+          "utc": "2026-11-05T13:18:57.234Z"
+        },
+        {
+          "gate": "case-start",
+          "expected": "begin bounded-scope direct-host observation",
+          "observed": {
+            "gate": "dirty-saved-snapshot"
+          },
+          "utc": "2026-11-05T13:18:57.238Z"
+        },
+        {
+          "gate": "dirty-saved-snapshot",
+          "expected": "AI edit changes snapshot without claiming keystroke buffer equivalence",
+          "observed": {
+            "passed": true,
+            "Saved": false,
+            "State": "known-dirty",
+            "SourceKind": "Automation Interface snapshot",
+            "SourceNotice": "Unsaved editor text is not verified. The matching IDE document reports unsaved changes."
+          },
+          "utc": "2026-11-05T13:18:58.731Z"
+        },
+        {
+          "gate": "saved-snapshot",
+          "expected": "explicit synthetic document save preserves snapshot content",
+          "observed": {
+            "passed": true,
+            "Saved": true,
+            "State": "unknown"
+          },
+          "utc": "2026-11-05T13:18:59.147Z"
+        },
+        {
+          "gate": "case-start",
+          "expected": "begin bounded-scope direct-host observation",
+          "observed": {
+            "gate": "large-pou-saved-reference"
+          },
+          "utc": "2026-11-05T13:18:59.148Z"
+        },
+        {
+          "gate": "large-pou-saved-reference",
+          "expected": "real host snapshot yields exact saved-object reference without source body",
+          "observed": {
+            "passed": true,
+            "characters": 20043,
+            "IsSavedReference": true,
+            "ReadMilliseconds": 145.79330000000002,
+            "scope": "direct policy on real reader output; no installed composer or MCP call"
+          },
+          "utc": "2026-11-05T13:18:59.429Z"
+        },
+        {
+          "gate": "case-start",
+          "expected": "begin bounded-scope direct-host observation",
+          "observed": {
+            "gate": "non-st-editor"
+          },
+          "utc": "2026-11-05T13:18:59.429Z"
+        },
+        {
+          "gate": "non-st-editor",
+          "expected": "unbound",
+          "observed": {
+            "passed": true
+          },
+          "utc": "2026-11-05T13:19:01.229Z"
+        },
+        {
+          "gate": "no-editor-direct-reader",
+          "expected": "unbound",
+          "observed": {
+            "passed": true
+          },
+          "utc": "2026-11-05T13:19:01.57Z"
+        },
+        {
+          "gate": "case-start",
+          "expected": "begin bounded-scope direct-host observation",
+          "observed": {
+            "gate": "solution-reopen"
+          },
+          "utc": "2026-11-05T13:19:01.57Z"
+        },
+        {
+          "gate": "solution-reopen",
+          "expected": "fresh same-path snapshot after solution close and reopen; warm only",
+          "observed": {
+            "passed": true,
+            "SourceKind": "Automation Interface snapshot"
+          },
+          "utc": "2026-11-05T13:19:13.709Z"
+        },
+        {
+          "gate": "case-start",
+          "expected": "begin bounded-scope direct-host observation",
+          "observed": {
+            "gate": "multi-ide-direct-reader"
+          },
+          "utc": "2026-11-05T13:19:13.709Z"
+        },
+        {
+          "gate": "launch",
+          "expected": "owned secondary",
+          "observed": {
+            "pid": 3304,
+            "suffix": "AssistantAcceptance004e1b5946be42f1bdcde82dbf279479"
+          },
+          "utc": "2026-11-05T13:19:14.101Z"
+        },
+        {
+          "gate": "multi-ide-direct-reader",
+          "expected": "distinct owned PIDs; second PLC_B does not replace first PLC_A snapshot",
+          "observed": {
+            "passed": true,
+            "firstPid": 29440,
+            "secondPid": 3304,
+            "scope": "direct reader, not installed pane/chat isolation"
+          },
+          "utc": "2026-11-05T13:20:08.362Z"
+        },
+        {
+          "gate": "owned-secondary-shutdown",
+          "expected": "normal close of owned secondary shell",
+          "observed": {
+            "pid": 3304,
+            "passed": true
+          },
+          "utc": "2026-11-05T13:20:12.736Z"
+        },
+        {
+          "gate": "owned-host-shutdown",
+          "expected": "normal exit of owned shell",
+          "observed": {
+            "pid": 29440,
+            "passed": true,
+            "exitCode": 0
+          },
+          "utc": "2026-11-05T13:20:15.134Z"
+        }
+      ],
+      "summary": {
+        "schemaVersion": 1,
+        "utc": "2026-11-05T13:20:17.6798616Z",
+        "runnerExit": 0,
+        "protectedFiles": 152,
+        "protectedFilesUnchanged": false,
+        "unreadableFingerprints": 0,
+        "preexistingProcesses": [
+          {
+            "pid": 7404,
+            "preserved": true
+          },
+          {
+            "pid": 7768,
+            "preserved": true
+          },
+          {
+            "pid": 30380,
+            "preserved": true
+          }
+        ],
+        "scope": "own-root-suffix-host/direct-reader only; no UI, installed tracker, chat or cold-start acceptance"
+      },
+      "fingerprintChangedPaths": [
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-shm",
+        "%USERPROFILE%\\AppData\\Local\\TwinCatAssistant\\operator-state\\data\\opencode\\opencode.db-wal"
+      ]
+    }
+  ],
+  "memberAttempt": {
+    "pid": 7404,
+    "result": "blocked after Action persisted and before member result; client stopped, no forced IDE termination",
+    "normalRecoveryCloseUtc": "2026-11-05T13:20:49.668Z",
+    "normalRecoveryClosePassed": true
+  },
+  "residualOwnedShells": [
+    {
+      "Id": 7768,
+      "startedUtc": "2026-11-05T13:02:02.5975769Z"
+    },
+    {
+      "Id": 30380,
+      "startedUtc": "2026-11-05T13:07:30.3307244Z"
+    }
+  ],
+  "finalNormalCloseRecovery": [
+    {
+      "pid": 7768,
+      "utc": "2026-11-05T13:22:26.177Z",
+      "signaled": false,
+      "passed": false,
+      "exitCode": 3
+    },
+    {
+      "pid": 30380,
+      "utc": "2026-11-05T13:22:41.491Z",
+      "signaled": false,
+      "passed": false,
+      "exitCode": 3
+    }
+  ]
+}

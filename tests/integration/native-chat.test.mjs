@@ -10,6 +10,7 @@ import { once } from 'node:events';
 import { inspectState } from '../../src/state.mjs';
 import { configureNativeModel } from '../../src/native-chat-model.mjs';
 import { consentProviders } from '../../src/embedded-chat.mjs';
+import { runtimePaths } from '../../src/runtime-paths.mjs';
 
 test('native owner starts pinned protected chat and stdin EOF stops its process tree', {
   skip: process.platform !== 'win32', timeout: 100000,
@@ -55,6 +56,16 @@ test('native owner starts pinned protected chat and stdin EOF stops its process 
     });
     assert.equal(login.status, 200);
     const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+    if ((await runtimePaths()).sourceContract) {
+      for (const path of ['/api/terminal/create', '/api/browser-control/claim', '/api/dev-servers', '/api/fs/write',
+        '/api/fs/exec', '/api/opencode/upgrade', '/api/openchamber/update-install']) {
+        for (const method of ['GET', 'POST']) {
+          const response = await fetch(origin + path, { method, headers: { cookie, origin }, signal: AbortSignal.timeout(5000) });
+          assert.equal(response.status, 404, method + ' ' + path);
+          assert.match((await response.json()).error, /outside TwinCAT Assistant delivery scope/);
+        }
+      }
+    }
     // Isolated fake credential: exercise catalog visibility without calling a model.
     const providerHeaders = { cookie, 'content-type': 'application/json',
       'x-opencode-directory': encodeURIComponent(join(root, 'state', 'workspace')), 'x-opencode-directory-encoding': 'uri' };

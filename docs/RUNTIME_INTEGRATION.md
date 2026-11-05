@@ -5,8 +5,10 @@ This branch implements the first two agreed groups from
 from its unchanged source at `0fd7e2829449b052abf0078666669302923d77af`.
 OpenChamber 2.1.1 at `e302062e3be0686986594fddabdafd8a97c129e5` receives a small
 source overlay connecting its existing composer and stores to the native host.
-No shell, Git, file or other functionality is removed from upstream sources.
-The Assistant's existing read-only permissions remain in force.
+The later [delivery scope](DELIVERY_SCOPE.md) disables terminal, browser-control,
+dev-server discovery, general FS mutation/execution and independent upstream
+updaters in the source application. Git and shared services remain for later
+separation. The Assistant's existing read-only permissions remain in force.
 
 Build inputs and commands are described in [upstream](../upstream/README.md).
 

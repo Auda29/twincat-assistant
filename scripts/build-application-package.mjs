@@ -36,6 +36,40 @@ async function removeBinDirectories(path) {
 }
 function run(command, args, cwd, env) { execFileSync(command, args, { cwd, env, stdio: 'inherit', windowsHide: true }); }
 
+// Package-only exclusions. Keep the development distribution and lockfiles
+// intact for compatibility checks. They describe installation inputs; the final
+// application manifest describes the delivered files.
+export async function reduceDeliveryFiles(stage) {
+  const modules = join(stage, 'upstream/node_modules');
+  const web = join(modules, '@openchamber/web');
+  const pkg = JSON.parse(await readFile(join(web, 'package.json'), 'utf8'));
+  if (pkg.dependencies?.['@opencode/cli']) throw new Error('Chat now depends on the distribution Core');
+  // The launcher supplies runtime/opencode/opencode.exe explicitly. No runtime
+  // dependency may silently start referring to the redundant distribution CLI.
+  const lock = JSON.parse(await readFile(join(stage, 'upstream/package-lock.json'), 'utf8'));
+  for (const [path, entry] of Object.entries(lock.packages ?? {})) {
+    if (path && entry.dependencies?.['@opencode/cli']) throw new Error('Distribution Core is required by ' + path);
+  }
+  const scope = join(modules, '@opencode');
+  for (const entry of await readdir(scope, { withFileTypes: true }).catch(error => { if (error.code === 'ENOENT') return []; throw error; })) {
+    if (entry.name === 'cli' || entry.name.startsWith('cli-')) {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error('Unexpected distribution CLI entry');
+      await rm(join(scope, entry.name), { recursive: true });
+    }
+  }
+  // Upstream tracks test fixtures next to server modules. These are neither
+  // runtime imports nor notices; keep every license and production module.
+  async function testsOnly(path) {
+    for (const entry of await readdir(path, { withFileTypes: true })) {
+      const child = join(path, entry.name);
+      if (entry.isSymbolicLink()) throw new Error('Redirected Chat server entry');
+      if (entry.isDirectory()) await testsOnly(child);
+      else if (/\.(test|spec)\.[cm]?js$/.test(entry.name)) await rm(child);
+    }
+  }
+  await testsOnly(join(web, 'server'));
+}
+
 export async function buildApplicationPackage(output) {
   if (!isAbsolute(output) || resolve(output) !== output) throw new Error('OutputDirectory must be absolute and normalized');
   if (process.platform !== 'win32' || !['x64', 'arm64', 'ia32'].includes(process.arch) || Number(process.versions.node.split('.')[0]) < 22) throw new Error('Build with Windows Node 22+ for the backend architecture');
@@ -122,6 +156,7 @@ export async function buildApplicationPackage(output) {
     await regular(join(web, 'server/built-in-extensions/registry.json'));
     await copyTree(join(web, 'server/built-in-extensions'), join(packagedWeb, 'server/built-in-extensions'));
     await copyTree(join(web, 'dist'), join(packagedWeb, 'dist'));
+    await reduceDeliveryFiles(stage);
     await copyFile(runtime.opencode, join(stage, 'runtime/opencode/opencode.exe'));
     await copyFile(process.execPath, join(stage, 'runtime/node/node.exe'));
     await copyFile(nodeLicense, join(stage, 'licenses/node/LICENSE'));

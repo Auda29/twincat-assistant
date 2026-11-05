@@ -37,7 +37,7 @@ namespace TwinCatAssistant.Native
         private ChatSelection _chatSelection;
         private ChatContextBinding _chatBinding;
         private bool _chatActionPending, _chatAdapterReady, _chatPolling, _autoConnectAttempted, _automating;
-        private readonly TextBlock _modelStatus = new TextBlock { Text = "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in OpenChambers Anbieter-Einstellungen eingegeben.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
+        private readonly TextBlock _modelStatus = new TextBlock { Text = "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in den Anbieter-Einstellungen von TwinCAT Assistant Chat eingegeben.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
         private readonly TextBlock _mcpStatus = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
         private DispatcherTimer _chatReconnect, _automationKick, _noticeTimer;
         private int _chatReconnectAttempts, _signInAttempts;
@@ -382,7 +382,7 @@ namespace TwinCatAssistant.Native
                     + (_knowledgeCorpus == "not_configured" ? "Knowledge-Korpus ist noch nicht eingerichtet." : "Knowledge-Korpus separat prüfen.")
                     : servers.Length == 0 ? " Lokale MCP-Konfiguration fehlt." : " Knowledge-Korpus separat prüfen.");
             if (!_chatActionPending)
-                _modelStatus.Text = connected.Length == 0 ? "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in OpenChambers Anbieter-Einstellungen eingegeben."
+                _modelStatus.Text = connected.Length == 0 ? "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in den Anbieter-Einstellungen von TwinCAT Assistant Chat eingegeben."
                     : "Modellanbieter: " + string.Join(", ", connected.Select(choice => choice.name + (allowed.Contains(choice.id) ? " (freigegeben)" : "")))
                         + (string.IsNullOrEmpty(_chatSelection?.model) ? ". Modell im Chat wählen." : ". Modell: " + _chatSelection.model + ".")
                         + " PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.";
@@ -423,7 +423,7 @@ namespace TwinCatAssistant.Native
             }
             else if (ready && (_chatSelection.providers?.Length ?? 0) == 0)
             {
-                text = "Noch kein Modellanbieter verbunden. Zugangsdaten gibst du nur in OpenChamber ein.";
+                text = "Noch kein Modellanbieter verbunden. Zugangsdaten gibst du nur in TwinCAT Assistant Chat ein.";
                 action = "Anbieter verbinden"; command = () => RunAction(OpenProviderSettingsAsync);
             }
             else if (ready && _knowledgeBusy)
