@@ -17,6 +17,7 @@ Native acceptance and future engineering write/build milestones remain separate.
 - [Windows installer, host registration and rollback contract](INSTALLER_CONTRACT.md)
 - [Building relocatable MCP inputs and collecting runtime notices](APPLICATION_INPUTS.md)
 - [Application package layout and installed runtime selection](APPLICATION_STAGING.md)
+- [Local complete application and installer build evidence](ALPHA_DELIVERY_BUILD.md)
 - [Managed profile and project configuration across package versions](INSTALLER_RELOCATION.md)
 - [Analysis profile prompts, migration and evaluation cases](PROFILE_PROMPTS.md)
 - [OpenChamber extension](EXTENSION.md)

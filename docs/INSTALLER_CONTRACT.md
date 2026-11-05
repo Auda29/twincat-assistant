@@ -84,9 +84,13 @@ package installation, update and rollback still need host acceptance.
 
 The manual CI workflow downloads an explicitly named application staging
 artifact from a specified run and uploads the built EXE as a candidate. No
-synthetic package is uploaded. It may consume a future
-`Build-ApplicationPackage.ps1 -OutputDirectory <absolute>` output. Neither CI
-nor fixture tests establish a live host acceptance or release readiness.
+synthetic package is uploaded. It consumes
+`Build-ApplicationPackage.ps1 -OutputDirectory <absolute>` output, checks actual
+packaged startup and both MCPs with fresh synthetic state, builds the EXE and
+verifies its embedded file hashes before uploading. The
+[complete local candidate](ALPHA_DELIVERY_BUILD.md) passed these local checks;
+the workflow itself has not been run for it. Neither CI nor fixture tests
+establish a live host acceptance or release readiness.
 The EXE is unsigned; real installation, upgrade, rollback, host loading,
 prerequisites, recovery and the license review remain to be checked in a
 separate controlled environment. The current test creates synthetic hosts,

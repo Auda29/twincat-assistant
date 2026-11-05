@@ -12,13 +12,16 @@ must exist. Build on Windows with Node 22+, npm, Git, the pinned source-runtime
 build and receipt described in [upstream README](../upstream/README.md), and
 Release builds of WindowsHost and the x86 IDE host. Build the host **after** the
 installation-selection changes. Node and its npm installation must have the
-normal Windows layout. The builder also requires these explicit prebuilt inputs:
+normal Windows layout.
 
 The [application input builder](APPLICATION_INPUTS.md) now creates these MCP
 runtimes and collects the exact runtime notices. Engineering relocation and a
-technical Knowledge corpus-status probe pass with synthetic state. A
-distributable Knowledge input still requires the missing upstream license or
-permission document; the probe does not publish that input or invent a license.
+technical Knowledge corpus-status probe pass with synthetic state. The owner
+has confirmed bundling permission, retained in the
+[permission record](../upstream/permissions/knowledge-0.1.1.txt). The complete
+application and installer candidate now pass the [local build checks](ALPHA_DELIVERY_BUILD.md).
+
+The builder requires these explicit prebuilt inputs:
 
 - `artifacts/application-inputs/node/LICENSE`: the official license and notices
   for the exact Node binary used by the builder, reviewed for redistribution.
@@ -126,6 +129,9 @@ fixtures need a built WindowsHost and .NET 8 SDK at `local-data/dotnet8`, or
 `TC_TEST_DOTNET_ROOT` set to its root. A prior real-source backend-only staging
 was relocated and reached protected native readiness with synthetic state and no
 MCP or provider. That predates the now-required bundled host and MCP inputs and
-is not an end-to-end installer, MCP, provider or live IDE acceptance. Real
-relocatable MCP artifacts, full package build and startup, install/update and
-rollback integration, and installed-host checks remain open.
+is not an end-to-end installer, MCP, provider or live IDE acceptance. The later
+[complete local candidate](ALPHA_DELIVERY_BUILD.md) now includes both relocatable
+MCPs and passes real packaged startup, MCP calls and restart-state preservation.
+Use `node scripts/test-built-application.mjs <package-directory>` to repeat that
+isolated test. Real host installation, update/rollback, provider answers and
+installed-host timing still need acceptance.

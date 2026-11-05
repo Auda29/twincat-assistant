@@ -15,8 +15,8 @@ name must be absent. Use a fresh `-OutputRoot` for a separate run.
 .\scripts\Build-ApplicationInputs.ps1 -Component Licenses
 .\scripts\Build-ApplicationInputs.ps1 -Component KnowledgeProbe `
   -KnowledgeArtifacts 'C:\absolute\release\packages'
-# Only after a rights holder supplies a reviewed Knowledge license:
-$license = 'C:\absolute\reviewed\knowledge-license.txt'
+# Owner permission for bundling the pinned Knowledge release with Assistant:
+$license = (Resolve-Path 'upstream/permissions/knowledge-0.1.1.txt').Path
 $licenseHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $license).Hash.ToLowerInvariant()
 .\scripts\Build-ApplicationInputs.ps1 -Component Knowledge `
   -KnowledgeArtifacts 'C:\absolute\release\packages' `
@@ -59,11 +59,14 @@ Framework are prerequisites.
 `KnowledgeProbe` performs the same real relocation/protocol test in a temporary
 directory without publishing an input, so it does not invent a release license.
 The pinned 0.1.1 wheel metadata declares no license and the pinned source tree
-contains no `LICENSE` or `COPYING` file. A rights holder must provide a reviewed
-license or permission before a distributable Knowledge input can be produced.
-The license check intentionally stops before publishing; the technical probe is
-not evidence of redistribution rights. Python/Python-dependency and all other
-third-party redistribution terms still need review.
+contains no `LICENSE` or `COPYING` file. On 2026-11-05 the owner confirmed that
+the component is their own code and may be distributed with Assistant. That
+confirmation is recorded in
+[the permission document](../upstream/permissions/knowledge-0.1.1.txt), passed
+explicitly with its SHA-256, and retained in the Knowledge input's `LICENSE`
+file. It is a permission record, not a newly chosen public open-source license.
+Python and dependency licenses remain in the runtime; this permission does not
+replace their terms. The technical probe alone is not a permission record.
 
 The Licenses component downloads the exact running Node version's official
 Windows x64 ZIP, checks its SHA-256 against the official HTTPS `SHASUMS256.txt`,

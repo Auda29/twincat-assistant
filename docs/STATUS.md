@@ -10,10 +10,12 @@ tests, and the x86 host builds. Manifest-checked sibling package relocation now
 supports existing global and project MCP configuration on update and rollback;
 both versions must recognize the precise prompt policy. Relocatable MCP input
 builds are implemented and real Engineering/Knowledge relocation probes passed.
-Engineering and the exact Node/WebView2 notices are staged. Knowledge 0.1.1 has
-no declared license in its pinned wheel/source; its distributable input is not
-published until a reviewed license or permission document is supplied. The full
-application/installer artifact and real-host acceptance therefore remain open. See
+The owner has confirmed Knowledge bundling permission, recorded under
+`upstream/permissions/knowledge-0.1.1.txt`. Both MCP runtimes and exact runtime
+notices are staged. The full application and 524 MB installer candidate now
+build; real protected startup, both MCP calls, preserved restart state and all
+22,442 embedded file hashes pass. Real-host acceptance remains open. See the
+[local delivery build record](ALPHA_DELIVERY_BUILD.md),
 [application inputs](APPLICATION_INPUTS.md),
 [installer contract](INSTALLER_CONTRACT.md) and [relocation limits](INSTALLER_RELOCATION.md).
 
