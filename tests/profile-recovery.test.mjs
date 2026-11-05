@@ -1,3 +1,6 @@
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
@@ -41,4 +44,24 @@ test('profile recovery refuses unknown policy, foreign live files and active or 
     await assert.rejects(inspectState(root),/policy mismatch/);
     assert.deepEqual(await readFile(paths.configPath),original);
   } finally { await rm(parent,{recursive:true,force:true}); }
+});
+
+test('a killed profile writer leaves a lock; coordinated lock removal allows validated recovery', async () => {
+  const parent=await mkdtemp(join(tmpdir(),'tc-profile-killed-'));
+  let child;
+  try {
+    const root=join(parent,'profile'), before={}, after={provider:'openai',sourceCodeDisclosureAccepted:true};
+    const paths=await initializeState(root,before);
+    await writeFile(join(paths.data,'chat-sentinel'),'kept');
+    const journal={version:1,before:{settings:before,config:createOpenCodeConfig(before)},after:{settings:after,config:createOpenCodeConfig(after)}};
+    const code=`import {open} from 'node:fs/promises'; import {atomicJson} from ${JSON.stringify(pathToFileURL(join(process.cwd(),'src/profile-update.mjs')).href)}; const [root,config,journal]=process.argv.slice(1); await open(root+'/model-consent.lock','wx'); await atomicJson(root+'/.profile-update.json',JSON.parse(journal)); await atomicJson(config,JSON.parse(journal).after.config); process.stdout.write('ready\\n'); setInterval(()=>{},1000);`;
+    child=spawn(process.execPath,['--input-type=module','-e',code,root,paths.configPath,JSON.stringify(journal)],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+    await Promise.race([once(child.stdout,'data'),once(child,'exit').then(()=>{throw new Error('Writer exited before crash boundary')}),new Promise((_,reject)=>{const timer=setTimeout(()=>reject(new Error('Writer boundary timeout')),15000); timer.unref();})]);
+    const exited=once(child,'exit'); child.kill(); await exited; child=null;
+    await assert.rejects(inspectState(root),{code:'EEXIST'});
+    // This explicit action represents operator-established writer quiescence.
+    await rm(join(root,'model-consent.lock'));
+    assert.deepEqual((await inspectState(root)).settings,after);
+    assert.equal(await readFile(join(paths.data,'chat-sentinel'),'utf8'),'kept');
+  } finally { if(child) { const exited=once(child,'exit'); child.kill(); await exited; } await rm(parent,{recursive:true,force:true}); }
 });
