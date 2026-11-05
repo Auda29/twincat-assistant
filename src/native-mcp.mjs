@@ -7,6 +7,7 @@ import { ANALYSIS_PROFILE, PREVIOUS_ANALYSIS_PROMPTS, analysisSystemPrompt } fro
 import { atomicJson, updateProfile } from './profile-update.mjs';
 import { effectiveKnowledge } from './knowledge-paths.mjs';
 import { findProjectWorkspace, projectKey, updateProjectConfiguration, withProjectLock } from './project-workspace.mjs';
+import { applicationRoot, requirePackage, verifyPackageIfPresent } from './package-integrity.mjs';
 
 function path(value) {
   if (typeof value !== 'string' || !value || value.length > 2048 || value.includes('\0') || !isAbsolute(value))
@@ -24,13 +25,14 @@ function exactKeys(value, allowed) {
     throw new Error('Invalid native MCP settings');
 }
 export async function readNativeMcpSettings(file) {
+  if (requirePackage) await verifyPackageIfPresent();
   const value = await readJsonFile(path(file));
   exactKeys(value, ['knowledge', 'engineering']);
   exactKeys(value.knowledge, ['executable', 'config']);
   exactKeys(value.engineering, ['entrypoint']);
-  const knowledge = { executable: await regularFile(value.knowledge.executable) };
+  const knowledge = { executable: await regularFile(requirePackage ? join(applicationRoot, 'runtime/mcp/knowledge/twincat-knowledge.exe') : value.knowledge.executable) };
   if (value.knowledge.config !== undefined) knowledge.config = await regularFile(value.knowledge.config);
-  const engineering = { entrypoint: await regularFile(value.engineering.entrypoint) };
+  const engineering = { entrypoint: await regularFile(requirePackage ? join(applicationRoot, 'runtime/mcp/engineering/packages/mcp/dist/index.js') : value.engineering.entrypoint) };
   validateSettings({ knowledge });
   return { knowledge, engineering };
 }
@@ -109,6 +111,7 @@ export async function prepareNativeProject(input) {
 }
 
 async function main() {
+  await (await import('./package-integrity.mjs')).verifyPackageIfPresent();
   const chunks = []; let size = 0;
   for await (const chunk of process.stdin) {
     size += chunk.length;

@@ -176,6 +176,7 @@ export async function setupKnowledge(request, { signal = new AbortController().s
   }
 }
 async function main() {
+  await (await import('./package-integrity.mjs')).verifyPackageIfPresent();
   const input = createInterface({input:process.stdin,crlfDelay:Infinity});
   const abort = new AbortController(); let work, received=false, finished=false, size=0;
   process.stdin.on('data',chunk => { size+=chunk.length; if(size>16384){abort.abort();input.close();} });
@@ -196,4 +197,6 @@ async function main() {
   });
   setTimeout(()=>{if(!received){abort.abort();input.close();process.stdin.destroy();}},10000).unref();
 }
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try { await main(); } catch { process.stdout.write('{"phase":"error","complete":true}\n'); process.exitCode = 1; }
+}

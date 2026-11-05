@@ -35,6 +35,7 @@
     <Compile Include="../AssistantPackage.cs;../AssistantControl.cs;../AssistantTheme.cs;../ActiveEditorTracker.cs;../NativeChatRuntime.cs;../ChatIntegration.cs;../DiagnosticsIntegration.cs;../SplashIntegration.cs;../ChatBindingStore.cs;../../Shared/ChatContextBinding.cs;../../Shared/ChatConnectionState.cs;../../Shared/NativeProjectReader.cs;../../Shared/DirtyEvidence.cs;../../Shared/ActiveEditorContext.cs;../../Shared/ActivePouSource.cs;../../Shared/NativeActiveEditorReader.cs" Link="Shared/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../obj/EmbeddedChat.js" LogicalName="TwinCatAssistant.EmbeddedChat.js" />
     <Compile Include="../NativeModelConsent.cs" Link="Shared/NativeModelConsent.cs" />
+    <Compile Include="../NativeInstallationSelection.cs" Link="Shared/NativeInstallationSelection.cs" />
     <Compile Include="../ThreadExportIntegration.cs" Link="Shared/ThreadExportIntegration.cs" />
     <Compile Include="../ProjectChatPicker.cs" Link="Shared/ProjectChatPicker.cs" />
     <Compile Include="../ProjectChatViewState.cs" Link="Shared/ProjectChatViewState.cs" />

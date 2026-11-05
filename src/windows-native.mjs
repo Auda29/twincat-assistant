@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { isAbsolute } from 'node:path';
 import { realpath } from 'node:fs/promises';
+import { requirePackage } from './package-integrity.mjs';
 
 const capture = promisify(execFile);
 function helperEnvironment() {
@@ -10,6 +11,7 @@ function helperEnvironment() {
     .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]));
 }
 export function windowsHelperPath() {
+  if (requirePackage && process.env.TC_ASSISTANT_WINDOWS_HELPER !== undefined) throw new Error('Application package does not accept a Windows helper override');
   const path = process.env.TC_ASSISTANT_WINDOWS_HELPER
     ?? fileURLToPath(new URL('../native/WindowsHost/bin/Release/net8.0-windows/WindowsHost.exe', import.meta.url));
   if (!isAbsolute(path)) throw new Error('Windows helper must be an absolute operator-selected path');

@@ -7,6 +7,7 @@ import { initializeState, inspectState } from './state.mjs';
 import { prepareRuntimeLaunch } from './runtime-start.mjs';
 import { supervise } from './supervisor.mjs';
 import { configureNativeMcp } from './native-mcp.mjs';
+import { verifyPackageIfPresent } from './package-integrity.mjs';
 
 export function validateNativeChatRequest(value) {
   if (!value || Object.keys(value).some(key => !['state', 'port', 'password', 'mcpConfig'].includes(key))
@@ -59,6 +60,7 @@ async function assertFreePort(port) {
 }
 
 export async function startNativeChat(request, signal, report, options = {}) {
+  await verifyPackageIfPresent();
   const { state, port } = validateNativeChatRequest(request);
   await assertFreePort(port); // refuse an occupied port rather than adopting another service
   try { await lstat(state); }

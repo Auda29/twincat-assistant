@@ -28,7 +28,38 @@ namespace TwinCatAssistant.Native
 
         public static NativeChatConfiguration Load()
         {
-            var result = new JavaScriptSerializer().Deserialize<NativeChatConfiguration>(Encoding.UTF8.GetString(NativeChatFiles.Read(ConfigurationPath)));
+            // CodeBase retains the extension location when the IDE shadow-copies
+            // an assembly; Location may instead name its temporary cache.
+            var hostAssembly = typeof(NativeChatConfiguration).Assembly;
+            var hostUri = new Uri(hostAssembly.CodeBase);
+            if (!hostUri.IsFile) throw new InvalidOperationException("Invalid host assembly location.");
+            var hostDirectory = Path.GetDirectoryName(hostUri.LocalPath);
+            return LoadFrom(hostDirectory, ConfigurationPath, Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                Environment.GetEnvironmentVariable("ProgramW6432") ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
+        }
+        internal static NativeChatConfiguration LoadFrom(string hostDirectory, string configurationPath, string localAppData, string programFiles)
+        {
+            var selected = NativeInstallationSelection.SelectRoot(Path.Combine(hostDirectory, "assistant-installation.json"));
+            if (selected == null && File.Exists(Path.Combine(hostDirectory, ".assistant-owner")))
+                throw new InvalidOperationException("Installed extension has no application selection.");
+            NativeChatConfiguration result;
+            if (File.Exists(configurationPath))
+                result = new JavaScriptSerializer().Deserialize<NativeChatConfiguration>(Encoding.UTF8.GetString(NativeChatFiles.Read(configurationPath)));
+            else if (selected != null)
+                result = new NativeChatConfiguration {
+                    StateRoot = Path.Combine(localAppData, "TwinCatAssistant", "operator-state"),
+                    DotNetRoot = Path.Combine(programFiles, "dotnet")
+                };
+            else throw new InvalidOperationException("Native chat configuration is missing.");
+            if (result == null) throw new InvalidOperationException("Invalid native chat configuration.");
+            if (selected != null) {
+                result.RepositoryRoot = selected;
+                result.NodePath = Path.Combine(selected, "runtime", "node", "node.exe");
+                if (string.IsNullOrWhiteSpace(result.DotNetRoot) || !File.Exists(Path.Combine(result.DotNetRoot, "dotnet.exe")))
+                    result.DotNetRoot = Path.Combine(programFiles, "dotnet");
+                if (string.IsNullOrEmpty(result.McpSettingsPath))
+                    result.McpSettingsPath = Path.Combine(selected, "runtime", "mcp", "default-settings.json");
+            }
             result.Validate();
             return result;
         }

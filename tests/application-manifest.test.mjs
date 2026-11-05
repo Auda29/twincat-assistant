@@ -31,3 +31,15 @@ test('manifest cannot be overwritten and forged paths are rejected', async () =>
     await assert.rejects(verifyManifest(root));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('redirected subdirectories and roots are rejected', async () => {
+  const parent = await mkdtemp(join(tmpdir(), 'assistant-manifest-link-'));
+  try {
+    const root = join(parent, 'root'), other = join(parent, 'other');
+    await mkdir(root); await mkdir(other);
+    await symlink(other, join(root, 'redirect'), process.platform === 'win32' ? 'junction' : 'dir');
+    await assert.rejects(createManifest(root, { version: '1', architecture: 'ia32' }), /links/);
+    await symlink(other, join(parent, 'root-link'), process.platform === 'win32' ? 'junction' : 'dir');
+    await assert.rejects(createManifest(join(parent, 'root-link'), { version: '1', architecture: 'ia32' }), /package root/);
+  } finally { await rm(parent, { recursive: true, force: true }); }
+});

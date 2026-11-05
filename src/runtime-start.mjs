@@ -1,10 +1,13 @@
 import { readFile, realpath } from 'node:fs/promises';
 import { prepareLaunch, runVersion } from './launcher.mjs';
 import { runtimePaths } from './runtime-paths.mjs';
+import { verifyPackageIfPresent } from './package-integrity.mjs';
 
 // Preparation only. CLI signals and the native readiness/owner protocol stay
 // with their entry points; no service or launcher lock exists until supervision.
 export async function prepareRuntimeLaunch(root, options, inherited = process.env) {
+  if (await verifyPackageIfPresent() && (options.openchamber || options.opencode || options.runtime))
+    throw new Error('Application package does not accept runtime overrides');
   const selected = options.openchamber && options.opencode ? null : await runtimePaths(options.runtime);
   let openchamber = options.openchamber ?? selected.openchamber;
   let opencode = options.opencode ?? selected.opencode;
