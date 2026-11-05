@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { inspectState, readJsonFile } from './state.mjs';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
+import { rebasePackageSettings } from './managed-relocation.mjs';
 
 export async function atomicJson(path, value) {
   const temporary = join(dirname(path), '.profile-' + randomUUID() + '.tmp');
@@ -30,7 +31,7 @@ export async function updateProfile(root, transform) {
   const lock = await open(lockPath, 'wx', 0o600);
   try {
     const current = await inspectState(root);
-    const settings = validateSettings(transform(current.settings));
+    const settings = validateSettings(rebasePackageSettings(transform(current.settings)));
     // Also rewrites an exact earlier managed configuration (older Analysis
     // prompt) for unchanged settings; settings.json then stays byte-identical.
     if (JSON.stringify(settings) !== JSON.stringify(current.settings)) {

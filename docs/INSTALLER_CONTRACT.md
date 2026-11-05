@@ -74,10 +74,13 @@ without an installer ownership marker, the development configuration remains
 available. The full package is checked before preparing user state.
 
 Manifest and selector tests establish these boundaries, not a real installed
-host. A startup test after moving a synthetic package passes; changing between
-two version roots with existing managed MCP paths and prompt policies requires
-its own compatibility implementation and test before claiming operational
-update/rollback. Unpackaged older prototypes are not installer rollback targets.
+host. A startup test after moving a synthetic package passes. The
+[managed relocation implementation](INSTALLER_RELOCATION.md) checks both
+inventoried sibling versions before rebasing existing MCP paths and known
+prompt policies. Synthetic version 1 → version 2 → version 1 startup preserves
+profile and project data. Both versions must understand the encountered policy;
+unpackaged older prototypes are not installer rollback targets. Full real
+package installation, update and rollback still need host acceptance.
 
 The manual CI workflow downloads an explicitly named application staging
 artifact from a specified run and uploads the built EXE as a candidate. No

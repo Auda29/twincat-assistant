@@ -3,10 +3,23 @@ import { dirname, join, resolve } from 'node:path';
 import { applicationRoot, requirePackage, verifyPackageIfPresent } from './package-integrity.mjs';
 import { verifyManifest } from '../scripts/application-manifest.mjs';
 
+const samePath = (a, b) => typeof a === 'string' && typeof b === 'string'
+  && (process.platform === 'win32' ? resolve(a).toLowerCase() === resolve(b).toLowerCase() : resolve(a) === resolve(b));
+
 export function currentPackageSettings(settings) {
   if (!requirePackage) return true;
-  return (!settings.knowledge || settings.knowledge.executable === join(applicationRoot, 'runtime/mcp/knowledge/twincat-knowledge.exe'))
-    && (!settings.engineering || settings.engineering.entrypoint === join(applicationRoot, 'runtime/mcp/engineering/packages/mcp/dist/index.js'));
+  return (!settings.knowledge || samePath(settings.knowledge.executable, join(applicationRoot, 'runtime/mcp/knowledge/twincat-knowledge.exe')))
+    && (!settings.engineering || samePath(settings.engineering.entrypoint, join(applicationRoot, 'runtime/mcp/engineering/packages/mcp/dist/index.js')));
+}
+
+// Called only after inspection has established the old managed configuration.
+// Operator corpus, provider consent and every non-executable setting survive.
+export function rebasePackageSettings(settings) {
+  if (!requirePackage) return settings;
+  return { ...settings,
+    ...(settings.knowledge ? { knowledge: { ...settings.knowledge, executable: join(applicationRoot, 'runtime/mcp/knowledge/twincat-knowledge.exe') } } : {}),
+    ...(settings.engineering ? { engineering: { ...settings.engineering, entrypoint: join(applicationRoot, 'runtime/mcp/engineering/packages/mcp/dist/index.js') } } : {}),
+  };
 }
 
 // Only the installer's retained version directories are eligible. Manifests
@@ -14,22 +27,25 @@ export function currentPackageSettings(settings) {
 export async function previousPackageRuntime(actual, settings) {
   if (!requirePackage) return null;
   const servers = actual?.mcp?.servers;
-  const commands = [servers?.knowledge?.command, servers?.engineering?.command].filter(Array.isArray);
+  const commands = [settings.knowledge?.bridge ? servers?.knowledge?.command : null, servers?.engineering?.command].filter(Array.isArray);
   const nodes = [...new Set(commands.map(command => command[0]))];
-  if (nodes.length !== 1 || typeof nodes[0] !== 'string' || nodes[0] === process.execPath) return null;
-  const node = nodes[0];
+  // A CLI profile may invoke Knowledge directly, without a Node broker.
+  const knowledgeRoot = typeof settings.knowledge?.executable === 'string' ? dirname(dirname(dirname(dirname(settings.knowledge.executable)))) : null;
+  if (nodes.length > 1 || (nodes.length === 0 && !knowledgeRoot)) return null;
+  const node = nodes.length ? nodes[0] : join(knowledgeRoot, 'runtime/node/node.exe');
+  if (typeof node !== 'string' || samePath(node, process.execPath)) return null;
   const oldRoot = dirname(dirname(dirname(node)));
   const current = resolve(applicationRoot);
-  if (node !== join(oldRoot, 'runtime', 'node', 'node.exe') || process.execPath !== join(current, 'runtime', 'node', 'node.exe')) return null;
+  if (!samePath(node, join(oldRoot, 'runtime', 'node', 'node.exe')) || !samePath(process.execPath, join(current, 'runtime', 'node', 'node.exe'))) return null;
   const versions = dirname(dirname(current));
-  if (dirname(dirname(oldRoot)) !== versions || dirname(current) === dirname(oldRoot)
-      || dirname(current) === versions || dirname(oldRoot) === versions
-      || current !== join(dirname(current), 'application') || oldRoot !== join(dirname(oldRoot), 'application')
-      || versions !== join(dirname(versions), 'versions')) return null;
+  if (!samePath(dirname(dirname(oldRoot)), versions) || samePath(dirname(current), dirname(oldRoot))
+      || samePath(dirname(current), versions) || samePath(dirname(oldRoot), versions)
+      || !samePath(current, join(dirname(current), 'application')) || !samePath(oldRoot, join(dirname(oldRoot), 'application'))
+      || !samePath(versions, join(dirname(versions), 'versions'))) return null;
   const installation = dirname(versions);
   for (const dir of [installation, versions, dirname(current), current, dirname(oldRoot), oldRoot]) {
     const stat = await lstat(dir);
-    if (!stat.isDirectory() || stat.isSymbolicLink() || resolve(await realpath(dir)) !== resolve(dir)) throw new Error('Redirected installation version');
+    if (!stat.isDirectory() || stat.isSymbolicLink() || !samePath(await realpath(dir), dir)) throw new Error('Redirected installation version');
   }
   const owner = join(installation, '.assistant-install-root');
   const state = join(installation, 'state.json');
@@ -54,7 +70,7 @@ export async function previousPackageRuntime(actual, settings) {
   }
   const oldKnowledge = join(oldRoot, 'runtime/mcp/knowledge/twincat-knowledge.exe');
   const oldEngineering = join(oldRoot, 'runtime/mcp/engineering/packages/mcp/dist/index.js');
-  if (settings.knowledge && settings.knowledge.executable !== oldKnowledge) return null;
-  if (settings.engineering && settings.engineering.entrypoint !== oldEngineering) return null;
+  if (settings.knowledge && !samePath(settings.knowledge.executable, oldKnowledge)) return null;
+  if (settings.engineering && !samePath(settings.engineering.entrypoint, oldEngineering)) return null;
   return { node, knowledgeClient: join(oldRoot, 'src', 'knowledge-client.mjs') };
 }

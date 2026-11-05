@@ -15,6 +15,7 @@ Native acceptance and future engineering write/build milestones remain separate.
 - [Common startup contract for Core, Chat and Host](START_CONTRACT.md)
 - [First alpha host target and remaining real-host acceptance](HOST_ACCEPTANCE_MATRIX.md)
 - [Windows installer, host registration and rollback contract](INSTALLER_CONTRACT.md)
+- [Managed profile and project configuration across package versions](INSTALLER_RELOCATION.md)
 - [Analysis profile prompts, migration and evaluation cases](PROFILE_PROMPTS.md)
 - [OpenChamber extension](EXTENSION.md)
 - [Diagnostic bridge and portable safety core](BRIDGE.md)

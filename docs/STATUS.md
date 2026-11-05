@@ -6,9 +6,11 @@ and rollback for the alpha target. Synthetically tested transactions preserve
 operator data and restore the previous extension after staging/swap failures.
 The native host now consumes the selected packaged runtime and validates its
 entrypoints before launch. The combined implementation passes all 126 Node
-tests, and the x86 host builds. Relocatable MCP input builds, version-to-version
-managed-configuration compatibility and a full real package/host acceptance
-remain open. See [installer contract](INSTALLER_CONTRACT.md).
+tests, and the x86 host builds. Manifest-checked sibling package relocation now
+supports existing global and project MCP configuration on update and rollback;
+both versions must recognize the precise prompt policy. Relocatable MCP input
+builds and a full real package/host acceptance remain open. See
+[installer contract](INSTALLER_CONTRACT.md) and [relocation limits](INSTALLER_RELOCATION.md).
 
 The revised Analysis system prompt is integrated into global and project chats,
 with exact recognition/migration of the two previous managed prompts. Thirteen

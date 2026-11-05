@@ -29,10 +29,15 @@ test('relocation accepts only inventoried sibling versions and exact packaged en
     await writeFile(join(install,'.assistant-install-root'),'TwinCatAssistant installation v1');
     await writeFile(join(install,'state.json'),JSON.stringify({targetId:'tcxaeshell-x86-tc4024',current:'2.0.0'}));
     const config = {mcp:{servers:{knowledge:{command:[join(old,'runtime/node/node.exe'),join(old,'src/knowledge-client.mjs'),'broker']}}}};
-    const settings = {knowledge:{executable:join(old,'runtime/mcp/knowledge/twincat-knowledge.exe')}};
+    const settings = {knowledge:{executable:join(old,'runtime/mcp/knowledge/twincat-knowledge.exe'),bridge:'broker'}};
     const code = `const {previousPackageRuntime}=await import(${JSON.stringify('file:///')}+process.argv[1].replaceAll('\\\\','/')); console.log(JSON.stringify(await previousPackageRuntime(JSON.parse(process.argv[2]),JSON.parse(process.argv[3]))));`;
     const check = async (c=config,s=settings) => JSON.parse((await run(join(current,'runtime/node/node.exe'),['--input-type=module','-e',code,join(current,'src/managed-relocation.mjs'),JSON.stringify(c),JSON.stringify(s)],{windowsHide:true})).stdout);
     assert.equal((await check()).node,join(old,'runtime/node/node.exe'));
+    const differentlyCased = await run(join(current,'runtime/node/node.exe'), ['--input-type=module','-e',code,join(current,'src/managed-relocation.mjs').toLowerCase(),JSON.stringify(config),JSON.stringify(settings)], { windowsHide:true });
+    assert.equal(JSON.parse(differentlyCased.stdout).node, join(old,'runtime/node/node.exe'), 'Windows path casing does not make a valid installation foreign');
+    const directSettings = { knowledge: { executable: settings.knowledge.executable } };
+    const direct = { mcp: { servers: { knowledge: { command: [directSettings.knowledge.executable, 'serve'] } } } };
+    assert.equal((await check(direct, directSettings)).node, join(old,'runtime/node/node.exe'), 'a direct Knowledge CLI profile also has a validated previous package');
     const currentOnly = `const x=await import(${JSON.stringify('file:///')}+process.argv[1].replaceAll('\\\\','/')); console.log(x.currentPackageSettings(JSON.parse(process.argv[2])));`;
     const currentResult = await run(join(current,'runtime/node/node.exe'),['--input-type=module','-e',currentOnly,join(current,'src/managed-relocation.mjs'),JSON.stringify(settings)],{windowsHide:true});
     assert.equal(currentResult.stdout.trim(),'false', 'current Node cannot make an old or foreign MCP path current');

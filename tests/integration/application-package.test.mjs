@@ -162,6 +162,8 @@ test('two installed versions rebase managed profile and project on update and ro
     await writeFile(oldFile,'tampered');
     await assert.rejects(invoke(v2,'native-mcp.mjs',request));
     await writeFile(oldFile,original);
+    // CLI-style start has no MCP setup callback to repair old settings first.
+    await start(v2,state);
     await start(v2,state,settings);
     const foreign = structuredClone(olderProject); foreign.agents[ANALYSIS_PROFILE].system = 'unknown prompt';
     await writeFile(scopedPath,JSON.stringify(foreign));

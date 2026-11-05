@@ -17,7 +17,11 @@ and the corresponding settings. Unknown prompts, policy changes, foreign
 paths, corrupted packages and unrelated installations remain refused. The
 project's original workspace and receipt are retained; no chats, credentials,
 provider consent or project binding are copied into a new profile. MCP paths
-are reselected from the active package using the existing native MCP setup.
+are reselected from the active package using the existing native MCP setup or
+the locked global profile update. CLI-style startup without an MCP setup
+callback also rebases validated old executable paths before rewriting the
+configuration. Direct Knowledge commands without a Node broker follow the
+same bounded package identity checks.
 
 Rollback requires that both installed versions contain this relocation support
 and recognize the precise prompts they encounter. An older binary cannot be
