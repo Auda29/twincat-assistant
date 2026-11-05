@@ -1,5 +1,11 @@
 # Implementation status
 
+**Paused on operator request, 2026-11-05.** The current source includes unaccepted
+installer rollback and package-verification WIP. Its last green CI predates those
+changes. The four roadmap items are not all complete. See the
+[pause handoff](PAUSE_20261105.md) for exact evidence, the open P2 review finding,
+machine state and the next required checks.
+
 Actual installation update, **2026-11-05**: the first CI C0 EXE was installed
 with operator-confirmed same-user UAC into the real x86 alpha host. All 22443
 application inventory entries and the installed extension snapshot were checked;
