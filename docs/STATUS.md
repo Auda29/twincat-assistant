@@ -24,6 +24,13 @@ remain open. C1 is forward-compatible with exact scoped C0 policies; the old C0
 runtime cannot read C1. Installer rollback policy compatibility is still being
 implemented and is not proven by the prompt tests. See
 [prompt acceptance](PROMPT_ACCEPTANCE_20261105.md).
+The separate hosted [Portable checks run 42042008010](https://github.com/Auda29/twincat-assistant/actions/runs/42042008010)
+completed successfully for exact source `491ed3aa687248a46021830d93e9c0e09e209a99`:
+Linux components, Windows lifecycle and source-runtime jobs all passed. This
+includes the fixture portability/Windows temp fixes, actual source build,
+runtime/data compatibility and original provider/login/streaming/tool/MCP
+regressions. It precedes the new installer policy-downgrade implementation,
+which still needs its own tests and final package CI.
 [The handoff](ALPHA_CI_HOST_HANDOFF.md) contains the isolated
 state, backup, UAC and unmanaged-prototype recovery boundaries.
 
