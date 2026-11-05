@@ -1,5 +1,24 @@
 # Implementation status
 
+Completion-round update, **2026-11-05**: the real
+[Windows CI run 42034006930](https://github.com/Auda29/twincat-assistant/actions/runs/42034006930)
+passed reviewed input import, protected package startup, both actual MCP probes
+on synthetic data, restart/state preservation, EXE build and embedded inventory
+verification. Its downloaded EXE matches the CI checksum. This proves that
+candidate's CI chain, not a real host installation. The later integrated
+candidate is `0.2.0-preview.2`, native version `0.2.0.2`; its own package/CI
+evidence must be recorded separately.
+
+The [delivery scope](DELIVERY_SCOPE.md) now blocks excluded runtime endpoints,
+removes the redundant distribution Core and server tests, and replaces our
+product labels while retaining third-party contracts and notices. The
+[direct-host evidence](HOST_ACCEPTANCE_20261105.md) covers isolated project
+switches, dirty/save semantics, oversized POU references, reopen and two IDEs.
+It does not close visible UI, member-editor, actual install/update/rollback or
+first-after-logon gates. Prompt/model/embedded-renderer acceptance remains a
+separate open gate. [The handoff](ALPHA_CI_HOST_HANDOFF.md) contains the isolated
+state, backup, UAC and unmanaged-prototype recovery boundaries.
+
 Integration update, **2026-11-05**: the Windows installer candidate now builds
 from an explicit application package and implements host registration, update
 and rollback for the alpha target. Synthetically tested transactions preserve

@@ -28,14 +28,25 @@ vollständige Paketbau und Installerbau sind jetzt lokal erfolgreich. Der
 Knowledge-Eigentümer hat die Bündelung freigegeben; die Freigabe ist im Repo
 dokumentiert. Der [Buildnachweis](ALPHA_DELIVERY_BUILD.md) enthält die echten
 Paket-/MCP-Startprüfungen und die Kontrolle des eingebetteten Installer-Payloads.
-CI-Ausführung und echte Installationsabnahme bleiben offen; Punkt 3 ist damit
-nicht abgeschlossen. Der Bau relocatierbarer MCP-Eingaben ist umgesetzt und
+Der echte [Windows-CI-Lauf](https://github.com/Auda29/twincat-assistant/actions/runs/42034006930)
+hat Paketstart, beide MCPs, Neustart, EXE-Bau und eingebettete Hashprüfung
+bestanden. Echte Installation, Update und Rollback im Host bleiben offen;
+Punkt 3 ist damit nicht abgeschlossen. Der Bau relocatierbarer MCP-Eingaben ist umgesetzt und
 geprüft; [Anwendungseingaben](APPLICATION_INPUTS.md) beschreibt den Buildweg.
 Der neue Analyse-Prompt ist in beiden Konfigurationspfaden eingebunden und
 mit Migrations- und Vertragstests geprüft. Echte Modellantworten und die
 Darstellung im installierten WebView bleiben für Punkt 4 zu prüfen.
 Details stehen im [Installer-Vertrag](INSTALLER_CONTRACT.md) und in der
 [Prompt-Dokumentation](PROFILE_PROMPTS.md).
+
+Weitere Abschlussnachweise vom 05.11.2026: Die
+[Auslieferungsabgrenzung](DELIVERY_SCOPE.md) für Punkt 2 ist implementiert und
+mit einem echten vollständigen Paket geprüft. Die
+[isolierte Host-Abnahme](HOST_ACCEPTANCE_20261105.md) belegt direkte
+Editor-/Projektlesevorgänge im Zielhost; sichtbare UI, Member-Editoren und
+First-after-logon sind weiterhin offen. Der integrierte Folgekandidat
+[`0.2.0-preview.2`](releases/alpha-0.2.0-preview.2.md) ist noch kein
+installierter oder abgenommener Release. Punkte 5–7 wurden nicht begonnen.
 
 Die folgenden Zukunftsthemen sind in dieser Reihenfolge vereinbart. Sie sind
 geplant, nicht als umgesetzt oder abgenommen markiert. Die Liste legt keinen
