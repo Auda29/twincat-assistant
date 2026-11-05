@@ -26,7 +26,7 @@ Both prompt texts are composed in `src/agent-prompts.mjs`. On 2026-11-05, a
 local run of the real pinned runtime with synthetic data returned the new
 general prompt from `/api/config`. It also returned the general layer and the
 project layer with the new project prompt for a bound project directory. No
-earlier prompt text was present. No model call was made.
+earlier prompt text was present. That earlier configuration-only probe made no model call. Real model evaluation and native renderer evidence are recorded below.
 
 ## Actual tools and rights
 
@@ -64,8 +64,10 @@ fence tags fall back to `text`.
   `explain-dirty-snapshot-de` produced two `language-st` blocks. Each had its
   bold label paragraph immediately before it, and the tabs were unchanged. Shiki
   `text` output kept the tabs and added no token colors.
-- Not checked: visual appearance in the embedded WebView, tab width on screen,
-  copy into the TwinCAT editor. These need live host acceptance.
+- Subsequent real-answer acceptance rendered all answers through the pinned
+  renderer in an actual x86 WPF WebView2CompositionControl at 430/980 widths.
+  Tabs and all production copy-handler payloads were preserved. This is a
+  standalone native fixture; installed IDE and TwinCAT paste acceptance remain open.
 
 ## Shared rules for all profiles
 
@@ -124,6 +126,8 @@ modified". The upgrade keeps existing data:
 - `PREVIOUS_ANALYSIS_PROMPTS` records the exact earlier prompts: the profile
   prompt from `fd4ef28` and the project prompt from `e59c6c5`, both in use
   until this change.
+- `C0_ANALYSIS_PROMPTS` additionally freezes the exact generated C0 strings
+  for all six scopes; `previousAnalysisPrompts` selects only the matching scope.
 - The upgrade accepts a configuration only if it equals the current generated
   configuration for the same settings, except for one of these exact prompts.
   Changed permissions, MCP servers, providers or an unknown prompt still fail
@@ -147,68 +151,37 @@ and opening it again was stable. Earlier releases cannot read the new prompt.
 Returning to an earlier release therefore requires the earlier configuration
 files, as with any policy change.
 
-## Evaluation without model calls
+## Real model and renderer acceptance
 
-Real answer quality has **not** been measured. This change makes no paid model
-calls and uses no provider account. No approved model-answer fixture exists.
-The repository therefore provides reproducible cases instead:
+The 2026-11-05 follow-up evaluated 17 real answers through the existing consented
+`github-copilot/gpt-6.1-sol` provider with `high` reasoning. Only synthetic PLC
+and documentation inputs were used. All original German/English cases and six
+additional accessor, empty-corpus and large-reference cases passed final checks.
 
-- `tests/prompt-evaluation/cases.json` holds 11 synthetic cases in German and
-  English. They cover:
-  - an explanation of a dirty snapshot that differs from the saved file
-  - a method and a property Get accessor
-  - an action without a declaration
-  - an unsaved-changes question without a snapshot
-  - variable reads and writes
-  - documentation with citations
-  - a missing corpus
-  - prompt injection in a source comment
-  - build/activate/download requests
-  - a code proposal
-  - a general chat without a project
+C0 failed the dirty-snapshot comparison/code-evidence requirements. C1 now reads
+the saved counterpart in bound project chats, includes separate quoted code
+evidence, and refuses to invent accessor boundaries when a backend flattens
+Get/Set. Exact C0 strings for all six scopes are preserved for forward migration;
+permissions and profile/project journal structures are unchanged. Comparison to
+the actual first CI candidate `fca292b` confirmed every frozen C0 string.
+An old C0 payload cannot read C1 merely because the new payload preserves C0.
 
-  The file also records the renderer facts. The tests require its OpenChamber
-  revision to match `upstream/source-lock.json`.
-- `check-answer.mjs` provides machine checks: `st` fences, part labels,
-  declaration/implementation separation, balanced constructs, verbatim quotes,
-  required and forbidden wording, URLs that no tool returned, and answer
-  language. The language check is a heuristic. Each case also lists review
-  criteria for a human reviewer.
-- `samples.json` contains handwritten good and bad reference answers, not model
-  output. They prove that the checker accepts and rejects the intended cases.
+The actual pinned renderer ran in a real x86 WPF WebView2CompositionControl:
+34 renderings at 430/980 widths and 40 exact production code-copy payloads.
+Copy was captured in memory without touching the user's OS clipboard.
+Installed IDE, actual paste, dark theme and owner approval are not certified.
+The separate real engineering probe used `3c30383`, which flattens saved property
+accessors. Parent's newer backend needs its own check before final saved-file
+Get/Set acceptance.
 
-Manual run with a consented provider:
+See [the dated acceptance report](PROMPT_ACCEPTANCE_20261105.md) for manual
+findings per case, source/runtime versions, artifacts, reproduction commands,
+C0-to-C1 migration and rollback limits. Offline verification:
 
 ```powershell
-node tests/prompt-evaluation/evaluate.mjs --list
-node tests/prompt-evaluation/evaluate.mjs --print explain-dirty-snapshot-de
-node tests/prompt-evaluation/evaluate.mjs C:\path\answers.json
+node tests/prompt-evaluation/evaluate.mjs tests/prompt-evaluation/evidence/2026-11-05-c1/answers.json
+node tests/prompt-evaluation/verify-evidence.mjs
 ```
 
-`--print` shows the production system prompt for the case scope. It also shows
-the context parts in the native and overlay formats, the synthetic tool results
-to serve and the review criteria. `answers.json` maps case IDs to the Markdown
-answers that were received.
-
-## Verification (2026-11-05, isolated checkout, Windows)
-
-- `npm test`: 110 of 110 passed. The run used the existing
-  `WindowsHost.exe`, built from identical source, through
-  `TC_ASSISTANT_WINDOWS_HELPER`, because the .NET 8 SDK is not installed. The
-  Job Object root-exit test failed once under full parallel load and passed in
-  two isolated reruns; it is unrelated to this change.
-- `npm run test:native-mcp` against the documented Knowledge revision
-  `fff24f4` and Engineering revision `3c30383` passed in PowerShell. It started
-  the real pinned runtime with both MCPs connected per project. Started from
-  Git Bash, the child Node process aborts at its CSPRNG initialization; this is
-  a shell environment issue.
-- `npm run build` passed. Browser tests were not run.
-
-## Open
-
-- Real model answers for the cases, with a consented provider, and human
-  review of the criteria.
-- Live x86 host check: rendering, copying `st` blocks into TwinCAT, German and
-  English answers.
-- The integrator decides on links from `docs/README.md` and the status and
-  roadmap entries.
+The tests retain handwritten positive/negative answers only to test the checker.
+They are not used as model or renderer acceptance evidence.

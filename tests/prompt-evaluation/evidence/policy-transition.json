@@ -1,0 +1,62 @@
+{
+  "from": "C0 exact fca292b",
+  "to": "C1 this commit",
+  "direction": "forward only; older C0 candidate does not recognize C1",
+  "permissionsChanged": false,
+  "scopes": [
+    {
+      "scope": {
+        "knowledge": false,
+        "engineering": false,
+        "project": false
+      },
+      "c0": "c7027fc3bbeafd93a1d42fa48ddfe24c1fdee62a3003aaee2b8ed61b7323e52f",
+      "c1": "1a75e0f1a994caa06f7c6b5e50558ed29a8aa13031a0581db3e29e5ea529fff2"
+    },
+    {
+      "scope": {
+        "knowledge": false,
+        "engineering": true,
+        "project": false
+      },
+      "c0": "bf3f64b1e4aaba1f07686513511db939a7cdf5cd377471992fec7f5d4139ad43",
+      "c1": "1ca19abb0d47f9ccf971da2dea8b9920b5eb30261a8fea5f5617723ffa1ceffb"
+    },
+    {
+      "scope": {
+        "knowledge": false,
+        "engineering": true,
+        "project": true
+      },
+      "c0": "c6866e4a2d1fab71d31f82b3dd8f35c95a4519cf8da4d55ca866b8e1e0aa2fec",
+      "c1": "41556c64068d8660a26fbd0a6dfd7135ef32d106d067aca3da49c9d8e35a74ed"
+    },
+    {
+      "scope": {
+        "knowledge": true,
+        "engineering": false,
+        "project": false
+      },
+      "c0": "fc81ac31a66b38632d53ad4124e87bdbec073e84cf4c3252066227f3d84bb8da",
+      "c1": "41ac4a39c683c94771cf0ad9f9bde554ebc0bebebf552e5d944d5ab3d6217009"
+    },
+    {
+      "scope": {
+        "knowledge": true,
+        "engineering": true,
+        "project": false
+      },
+      "c0": "89ee7bf430dc85a5707fec54ebda4c6dddda73925277e2bccffb95032fd34901",
+      "c1": "e5326c3cf9547e0ace7951c094637b9ca944434aa6712fe0d1d0233e4b77ad9f"
+    },
+    {
+      "scope": {
+        "knowledge": true,
+        "engineering": true,
+        "project": true
+      },
+      "c0": "3e56a8742c3e83a230ef69e75cd45a6f21a1b938038d7b46aef68456ec524162",
+      "c1": "f4253be782a658b25960fda94f8a962be2b141317e2a52514d7ba970573ba70f"
+    }
+  ]
+}

@@ -2,7 +2,7 @@ import { isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Config } from '@opencode/schema';
 import { Schema } from 'effect';
-import { ANALYSIS_PROFILE, PREVIOUS_ANALYSIS_PROMPTS, analysisSystemPrompt } from './agent-prompts.mjs';
+import { ANALYSIS_PROFILE, previousAnalysisPrompts, analysisSystemPrompt } from './agent-prompts.mjs';
 
 function object(value, keys) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -116,7 +116,7 @@ export function createOpenCodeConfig(settings = {}, runtime = {}) {
 // differ only by a reviewed earlier Analysis prompt and may be upgraded in place.
 export function previousOpenCodeConfigs(settings = {}, runtime = {}) {
   const current = createOpenCodeConfig(settings, runtime);
-  return PREVIOUS_ANALYSIS_PROMPTS.profile.map(system => {
+  return previousAnalysisPrompts({ knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) }).map(system => {
     const config = structuredClone(current);
     config.agents[ANALYSIS_PROFILE].system = system;
     return config;

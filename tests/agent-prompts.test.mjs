@@ -1,3 +1,6 @@
+import { resolve } from 'node:path';
+import { C0_ANALYSIS_PROMPTS } from '../src/analysis-prompts-c0.mjs';
+import { previousAnalysisPrompts } from '../src/agent-prompts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
@@ -6,8 +9,8 @@ import { READ_TOOLS, createOpenCodeConfig, previousOpenCodeConfigs } from '../sr
 import { checkAnswer } from './prompt-evaluation/check-answer.mjs';
 import { composeCase, loadCases, metadataText, snapshotText } from './prompt-evaluation/evaluate.mjs';
 
-const knowledge = { executable: 'C:\\Synthetic\\knowledge.exe' };
-const engineering = { entrypoint: 'C:\\Synthetic\\engineering.mjs', config: 'C:\\Synthetic\\engineering.json' };
+const knowledge = { executable: resolve('tests/fixtures/knowledge.exe') };
+const engineering = { entrypoint: resolve('tests/fixtures/engineering.mjs'), config: resolve('tests/fixtures/engineering.json') };
 const SCOPES = [
   { knowledge: false, engineering: false, project: false },
   { knowledge: true, engineering: false, project: false },
@@ -155,5 +158,20 @@ test('the answer checker accepts the reference answers and rejects the counter-e
     const result = checkAnswer(sample.answer, item, fixture.sources);
     const failed = Object.entries(result.results).filter(([, value]) => !value.ok).map(([name]) => name);
     assert.deepEqual(failed, sample.expectFailures, sample.case + ' ' + sample.kind);
+  }
+});
+
+test('C0 migration matches exact scope without changing policy or permitting other C0 scopes', () => {
+  assert.equal(C0_ANALYSIS_PROMPTS.profile.length,4);
+  assert.equal(C0_ANALYSIS_PROMPTS.project.length,2);
+  for(const knowledge of [false,true])for(const engineering of [false,true]) {
+    const scope={knowledge,engineering};const old=previousAnalysisPrompts(scope).at(-1);
+    assert.equal(old,C0_ANALYSIS_PROMPTS.profile[2*Number(knowledge)+Number(engineering)]);
+    assert.notEqual(old,analysisSystemPrompt(scope));
+    for(const other of C0_ANALYSIS_PROMPTS.profile)if(other!==old)assert.ok(!previousAnalysisPrompts(scope).includes(other));
+  }
+  for(const knowledge of [false,true]) {
+    const old=previousAnalysisPrompts({knowledge,engineering:true,project:true}).at(-1);
+    assert.equal(old,C0_ANALYSIS_PROMPTS.project[Number(knowledge)]);
   }
 });

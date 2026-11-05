@@ -1,3 +1,4 @@
+import { C0_ANALYSIS_PROMPTS } from '../src/analysis-prompts-c0.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -125,4 +126,26 @@ test('an unknown project prompt or widened project policy is still refused', asy
       assert.deepEqual(JSON.parse(await readFile(config, 'utf8')), value, 'a refused configuration is left for inspection');
     }
   } finally { await rm(f.root, { recursive: true, force: true }); }
+});
+
+test('exact C0 general policy upgrades to C1 with settings and history preserved',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'tc-c0-profile-'));try{
+ const paths=await initializeState(join(root,'state'),settings);const old=createOpenCodeConfig(settings);old.agents[ANALYSIS_PROFILE].system=C0_ANALYSIS_PROMPTS.profile[0];
+ await writeFile(paths.configPath,json(old));const before=await readFile(paths.settingsPath);
+ const sentinel=join(paths.data,'synthetic-history-sentinel');await writeFile(sentinel,'kept');
+ assert.equal(await upgradeProfileConfiguration(join(root,'state')),true);
+ assert.deepEqual(JSON.parse(await readFile(paths.configPath)),createOpenCodeConfig(settings));
+ assert.deepEqual(await readFile(paths.settingsPath),before);assert.equal(await readFile(sentinel,'utf8'),'kept');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('exact C0 project policy upgrades through the existing journal without identity changes',async()=>{
+ const f=await project();try{
+ const config=join(f.first.workspace,'opencode.json');const current=JSON.parse(await readFile(config));
+ const old=structuredClone(current);old.agents[ANALYSIS_PROFILE].system=C0_ANALYSIS_PROMPTS.project[1];
+ const identity=await readFile(join(f.first.workspace,'project.json'));const engineering=await readFile(join(f.first.workspace,'engineering.json'));
+ await writeFile(config,json(old));assert.equal((await prepareNativeProject(f.request)).workspace,f.first.workspace);
+ assert.deepEqual(JSON.parse(await readFile(config)),current);assert.deepEqual(await readFile(join(f.first.workspace,'project.json')),identity);
+ assert.deepEqual(await readFile(join(f.first.workspace,'engineering.json')),engineering);assert.equal(await readFile(f.plcproj,'utf8'),'<Project/>');
+ }finally{await rm(f.root,{recursive:true,force:true});}
 });

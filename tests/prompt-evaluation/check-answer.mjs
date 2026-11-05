@@ -3,7 +3,7 @@
 // separation, balanced constructs, verbatim quotes, wording, URLs, language).
 // Each case's `review` criteria still need a human reviewer.
 
-const LABEL = /^\*\*([^*]+?)\s[-–—]\s(Declaration|Implementation|Deklaration|Implementierung|Get|Set)\*\*:?$/;
+const LABEL = /^\*\*([^*]+?)\s[-–—]\s(Declaration|Implementation|Deklaration|Implementierung|Get|Set)(?: \([^*\n]+\))?\*\*:?$/;
 const HEADER = /^\s*(FUNCTION_BLOCK|PROGRAM|FUNCTION|METHOD|PROPERTY|INTERFACE|TYPE)\b/;
 const OMISSION = /^\s*\/\/\s*\.\.\./;
 const PAIRS = [['IF', 'END_IF'], ['CASE', 'END_CASE'], ['FOR', 'END_FOR'], ['WHILE', 'END_WHILE'], ['REPEAT', 'END_REPEAT'],
@@ -103,6 +103,7 @@ export function checkAnswer(markdown, testCase, sources = {}) {
   }
   if (checks.mustMention) record('mustMention', checks.mustMention.filter(pattern => !regex(pattern).test(prose)).map(pattern => 'missing ' + pattern));
   if (checks.mustNotMention) record('mustNotMention', checks.mustNotMention.filter(pattern => regex(pattern).test(prose)).map(pattern => 'forbidden ' + pattern));
+  if (checks.minCodeBlocks !== undefined) record('minCodeBlocks', blocks.length < checks.minCodeBlocks ? ['expected at least '+checks.minCodeBlocks+' code blocks, got '+blocks.length] : []);
   if (checks.maxCodeBlocks !== undefined) record('maxCodeBlocks', blocks.length > checks.maxCodeBlocks ? [blocks.length + ' code blocks'] : []);
   if (checks.allowedUrls) {
     const urls = markdown.match(/https?:\/\/[^\s)>\]]+/g) ?? [];

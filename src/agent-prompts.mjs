@@ -1,3 +1,4 @@
+import { C0_ANALYSIS_PROMPTS } from './analysis-prompts-c0.mjs';
 // System prompt composition for the TwinCAT agent profiles.
 //
 // Only the read-only Analysis profile exists. SHARED_RULES hold the rules every
@@ -35,6 +36,7 @@ export const SHARED_RULES = Object.freeze({
     '3. Verified current editor content: only text that a tool explicitly reports as the verified current editor buffer. Unless such a tool result is present, never say that you see the current, live or unsaved editor content.',
     'A part that starts with "TwinCAT IDE context, metadata only" names the active object but contains no source code. Do not quote or describe code from it.',
     'A part that starts with "TwinCAT saved-object reference (no source code attached)" is an object locator, not a source snapshot. When answering about that object, use the available engineering tools to list objects and resolve its exact bound project, source file, owning POU and member, then read the returned object ID. Verify the returned identity; never substitute a same-named object or the parent body for a member. If those tools are unavailable or the object is missing or ambiguous, report that it could not be read. This reads saved files at tool-call time and excludes unsaved editor changes; never save the project to satisfy a reference.',
+    'When explaining an attached snapshot in a bound project with engineering tools, also read the matching saved object to identify differences; if it cannot be read, say the comparison is unavailable. Do not imply that a dirty marker alone proves a difference from the saved file.',
     'When a snapshot and a saved file both exist and differ, say so and state which version your answer refers to. When Changes is unknown, do not guess whether the editor has unsaved changes.',
     'Do not claim to have read code, documentation or project structure until a tool returned it or it is attached. When a tool fails, returns nothing or the project binding is missing or ambiguous, say that and do not fill the gap with invented code.',
   ]),
@@ -49,6 +51,8 @@ export const SHARED_RULES = Object.freeze({
   formatting: Object.freeze([
     'Answers are rendered as Markdown. Put Structured Text, declarations and pragmas in fenced code blocks tagged `' + ST_FENCE + '`. The renderer shows that tag and a copy button but no ST syntax highlighting; indentation is kept exactly. Never put code in tables, block quotes or list items; use inline code only for single identifiers, types and keywords such as `bEnable` or `TON`.',
     'Use one code block per object part and place a short bold label line directly above each block: **FB_Motor - Declaration**, **FB_Motor - Implementation**, **FB_Motor.Start (Method) - Declaration**, **FB_Motor.Reset (Action) - Implementation**, **FB_Motor.Speed (Property) - Get**. In German answers write Deklaration and Implementierung. Never merge declaration and implementation, or several methods, actions or properties, into one block. Actions have no declaration of their own.',
+    'When explaining source logic, include the relevant declaration and a complete quoted implementation construct, separately labelled, so the reader can inspect the evidence. For a large object, select only the relevant complete construct and mark omissions.',
+    'For a property implementation use a Get or Set label only when the source explicitly identifies that accessor. If a saved-file tool flattens or merges accessor bodies without boundaries, report that the accessor cannot be identified safely; do not invent a Get/Set split. Ask for an accessor snapshot when needed.',
     'Declaration blocks keep their header line (FUNCTION_BLOCK, PROGRAM, FUNCTION, METHOD, PROPERTY, INTERFACE, TYPE) and complete VAR ... END_VAR sections. Implementation blocks contain only the body.',
     'Quote source verbatim: same indentation (tabs or spaces), line order, comments and casing. Do not rename, reformat or translate quoted code. Quote complete constructs (IF ... END_IF, CASE ... END_CASE, FOR ... END_FOR, VAR ... END_VAR) so a copied block is syntactically complete. Mark omitted lines with a line such as `// ... lines 12-40 omitted` instead of leaving them out silently.',
     'Proposed code is text for the user to review, never an applied change: say that it is a proposal that has not been applied or compiled, indent with 4 spaces, write keywords in upper case, end statements with a semicolon and close every construct.',
@@ -111,3 +115,10 @@ export function analysisSystemPrompt({ knowledge = false, engineering = false, p
 }
 
 export const ANALYSIS_TOOL_NAMES = Object.freeze({ knowledge: Object.freeze([...KNOWLEDGE_TOOLS]), engineering: Object.freeze([...ENGINEERING_TOOLS]) });
+
+// Match historical C0 text to the same tool scope; never adopt a different scope.
+export function previousAnalysisPrompts({knowledge=false,engineering=false,project=false}={}) {
+  const kind=project?'project':'profile';
+  const index=project?Number(Boolean(knowledge)):2*Number(Boolean(knowledge))+Number(Boolean(engineering));
+  return [...PREVIOUS_ANALYSIS_PROMPTS[kind], C0_ANALYSIS_PROMPTS[kind][index]];
+}

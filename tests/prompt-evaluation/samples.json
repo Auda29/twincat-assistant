@@ -15,7 +15,8 @@
         "stFencesOnly",
         "labelsBeforeBlocks",
         "separateParts",
-        "mustNotMention"
+        "mustNotMention",
+        "minCodeBlocks"
       ],
       "answer": "Ich sehe im aktuellen Editor folgenden Code, der Snapshot ist also identisch mit der gespeicherten Datei:\n\n```pascal\nFUNCTION_BLOCK FB_Conveyor\nVAR_INPUT\n\tbEnable : BOOL;\n\tbReset : BOOL;\nEND_VAR\nVAR_OUTPUT\n\tbRunning : BOOL;\n\tbError : BOOL;\nEND_VAR\nVAR\n\tnStep : INT;\n\ttonStart : TON;\n\ttonWatch : TON;\nEND_VAR\nCASE nStep OF\n\t0:\n\t\tIF bEnable THEN\n\t\t\tnStep := 10;\n\t\tEND_IF\n\t10:\n\t\ttonStart(IN := TRUE, PT := T#2S);\n\t\tIF tonStart.Q THEN\n\t\t\tbRunning := TRUE;\n\t\t\tnStep := 20;\n\t\tEND_IF\n\t20:\n\t\ttonWatch(IN := bRunning, PT := T#30S);\n\t\tIF tonWatch.Q THEN\n\t\t\tbError := TRUE;\n\t\tEND_IF\n\t\tIF NOT bEnable THEN\n\t\t\tbRunning := FALSE;\n\t\t\tnStep := 0;\n\t\tEND_IF\nEND_CASE\n```\n\nSchritt 20 setzt bError nach 30 s."
     },
@@ -33,7 +34,8 @@
         "balancedBlocks",
         "verbatimFrom",
         "requiredLabels",
-        "mustMention"
+        "mustMention",
+        "minCodeBlocks"
       ],
       "answer": "Here is the method:\n\n**FB_Axis - Implementation**\n```st\nMETHOD Start : BOOL\nIF fVelocity <= 0 THEN\n    Start := FALSE;\n```\n\nIt starts the axis when the velocity is positive."
     },
