@@ -47,8 +47,12 @@ The executable's embedded application inventory was read without calling its
 entrypoint: all 22,442 sizes and SHA-256 hashes match, and required installer
 scripts and host targets are present. The Windows installer workflow now runs
 both the real package smoke check and embedded-payload verification before
-uploading a supplied staging artifact's installer. That workflow has not been
-pushed or executed in CI for this candidate.
+uploading a supplied staging artifact's installer. The original workflow lacked an input producer. The follow-up
+[actual CI run](https://github.com/Auda29/twincat-assistant/actions/runs/42034006930)
+now passed with a reviewed import of this inventory and Core refreshed from
+commit 46f96a17697128721c6c1651a8a0f09dc2297d43, including recoverable profile
+updates. Its new EXE is a separate candidate; the local EXE hash above does not
+identify it. See [CI evidence and host handoff](ALPHA_CI_HOST_HANDOFF.md).
 
 ## Remaining acceptance
 
