@@ -6,7 +6,7 @@ param(
 )
 $ErrorActionPreference='Stop'
 $repo='Auda29/twincat-assistant'
-$label='alpha-input-20261105-65f37807'
+$label='alpha-preview2-20261105-5b8ed103'
 $run=(& gh api "repos/$repo/actions/runs/$RunId" | ConvertFrom-Json)
 if ($LASTEXITCODE -or $run.head_sha -cne $ExpectedSha -or $run.head_branch -cne 'ci/alpha-artifact-20261105' -or $run.event -cne 'push' -or $run.path -cne '.github/workflows/windows-package.yml' -or $run.status -cne 'queued') { throw 'Expected exact queued push workflow not found' }
 $jobs=(& gh api "repos/$repo/actions/runs/$RunId/jobs" | ConvertFrom-Json).jobs
@@ -38,12 +38,12 @@ function Invoke-IsolatedRunner([string]$arguments,[string]$registrationToken) {
 try {
  $token=(& gh api --method POST "repos/$repo/actions/runners/registration-token" | ConvertFrom-Json).token
  if (-not $token) { throw 'Runner registration token unavailable' }
- Invoke-IsolatedRunner "configure --unattended --url https://github.com/$repo --name alpha-input-65f37807 --work _work --ephemeral --no-default-labels --labels $label --disableupdate" $token
+ Invoke-IsolatedRunner "configure --unattended --url https://github.com/$repo --name alpha-preview2-5b8ed103 --work _work --ephemeral --no-default-labels --labels $label --disableupdate" $token
  $token=$null
  Invoke-IsolatedRunner 'run --once' $null
 } finally {
  $token=$null
- $registered=(& gh api "repos/$repo/actions/runners" | ConvertFrom-Json).runners | Where-Object name -CEQ 'alpha-input-65f37807'
+ $registered=(& gh api "repos/$repo/actions/runners" | ConvertFrom-Json).runners | Where-Object name -CEQ 'alpha-preview2-5b8ed103'
  foreach ($entry in $registered) {
   & gh api --method DELETE "repos/$repo/actions/runners/$($entry.id)" | Out-Null
   if ($LASTEXITCODE) { Write-Warning 'Temporary runner deregistration failed; remove this named runner before continuing.' }
