@@ -43,6 +43,7 @@ for(const width of [430,980]){
  blocks+=expected.length;rendered++;
  }
 }
-const summary={date:new Date().toISOString(),caseCount:results.length,renderedCases:rendered,renderedAndCopiedBlocks:blocks,widths:[430,980],results,limits:['Real provider, synthetic inputs and MCP fixtures; not real customer-project acceptance.','WPF/WebView2 fixture with exact pinned renderer source, default light theme, actual code-copy handler with in-memory clipboard sink.','No installed IDE interaction, OS clipboard paste, dark theme or owner sign-off.','Engineering backend accessor probe is revision 3c30383; parent newer backend requires separate validation.']};
-await writeFile(new URL('acceptance-summary.json',root),JSON.stringify(summary,null,2)+'\n');
+const summary={date:new Date().toISOString(),caseCount:results.length,renderedCases:rendered,renderedAndCopiedBlocks:blocks,widths:[430,980],results,limits:['Real provider, synthetic inputs and MCP fixtures; not real customer-project acceptance.','WPF/WebView2 fixture with exact pinned renderer source, default light theme, actual code-copy handler with in-memory clipboard sink.','No installed IDE interaction, OS clipboard paste, dark theme or owner sign-off.','Engineering stays at pinned revision 3c30383; an actual packaged MCP probe separately confirms flattened Get/Set without accessor boundaries.']};
+if (process.argv.includes('--write-summary'))
+  await writeFile(new URL('acceptance-summary.json',root),JSON.stringify(summary,null,2)+'\n');
 console.log('PASS '+results.length+' real answers; '+rendered+' WebView renderings; '+blocks+' exact code-copy payloads');

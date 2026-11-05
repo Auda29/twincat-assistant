@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-11-05T13:52:37.765Z",
+  "applicationVersion": "0.2.0-preview.2",
+  "applicationManifestSha256": "12f0827fe13cfb1bdd18c54b56f9576b178de6d4c91803f339cf699ec5b03657",
+  "engineeringManifestSha256": "a156682ed3e3c999c8d64c524b37104d18946b500f5608e5f25f573cb5374c57",
+  "provenance": {
+    "schemaVersion": 1,
+    "revision": "3c303837e6d6f72bec1b9d38e778a7c32c61ae5c",
+    "node": "24.16.0",
+    "packageLockSha256": "9e4fe2e9eaa0a1f7bfd1a1710eb97b861fb6319a65f3826edc395f2481277b1b"
+  },
+  "input": {
+    "projectText": "<Project><ItemGroup><Compile Include=\"FB_Axis.TcPOU\" /></ItemGroup></Project>",
+    "sourceText": "<TcPlcObject><POU Name=\"FB_Axis\"><Declaration><![CDATA[FUNCTION_BLOCK FB_Axis]]></Declaration><Implementation><ST><![CDATA[// parent body]]></ST></Implementation><Property Name=\"Speed\"><Declaration><![CDATA[PROPERTY Speed : LREAL]]></Declaration><Get><Declaration><![CDATA[VAR\nEND_VAR]]></Declaration><Implementation><ST><![CDATA[Speed := fActualVelocity;]]></ST></Implementation></Get><Set><Declaration><![CDATA[VAR\nEND_VAR]]></Declaration><Implementation><ST><![CDATA[fSetVelocity := Speed;]]></ST></Implementation></Set></Property></POU></TcPlcObject>"
+  },
+  "list": {
+    "protocol": "2025-11-25",
+    "era": "legacy",
+    "server": {
+      "name": "twincat-mcp",
+      "version": "0.5.2"
+    },
+    "toolNames": [
+      "ads_connect",
+      "ads_disconnect",
+      "plc_list_symbols",
+      "plc_describe_symbol",
+      "plc_read",
+      "plc_read_many",
+      "plc_list_groups",
+      "plc_read_group",
+      "nc_state",
+      "nc_list_axes",
+      "nc_read_axis",
+      "nc_read_axis_position",
+      "nc_read_axis_status",
+      "nc_read_axis_many",
+      "nc_read_error",
+      "io_list_groups",
+      "io_read",
+      "io_read_many",
+      "io_read_group",
+      "tc_state",
+      "tc_event_list",
+      "tc_runtime_error_list",
+      "tc_log_read",
+      "tc_diagnose_errors",
+      "tc_diagnose_runtime",
+      "tc_list_workbenches",
+      "tc_list_projects",
+      "tc_project_state",
+      "tc_build_project",
+      "plc_build_project",
+      "tc_build_and_get_errors",
+      "tc_error_list",
+      "tc_error_context",
+      "tc_output_read",
+      "tc_resource_read",
+      "hmi_state",
+      "hmi_list_projects",
+      "hmi_preview_info",
+      "hmi_list_controls",
+      "tc_tree_read",
+      "tc_tree_search",
+      "tc_tree_describe_item",
+      "io_list_topology",
+      "io_describe_device",
+      "io_describe_terminal",
+      "plc_list_pous",
+      "plc_read_pou",
+      "plc_search_code",
+      "plc_describe_pou",
+      "plc_list_libraries",
+      "plc_describe_library",
+      "plc_write",
+      "plc_watch",
+      "plc_wait_until",
+      "plc_unwatch",
+      "plc_list_watches",
+      "plc_state",
+      "plc_set_write_mode",
+      "plc_get_write_mode",
+      "plc_evaluate_write_access"
+    ],
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"pous\": [\n    {\n      \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-packaged-accessors-sept7j\\\\plc.plcproj:pou:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-packaged-accessors-sept7j\\\\fb_axis.tcpou:fb_axis:0\",\n      \"resourceUri\": \"plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-packaged-accessors-sept7j%5Cplc.plcproj&name=FB_Axis\",\n      \"name\": \"FB_Axis\",\n      \"qualifiedName\": \"FB_Axis\",\n      \"kind\": \"functionBlock\",\n      \"path\": \"/PLC/FB_Axis\",\n      \"sourceFile\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-packaged-accessors-SePT7j\\\\FB_Axis.TcPOU\",\n      \"project\": {\n        \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-packaged-accessors-sept7j\\\\plc.plcproj\",\n        \"name\": \"PLC\",\n        \"path\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-packaged-accessors-SePT7j\\\\PLC.plcproj\",\n        \"type\": \"plc\",\n        \"exists\": true,\n        \"source\": \"configuredProjectFiles\",\n        \"workbenchId\": \"configured-project-files\",\n        \"resourceUri\": \"tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j%5CPLC.plcproj\",\n        \"folderUri\": \"tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j\"\n      }\n    },\n    {\n      \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-packaged-accessors-sept7j\\\\plc.plcproj:pou:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-packaged-accessors-sept7j\\\\fb_axis.tcpou:fb_axis.speed:1\",\n      \"resourceUri\": \"plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-packaged-accessors-sept7j%5Cplc.plcproj&name=FB_Axis.Speed\",\n      \"name\": \"Speed\",\n      \"qualifiedName\": \"FB_Axis.Speed\",\n      \"kind\": \"property\",\n      \"path\": \"/PLC/FB_Axis.Speed\",\n      \"sourceFile\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-packaged-accessors-SePT7j\\\\FB_Axis.TcPOU\",\n      \"project\": {\n        \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-packaged-accessors-sept7j\\\\plc.plcproj\",\n        \"name\": \"PLC\",\n        \"path\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-packaged-accessors-SePT7j\\\\PLC.plcproj\",\n        \"type\": \"plc\",\n        \"exists\": true,\n        \"source\": \"configuredProjectFiles\",\n        \"workbenchId\": \"configured-project-files\",\n        \"resourceUri\": \"tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j%5CPLC.plcproj\",\n        \"folderUri\": \"tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j\"\n      }\n    }\n  ],\n  \"count\": 2\n}"
+        }
+      ],
+      "structuredContent": {
+        "pous": [
+          {
+            "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-packaged-accessors-sept7j\\plc.plcproj:pou:c:\\users\\niklasw\\appdata\\local\\temp\\tc-packaged-accessors-sept7j\\fb_axis.tcpou:fb_axis:0",
+            "resourceUri": "plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-packaged-accessors-sept7j%5Cplc.plcproj&name=FB_Axis",
+            "name": "FB_Axis",
+            "qualifiedName": "FB_Axis",
+            "kind": "functionBlock",
+            "path": "/PLC/FB_Axis",
+            "sourceFile": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-packaged-accessors-SePT7j\\FB_Axis.TcPOU",
+            "project": {
+              "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-packaged-accessors-sept7j\\plc.plcproj",
+              "name": "PLC",
+              "path": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-packaged-accessors-SePT7j\\PLC.plcproj",
+              "type": "plc",
+              "exists": true,
+              "source": "configuredProjectFiles",
+              "workbenchId": "configured-project-files",
+              "resourceUri": "tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j%5CPLC.plcproj",
+              "folderUri": "tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j"
+            }
+          },
+          {
+            "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-packaged-accessors-sept7j\\plc.plcproj:pou:c:\\users\\niklasw\\appdata\\local\\temp\\tc-packaged-accessors-sept7j\\fb_axis.tcpou:fb_axis.speed:1",
+            "resourceUri": "plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-packaged-accessors-sept7j%5Cplc.plcproj&name=FB_Axis.Speed",
+            "name": "Speed",
+            "qualifiedName": "FB_Axis.Speed",
+            "kind": "property",
+            "path": "/PLC/FB_Axis.Speed",
+            "sourceFile": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-packaged-accessors-SePT7j\\FB_Axis.TcPOU",
+            "project": {
+              "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-packaged-accessors-sept7j\\plc.plcproj",
+              "name": "PLC",
+              "path": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-packaged-accessors-SePT7j\\PLC.plcproj",
+              "type": "plc",
+              "exists": true,
+              "source": "configuredProjectFiles",
+              "workbenchId": "configured-project-files",
+              "resourceUri": "tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j%5CPLC.plcproj",
+              "folderUri": "tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j"
+            }
+          }
+        ],
+        "count": 2
+      }
+    }
+  },
+  "content": {
+    "protocol": "2025-11-25",
+    "era": "legacy",
+    "server": {
+      "name": "twincat-mcp",
+      "version": "0.5.2"
+    },
+    "toolNames": [
+      "ads_connect",
+      "ads_disconnect",
+      "plc_list_symbols",
+      "plc_describe_symbol",
+      "plc_read",
+      "plc_read_many",
+      "plc_list_groups",
+      "plc_read_group",
+      "nc_state",
+      "nc_list_axes",
+      "nc_read_axis",
+      "nc_read_axis_position",
+      "nc_read_axis_status",
+      "nc_read_axis_many",
+      "nc_read_error",
+      "io_list_groups",
+      "io_read",
+      "io_read_many",
+      "io_read_group",
+      "tc_state",
+      "tc_event_list",
+      "tc_runtime_error_list",
+      "tc_log_read",
+      "tc_diagnose_errors",
+      "tc_diagnose_runtime",
+      "tc_list_workbenches",
+      "tc_list_projects",
+      "tc_project_state",
+      "tc_build_project",
+      "plc_build_project",
+      "tc_build_and_get_errors",
+      "tc_error_list",
+      "tc_error_context",
+      "tc_output_read",
+      "tc_resource_read",
+      "hmi_state",
+      "hmi_list_projects",
+      "hmi_preview_info",
+      "hmi_list_controls",
+      "tc_tree_read",
+      "tc_tree_search",
+      "tc_tree_describe_item",
+      "io_list_topology",
+      "io_describe_device",
+      "io_describe_terminal",
+      "plc_list_pous",
+      "plc_read_pou",
+      "plc_search_code",
+      "plc_describe_pou",
+      "plc_list_libraries",
+      "plc_describe_library",
+      "plc_write",
+      "plc_watch",
+      "plc_wait_until",
+      "plc_unwatch",
+      "plc_list_watches",
+      "plc_state",
+      "plc_set_write_mode",
+      "plc_get_write_mode",
+      "plc_evaluate_write_access"
+    ],
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"pou\": {\n    \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-packaged-accessors-sept7j\\\\plc.plcproj:pou:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-packaged-accessors-sept7j\\\\fb_axis.tcpou:fb_axis.speed:1\",\n    \"resourceUri\": \"plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-packaged-accessors-sept7j%5Cplc.plcproj&name=FB_Axis.Speed\",\n    \"name\": \"Speed\",\n    \"qualifiedName\": \"FB_Axis.Speed\",\n    \"kind\": \"property\",\n    \"path\": \"/PLC/FB_Axis.Speed\",\n    \"sourceFile\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-packaged-accessors-SePT7j\\\\FB_Axis.TcPOU\",\n    \"project\": {\n      \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-packaged-accessors-sept7j\\\\plc.plcproj\",\n      \"name\": \"PLC\",\n      \"path\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-packaged-accessors-SePT7j\\\\PLC.plcproj\",\n      \"type\": \"plc\",\n      \"exists\": true,\n      \"source\": \"configuredProjectFiles\",\n      \"workbenchId\": \"configured-project-files\",\n      \"resourceUri\": \"tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j%5CPLC.plcproj\",\n      \"folderUri\": \"tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j\"\n    },\n    \"declaration\": \"PROPERTY Speed : LREAL\\nVAR\\nEND_VAR\\nVAR\\nEND_VAR\",\n    \"implementation\": \"Speed := fActualVelocity;\\nfSetVelocity := Speed;\",\n    \"rawText\": \"PROPERTY Speed : LREAL\\nVAR\\nEND_VAR\\nVAR\\nEND_VAR\\n\\nSpeed := fActualVelocity;\\nfSetVelocity := Speed;\"\n  }\n}"
+        }
+      ],
+      "structuredContent": {
+        "pou": {
+          "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-packaged-accessors-sept7j\\plc.plcproj:pou:c:\\users\\niklasw\\appdata\\local\\temp\\tc-packaged-accessors-sept7j\\fb_axis.tcpou:fb_axis.speed:1",
+          "resourceUri": "plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-packaged-accessors-sept7j%5Cplc.plcproj&name=FB_Axis.Speed",
+          "name": "Speed",
+          "qualifiedName": "FB_Axis.Speed",
+          "kind": "property",
+          "path": "/PLC/FB_Axis.Speed",
+          "sourceFile": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-packaged-accessors-SePT7j\\FB_Axis.TcPOU",
+          "project": {
+            "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-packaged-accessors-sept7j\\plc.plcproj",
+            "name": "PLC",
+            "path": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-packaged-accessors-SePT7j\\PLC.plcproj",
+            "type": "plc",
+            "exists": true,
+            "source": "configuredProjectFiles",
+            "workbenchId": "configured-project-files",
+            "resourceUri": "tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j%5CPLC.plcproj",
+            "folderUri": "tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-packaged-accessors-SePT7j"
+          },
+          "declaration": "PROPERTY Speed : LREAL\nVAR\nEND_VAR\nVAR\nEND_VAR",
+          "implementation": "Speed := fActualVelocity;\nfSetVelocity := Speed;",
+          "rawText": "PROPERTY Speed : LREAL\nVAR\nEND_VAR\nVAR\nEND_VAR\n\nSpeed := fActualVelocity;\nfSetVelocity := Speed;"
+        }
+      }
+    }
+  },
+  "finding": "Packaged engineering MCP returns Get/Set concatenated without accessor boundaries. C1 must report ambiguity, not invent a split.",
+  "scope": "Real packaged Node/MCP, synthetic configuredProjectFiles only; no IDE, provider, PLC, ADS, write or compiler action."
+}

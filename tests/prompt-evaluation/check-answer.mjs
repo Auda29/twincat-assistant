@@ -101,6 +101,8 @@ export function checkAnswer(markdown, testCase, sources = {}) {
     const labels = st.map(block => block.label ?? '');
     record('requiredLabels', checks.requiredLabels.filter(pattern => !labels.some(label => regex(pattern).test(label))).map(pattern => 'missing label ' + pattern));
   }
+  if (checks.forbiddenLabels) record('forbiddenLabels', st.flatMap(block =>
+    checks.forbiddenLabels.filter(pattern => regex(pattern).test(block.label ?? '')).map(pattern => 'forbidden label ' + pattern)));
   if (checks.mustMention) record('mustMention', checks.mustMention.filter(pattern => !regex(pattern).test(prose)).map(pattern => 'missing ' + pattern));
   if (checks.mustNotMention) record('mustNotMention', checks.mustNotMention.filter(pattern => regex(pattern).test(prose)).map(pattern => 'forbidden ' + pattern));
   if (checks.minCodeBlocks !== undefined) record('minCodeBlocks', blocks.length < checks.minCodeBlocks ? ['expected at least '+checks.minCodeBlocks+' code blocks, got '+blocks.length] : []);

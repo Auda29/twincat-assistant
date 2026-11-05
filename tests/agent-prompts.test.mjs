@@ -149,6 +149,24 @@ test('evaluation cases are composable, use only tools of their scope and referen
   for (const kind of ['method', 'property', 'action', 'attached-snapshot', 'saved-file', 'documentation']) assert.ok(kinds.has(kind), kind);
 });
 
+test('code-evidence cases reject missing code and invented property accessor labels', async () => {
+  const fixture = await loadCases();
+  const answers = JSON.parse(await source('tests/prompt-evaluation/evidence/2026-11-05-c1/answers.json'));
+  for (const id of ['property-set-en', 'saved-property-accessors-ambiguous-en', 'injection-in-source-en', 'proposal-en']) {
+    const item = fixture.cases.find(entry => entry.id === id);
+    assert.equal(checkAnswer(answers[id], item, fixture.sources).passed, true, id);
+    const withoutCode = answers[id].replace(/```[^\n]*\n[\s\S]*?```/g, '');
+    const rejected = checkAnswer(withoutCode, item, fixture.sources);
+    assert.equal(rejected.passed, false, id + ' must require code evidence');
+    assert.equal(rejected.results.minCodeBlocks.ok, false, id);
+  }
+  const set = fixture.cases.find(entry => entry.id === 'property-set-en');
+  assert.equal(checkAnswer(answers[set.id].replace(' - Set**', ' - Get**'), set, fixture.sources).results.requiredLabels.ok, false);
+  const ambiguous = fixture.cases.find(entry => entry.id === 'saved-property-accessors-ambiguous-en');
+  const inventedGet = answers[ambiguous.id].replace(/ - Implementation[^*\n]*/, ' - Get');
+  assert.equal(checkAnswer(inventedGet, ambiguous, fixture.sources).results.forbiddenLabels.ok, false);
+});
+
 test('the answer checker accepts the reference answers and rejects the counter-examples precisely', async () => {
   const fixture = await loadCases();
   const { samples } = JSON.parse(await source('tests/prompt-evaluation/samples.json'));

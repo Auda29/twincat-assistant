@@ -122,10 +122,17 @@ It returned property declaration/Get/Set text concatenated without boundaries.
 The original response is in
 [`accessor-backend.json`](../tests/prompt-evaluation/evidence/accessor-backend.json).
 C1 handles this honestly; it cannot recover absent accessor identity.
-This is evidence about that revision only. Parent reports newer backend
-`de7c4d4` integrated at `cfdb14a`; that version is not the read-only engineering
-checkout used here. Re-check actual accessor output on the final backend before
-claiming full saved-file Get/Set acceptance. No external backend was edited.
+Engineering remains at that pinned revision. `de7c4d4`, integrated as
+`cfdb14a`, changes our Chat/packaging scope, not the Engineering upstream.
+The Parent subsequently probed the actual manifest-verified
+`0.2.0-preview.2` package with its packaged Node/MCP against new synthetic
+files. It reproduced the flattened implementation without accessor fields;
+source/project files stayed byte-identical. The full response and application,
+MCP-manifest and source hashes are in
+[`packaged-accessor-backend.json`](../tests/prompt-evaluation/evidence/packaged-accessor-backend.json).
+This proves the shipped accessor limitation and C1's ambiguity handling;
+it does not claim that saved-file Get/Set boundaries are supported.
+No external backend was edited.
 
 All six exact generated C0 strings are frozen in `src/analysis-prompts-c0.mjs`.
 An independent `git show fca292b:src/agent-prompts.mjs` comparison reproduced them
@@ -152,6 +159,15 @@ OpenCode postinstall, so two distribution version probes initially failed;
 running the package postinstall fixed the local prerequisite. The final full
 run passed. Analysis-test fixture executable paths now use `node:path.resolve`
 for portable CI; a Linux execution was not performed by this worker.
+
+Independent review found no blocking policy or publication-data issue. The
+Parent strengthened four cases that could pass after all code blocks were
+removed. They now require code blocks and matching labels; ambiguous accessor
+results additionally reject fabricated Get/Set labels. Mutation regressions
+cover those omissions and label substitutions. Existing captured answers remain
+the model evidence; these are stronger offline checks, not new model calls.
+`verify-evidence.mjs` is read-only by default. Use `--write-summary` explicitly
+to regenerate the tracked offline summary after a deliberate criteria update.
 
 Offline checks require no provider account or model calls:
 
