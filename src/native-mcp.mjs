@@ -1,3 +1,4 @@
+import { withPackageVerificationScope } from './package-verification-scope.mjs';
 import { lstat, mkdir, open, realpath } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,7 +26,7 @@ function exactKeys(value, allowed) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key)))
     throw new Error('Invalid native MCP settings');
 }
-export async function readNativeMcpSettings(file) {
+async function readNativeMcpSettingsOperation(file) {
   if (requirePackage) await verifyPackageIfPresent();
   const value = await readJsonFile(path(file));
   exactKeys(value, ['knowledge', 'engineering']);
@@ -37,7 +38,7 @@ export async function readNativeMcpSettings(file) {
   validateSettings({ knowledge });
   return { knowledge, engineering };
 }
-export async function configureNativeMcp(root, settingsFile) {
+async function configureNativeMcpOperation(root, settingsFile) {
   const settings = await readNativeMcpSettings(settingsFile);
   await inspectState(path(root));
   settings.knowledge = await effectiveKnowledge(root, settings.knowledge);
@@ -65,7 +66,7 @@ async function managedJson(file, expected) {
       throw new Error('Native MCP workspace modified; refusing an unknown project or policy');
   }
 }
-export async function prepareNativeProject(input) {
+async function prepareNativeProjectOperation(input) {
   exactKeys(input, ['state', 'mcpConfig', 'solution', 'project', 'workspace']);
   const state = path(input.state);
   const solution = await regularFile(input.solution);
@@ -128,6 +129,18 @@ async function main() {
   process.stdout.write(JSON.stringify(await prepareNativeProject(input)) + '\n');
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try { await main(); }
+  try { await withPackageVerificationScope(main); }
   catch { process.stdout.write('{"configured":false}\n'); process.exitCode = 1; }
+}
+
+export function readNativeMcpSettings(...args) {
+  return withPackageVerificationScope(() => readNativeMcpSettingsOperation(...args));
+}
+
+export function configureNativeMcp(...args) {
+  return withPackageVerificationScope(() => configureNativeMcpOperation(...args));
+}
+
+export function prepareNativeProject(...args) {
+  return withPackageVerificationScope(() => prepareNativeProjectOperation(...args));
 }
