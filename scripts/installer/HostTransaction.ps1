@@ -1,6 +1,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot/PackageContract.ps1"
+. "$PSScriptRoot/PolicyRollback.ps1"
 function Assert-NoLinks([string]$path) {
     $item = Get-Item -LiteralPath $path -Force
     while ($item) { if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Reparse point refused: $($item.FullName)" }; $item = if ($item -is [IO.FileInfo]) { $item.Directory } else { $item.Parent } }
@@ -68,7 +69,7 @@ function Assert-HostClosed([string]$hostRoot) {
     }
 }
 function Invoke-HostTransaction {
-    param([ValidateSet('Install','Rollback')][string]$Action,[string]$InstallRoot,[string]$HostRoot,[string]$Interop,[string]$Package,[object]$Target,[string]$InjectFailure)
+    param([ValidateSet('Install','Rollback')][string]$Action,[string]$InstallRoot,[string]$HostRoot,[string]$Interop,[string]$Package,[object]$Target,[string]$InjectFailure,[string]$PolicyStateRoot)
     foreach ($p in @($InstallRoot,$HostRoot,$Interop)) { if (-not [IO.Path]::IsPathRooted($p)) { throw 'Absolute paths required.' } }
     $hostRoot = (Resolve-Path -LiteralPath $HostRoot).Path.TrimEnd('\')
     Assert-NoLinks $hostRoot
@@ -91,7 +92,7 @@ function Invoke-HostTransaction {
     if (Test-Path -LiteralPath $hostLockPath) { Assert-NoLinks $hostLockPath }
     $hostLock = [IO.File]::Open($hostLockPath,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
     $lock = $null
-    $createdVersion = $null; $stage = $null; $journal = $null; $committed = $false
+    $createdVersion = $null; $stage = $null; $journal = $null; $committed = $false; $policySession = $null
     try {
         $lockPath = Join-Path $installRoot '.lock'
         if (Test-Path -LiteralPath $lockPath) { Assert-NoLinks $lockPath }
@@ -102,6 +103,13 @@ function Invoke-HostTransaction {
         $state = if (Test-Path $statePath) { Get-Content $statePath -Raw | ConvertFrom-Json } else { $null }
         if ($state -and ($state.current -cnotmatch '^[0-9A-Za-z][0-9A-Za-z.+-]*$' -or $state.current.EndsWith('.'))) { throw 'Invalid installed version.' }
         if ($state -and ($state.hostRoot -cne $hostRoot -or $state.targetId -cne $Target.id)) { throw 'Installation belongs to another host.' }
+        if ($Action -eq 'Rollback' -and $PolicyStateRoot) {
+            $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+            if (-not $state -or -not $state.PSObject.Properties['policyUserSid'] -or -not $state.PSObject.Properties['policyStateRoot'] -or
+                 $state.policyUserSid -cne $sid -or -not [string]::Equals($state.policyStateRoot,[IO.Path]::GetFullPath($PolicyStateRoot),[StringComparison]::OrdinalIgnoreCase)) {
+                throw 'Rollback must use the same Windows user and native StateRoot recorded by the C1 installation.'
+            }
+        }
         $versions = Join-Path $installRoot 'versions'
         if (-not (Test-Path $versions)) { New-Item -ItemType Directory $versions | Out-Null }
         Assert-NoLinks $versions
@@ -144,17 +152,28 @@ function Invoke-HostTransaction {
         Copy-Item -LiteralPath (Join-Path $versionDir 'extension') -Destination $stage -Recurse
         if ($InjectFailure -eq 'after-stage') { throw 'Injected staging failure.' }
         if ((Get-TreeDigest $stage) -cne (Get-TreeDigest (Join-Path $versionDir 'extension'))) { throw 'Staged extension verification failed.' }
-        $journalData = @{ hostRoot=$hostRoot; extension=$extension; stage=$stage; old=$old; version=$version }
+        $journalData = @{ hostRoot=$hostRoot; extension=$extension; stage=$stage; old=$old; version=$version; policyStateRoot=$PolicyStateRoot; policyRecovery="Use current C1 runtime until completed policy journals and swap are verified" }
         [IO.File]::WriteAllText($journal,($journalData | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
         $movedOld = $false; $movedNew = $false; $markerTime = $null; $bak = $null
         try {
             Assert-HostClosed $hostRoot
+            if ($Action -eq 'Rollback' -and $PolicyStateRoot) {
+                $currentApplication = Join-Path $versions "$($state.current)/application"
+                $policySession = Start-PolicyRollback $currentApplication (Join-Path $versionDir 'application') $PolicyStateRoot $installRoot
+                Assert-HostClosed $hostRoot
+                if ($policySession.HasExited) { throw 'Policy helper exited before the swap.' }
+                if ($InjectFailure -eq 'after-policy') { throw 'Injected failure after policy downgrade.' }
+            }
             if (Test-Path $extension) { [IO.Directory]::Move($extension,$old); $movedOld = $true }
             [IO.Directory]::Move($stage,$extension); $movedNew = $true
             if ($InjectFailure -eq 'after-swap') { throw 'Injected failure.' }
             $markerTime = (Get-Item -LiteralPath $marker).LastWriteTimeUtc
             (Get-Item -LiteralPath $marker).LastWriteTimeUtc = [DateTime]::UtcNow
             $newState = @{ targetId=$Target.id;hostRoot=$hostRoot;current=$version;previous=$(if ($state) {$state.current} else {$null}) }
+            if ($PolicyStateRoot) {
+                $newState.policyUserSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+                $newState.policyStateRoot = [IO.Path]::GetFullPath($PolicyStateRoot)
+            }
             $tempState = Join-Path $installRoot ('.state-' + [guid]::NewGuid().ToString('N'))
             [IO.File]::WriteAllText($tempState,($newState | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
             if (Test-Path $statePath) { $bak = $tempState + '.bak'; [IO.File]::Replace($tempState,$statePath,$bak) } else { [IO.File]::Move($tempState,$statePath) }
@@ -164,10 +183,14 @@ function Invoke-HostTransaction {
             if ($movedOld -and (Test-Path $old)) { [IO.Directory]::Move($old,$extension) }
             if ($markerTime) { (Get-Item -LiteralPath $marker).LastWriteTimeUtc = $markerTime }
             if (Test-Path $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+            if ($policySession) { Stop-PolicyRollback $policySession $false; $policySession = $null }
             Remove-Item -LiteralPath $journal -Force
             if ($Action -eq 'Install' -and (Test-Path -LiteralPath $versionDir)) { Remove-Item -LiteralPath $versionDir -Recurse -Force }
             throw
         }
+        # The helper retains all state locks through extension AND selection
+        # commit. A completion failure retains the committed recovery journal.
+        if ($policySession) { Stop-PolicyRollback $policySession $true; $policySession = $null }
         if ($bak -and (Test-Path $bak)) { Remove-Item -LiteralPath $bak -Force }
         if (Test-Path $old) { Remove-Item -LiteralPath $old -Recurse -Force }
         Remove-Item -LiteralPath $journal -Force
@@ -188,5 +211,7 @@ function Invoke-HostTransaction {
             }
         }
         throw
-    } finally { if ($lock) { $lock.Dispose() }; $hostLock.Dispose() }
+    } finally {
+        if ($policySession) { $policySession.StandardInput.Close(); $null = $policySession.WaitForExit(10000); $policySession.Dispose() }
+        if ($lock) { $lock.Dispose() }; $hostLock.Dispose() }
 }

@@ -23,7 +23,7 @@ callback also rebases validated old executable paths before rewriting the
 configuration. Direct Knowledge commands without a Node broker follow the
 same bounded package identity checks.
 
-Rollback requires that both installed versions contain this relocation support
+Ordinary rollback requires that both installed versions contain this relocation support
 and recognize the precise prompts they encounter. An older binary cannot be
 made to understand a newer prompt or this migration after it has been shipped;
 those incompatible rollbacks must fail closed rather than accept unreviewed
@@ -49,3 +49,8 @@ files and chat/login/binding sentinels. `tests/managed-relocation.test.mjs`
 checks the bounded path and installer selection rules independently. These tests
 make no provider calls, perform no PLC actions and do not establish live IDE
 acceptance.
+
+
+The explicit [C1 to known C0 bridge](POLICY_ROLLBACK.md) generates the exact
+older policy before switching files, using current verified code and target
+source hashes. It does not claim the old binary learned the new prompt.

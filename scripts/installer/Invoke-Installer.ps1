@@ -57,5 +57,19 @@ if ($Action -eq 'Rollback') {
 }
 $programs = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
 Assert-ApplicationRuntimePrerequisites $runtimePackage (Join-Path $programs 'dotnet')
-Invoke-HostTransaction -Action $Action -InstallRoot $InstallRoot -HostRoot $hostRoot -Interop $interop -Package $package -Target $target[0]
+# Read only this same Windows user's native configuration. Executable paths,
+# credentials and MCP commands from it are never passed to the helper.
+$policyStateRoot = Join-Path $env:LOCALAPPDATA 'TwinCatAssistant/operator-state'
+if ($Action -in @('Install','Rollback')) {
+    $nativeConfig = Join-Path $env:LOCALAPPDATA 'TwinCatAssistant/native-chat.json'
+    if (Test-Path -LiteralPath $nativeConfig) {
+        Assert-NoLinks $nativeConfig
+        $nativeFile = Get-Item -LiteralPath $nativeConfig
+        if ($nativeFile.Length -gt 65536) { throw 'Native configuration too large.' }
+        $native = Get-Content -LiteralPath $nativeConfig -Raw | ConvertFrom-Json
+        if (-not $native.StateRoot -or -not [IO.Path]::IsPathRooted([string]$native.StateRoot)) { throw 'Native StateRoot must be absolute.' }
+        $policyStateRoot = [IO.Path]::GetFullPath([string]$native.StateRoot)
+    }
+}
+Invoke-HostTransaction -PolicyStateRoot $policyStateRoot -Action $Action -InstallRoot $InstallRoot -HostRoot $hostRoot -Interop $interop -Package $package -Target $target[0]
 Write-Host 'Host files registered with the selected packaged runtime. Real-host acceptance remains separate.'
