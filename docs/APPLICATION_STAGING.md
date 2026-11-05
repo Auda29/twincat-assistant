@@ -61,6 +61,12 @@ lockfile's npm sources and may run their installation scripts. The package
 inventory is an integrity check, not publisher authentication. License and
 redistribution review remains an integration gate.
 
+The [bounded delivery scope](DELIVERY_SCOPE.md) is applied before the final
+manifest. The redundant npm Core distribution and its platform packages are
+excluded because the launcher uses the source-built Core explicitly. Chat
+server test files are excluded; production modules and licenses remain. The
+copied npm lockfiles record installation inputs before this reduction.
+
 The resulting fixed paths are:
 
 - `host/x86/`: unpacked x86 host, VSIX manifest, pkgdef and required WebView2

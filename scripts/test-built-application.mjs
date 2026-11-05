@@ -13,6 +13,8 @@ import { runtimeEnvironment } from '../src/state.mjs';
 const application = resolve(process.argv[2] ?? '');
 if (!process.argv[2]) throw new Error('Supply an application package directory');
 await verifyManifest(application);
+// A packaged source build must enforce the same delivery boundary as the
+// development source runtime. Protected startup and MCP checks follow below.
 const temporary = await mkdtemp(join(tmpdir(), 'tc-built-application-'));
 const state = join(temporary, 'state');
 const node = join(application, 'runtime/node/node.exe');
@@ -46,6 +48,15 @@ async function start() {
   const response = await fetch(`http://127.0.0.1:${port}/auth/session`);
   assert.equal(response.status, 401);
   const auth = await response.json(); assert.equal(auth.authenticated, false); assert.equal(auth.locked, true);
+  const origin = `http://127.0.0.1:${port}`;
+  const login = await fetch(origin + '/auth/session', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ password }) });
+  assert.equal(login.status, 200);
+  const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+  for (const path of ['/api/terminal/create', '/api/browser-control/claim', '/api/dev-servers', '/api/fs/write', '/api/opencode/upgrade', '/api/openchamber/update-install']) {
+    const excluded = await fetch(origin + path, { method: 'POST', headers: { origin, cookie }, signal: AbortSignal.timeout(5000) });
+    assert.equal(excluded.status, 404, path);
+    assert.match((await excluded.json()).error, /outside TwinCAT Assistant delivery scope/);
+  }
 }
 async function stop() {
   if (!child) return;
