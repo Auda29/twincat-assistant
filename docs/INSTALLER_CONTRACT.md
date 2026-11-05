@@ -57,8 +57,11 @@ closed for manual recovery. Current state and the old payload are retained.
 Snapshots are checked against application files, local interop and installer
 metadata. This does not cover every power-loss or concurrent host-start window;
 inspect `transaction.pending` and the paths it records before recovery. Never
-delete an unknown extension or user data. Existing config, chats, logins,
-project bindings and license data are not migrated or modified.
+delete an unknown extension or user data. Chats, logins, project bindings and license data are not copied or restored.
+The new C1 rollback path selectively downgrades only validated managed policy
+and packaged paths under existing journals/locks. It requires the new installer,
+recorded same-user StateRoot and an exact known C0 capability. See
+[policy rollback](POLICY_ROLLBACK.md).
 
 ## Packaged runtime selection
 

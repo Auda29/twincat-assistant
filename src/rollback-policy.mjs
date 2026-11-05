@@ -32,9 +32,8 @@ async function directory(path) {
  const s=await lstat(path);
  if (!s.isDirectory() || s.isSymbolicLink() || !equalPath(await realpath(path),path)) throw new Error('Redirected rollback directory');
 }
-async function optional(path) {
- try { await lstat(path); } catch(e) { if(e.code==='ENOENT') return null; throw e; }
- return readJsonFile(path);
+async function exists(path) {
+ try { await lstat(path); return true; } catch(e) { if(e.code==='ENOENT') return false; throw e; }
 }
 export async function verifyRollbackTarget(target, installation) {
  if (!requirePackage || !equalPath(process.execPath,join(applicationRoot,'runtime/node/node.exe'))) throw new Error('Use the currently installed verified runtime');
@@ -43,6 +42,8 @@ export async function verifyRollbackTarget(target, installation) {
  if (!equalPath(dirname(dirname(target)),join(installation,'versions'))
      || !equalPath(dirname(dirname(applicationRoot)),join(installation,'versions'))
      || !equalPath(target,join(dirname(target),'application')) || equalPath(target,applicationRoot)) throw new Error('Rollback requires distinct owned sibling packages');
+ const owner=await lstat(join(installation,'.assistant-install-root'));
+ if(!owner.isFile() || owner.isSymbolicLink() || owner.size>128) throw new Error('Invalid rollback owner marker');
  if ((await readFile(join(installation,'.assistant-install-root'),'utf8')) !== 'TwinCatAssistant installation v1') throw new Error('Unowned rollback installation');
  const selected=await readJsonFile(join(installation,'state.json'));
  const current=await verifyManifest(applicationRoot), old=await verifyManifest(target);
@@ -91,7 +92,7 @@ async function projectPlan(parent, entry, packages) {
  const receipt=await readJsonFile(join(workspace,'project.json'));
  if(![1,2].includes(receipt.version) || Object.keys(receipt).some(k=>!['version','solution','project','settings'].includes(k))
    || !isAbsolute(receipt.solution??'') || !isAbsolute(receipt.project??'')) throw new Error('Unknown project receipt');
- if(await optional(join(workspace,'.configuration.json'))) throw new Error('Recover pending project journal with C1 before rollback');
+ if(await exists(join(workspace,'.configuration.json'))) throw new Error('Recover pending project journal with C1 before rollback');
  const selected=receipt.settings;
  if(!selected || Object.keys(selected).some(k=>!['knowledge','engineering'].includes(k))
    || !selected.knowledge || !selected.engineering || Object.keys(selected.engineering).join(',')!=='entrypoint') throw new Error('C0 native project requires both MCPs');
@@ -117,10 +118,6 @@ export async function holdPolicyRollback({state,target,installation}, ready) {
  const launcher=await open(launcherPath,'wx',0o600);
  try {
   return await withProfileLock(state,async()=>{
-   await recoverProfileLocked(state);
-   const current=await inspectState(state,{recovery:false});
-   const before={settings:current.settings,config:await readJsonFile(paths.configPath)};
-   if(!known(before.config,before.settings,false,packages)) throw new Error('Unknown global policy');
    const parent=join(paths.root,'projects');
    let entries=[];
    try { await directory(parent); entries=await readdir(parent,{withFileTypes:true}); } catch(e) { if(e.code!=='ENOENT') throw e; }
@@ -140,7 +137,12 @@ export async function holdPolicyRollback({state,target,installation}, ready) {
      if(!keys.includes(plan.key)) throw new Error('Project lock identity changed');
      plans.push(plan);
     }
-    // Every scope and project is preflighted before the first global downgrade.
+    // A pre-existing global journal can itself contain a downgrade. Do not
+    // recover it until every project scope/journal has passed preflight.
+    await recoverProfileLocked(state);
+    const current=await inspectState(state,{recovery:false});
+    const before={settings:current.settings,config:await readJsonFile(paths.configPath)};
+    if(!known(before.config,before.settings,false,packages)) throw new Error('Unknown global policy');
     const settings=settingsAt(before.settings,packages.target);
     const after={settings,config:generated(settings,packages.target,false,c0(settings,false))};
     await writeProfilePair(state,before,after);

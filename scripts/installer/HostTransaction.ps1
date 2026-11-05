@@ -103,6 +103,13 @@ function Invoke-HostTransaction {
         $state = if (Test-Path $statePath) { Get-Content $statePath -Raw | ConvertFrom-Json } else { $null }
         if ($state -and ($state.current -cnotmatch '^[0-9A-Za-z][0-9A-Za-z.+-]*$' -or $state.current.EndsWith('.'))) { throw 'Invalid installed version.' }
         if ($state -and ($state.hostRoot -cne $hostRoot -or $state.targetId -cne $Target.id)) { throw 'Installation belongs to another host.' }
+        if ($Action -eq 'Rollback' -and $PolicyStateRoot) {
+            $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+            if (-not $state -or -not $state.PSObject.Properties['policyUserSid'] -or -not $state.PSObject.Properties['policyStateRoot'] -or
+                 $state.policyUserSid -cne $sid -or -not [string]::Equals($state.policyStateRoot,[IO.Path]::GetFullPath($PolicyStateRoot),[StringComparison]::OrdinalIgnoreCase)) {
+                throw 'Rollback must use the same Windows user and native StateRoot recorded by the C1 installation.'
+            }
+        }
         $versions = Join-Path $installRoot 'versions'
         if (-not (Test-Path $versions)) { New-Item -ItemType Directory $versions | Out-Null }
         Assert-NoLinks $versions
@@ -163,6 +170,10 @@ function Invoke-HostTransaction {
             $markerTime = (Get-Item -LiteralPath $marker).LastWriteTimeUtc
             (Get-Item -LiteralPath $marker).LastWriteTimeUtc = [DateTime]::UtcNow
             $newState = @{ targetId=$Target.id;hostRoot=$hostRoot;current=$version;previous=$(if ($state) {$state.current} else {$null}) }
+            if ($PolicyStateRoot) {
+                $newState.policyUserSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+                $newState.policyStateRoot = [IO.Path]::GetFullPath($PolicyStateRoot)
+            }
             $tempState = Join-Path $installRoot ('.state-' + [guid]::NewGuid().ToString('N'))
             [IO.File]::WriteAllText($tempState,($newState | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
             if (Test-Path $statePath) { $bak = $tempState + '.bak'; [IO.File]::Replace($tempState,$statePath,$bak) } else { [IO.File]::Move($tempState,$statePath) }

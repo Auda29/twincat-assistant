@@ -60,7 +60,7 @@ Assert-ApplicationRuntimePrerequisites $runtimePackage (Join-Path $programs 'dot
 # Read only this same Windows user's native configuration. Executable paths,
 # credentials and MCP commands from it are never passed to the helper.
 $policyStateRoot = Join-Path $env:LOCALAPPDATA 'TwinCatAssistant/operator-state'
-if ($Action -eq 'Rollback') {
+if ($Action -in @('Install','Rollback')) {
     $nativeConfig = Join-Path $env:LOCALAPPDATA 'TwinCatAssistant/native-chat.json'
     if (Test-Path -LiteralPath $nativeConfig) {
         Assert-NoLinks $nativeConfig
