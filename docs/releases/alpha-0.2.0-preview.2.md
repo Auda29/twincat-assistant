@@ -40,6 +40,13 @@ passed protected startup, excluded endpoint checks, both real MCP probes on
 synthetic files, restart, state preservation and unchanged-package checks.
 No provider or PLC action was part of this smoke test.
 
+The combined serial Node run executed 141 tests: 140 passed, and one menu
+contract still expected the historical `0.1.9` VSIX literal. That assertion was
+corrected to require agreement of the native file/assembly/VSIX versions and
+the application/host SemVer. Both tests in that file then passed. This is a
+targeted rerun after a test-only correction, not a claim that the initial
+141-test run was fully green.
+
 The reviewed producer baseline is
 `d5a227ac072891bfeb6eb67c40e842e9d2c6346e`, whose runtime/native/dependency files
 match these package inputs. The producer's separate preparation record binds
