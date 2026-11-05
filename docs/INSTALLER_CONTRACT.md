@@ -1,57 +1,63 @@
-# Windows installer integration contract (candidate, not a release)
+# Windows package and installer integration
 
-The current checkout does not produce an end-user installer. The target is a
-versioned Windows installer for a specifically discovered and accepted
-TcXaeShell x86 instance, independent of Windows architecture and TwinCAT build
-number. No shell path is inferred. Other hosts remain unvalidated. The current
-fixture lifecycle never registers an extension, starts a host or changes a real
-installation. It does not establish installation acceptance.
+The builder accepts an existing absolute application staging directory and
+produces a versioned self-extracting Windows executable:
 
-## Staging adapter
-
-Worker 2 should provide a relocatable staging directory through
-`scripts/Build-ApplicationPackage.ps1 -OutputDirectory <absolute path>`.
-The proposed adapter entry point `scripts/Build-WindowsInstaller.ps1` consumes
-`-PackageDirectory` and `-OutputDirectory`, both absolute. Its schema is a
-coordination proposal, not evidence that the other worker already implements it:
-
-```json
-{"schemaVersion":1,"version":"1.2.3","platform":"windows","architecture":"x86","files":[{"path":"host/extension.vsix","sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]}
+```powershell
+.\scripts\Build-WindowsInstaller.ps1 -PackageDirectory C:\staging\application -OutputDirectory C:\staging\installer
 ```
 
-`application-manifest.json` is at the staging root; paths use forward slashes,
-are relative and unique ignoring case. SHA256 values are lowercase hex. Every
-regular file except the manifest must appear once, and links/reparse points,
-traversal, missing, changed and unlisted files are rejected. The manifest is
-not a signature or proof of origin. The package producer must include Host,
-Core, Chat, both MCPs, their runtime dependencies, notices and license material,
-or state precise independently checked prerequisites. The present structural
-validator does not prove those components exist or that redistribution is
-permitted. Reconcile schema with Worker 2, add component and prerequisite checks,
-and authenticate the actual release before permitting distribution.
+The application inventory uses the contract from `a56eb368`: exactly
+`{schemaVersion:1,version,platform:'win32',architecture:'x64'|'arm64',files:[{path,size,sha256}]}`.
+The manifest is excluded from its sorted `/`-relative list. The validator checks
+sizes, SHA256, complete inventory, path safety and reparse points. It adds
+Windows filename restrictions. The application architecture is independent of
+the initial x86 TcXaeShell host target. The inventory is not a signature.
 
-`Build-WindowsInstaller.ps1` deliberately fails even for a structurally valid
-package. The manually triggered Windows CI workflow runs fixture tests, invokes
-the staging adapter, then enforces this gate; it uploads nothing. Private source,
-interop, license and redistributable prerequisites must be supplied and checked
-without printing credentials. An actual installer must be implemented and
-validated before adding any artifact upload.
+The executable accepts `-Action Install|Rollback`, `-InstallRoot`,
+`-HostExecutable`, `-HostSha256`, `-HostFileVersion`, `-XaeFile` and
+`-XaeFileVersion`. Paths must be absolute. It checks the explicitly selected
+TcXaeShell executable name, SHA256, version 15 and x86 PE header and the supplied
+XAE file name and version; it refuses while the selected TcXaeShell is running or a running shell path cannot be inspected.
+It stores selected application files in version directories, validates before
+selection and rollback, and retains earlier versions. It does not migrate or
+modify chat, login, configuration or binding stores. An existing unrelated root
+is refused. Tests use only synthetic temporary roots.
 
-## Fixture lifecycle and remaining work
+**This executable is a package lifecycle candidate, not yet a usable product
+installer.** It does not register or deploy the extension into the selected
+shell, connect the packaged runtime to the existing host, verify the XAE file
+belongs to the selected host, or verify all installed runtime prerequisites. It
+must not be presented as host support. The x86 shell discovery observation in
+NATIVE_PROTOTYPE.md used a particular manually unpacked extension and cache
+marker, not a generally validated registration API. Worker 1's host identity
+contract and Worker 2's actual layout/start integration must be connected before
+end-user installation. Test crash recovery, concurrent updates and real rollback
+in a separate host installation before release.
 
-`pwsh -NoProfile -File scripts/Test-InstallerFixture.ps1` creates and deletes
-only a randomly named temporary fixture. Its explicit marker and versioned
-payloads exercise initial selection, update, rollback, hash validation and data
-sentinels. It is not an installer and must not be pointed at operator data.
-Existing application data is not migrated; real upgrades must preserve current
-configuration, chats, provider logins and project bindings under the existing
-start contract. Retained versions and an atomic selection file are a prototype,
-not a completed crash recovery, concurrency, trust or security design.
+The manual Windows workflow takes an existing application staging artifact from
+a specified run, builds the executable and uploads it as a candidate. Synthetic
+fixtures are only used for tests and are never uploaded. Once available, the
+application builder can provide that staging artifact via
+`Build-ApplicationPackage.ps1 -OutputDirectory <absolute>`; the present
+workflow does not claim to build private upstreams itself.
 
-Integration requires: verified host inventory/identity and registration from
-Worker 1; the actual package and its component contract from Worker 2; a real
-installer and explicit host selection; runtime prerequisite detection; license
-and third-party redistribution review; signed artifact and CI upload; and a
-separate controlled Windows host test for first install, upgrade, rollback,
-startup and persistence. Do not close IDE or unrelated services automatically.
-No fixture test demonstrates real host support or authorizes a PLC action.
+## Third-party and host dependencies
+
+`native/IdeHost/Host.props` references `TCatSysManagerLib` with `Private=true`,
+and NATIVE_PROTOTYPE.md records that existing VSIX builds copy the local
+Beckhoff interop assembly. No vendor redistribution license was found in this
+repository; the existing dependency review does not establish redistribution
+rights. Do not distribute such a payload as if rights were established. A future
+host integration must obtain a compatible interop assembly from the selected
+TwinCAT installation or establish an actual redistribution right. Do not assume
+that an arbitrary local DLL is binary compatible. The repository itself also
+has no project license (README); upstream notices must be retained. The package
+builder does not establish provenance, legal rights, prerequisite completeness,
+or detect proprietary binaries hidden inside archives.
+
+The executable and CI candidate are unsigned and have not passed an actual
+TwinCAT host installation, update or rollback. No Git, npm or compilation is
+needed to execute the generated executable, but PowerShell and .NET Framework
+are required on the target. This is not evidence that all application runtime
+prerequisites have been met.

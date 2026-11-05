@@ -1,25 +1,38 @@
-name: Windows installer candidate
+name: Windows package candidate
 on:
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Run ID containing the application staging artifact
+        required: true
+      artifact_name:
+        description: Name of the application staging artifact
+        required: true
 permissions:
   contents: read
+  actions: read
 jobs:
-  installer:
+  package:
     runs-on: windows-2022
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - name: Test synthetic lifecycle
+      - name: Test synthetic lifecycle and bootstrap
         shell: pwsh
         run: ./scripts/Test-InstallerFixture.ps1
-      - name: Build application staging directory
+      - name: Download supplied application staging artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/application-package
+      - name: Build executable candidate from supplied package
         shell: pwsh
-        run: |
-          $builder = './scripts/Build-ApplicationPackage.ps1'
-          if (-not (Test-Path $builder)) { throw 'Application package builder is not integrated; no installer can be produced.' }
-          & $builder -OutputDirectory (Join-Path $env:RUNNER_TEMP 'twincat-application-package')
-          if (-not $?) { throw 'Application package build failed.' }
-      - name: Validate package and enforce release gates
-        shell: pwsh
-        run: ./scripts/Build-WindowsInstaller.ps1 -PackageDirectory (Join-Path $env:RUNNER_TEMP 'twincat-application-package') -OutputDirectory (Join-Path $env:RUNNER_TEMP 'installer')
-      # No upload until real installer, host identity and redistribution gates exist.
+        run: ./scripts/Build-WindowsInstaller.ps1 -PackageDirectory (Join-Path $env:RUNNER_TEMP 'application-package') -OutputDirectory (Join-Path $env:RUNNER_TEMP 'installer')
+      - name: Upload candidate (not a host-accepted release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package-candidate
+          path: ${{ runner.temp }}/installer/*.exe
+          if-no-files-found: error

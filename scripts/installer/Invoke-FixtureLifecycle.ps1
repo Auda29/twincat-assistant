@@ -30,7 +30,7 @@ if ($Action -eq 'Install') {
     } finally { if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Recurse -Force } }
     $next = @{ current=$m.version; previous=$state.current }
 } else {
-    if (-not $state.previous -or $state.previous -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$') { throw 'No valid previous version.' }
+    if (-not $state.previous -or $state.previous -cnotmatch '^[0-9A-Za-z][0-9A-Za-z.+-]*$') { throw 'No valid previous version.' }
     $null = Test-ApplicationPackage (Join-Path $versions $state.previous)
     $next = @{ current=$state.previous; previous=$state.current }
 }
