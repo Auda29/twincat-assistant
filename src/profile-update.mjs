@@ -29,7 +29,7 @@ async function pending(root) {
   try { await lstat(journalPath(root)); return true; }
   catch (error) { if (error.code === 'ENOENT') return false; throw error; }
 }
-async function recoverLocked(root) {
+export async function recoverProfileLocked(root) {
   if (!(await pending(root))) return false;
   const paths = statePaths(root);
   for (const directory of [paths.root, dirname(paths.configPath), paths.home, paths.data, paths.cache, paths.state, paths.openchamber, paths.workspace]) {
@@ -57,29 +57,42 @@ export async function recoverProfile(root) {
   if (!(await pending(root))) return false;
   const path = join(statePaths(root).root, 'model-consent.lock');
   const lock = await open(path, 'wx', 0o600);
-  try { return await recoverLocked(root); }
+  try { return await recoverProfileLocked(root); }
   finally { await lock.close(); await unlink(path); }
 }
 
 // All profile writers share this lock. A stale lock is never guessed safe to
 // remove: after a killed writer the operator must establish process quiescence.
-export async function updateProfile(root, transform) {
+// The caller holds model-consent.lock. Both endpoints must remain managed,
+// including known sibling-package policies. Used by installer downgrade too.
+export async function writeProfilePair(root, before, after) {
   const paths = statePaths(root);
-  const lockPath = join(paths.root, 'model-consent.lock');
+  for (const pair of [before, after]) {
+    validateSettings(pair.settings);
+    await verifyProfileConfiguration(pair.config, pair.settings);
+  }
+  if (!same(await readJsonFile(paths.settingsPath), before.settings)
+      || !same(await readJsonFile(paths.configPath), before.config)) throw new Error('Profile changed under update lock');
+  if (same(before, after)) return;
+  await atomicJson(journalPath(root), { version: 1, before, after });
+  await atomicJson(paths.configPath, after.config);
+  await atomicJson(paths.settingsPath, after.settings);
+  await unlink(journalPath(root));
+}
+export async function withProfileLock(root, action) {
+  const lockPath = join(statePaths(root).root, 'model-consent.lock');
   const lock = await open(lockPath, 'wx', 0o600);
-  try {
-    await recoverLocked(root);
+  try { return await action(); }
+  finally { await lock.close(); await unlink(lockPath); }
+}
+export async function updateProfile(root, transform) {
+  return withProfileLock(root, async () => {
+    await recoverProfileLocked(root);
     const current = await inspectState(root, { recovery: false });
     const settings = validateSettings(rebasePackageSettings(transform(current.settings)));
-    const prior = await readJsonFile(paths.configPath);
-    const next = createOpenCodeConfig(settings);
-    if (!same(settings, current.settings) || !current.configurationCurrent) {
-      await atomicJson(journalPath(root), { version: 1,
-        before: { settings: current.settings, config: prior }, after: { settings, config: next } });
-      await atomicJson(paths.configPath, next);
-      await atomicJson(paths.settingsPath, settings);
-      await unlink(journalPath(root));
-    }
+    await writeProfilePair(root,
+      { settings: current.settings, config: await readJsonFile(current.paths.configPath) },
+      { settings, config: createOpenCodeConfig(settings) });
     return await inspectState(root, { recovery: false });
-  } finally { await lock.close(); await unlink(lockPath); }
+  });
 }
