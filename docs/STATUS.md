@@ -1,5 +1,20 @@
 # Implementation status
 
+Integration update, **2026-11-05**: the Windows installer candidate now builds
+from an explicit application package and implements host registration, update
+and rollback for the alpha target. Synthetically tested transactions preserve
+operator data and restore the previous extension after staging/swap failures.
+The native host still needs to consume the selected packaged runtime before
+this is a usable end-user installation. See [installer contract](INSTALLER_CONTRACT.md).
+
+The revised Analysis system prompt is integrated into global and project chats,
+with exact recognition/migration of the two previous managed prompts. Thirteen
+prompt/migration tests pass; actual model answer quality and embedded renderer
+acceptance remain open. The large-object saved-reference fallback is now also
+covered by the system prompt. A rollback to an older prompt implementation needs
+compatible managed configurations; extension-file rollback alone does not prove
+this. See [profile prompts](PROFILE_PROMPTS.md).
+
 Host inventory update, **2026-11-05**: read-only machine discovery confirms
 TwinCAT 3.1.4024.78 and TcXaeShell 15.0.0.0/x86 as the first alpha installation
 target. Full VS2019 with XAE integration is present but unaccepted; Shell64,

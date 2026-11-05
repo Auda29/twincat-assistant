@@ -34,6 +34,9 @@ try {
  Set-Content (Join-Path $install 'operator-data/chat') 'preserved'
  $state=Invoke-HostTransaction @args -Action Install -Package $p2
  if ($state.previous -ne '1.0.0') { throw 'Update failed.' }
+ $failed=$false; try { Invoke-HostTransaction @args -Action Install -Package $p3 -InjectFailure after-stage | Out-Null } catch { $failed=$true }
+ if (-not $failed -or (Get-Content (Join-Path $payload 'payload.txt')).Trim() -ne '1.1.0' -or (Test-Path (Join-Path $install 'versions/1.2.0'))) { throw 'Failed staging reserved a version or changed the installed payload.' }
+ if (@(Get-ChildItem -LiteralPath $hostRoot -Directory -Filter '.assistant-stage-*').Count) { throw 'Failed staging left a partial payload.' }
  $failed=$false; try { Invoke-HostTransaction @args -Action Install -Package $p3 -InjectFailure after-swap | Out-Null } catch { $failed=$true }
  if (-not $failed -or (Get-Content (Join-Path $payload 'payload.txt')).Trim() -ne '1.1.0') { throw 'Failed update was not restored.' }
  if (Test-Path (Join-Path $install 'versions/1.2.0')) { throw 'Failed update left its version reserved.' }

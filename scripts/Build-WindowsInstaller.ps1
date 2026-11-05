@@ -11,6 +11,7 @@ if (-not (Test-Path -LiteralPath $OutputDirectory)) { New-Item -ItemType Directo
 $output = Join-Path $OutputDirectory "TwinCAT-Assistant-$($m.version)-$($m.architecture)-setup.exe"
 if (Test-Path -LiteralPath $output) { throw 'Refusing to overwrite installer.' }
 $temp = Join-Path ([IO.Path]::GetTempPath()) ('tc-installer-build-' + [guid]::NewGuid().ToString('N'))
+$zip = $null
 try {
  New-Item -ItemType Directory -Path $temp | Out-Null
  Copy-Item -LiteralPath $PackageDirectory -Destination (Join-Path $temp 'package') -Recurse

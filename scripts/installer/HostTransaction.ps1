@@ -91,6 +91,7 @@ function Invoke-HostTransaction {
     if (Test-Path -LiteralPath $hostLockPath) { Assert-NoLinks $hostLockPath }
     $hostLock = [IO.File]::Open($hostLockPath,[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
     $lock = $null
+    $createdVersion = $null; $stage = $null; $journal = $null; $committed = $false
     try {
         $lockPath = Join-Path $installRoot '.lock'
         if (Test-Path -LiteralPath $lockPath) { Assert-NoLinks $lockPath }
@@ -119,6 +120,7 @@ function Invoke-HostTransaction {
             $versionDir = Join-Path $versions $version
             if (Test-Path $versionDir) { throw 'Version already exists.' }
             New-Item -ItemType Directory $versionDir | Out-Null
+            $createdVersion = $versionDir
             Copy-Item -LiteralPath $Package -Destination (Join-Path $versionDir 'application') -Recurse
             $null = Test-ApplicationPackage (Join-Path $versionDir 'application')
             Copy-Item -LiteralPath $payload -Destination (Join-Path $versionDir 'extension') -Recurse
@@ -140,6 +142,7 @@ function Invoke-HostTransaction {
         $stage = Join-Path $hostRoot ('.assistant-stage-' + [guid]::NewGuid().ToString('N'))
         $old = Join-Path $hostRoot ('.assistant-old-' + [guid]::NewGuid().ToString('N'))
         Copy-Item -LiteralPath (Join-Path $versionDir 'extension') -Destination $stage -Recurse
+        if ($InjectFailure -eq 'after-stage') { throw 'Injected staging failure.' }
         if ((Get-TreeDigest $stage) -cne (Get-TreeDigest (Join-Path $versionDir 'extension'))) { throw 'Staged extension verification failed.' }
         $journalData = @{ hostRoot=$hostRoot; extension=$extension; stage=$stage; old=$old; version=$version }
         [IO.File]::WriteAllText($journal,($journalData | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
@@ -155,6 +158,7 @@ function Invoke-HostTransaction {
             $tempState = Join-Path $installRoot ('.state-' + [guid]::NewGuid().ToString('N'))
             [IO.File]::WriteAllText($tempState,($newState | ConvertTo-Json),[Text.UTF8Encoding]::new($false))
             if (Test-Path $statePath) { $bak = $tempState + '.bak'; [IO.File]::Replace($tempState,$statePath,$bak) } else { [IO.File]::Move($tempState,$statePath) }
+            $committed = $true
         } catch {
             if ($movedNew -and (Test-Path $extension)) { Remove-Item -LiteralPath $extension -Recurse -Force }
             if ($movedOld -and (Test-Path $old)) { [IO.Directory]::Move($old,$extension) }
@@ -168,5 +172,21 @@ function Invoke-HostTransaction {
         if (Test-Path $old) { Remove-Item -LiteralPath $old -Recurse -Force }
         Remove-Item -LiteralPath $journal -Force
         Write-Output $newState
+    } catch {
+        # Before the swap/journal, a failed copy or validation must not reserve
+        # the new version forever. Retain everything if recovery is pending or
+        # if the new selection was already committed.
+        if (-not $committed -and (-not $journal -or -not (Test-Path -LiteralPath $journal))) {
+            foreach ($candidate in @($stage, $createdVersion)) {
+                if ($candidate -and (Test-Path -LiteralPath $candidate)) {
+                    $absolute = [IO.Path]::GetFullPath($candidate)
+                    $allowed = if ($candidate -eq $stage) { $hostRoot + [IO.Path]::DirectorySeparatorChar + '.assistant-stage-' } else { (Join-Path $installRoot 'versions') + [IO.Path]::DirectorySeparatorChar }
+                    if (-not $absolute.StartsWith($allowed, [StringComparison]::OrdinalIgnoreCase)) { throw 'Refusing cleanup outside the transaction roots.' }
+                    Assert-NoLinks $absolute
+                    Remove-Item -LiteralPath $absolute -Recurse -Force
+                }
+            }
+        }
+        throw
     } finally { if ($lock) { $lock.Dispose() }; $hostLock.Dispose() }
 }

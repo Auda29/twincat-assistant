@@ -70,6 +70,10 @@ test('prompt names the context markers that the native host and chat overlay rea
     assert.ok(binding.includes(marker), marker + ' not emitted by the host');
   }
   assert.match(binding, /ActiveReferenceId = "Aktiver Baustein"/);
+  const referenceMarker = 'TwinCAT saved-object reference (no source code attached)';
+  assert.ok(binding.includes(referenceMarker) && prompt.includes(referenceMarker));
+  assert.match(prompt, /read the returned object ID/);
+  assert.match(prompt, /excludes unsaved editor changes/);
   assert.match(overlay, /'TwinCAT IDE context, metadata only\./);
   for (const marker of ['"TwinCAT context snapshot"', '"Aktiver Baustein"', '"TwinCAT IDE context, metadata only"', 'Object kind, Owning POU and Member', 'Declaration and Structured Text implementation sections', 'Source, Changes and Revision'])
     assert.ok(prompt.includes(marker), marker + ' missing from the prompt');
