@@ -25,4 +25,5 @@ var activeCases = ActiveEditorTests.Run();
 var chatCases = ChatConnectionTests.Run();
 var bindingCases = ChatBindingTests.Run();
 var viewStateCases = ProjectChatViewStateTests.Run();
-Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases + viewStateCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");
+var hostCases = HostIdentityTests.Run();
+Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases + viewStateCases + hostCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");

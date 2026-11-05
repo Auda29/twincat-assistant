@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "kind": "twincat-assistant-host-targets",
+  "recordedAt": "2026-11-05",
+  "documentation": "docs/HOST_ACCEPTANCE_MATRIX.md",
+  "policy": {
+    "installerEligibleClassifications": ["alpha-target"],
+    "statement": "Only a host classified as alpha-target may be offered the first installable alpha. Every other classification is refused by default. A matching classification is not a live acceptance: open gates listed below remain open until recorded on that host.",
+    "noGlobalSupportClaims": ["TcXaeShell64", "TwinCAT 3.1.4026", "full Visual Studio"]
+  },
+  "gateStatuses": {
+    "passed": "Observed in the real host for this target and recorded in the referenced document.",
+    "passed-user-reported": "Observed by the operator in the real host; no automated host check exists.",
+    "partial": "Some cases observed in the real host; listed cases remain open.",
+    "synthetic-only": "Only component or fixture checks exist; no real-host acceptance.",
+    "open": "Not yet observed in the real host.",
+    "blocked": "Cannot be observed: host or payload target missing."
+  },
+  "gates": [
+    { "id": "install", "title": "Installation of the payload into the host" },
+    { "id": "package-load", "title": "Package load, menu entry and tool window opening" },
+    { "id": "docking", "title": "Docking, closing and reopening the tool window" },
+    { "id": "focus-resize", "title": "Keyboard focus, resize and theme switching" },
+    { "id": "webview-chat", "title": "Embedded WebView2/OpenChamber chat with a real provider reply" },
+    { "id": "project-binding", "title": "Exact IDE/solution/PLC project binding" },
+    { "id": "active-pou", "title": "Automatic active POU following" },
+    { "id": "member-context", "title": "Method/action/property (member) editor context" },
+    { "id": "unsaved-content", "title": "Distinguishing unsaved editor content from saved/snapshot text" },
+    { "id": "attachments", "title": "Explicit POU attachment to a project chat" },
+    { "id": "engineering-mcp", "title": "Saved-project engineering MCP in the installed host" },
+    { "id": "knowledge-mcp", "title": "Knowledge MCP with an operator corpus in the installed host" },
+    { "id": "multi-ide", "title": "Two simultaneous IDE instances stay isolated" },
+    { "id": "cold-start-restored-editors", "title": "Cold start with restored PLC editors, restored Assistant pane and toolbox initialization" },
+    { "id": "shutdown", "title": "Normal IDE close stops owned Assistant processes" },
+    { "id": "update-rollback", "title": "Installer update and return to the previous payload" }
+  ],
+  "targets": [
+    {
+      "id": "tcxaeshell-x86-tc4024",
+      "status": "alpha-target",
+      "title": "TwinCAT XAE Shell (VS 15.9 isolated shell, 32-bit) with TwinCAT 3.1 Build 4024",
+      "payload": {
+        "identity": "TwinCatAssistant.Native.X86",
+        "buildProject": "native/IdeHost/X86/IdeHost.X86.csproj",
+        "vsixInstallationTarget": { "id": "Microsoft.VisualStudio.IntegratedShell", "versionRange": "[15.0,17.0)", "productArchitecture": "x86" },
+        "installMethod": "unpacked-extension-directory",
+        "installDirectory": "Common7\\IDE\\Extensions\\TwinCatAssistant.Native.X86",
+        "configurationChangedMarker": "Common7\\IDE\\Extensions\\extensions.configurationchanged",
+        "requiresElevation": true,
+        "requiresHostClosed": true,
+        "notes": "Discovery was established by an unpacked directory plus updating the existing marker's timestamp. /UpdateConfiguration is not supported by this shell. VSIXInstaller into the shell is untested."
+      },
+      "match": {
+        "hostKind": "TcXaeShell",
+        "processArchitecture": "x86",
+        "executableName": "TcXaeShell.exe",
+        "executableFileVersion": "15.0.0.0",
+        "shellBaseMajor": 15,
+        "dteProgId": "TcXaeShell.DTE.15.0",
+        "registryKey": { "view": "Registry32", "path": "SOFTWARE\\Beckhoff\\TcXaeShell\\15.0", "installDirValue": "InstallDir" },
+        "twinCatFamily": "4024",
+        "requiresTwinCatIntegration": true
+      },
+      "twinCat": {
+        "family": "4024",
+        "installationMechanism": "classic-setup",
+        "verifiedBuilds": ["3.1.4024.78"],
+        "otherBuildsInFamily": "alpha-target-unverified-build"
+      },
+      "prerequisites": {
+        "netFrameworkMinimumRelease": 461808,
+        "webView2Runtime": { "required": true, "verifiedVersions": ["154.0.4258.62", "156.0.4314.58"], "embeddedSdk": "1.0.4258.31" }
+      },
+      "verifiedEnvironment": [
+        {
+          "recordedAt": "2026-11-05",
+          "windows": { "product": "Windows 11 Enterprise", "displayVersion": "25H2", "build": "26200.9711", "architecture": "amd64" },
+          "twinCatSetup": "Beckhoff TwinCAT 3.1 (Build 4024) 3.1.4024.78 (classic setup, no tcpkg)",
+          "xaeShellProduct": "Beckhoff TwinCAT XAE Shell 1.22.0.0",
+          "shellExecutable": "TcXaeShell.exe 15.0.0.0, x86",
+          "shellBase": "msenv.dll 15.0.35826.140 (D15.9)",
+          "assistantPayload": "TwinCatAssistant.Native.X86 0.1.9",
+          "netFrameworkRelease": 533509,
+          "webView2Runtime": "156.0.4314.58"
+        }
+      ],
+      "acceptance": {
+        "install": { "status": "partial", "evidence": "docs/NATIVE_PROTOTYPE.md", "open": "Only coordinated manual copies (0.1.1-0.1.9) are recorded; installer install/update/rollback is not." },
+        "package-load": { "status": "passed-user-reported", "evidence": "docs/NATIVE_PROTOTYPE.md" },
+        "docking": { "status": "passed-user-reported", "evidence": "docs/NATIVE_PROTOTYPE.md", "open": "Observed with no solution loaded." },
+        "focus-resize": { "status": "open", "evidence": "docs/WINDOWS_ACCEPTANCE.md" },
+        "webview-chat": { "status": "passed-user-reported", "evidence": "docs/CHAT_INTEGRATION.md" },
+        "project-binding": { "status": "passed-user-reported", "evidence": "docs/CHAT_INTEGRATION.md" },
+        "active-pou": { "status": "passed-user-reported", "evidence": "docs/ACTIVE_EDITOR.md" },
+        "member-context": { "status": "partial", "evidence": "docs/ACTIVE_EDITOR.md", "open": "Member context is implemented; a recorded live member-editor acceptance per build is missing." },
+        "unsaved-content": { "status": "partial", "evidence": "docs/ACTIVE_EDITOR.md", "open": "Dirty status observed for one unsaved comment; exact unsaved editor-buffer text semantics are unverified." },
+        "attachments": { "status": "passed-user-reported", "evidence": "docs/CHAT_INTEGRATION.md" },
+        "engineering-mcp": { "status": "synthetic-only", "evidence": "docs/NATIVE_MCP.md", "open": "Tool catalog and calls pass with synthetic projects; installed project acceptance with the operator is not recorded." },
+        "knowledge-mcp": { "status": "synthetic-only", "evidence": "docs/NATIVE_MCP.md", "open": "Synthetic corpus only; an operator corpus in the installed host is not accepted." },
+        "multi-ide": { "status": "partial", "evidence": "docs/ACTIVE_EDITOR.md", "open": "Direct-reader isolation passed in a second IDE; in-process UI/chat isolation is not recorded." },
+        "cold-start-restored-editors": { "status": "open", "evidence": "docs/SOLUTION_STARTUP_INVESTIGATION.md", "open": "A hang while restoring PLC editors was observed without the Assistant loaded; its cause is unproven." },
+        "shutdown": { "status": "partial", "evidence": "docs/NATIVE_CHAT.md", "open": "Owned process shutdown is tested by fixtures; installed IDE close with restored pane is not recorded." },
+        "update-rollback": { "status": "open", "evidence": "docs/ROADMAP.md" }
+      }
+    },
+    {
+      "id": "tcxaeshell-x86-tc4026",
+      "status": "unaccepted",
+      "title": "TwinCAT XAE Shell (32-bit) with TwinCAT 3.1 Build 4026 (Package Manager)",
+      "payload": { "identity": "TwinCatAssistant.Native.X86" },
+      "match": { "hostKind": "TcXaeShell", "processArchitecture": "x86", "shellBaseMajor": 15, "dteProgId": "TcXaeShell.DTE.15.0", "twinCatFamily": "4026" },
+      "reason": "Same shell generation, but 4026 integration, Automation Interface and editor behavior have no Assistant acceptance."
+    },
+    {
+      "id": "tcxaeshell64-amd64-tc4026",
+      "status": "blocked",
+      "title": "TwinCAT XAE Shell64 (VS 2022 based, 64-bit) with TwinCAT 3.1 Build 4026",
+      "payload": { "identity": "TwinCatAssistant.Native.Amd64", "vsixInstallationTarget": { "id": "Microsoft.VisualStudio.Community", "versionRange": "[17.0,18.0)", "productArchitecture": "amd64" } },
+      "match": { "hostKind": "TcXaeShell64", "processArchitecture": "amd64", "shellBaseMajor": 17, "dteProgId": "TcXaeShell.DTE.17.0" },
+      "reason": "No installed TcXaeShell64 was available. The amd64 payload's installation target is a build-time placeholder, not a validated Shell64 identity."
+    },
+    {
+      "id": "visualstudio-2017-2019-x86",
+      "status": "unaccepted",
+      "title": "TwinCAT integrated into full Visual Studio 2017/2019 (32-bit)",
+      "payload": { "identity": "TwinCatAssistant.Native.X86" },
+      "match": { "hostKind": "VisualStudio", "processArchitecture": "x86", "shellBaseMajors": [15, 16] },
+      "reason": "The x86 payload targets Microsoft.VisualStudio.IntegratedShell only. Full Visual Studio needs its own installation target, discovery and acceptance."
+    },
+    {
+      "id": "visualstudio-2022-amd64",
+      "status": "unaccepted",
+      "title": "TwinCAT 4026 integrated into full Visual Studio 2022 (64-bit)",
+      "payload": { "identity": "TwinCatAssistant.Native.Amd64" },
+      "match": { "hostKind": "VisualStudio", "processArchitecture": "amd64", "shellBaseMajor": 17 },
+      "reason": "Edition-specific installation targets and live acceptance are missing."
+    },
+    {
+      "id": "visualstudio-2026",
+      "status": "out-of-scope",
+      "title": "Full Visual Studio 2026",
+      "match": { "hostKind": "VisualStudio", "shellBaseMajor": 18 },
+      "reason": "No payload targets version 18; the applicable TwinCAT build is not established."
+    }
+  ]
+}

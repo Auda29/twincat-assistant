@@ -204,6 +204,12 @@ by this research. Future package/path migration must preserve them under the
 
 ## Next evidence to collect before integration tests
 
+Update 2026-11-05: items 1–3 were collected read-only for the existing machine,
+and the first alpha target is defined. See the
+[host acceptance matrix](HOST_ACCEPTANCE_MATRIX.md),
+[`native/host-targets.json`](../native/host-targets.json) and
+`scripts/Get-AssistantHostInventory.ps1`. Items 4–5 remain open.
+
 1. Identify the existing machine's exact TwinCAT/XAE build and setup mechanism.
    The earlier Shell executable version `15.0.0.0` identifies a host generation,
    not a TwinCAT build. The earlier discovery of VS2019 Community and VS2022
