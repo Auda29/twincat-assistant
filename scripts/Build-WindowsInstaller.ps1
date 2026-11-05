@@ -16,7 +16,7 @@ try {
  New-Item -ItemType Directory -Path $temp | Out-Null
  Copy-Item -LiteralPath $PackageDirectory -Destination (Join-Path $temp 'package') -Recurse
  $null = Test-ApplicationPackage (Join-Path $temp 'package')
- foreach ($name in @('Invoke-Installer.ps1','HostTransaction.ps1','PackageContract.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot "installer/$name") -Destination $temp }
+ foreach ($name in @('Invoke-Installer.ps1','HostTransaction.ps1','PackageContract.ps1','RuntimePrerequisites.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot "installer/$name") -Destination $temp }
  Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Get-AssistantHostInventory.ps1') -Destination $temp
  Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../native/host-targets.json') -Destination $temp
  $zip = Join-Path ([IO.Path]::GetTempPath()) ('tc-installer-' + [guid]::NewGuid().ToString('N') + '.zip')

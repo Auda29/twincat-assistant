@@ -4,6 +4,7 @@ param([Parameter(Mandatory)][ValidateSet('Install','Rollback')][string]$Action,
       [string]$HostId)
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot/HostTransaction.ps1"
+. "$PSScriptRoot/RuntimePrerequisites.ps1"
 $inventoryScript = Join-Path $PSScriptRoot 'Get-AssistantHostInventory.ps1'
 $targetsPath = Join-Path $PSScriptRoot 'host-targets.json'
 # This command always collects local live facts. No supplied-inventory option is exposed.
@@ -47,5 +48,14 @@ if ($Action -eq 'Install') {
     $osArch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
     if (($m.architecture -eq 'x64' -and $osArch -ne 'AMD64') -or ($m.architecture -eq 'arm64' -and $osArch -ne 'ARM64')) { throw 'Application architecture does not match Windows.' }
 }
+$runtimePackage = $package
+if ($Action -eq 'Rollback') {
+    $current = Get-Content -LiteralPath (Join-Path $InstallRoot 'state.json') -Raw | ConvertFrom-Json
+    if (-not $current.previous -or $current.previous -cnotmatch '^[0-9A-Za-z][0-9A-Za-z.+-]*$' -or $current.previous.EndsWith('.')) { throw 'No valid previous version.' }
+    $runtimePackage = Join-Path $InstallRoot "versions/$($current.previous)/application"
+    $null = Test-ApplicationPackage $runtimePackage
+}
+$programs = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
+Assert-ApplicationRuntimePrerequisites $runtimePackage (Join-Path $programs 'dotnet')
 Invoke-HostTransaction -Action $Action -InstallRoot $InstallRoot -HostRoot $hostRoot -Interop $interop -Package $package -Target $target[0]
-Write-Host 'Host files registered. Packaged runtime selection requires the integration described in INSTALLER_CONTRACT.md.'
+Write-Host 'Host files registered with the selected packaged runtime. Real-host acceptance remains separate.'

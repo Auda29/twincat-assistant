@@ -19,7 +19,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Test synthetic lifecycle and bootstrap
         shell: pwsh
-        run: ./scripts/Test-InstallerFixture.ps1
+        run: |
+          ./scripts/Test-InstallerFixture.ps1
+          ./scripts/Test-InstallerPrerequisites.ps1
       - name: Download supplied application staging artifact
         uses: actions/download-artifact@v4
         with:

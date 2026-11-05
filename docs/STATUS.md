@@ -4,8 +4,11 @@ Integration update, **2026-11-05**: the Windows installer candidate now builds
 from an explicit application package and implements host registration, update
 and rollback for the alpha target. Synthetically tested transactions preserve
 operator data and restore the previous extension after staging/swap failures.
-The native host still needs to consume the selected packaged runtime before
-this is a usable end-user installation. See [installer contract](INSTALLER_CONTRACT.md).
+The native host now consumes the selected packaged runtime and validates its
+entrypoints before launch. The combined implementation passes all 126 Node
+tests, and the x86 host builds. Relocatable MCP input builds, version-to-version
+managed-configuration compatibility and a full real package/host acceptance
+remain open. See [installer contract](INSTALLER_CONTRACT.md).
 
 The revised Analysis system prompt is integrated into global and project chats,
 with exact recognition/migration of the two previous managed prompts. Thirteen

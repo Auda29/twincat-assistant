@@ -20,8 +20,10 @@ Abschluss der offenen Prüfungen im echten Zielhost offen; die Einstufung als
 Alpha-Ziel ersetzt diese Prüfungen nicht.
 
 Implementierungsstand vom selben Tag: Installer-Registrierung, Update und
-Payload-Rollback sind mit synthetischen Hosts geprüft. Die Anbindung an den
-paketierten Runtime-Start fehlt noch; Punkt 3 ist damit nicht abgeschlossen.
+Payload-Rollback sind mit synthetischen Hosts geprüft. Der Host löst den
+Runtime-Start jetzt aus dem ausgewählten Paket auf. Der vollständige Paketbau,
+verwaltete Konfigurationen beim Versionswechsel und die echte
+Installationsabnahme bleiben offen; Punkt 3 ist damit nicht abgeschlossen.
 Der neue Analyse-Prompt ist in beiden Konfigurationspfaden eingebunden und
 mit Migrations- und Vertragstests geprüft. Echte Modellantworten und die
 Darstellung im installierten WebView bleiben für Punkt 4 zu prüfen.

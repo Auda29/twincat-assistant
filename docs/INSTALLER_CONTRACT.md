@@ -26,6 +26,12 @@ TwinCAT `3.1.4024.78`, registered TwinCAT install root, x86 shell, WebView2 and
 process path cannot be inspected. Close it manually; nothing is terminated.
 Other shells and builds remain unaccepted.
 
+Before registration or rollback, the selected application's Windows helper and
+its runtime contract are checked. A matching .NET 8 runtime must be installed
+in the system Program Files `dotnet` directory; having only a later major
+runtime is insufficient. Preflight reports this prerequisite without changing
+the application package or installing a system runtime. It requires no SDK.
+
 The interop DLL must be at `Components/TcBlockDiagram/Common/TCatSysManagerLib.dll`
 under the registered TwinCAT installation. Its .NET assembly identity must match
 the host assembly's reference; the installer copies that local DLL into the
@@ -54,19 +60,24 @@ inspect `transaction.pending` and the paths it records before recovery. Never
 delete an unknown extension or user data. Existing config, chats, logins,
 project bindings and license data are not migrated or modified.
 
-## Required backend integration
+## Packaged runtime selection
 
 Each installed extension contains `assistant-installation.json` with
 `schemaVersion: 1`, `targetId`, `version` and the absolute `applicationRoot`
 of the selected version. Rollback deploys the previous snapshot and therefore
-its previous selection. This is an explicit integration handoff: **the existing
-native host does not yet read this file** and still uses `native-chat.json`'s
-absolute developer paths. The backend/host integration must define and consume
-this selection, including exact package-relative paths for the Node executable,
-`src/native-chat.mjs` or replacement launcher, Windows helper, .NET runtime,
-Core/Chat assets and both MCP executables. It must preserve existing state and
-credentials and prove relocated startup. Until those paths are agreed and
-implemented, registration alone is not a working end-user installation.
+its previous selection. The native host now reads this file, validates the
+selected manifest and fixed entrypoints and resolves Node, the native launcher,
+Windows helper and both MCPs from that package. Existing state and credentials
+remain at their operator paths. See [application staging](APPLICATION_STAGING.md)
+for the exact layout. Missing or malformed installed selectors are rejected;
+without an installer ownership marker, the development configuration remains
+available. The full package is checked before preparing user state.
+
+Manifest and selector tests establish these boundaries, not a real installed
+host. A startup test after moving a synthetic package passes; changing between
+two version roots with existing managed MCP paths and prompt policies requires
+its own compatibility implementation and test before claiming operational
+update/rollback. Unpackaged older prototypes are not installer rollback targets.
 
 The manual CI workflow downloads an explicitly named application staging
 artifact from a specified run and uploads the built EXE as a candidate. No
