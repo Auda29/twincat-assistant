@@ -4,6 +4,15 @@ This record supplements HOST_ACCEPTANCE_MATRIX.md, WINDOWS_ACCEPTANCE.md,
 ACTIVE_EDITOR.md and SOLUTION_STARTUP_INVESTIGATION.md. It does not close their
 installed UI gates. Global ROADMAP, STATUS and host-targets.json are unchanged.
 
+Parent follow-up on the same day: PIDs 7768 and 30380 were matched against
+their original launch records, exact executable, unique RootSuffix, synthetic
+ActivityLog path and process creation time. Both still had no main window.
+After the recorded normal-close failures, the Parent terminated only these two
+owned synthetic test processes. A subsequent inventory found no TcXaeShell
+process. The local receipt is
+`local-data/alpha-host-baseline-20261105-140304/owned-process-cleanup.json`.
+This was test cleanup, not a passed shutdown gate. No user IDE was closed.
+
 ## Environment and boundary
 
 - Windows 11 Enterprise 25H2, build 26200.9711, non-elevated.
