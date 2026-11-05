@@ -521,3 +521,27 @@ UI and web type checks, source-contract lint and four original composer test
 files also pass. Fixture profiles, provider records and PLC sources are
 synthetic; these checks do not modify the operator profile or establish live
 IDE/editor or PLC/compiler acceptance. Deployment remains separate.
+
+## Optional session information and pinned chat navigation, 2026-11-05
+
+Session information remains available through a dedicated button in the right
+rail. In the embedded Assistant it starts hidden, including on existing profiles.
+The choice is stored through the existing profile settings registry, separately
+from the general OpenChamber panel preference. Widening the window does not
+activate it. When explicitly opened, it uses the existing inline panel when it
+fits and the existing overlay otherwise. Dismissing the overlay also disables
+automatic inline display. The detailed Chat information surface remains separate.
+
+The native chat sidebar has an explicit pin button. A pinned bar survives chat
+selection, creation, Escape and browser focus changes. It docks beside the chat
+when at least 320 px remain for the conversation; at smaller widths it remains
+an overlay until explicitly collapsed or unpinned. Existing automatic docking
+from 760 px is unchanged. Pinning and open/closed state are separate preferences
+per PLC project and operator profile. Older view-state files remain readable.
+General-chat pinning lasts for the current host session and does not change a
+PLC project's preference. This candidate has not been installed in the operator
+IDE or accepted there yet.
+Local checks for this candidate: both host architectures build, 132 native
+checks, 99 WPF sidebar checks, 91 Host/WebView navigation checks, 26 adapter
+checks, 14 settings-registry tests and 12 visibility-hook tests pass. Full UI type checking and the source
+UI build pass. These fixtures do not establish installed IDE acceptance.

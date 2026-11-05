@@ -305,3 +305,25 @@ green lifecycle job is not native acceptance. See
 Continue with [Windows acceptance](WINDOWS_ACCEPTANCE.md); do not enable writes
 because the portable tests pass. No deployment, online change, forcing, PLC
 start/stop or runtime write is exposed by this foundation.
+## 2026-11-05 local panel and navigation candidate
+
+The embedded session information panel now starts hidden and has a dedicated
+right-rail toggle. Its own profile preference survives a service/page restart.
+The native project chat bar now supports explicit pinning, including persistent
+project preferences and narrow-window focus handling. See
+[the runtime behavior](RUNTIME_INTEGRATION.md#optional-session-information-and-pinned-chat-navigation-2026-11-05).
+
+Local verification: X86 and Amd64 hosts build; 132 native policy/context/chat
+checks, 99 WPF sidebar checks, 91 actual Host/WebView/runtime navigation checks,
+26 adapter checks, 14 upstream settings-registry tests and 12 visibility-hook tests pass. The full UI
+TypeScript check and source UI build pass. Existing VSTHRD010 warnings in
+KnowledgeIntegration and DiagnosticsIntegration remain. WPF and WebView captures
+were inspected for the pinned sidebar and the wide/narrow session panel.
+Fixtures use private state and synthetic projects, with no model or PLC action.
+This candidate is not pushed or installed and has no live IDE acceptance yet.
+
+The [cold solution-load investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains
+open. The captured main thread waited in TwinCAT/Visual Studio toolbox
+initialization while restoring a PLC editor. The operator's successful restart
+skipped document restoration; this does not establish or exclude an indirect
+Assistant effect.

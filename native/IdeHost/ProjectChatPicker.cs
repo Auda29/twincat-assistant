@@ -89,7 +89,8 @@ namespace TwinCatAssistant.Native
         // Header
         private readonly TextBlock _title = new TextBlock { FontSize = 13, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         private readonly ShapePath _titleIcon = Glyph("chat");
-        private Button _backButton, _collapseButton, _newButton;
+        private Button _backButton, _collapseButton, _pinButton, _newButton;
+        private bool _pinned;
         private readonly TextBlock _newLabel = new TextBlock { Text = "Neuer Chat", FontSize = 12.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         private readonly ShapePath _newIcon = Glyph("plus");
         private readonly FrameworkElement _newSpinner = Spinner(14);
@@ -172,9 +173,16 @@ namespace TwinCatAssistant.Native
         public bool IsOpen => _open;
 
         // Docked: the bar sits beside the conversation and stays open after
-        // selecting or creating a chat; Tab continues into the chat. Overlay
-        // (narrow windows): selection, Escape and the host's outside click
-        // close it and Tab cycles inside it.
+        // selecting or creating a chat; Tab continues into the chat. Unpinned
+        // overlays close on selection, Escape or outside focus. Pinning keeps
+        // the bar open at every width and lets Tab continue into the chat.
+        public bool Pinned
+        {
+            get { return _pinned; }
+            set { _anchor.Dispatcher.VerifyAccess(); if (_pinned == value) return; _pinned = value; ApplyMode(); }
+        }
+        public Action<bool> PinnedChanged { get; set; }
+
         public bool Docked
         {
             get { return _docked; }
@@ -295,7 +303,7 @@ namespace TwinCatAssistant.Native
             _session++;
             _frame.PreviewKeyDown -= OnPreviewKeyDown;
             _anchor.IsVisibleChanged -= OnAnchorVisibleChanged;
-            SelectAsync = null; RenameAsync = null; ArchiveAsync = null; RestoreAsync = null; RetryAsync = null; NewAsync = null; GenerateTitleAsync = null;
+            PinnedChanged = null; SelectAsync = null; RenameAsync = null; ArchiveAsync = null; RestoreAsync = null; RetryAsync = null; NewAsync = null; GenerateTitleAsync = null;
             BackAsync = null; Closed = null;
             _list.Children.Clear();
             _entries = new List<Entry>();
@@ -347,8 +355,15 @@ namespace TwinCatAssistant.Native
 
         private void ApplyMode()
         {
-            KeyboardNavigation.SetTabNavigation(_frame, _docked ? KeyboardNavigationMode.Continue : KeyboardNavigationMode.Cycle);
-            _collapseButton.ToolTip = _docked ? "Chatleiste schließen" : "Chatleiste schließen (Esc)";
+            KeyboardNavigation.SetTabNavigation(_frame, _docked || _pinned ? KeyboardNavigationMode.Continue : KeyboardNavigationMode.Cycle);
+            _pinButton.ToolTip = _pinned ? "Chatleiste lösen" : "Chatleiste anheften";
+            AutomationProperties.SetName(_pinButton, (string)_pinButton.ToolTip);
+            var pinGlyph = Glyph(_pinned ? "unpin" : "pin");
+            pinGlyph.SetBinding(Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = _pinButton });
+            _pinButton.Content = pinGlyph;
+            if (_pinned) _pinButton.SetResourceReference(Control.ForegroundProperty, "Tc.Primary");
+            else _pinButton.SetResourceReference(Control.ForegroundProperty, "Tc.Muted");
+            _collapseButton.ToolTip = _docked || _pinned ? "Chatleiste schließen" : "Chatleiste schließen (Esc)";
         }
 
         private void OnAnchorVisibleChanged(object sender, DependencyPropertyChangedEventArgs args) { if (!_anchor.IsVisible) CloseCore(false); }
@@ -360,6 +375,8 @@ namespace TwinCatAssistant.Native
             _backButton = IconButton("back", "Zurück zu den Projektchats", () => BackAsync?.Invoke() ?? Task.CompletedTask);
             _backButton.Width = 24; _backButton.Height = 24;
             _backButton.Margin = new Thickness(0, 0, 4, 0);
+            _pinButton = IconButton("pin", "Chatleiste anheften", () => { Pinned = !Pinned; PinnedChanged?.Invoke(Pinned); return Task.CompletedTask; });
+            _pinButton.Width = 26; _pinButton.Height = 26;
             _collapseButton = IconButton("sidebar", "Chatleiste schließen", () => { CloseCore(true); return Task.CompletedTask; });
             _collapseButton.Width = 26; _collapseButton.Height = 26;
             AutomationProperties.SetName(_collapseButton, "Chatleiste schließen");
@@ -367,6 +384,7 @@ namespace TwinCatAssistant.Native
             _titleIcon.Margin = new Thickness(0, 0, 8, 0);
             var header = new DockPanel { LastChildFill = true, Margin = new Thickness(10, 8, 6, 6), MinHeight = 26 };
             header.Children.Add(DockTo(_collapseButton, Dock.Right));
+            header.Children.Add(DockTo(_pinButton, Dock.Right));
             header.Children.Add(DockTo(_backButton, Dock.Left));
             header.Children.Add(DockTo(_titleIcon, Dock.Left));
             header.Children.Add(_title);
@@ -928,7 +946,7 @@ namespace TwinCatAssistant.Native
             if (_disposed || !_open || _view != PickerView.Ready) return;
             var entry = Find(id);
             if (entry == null || entry.Archived) return;
-            if (id == _selectedId) { if (!_docked) CloseCore(false); return; }
+            if (id == _selectedId) { if (!_docked && !_pinned) CloseCore(false); return; }
             var handler = SelectAsync;
             if (handler == null || _pending.ContainsKey(id) || _pending.ContainsValue(Selecting)) return;
             var session = _session;
@@ -946,7 +964,7 @@ namespace TwinCatAssistant.Native
             if (session != _session) return;
             _pending.Remove(id);
             // The host confirms the selection with SetSelected or Show.
-            if (!_docked) CloseCore(false); else Render();
+            if (!_docked && !_pinned) CloseCore(false); else Render();
         }
 
         private bool CanRename(Entry entry) { return RenameAsync != null && !entry.Archived; }
@@ -1134,7 +1152,7 @@ namespace TwinCatAssistant.Native
             }
             if (session != _session) return;
             _newPending = false;
-            if (!_docked) CloseCore(false); else Render();
+            if (!_docked && !_pinned) CloseCore(false); else Render();
         }
 
         // The host reloads and answers with Show or ShowError; only a thrown
@@ -1206,7 +1224,7 @@ namespace TwinCatAssistant.Native
                 { args.Handled = true; CancelRename(); return; }
                 if (IsWithin(source, _search) && _search.Text.Length > 0) { args.Handled = true; ClearSearch(); return; }
                 // The docked bar is part of the layout; Escape leaves it open.
-                if (_docked) return;
+                if (_docked || _pinned) return;
                 args.Handled = true;
                 CloseCore(true);
                 return;
@@ -1427,6 +1445,8 @@ namespace TwinCatAssistant.Native
                 case "back": data = Geometry.Parse("M9.8,3.5 L5.3,8 L9.8,12.5"); break;
                 case "alert": data = Geometry.Parse("M14,8 A6,6 0 1 1 2,8 A6,6 0 1 1 14,8 Z M8,4.9 L8,8.7 M8,11 L8,11.1"); break;
                 // Panel with its left pane: the bar itself.
+                case "pin": data = Geometry.Parse("M6,2.5 L10,2.5 M7,2.5 L7,7 L4.5,9.5 L11.5,9.5 L9,7 L9,2.5 M8,9.5 L8,14"); break;
+                case "unpin": data = Geometry.Parse("M3,3 L13,13 M7,2.5 L10,2.5 M9,2.5 L9,7 L11.5,9.5 L9.5,9.5 M6.5,9.5 L4.5,9.5 L6,8 M8,10.5 L8,14"); break;
                 case "sidebar": data = Geometry.Parse("M3.5,2.5 L12.5,2.5 A1,1 0 0 1 13.5,3.5 L13.5,12.5 A1,1 0 0 1 12.5,13.5 L3.5,13.5 A1,1 0 0 1 2.5,12.5 L2.5,3.5 A1,1 0 0 1 3.5,2.5 Z M6.5,2.5 L6.5,13.5"); break;
                 default: data = AssistantTheme.Icon(name); break;
             }

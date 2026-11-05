@@ -28,7 +28,8 @@ namespace TwinCatAssistant.Native
         private DateTime _pickerRefreshedAt = DateTime.MinValue;
         private string _pickerUnknownSelection;
         private NativeProjectIdentity _sidebarProject;
-        private bool _sidebarWasDocked;
+        private bool _sidebarWasDocked, _generalSidebarPinned;
+        private readonly Dictionary<string, bool> _sidebarPinPreferences = new Dictionary<string, bool>(StringComparer.Ordinal);
         // Restores attempted per project and chat document; preferences per project.
         private readonly HashSet<string> _sidebarRestored = new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<string, bool> _sidebarPreferences = new Dictionary<string, bool>(StringComparer.Ordinal);
@@ -47,7 +48,7 @@ namespace TwinCatAssistant.Native
         private bool SidebarDocked()
         {
             var width = ActualWidth > 0 ? ActualWidth : double.IsNaN(Width) ? 0 : Width;
-            return width >= SidebarDockFrom;
+            return width >= SidebarDockFrom || SidebarPinned() && width >= SidebarWidth + 320;
         }
 
         private ProjectChatPicker EnsureProjectChatPicker()
@@ -56,6 +57,7 @@ namespace TwinCatAssistant.Native
             if (_projectChatPicker == null) _projectChatPicker = new ProjectChatPicker(_historyButton, _theme);
             var picker = _projectChatPicker;
             picker.Closed = byUser => OnSidebarClosed(picker, byUser);
+            picker.PinnedChanged = RememberSidebarPin;
             AttachSidebarView(picker);
             return picker;
         }
@@ -75,7 +77,7 @@ namespace TwinCatAssistant.Native
             if (_disposed) return;
             var picker = _projectChatPicker;
             var docked = SidebarDocked();
-            if (picker != null) picker.Docked = docked;
+            if (picker != null) { picker.Pinned = SidebarPinned(); picker.Docked = docked; }
             var open = picker?.IsOpen == true && _strip.Visibility == Visibility.Visible && _browser.Visibility == Visibility.Visible;
             if (open) AttachSidebarView(picker);
             _sidebarHost.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
@@ -114,7 +116,7 @@ namespace TwinCatAssistant.Native
         private void OnSidebarOutsideMouseDown(object sender, MouseButtonEventArgs args)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_projectChatPicker?.IsOpen != true || SidebarDocked()) return;
+            if (_projectChatPicker?.IsOpen != true || SidebarDocked() || SidebarPinned()) return;
             var source = args.OriginalSource as DependencyObject;
             if (Within(source, _sidebarHost) || Within(source, _historyButton)) return;
             CloseProjectChats();
@@ -135,11 +137,40 @@ namespace TwinCatAssistant.Native
             var projectHistory = _pickerScope?.General == false;
             _pickerRequest++;
             _pickerScope = null;
-            if (byUser && projectHistory && SidebarDocked() && _chatProject != null) RememberSidebar(_chatProject, false);
+            if (byUser && projectHistory && _chatProject != null) RememberSidebar(_chatProject, false);
             LayoutSidebar();
         }
 
         // ---- Open state per PLC project and profile ----
+
+        private bool SidebarPinned()
+        {
+            if (_pickerScope?.General == true) return _generalSidebarPinned;
+            var project = _pickerScope?.Project ?? _chatProject;
+            if (project == null || _chatBindings == null) return false;
+            var key = ProjectKey(project);
+            if (_sidebarPinPreferences.TryGetValue(key, out var pinned)) return pinned;
+            try { pinned = _chatBindings.ViewState().SidebarPinned(project) ?? false; } catch { pinned = false; }
+            _sidebarPinPreferences[key] = pinned;
+            return pinned;
+        }
+
+        private void RememberSidebarPin(bool pinned)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_pickerScope?.General == true) _generalSidebarPinned = pinned;
+            else
+            {
+                var project = _pickerScope?.Project ?? _chatProject;
+                if (project != null)
+                {
+                    _sidebarPinPreferences[ProjectKey(project)] = pinned;
+                    try { _chatBindings.ViewState().RememberPinned(project, pinned); } catch { }
+                    RememberSidebar(project, true);
+                }
+            }
+            LayoutSidebar();
+        }
 
         private bool SidebarPreference(NativeProjectIdentity project)
         {
@@ -165,7 +196,7 @@ namespace TwinCatAssistant.Native
         private void MaintainSidebar()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_disposed || !_chatPresented || !SidebarDocked() || _strip.Visibility != Visibility.Visible || _browser.Visibility != Visibility.Visible) return;
+            if (_disposed || !_chatPresented || !(SidebarDocked() || SidebarPinned()) || _strip.Visibility != Visibility.Visible || _browser.Visibility != Visibility.Visible) return;
             if (!_chatAdapterReady || _chatSelection?.authenticated != true || _chatActionPending) return;
             var project = _chatProject;
             if (project == null || (_projectChatPicker?.IsOpen == true && _pickerScope != null)) return;
@@ -229,7 +260,7 @@ namespace TwinCatAssistant.Native
         private void DismissProjectChatOverlay()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_projectChatPicker?.IsOpen == true && !SidebarDocked()) CloseProjectChats();
+            if (_projectChatPicker?.IsOpen == true && !SidebarDocked() && !SidebarPinned()) CloseProjectChats();
         }
 
         private void CloseProjectChatsOnChange(NativeProjectIdentity project)
@@ -287,7 +318,7 @@ namespace TwinCatAssistant.Native
             if (!restore && _projectChatPicker?.IsOpen == true && current != null && current.General == general && SameProject(current.Project, project))
             {
                 CloseProjectChats();
-                if (SidebarDocked() && project != null && !general) RememberSidebar(project, false);
+                if (project != null && !general) RememberSidebar(project, false);
                 return;
             }
             if (restore && _projectChatPicker?.IsOpen == true && current != null) return;
@@ -317,7 +348,7 @@ namespace TwinCatAssistant.Native
                 if (_chatSelection?.IsSelected != true || _chatSelection.sessionId == before || !CanPromptCurrentChat())
                     throw new InvalidOperationException("Der neue Chat wurde nicht bestätigt. Bitte zuerst den Verlauf neu laden.");
                 // The docked bar stays open and lists the new chat at once.
-                if (SidebarDocked()) await LoadPickerAsync(scope, false);
+                if (SidebarDocked() || SidebarPinned()) await LoadPickerAsync(scope, false);
             };
             picker.RetryAsync = () => LoadPickerAsync(scope, true);
             picker.BackAsync = general && project != null ? (Func<Task>)(() => ShowProjectChatsAsync(false)) : null;

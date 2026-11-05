@@ -29,9 +29,17 @@ internal static class ProjectChatViewStateTests
             Check(new ProjectChatViewState(threads, profile + "-other").SidebarOpen(lineA) == null, "another operator profile does not inherit the state");
             Check(state.RememberSidebar(lineB, true) && state.SidebarOpen(lineB) == true && state.SidebarOpen(lineA) == false, "two projects keep independent states");
             Check(state.RememberSidebar(lineA, true) && state.SidebarOpen(lineA) == true, "reopening replaces the stored state");
+            Check(state.SidebarPinned(lineA) == false, "existing open preferences default to unpinned");
+            Check(state.RememberPinned(lineA, true) && state.SidebarPinned(lineA) == true && state.SidebarOpen(lineA) == true, "pinning preserves the open preference");
+            Check(new ProjectChatViewState(threads, profile).SidebarPinned(restartedA) == true && state.SidebarPinned(lineB) == false, "pinning survives restart and stays project scoped");
+            Check(state.RememberSidebar(lineA, false) && state.SidebarPinned(lineA) == true, "explicit collapse retains pinning for the next open");
+            Check(state.RememberPinned(lineA, false) && state.SidebarPinned(lineA) == false && state.SidebarOpen(lineA) == false, "unpinning preserves explicit collapse");
+            state.RememberSidebar(lineA, true);
             Check(Directory.GetFiles(threads, "*.tmp").Length == 0 && Directory.GetFiles(threads, "*.view").Length == 2, "writes leave no temporary files");
             var fileA = Directory.GetFiles(threads, "project-" + ChatContextPolicy.ProjectSelectionKey(profile, lineA) + ".view").Single();
             var fileB = Directory.GetFiles(threads, "project-" + ChatContextPolicy.ProjectSelectionKey(profile, lineB) + ".view").Single();
+            File.WriteAllText(fileA, File.ReadAllText(fileA).Replace(",\"sidebarPinned\":false", ""));
+            Check(state.SidebarOpen(lineA) == true && state.SidebarPinned(lineA) == false, "legacy files retain their open state without inventing a pin");
             foreach (var (label, content) in new[] {
                 ("empty file", ""),
                 ("malformed JSON", "{\"version\":1,"),

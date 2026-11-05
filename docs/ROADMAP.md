@@ -6,6 +6,8 @@ evidence; this document defines the order of work and milestone exit gates.
 [MVP](MVP.md) describes the eventual product, not the permissions of the current
 prototype. No delivery dates or effort estimates are committed.
 
+The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains open. Host acceptance must include cold startup with restored PLC editors and the Assistant tool window. The observed toolbox wait has not been attributed to the Assistant.
+
 ## Agreed priorities (2026-11-02)
 
 Die folgenden Zukunftsthemen sind in dieser Reihenfolge vereinbart. Sie sind

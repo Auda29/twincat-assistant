@@ -13,11 +13,15 @@
     "changes": [
       [
         "import React from 'react';",
-        "import React from 'react';\nimport { publishTwinCatView } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { publishTwinCatView, isTwinCatEmbedded, subscribeTwinCatEmbedding } from '@/lib/twincat/twincat';"
       ],
       [
         "\tif (!currentSessionId && !draftOpen) {",
         "    // Publish the committed main view, not the live selection ahead of its deferred render.\n    // Successful empty history and the existing load-error/retry surface are both settled views.\n    const twinCatViewReady = active && currentSessionId === liveSessionId\n        && currentSessionDirectory === liveSessionDirectory\n        && (currentSessionId\n            ? !draftOpen && !draftPresentationExiting && (hasRenderableSessionSnapshot || sessionMessageLoadState.status === 'error')\n            : draftOpen);\n    React.useLayoutEffect(() => {\n        if (pinned) return;\n        return publishTwinCatView(currentSessionId, currentSessionDirectory, twinCatViewReady);\n    }, [pinned, currentSessionId, currentSessionDirectory, twinCatViewReady]);\n\n\tif (!currentSessionId && !draftOpen) {"
+      ],
+      [
+        "    const workStatusPanelEnabled = useUIStore((state) => state.workStatusPanelEnabled);",
+        "    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const workStatusPanelEnabled = useUIStore((state) => twinCatEmbedded ? state.twinCatSessionInformationEnabled : state.workStatusPanelEnabled);"
       ]
     ]
   },
@@ -185,6 +189,10 @@
       [
         "\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n",
         "\n  'chat.twincat.attachment.following': \"Automatic\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Follows the active editor. Switching objects replaces this attachment.\",\n  'chat.twincat.attachment.manualHint': \"Kept manually. Switching objects does not change this snapshot.\",\n  'chat.twincat.attachment.keep': \"Keep\",\n  'chat.twincat.attachment.keepHint': \"Keep this revision as a manual attachment.\",\n\n  'chat.twincat.profile.analysis': \"Analysis\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat information\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -194,6 +202,10 @@
       [
         "\n};\n",
         "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Manuell\",\n  'chat.twincat.attachment.followingHint': \"Folgt dem aktiven Editor. Ein Objektwechsel ersetzt diesen Anhang.\",\n  'chat.twincat.attachment.manualHint': \"Manuell beibehalten. Ein Objektwechsel ändert diesen Snapshot nicht.\",\n  'chat.twincat.attachment.keep': \"Beibehalten\",\n  'chat.twincat.attachment.keepHint': \"Diesen Stand als manuellen Anhang beibehalten.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat-Informationen\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n};\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Sitzungsinfos anzeigen',\n  'chat.twincat.sessionInfoHide': 'Sitzungsinfos ausblenden',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -203,6 +215,10 @@
       [
         "\n};\n",
         "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Sigue al editor activo. Al cambiar de objeto se reemplaza este adjunto.\",\n  'chat.twincat.attachment.manualHint': \"Conservado manualmente. Cambiar de objeto no modifica esta instantánea.\",\n  'chat.twincat.attachment.keep': \"Conservar\",\n  'chat.twincat.attachment.keepHint': \"Conservar esta revisión como adjunto manual.\",\n\n  'chat.twincat.profile.analysis': \"Análisis\",\n  'chat.twincat.modelDetails': \"Detalles\",\n\n  'chat.twincat.chatInformation': \"Información del chat\",\n  'chat.twincat.chatInformationDetails': \"Detalles\",\n\n};\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -212,6 +228,10 @@
       [
         "\n} as const;\n",
         "\n  'chat.twincat.attachment.following': \"Automatique\",\n  'chat.twincat.attachment.manual': \"Manuel\",\n  'chat.twincat.attachment.followingHint': \"Suit l’éditeur actif. Un changement d’objet remplace cette pièce jointe.\",\n  'chat.twincat.attachment.manualHint': \"Conservé manuellement. Un changement d’objet ne modifie pas cet instantané.\",\n  'chat.twincat.attachment.keep': \"Conserver\",\n  'chat.twincat.attachment.keepHint': \"Conserver cette version comme pièce jointe manuelle.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.modelDetails': \"Détails\",\n\n  'chat.twincat.chatInformation': \"Informations du chat\",\n  'chat.twincat.chatInformationDetails': \"Détails\",\n\n} as const;\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -221,6 +241,10 @@
       [
         "\n};\n",
         "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"アクティブなエディターに追従します。オブジェクトを切り替えると、この添付は置き換わります。\",\n  'chat.twincat.attachment.manualHint': \"手動で保持されています。オブジェクトを切り替えても、このスナップショットは変わりません。\",\n  'chat.twincat.attachment.keep': \"保持\",\n  'chat.twincat.attachment.keepHint': \"この版を手動の添付として保持します。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.modelDetails': \"詳細\",\n\n  'chat.twincat.chatInformation': \"チャット情報\",\n  'chat.twincat.chatInformationDetails': \"詳細\",\n\n};\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -230,6 +254,10 @@
       [
         "\n};\n",
         "\n  'chat.twincat.attachment.following': \"자동\",\n  'chat.twincat.attachment.manual': \"수동\",\n  'chat.twincat.attachment.followingHint': \"활성 편집기를 따릅니다. 개체를 전환하면 이 첨부가 교체됩니다.\",\n  'chat.twincat.attachment.manualHint': \"수동으로 유지됩니다. 개체를 전환해도 이 스냅샷은 바뀌지 않습니다.\",\n  'chat.twincat.attachment.keep': \"유지\",\n  'chat.twincat.attachment.keepHint': \"이 버전을 수동 첨부로 유지합니다.\",\n\n  'chat.twincat.profile.analysis': \"분석\",\n  'chat.twincat.modelDetails': \"세부 정보\",\n\n  'chat.twincat.chatInformation': \"채팅 정보\",\n  'chat.twincat.chatInformationDetails': \"세부 정보\",\n\n};\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -239,6 +267,10 @@
       [
         "\n} as const;\n",
         "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Handmatig\",\n  'chat.twincat.attachment.followingHint': \"Volgt de actieve editor. Bij een ander object wordt deze bijlage vervangen.\",\n  'chat.twincat.attachment.manualHint': \"Handmatig bewaard. Bij een ander object blijft deze momentopname ongewijzigd.\",\n  'chat.twincat.attachment.keep': \"Bewaren\",\n  'chat.twincat.attachment.keepHint': \"Deze versie als handmatige bijlage bewaren.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chatinformatie\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -248,6 +280,10 @@
       [
         "\n} as const;\n",
         "\n  'chat.twincat.attachment.following': \"Automatycznie\",\n  'chat.twincat.attachment.manual': \"Ręcznie\",\n  'chat.twincat.attachment.followingHint': \"Podąża za aktywnym edytorem. Zmiana obiektu zastępuje ten załącznik.\",\n  'chat.twincat.attachment.manualHint': \"Zachowano ręcznie. Zmiana obiektu nie zmienia tej migawki.\",\n  'chat.twincat.attachment.keep': \"Zachowaj\",\n  'chat.twincat.attachment.keepHint': \"Zachowaj tę wersję jako ręczny załącznik.\",\n\n  'chat.twincat.profile.analysis': \"Analiza\",\n  'chat.twincat.modelDetails': \"Szczegóły\",\n\n  'chat.twincat.chatInformation': \"Informacje o czacie\",\n  'chat.twincat.chatInformationDetails': \"Szczegóły\",\n\n} as const;\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -257,6 +293,10 @@
       [
         "\n};\n",
         "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Acompanha o editor ativo. Trocar de objeto substitui este anexo.\",\n  'chat.twincat.attachment.manualHint': \"Mantido manualmente. Trocar de objeto não altera este instantâneo.\",\n  'chat.twincat.attachment.keep': \"Manter\",\n  'chat.twincat.attachment.keepHint': \"Manter esta versão como anexo manual.\",\n\n  'chat.twincat.profile.analysis': \"Análise\",\n  'chat.twincat.modelDetails': \"Detalhes\",\n\n  'chat.twincat.chatInformation': \"Informações do chat\",\n  'chat.twincat.chatInformationDetails': \"Detalhes\",\n\n};\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -266,6 +306,10 @@
       [
         "\n};\n",
         "\n  'chat.twincat.attachment.following': \"Otomatik\",\n  'chat.twincat.attachment.manual': \"El ile\",\n  'chat.twincat.attachment.followingHint': \"Etkin düzenleyiciyi izler. Nesne değiştirildiğinde bu ek değiştirilir.\",\n  'chat.twincat.attachment.manualHint': \"El ile saklanır. Nesne değiştirmek bu anlık görüntüyü değiştirmez.\",\n  'chat.twincat.attachment.keep': \"Sakla\",\n  'chat.twincat.attachment.keepHint': \"Bu sürümü el ile eklenmiş bir ek olarak sakla.\",\n\n  'chat.twincat.profile.analysis': \"Analiz\",\n  'chat.twincat.modelDetails': \"Ayrıntılar\",\n\n  'chat.twincat.chatInformation': \"Sohbet bilgileri\",\n  'chat.twincat.chatInformationDetails': \"Ayrıntılar\",\n\n};\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -275,6 +319,10 @@
       [
         "\n};\n",
         "\n  'chat.twincat.attachment.following': \"Автоматично\",\n  'chat.twincat.attachment.manual': \"Вручну\",\n  'chat.twincat.attachment.followingHint': \"Стежить за активним редактором. Зміна об’єкта замінює це вкладення.\",\n  'chat.twincat.attachment.manualHint': \"Збережено вручну. Зміна об’єкта не змінює цей знімок.\",\n  'chat.twincat.attachment.keep': \"Зберегти\",\n  'chat.twincat.attachment.keepHint': \"Зберегти цю версію як ручне вкладення.\",\n\n  'chat.twincat.profile.analysis': \"Аналіз\",\n  'chat.twincat.modelDetails': \"Докладніше\",\n\n  'chat.twincat.chatInformation': \"Інформація про чат\",\n  'chat.twincat.chatInformationDetails': \"Докладніше\",\n\n};\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -284,6 +332,10 @@
       [
         "\n};\n",
         "\n  'chat.twincat.attachment.following': \"自动\",\n  'chat.twincat.attachment.manual': \"手动\",\n  'chat.twincat.attachment.followingHint': \"跟随当前编辑器。切换对象会替换此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手动保留。切换对象不会更改此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"将此版本保留为手动附件。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.modelDetails': \"详情\",\n\n  'chat.twincat.chatInformation': \"聊天信息\",\n  'chat.twincat.chatInformationDetails': \"详情\",\n\n};\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -293,6 +345,10 @@
       [
         "\n};\n",
         "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"跟隨目前的編輯器。切換物件會取代此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手動保留。切換物件不會變更此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"將此版本保留為手動附件。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.modelDetails': \"詳細資料\",\n\n  'chat.twincat.chatInformation': \"聊天資訊\",\n  'chat.twincat.chatInformationDetails': \"詳細資料\",\n\n};\n"
+      ],
+      [
+        "  'chat.twincat.chatInformation':",
+        "  'chat.twincat.sessionInfoShow': 'Show session information',\n  'chat.twincat.sessionInfoHide': 'Hide session information',\n  'chat.twincat.chatInformation':"
       ]
     ]
   },
@@ -496,6 +552,14 @@
       [
         "      <ContextRailSurfacesDialog open={isSurfacesDialogOpen} onOpenChange={setIsSurfacesDialogOpen} />",
         "      <ContextRailSurfacesDialog open={isSurfacesDialogOpen} onOpenChange={setIsSurfacesDialogOpen} />\n        </>\n      ) : null}"
+      ],
+      [
+        "  const workStatusPanelVisible = useUIStore((state) => state.workStatusPanelVisible);",
+        "  const workStatusPanelVisible = useUIStore((state) => state.workStatusPanelVisible);\n  const workStatusEnabled = useUIStore((state) => twinCatEmbedded ? state.twinCatSessionInformationEnabled : state.workStatusPanelEnabled);\n  const workStatusFits = useUIStore((state) => state.workStatusPanelFits);\n  const workStatusOverlayOpen = useUIStore((state) => state.workStatusOverlayOpen);\n  const twinCatSessionInfoShown = workStatusEnabled && (workStatusFits || workStatusOverlayOpen);\n  const toggleTwinCatSessionInfo = () => {\n    const state = useUIStore.getState();\n    const show = !twinCatSessionInfoShown;\n    useUIStore.setState({ twinCatSessionInformationEnabled: show });\n    state.setWorkStatusOverlayOpen(show && !state.workStatusPanelFits);\n  };"
+      ],
+      [
+        "      {!twinCatEmbedded ? (",
+        "      {twinCatEmbedded ? (\n        <Tooltip delayDuration={RAIL_TOOLTIP_DELAY_MS}>\n          <TooltipTrigger asChild>\n            <button type=\"button\" data-testid=\"twincat-session-information-toggle\" data-work-status-toggle=\"true\"\n              aria-label={t(twinCatSessionInfoShown ? 'chat.twincat.sessionInfoHide' : 'chat.twincat.sessionInfoShow')}\n              aria-pressed={twinCatSessionInfoShown} onClick={toggleTwinCatSessionInfo}\n              className={cn('flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring',\n                twinCatSessionInfoShown ? 'text-primary' : 'text-muted-foreground/70')}>\n              <Icon name=\"list-indefinite\" className=\"h-[18px] w-[18px]\" />\n            </button>\n          </TooltipTrigger>\n          <TooltipContent side=\"left\" sideOffset={8}>\n            {t(twinCatSessionInfoShown ? 'chat.twincat.sessionInfoHide' : 'chat.twincat.sessionInfoShow')}\n          </TooltipContent>\n        </Tooltip>\n      ) : null}\n      {!twinCatEmbedded ? ("
       ]
     ]
   },
@@ -596,6 +660,76 @@
       [
         "</Sidebar>",
         "</Sidebar>}"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/stores/useUIStore.ts",
+    "changes": [
+      [
+        "  workStatusPanelEnabled: boolean;",
+        "  workStatusPanelEnabled: boolean;\n  twinCatSessionInformationEnabled: boolean;"
+      ],
+      [
+        "        workStatusPanelEnabled: true,",
+        "        workStatusPanelEnabled: true,\n        twinCatSessionInformationEnabled: false,"
+      ],
+      [
+        "          workStatusPanelEnabled: state.workStatusPanelEnabled,",
+        "          workStatusPanelEnabled: state.workStatusPanelEnabled,\n          twinCatSessionInformationEnabled: state.twinCatSessionInformationEnabled,"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/chat/work-status/WorkStatusPanel.tsx",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { isTwinCatEmbedded } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "  const setOverlayOpen = useUIStore((state) => state.setWorkStatusOverlayOpen);",
+        "  const setOverlayOpenState = useUIStore((state) => state.setWorkStatusOverlayOpen);\n  const setOverlayOpen = React.useCallback((open: boolean) => {\n    setOverlayOpenState(open);\n    if (!open && isTwinCatEmbedded()) {\n      useUIStore.setState({ twinCatSessionInformationEnabled: false });\n    }\n  }, [setOverlayOpenState]);"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/settings/registry.ts",
+    "changes": [
+      [
+        "  workStatusPanelEnabled: field({ scope: 'profile', parse: parseBoolean, ui: uiStore('workStatusPanelEnabled', (v) => useUIStore.getState().setWorkStatusPanelEnabled(v)) }),",
+        "  workStatusPanelEnabled: field({ scope: 'profile', parse: parseBoolean, ui: uiStore('workStatusPanelEnabled', (v) => useUIStore.getState().setWorkStatusPanelEnabled(v)) }),\n  twinCatSessionInformationEnabled: field({ scope: 'profile', parse: parseBoolean, ui: uiStore('twinCatSessionInformationEnabled', (v) => useUIStore.setState({ twinCatSessionInformationEnabled: v })) }),"
+      ]
+    ]
+  },
+  {
+    "file": "packages/web/server/lib/opencode/settings-registry.json",
+    "changes": [
+      [
+        "    \"workStatusPanelEnabled\": {\n      \"scope\": \"profile\"\n    },",
+        "    \"workStatusPanelEnabled\": {\n      \"scope\": \"profile\"\n    },\n    \"twinCatSessionInformationEnabled\": {\n      \"scope\": \"profile\"\n    },"
+      ]
+    ]
+  },
+  {
+    "file": "packages/vscode/src/settings-registry.json",
+    "changes": [
+      [
+        "    \"workStatusPanelEnabled\": {\n      \"scope\": \"profile\"\n    },",
+        "    \"workStatusPanelEnabled\": {\n      \"scope\": \"profile\"\n    },\n    \"twinCatSessionInformationEnabled\": {\n      \"scope\": \"profile\"\n    },"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/chat/work-status/useWorkStatusVisibility.ts",
+    "changes": [
+      [
+        "import React from 'react';",
+        "import React from 'react';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "  const panelEnabled = useUIStore((state) => state.workStatusPanelEnabled);",
+        "  const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n  const panelEnabled = useUIStore((state) => twinCatEmbedded ? state.twinCatSessionInformationEnabled : state.workStatusPanelEnabled);"
       ]
     ]
   }

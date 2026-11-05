@@ -121,6 +121,7 @@ namespace TwinCatAssistant.Native
             _picker = new ProjectChatPicker(_anchor, _theme);
             _slot.Child = _picker.View;
             _picker.Closed = byUser => { _closes.Add(byUser); Layout(); };
+            _picker.PinnedChanged = pinned => Layout();
             _picker.SelectAsync = id => Gate("select:" + id);
             _picker.RenameAsync = (id, title) => Gate("rename:" + id + ":" + title);
             _picker.ArchiveAsync = id => Gate("archive:" + id);
@@ -169,6 +170,21 @@ namespace TwinCatAssistant.Native
             Check(Math.Abs(_slot.ActualWidth - 296) < 1 && Field<Button>("_newButton").ActualWidth > 200, "overlay at 340 px leaves a visible strip of the conversation");
             SetWidth(1100);
             Check(_picker.Docked && _scrim.Visibility == Visibility.Collapsed, "widening returns the open bar to the docked column");
+
+            // Pinned bars remain open below the normal responsive breakpoint.
+            SetWidth(650);
+            Field<Button>("_pinButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
+            Check(_picker.Pinned && _picker.Docked && ConversationWidth() >= 376, "pin reserves a sidebar column below the normal breakpoint");
+            Check(AutomationProperties.GetName(Field<Button>("_pinButton")) == "Chatleiste lösen", "pin action announces its current state");
+            Shot("pinned", 650);
+            SetWidth(390);
+            Call("SelectEntryAsync", "s2"); Pump();
+            Check(_picker.Pinned && !_picker.Docked && _picker.IsOpen, "selecting the current chat keeps a pinned narrow overlay open");
+            Key(Field<TextBox>("_search"), System.Windows.Input.Key.Escape);
+            Check(_picker.IsOpen, "Escape leaves a pinned narrow sidebar open");
+            Field<Button>("_pinButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
+            Check(!_picker.Pinned && AutomationProperties.GetName(Field<Button>("_pinButton")) == "Chatleiste anheften", "unpin restores the transient overlay behavior");
+            SetWidth(1100);
 
             // Live refresh: identical lists keep the rows, changes update them in place.
             var before = Primary("s3");
@@ -731,7 +747,7 @@ namespace TwinCatAssistant.Native
         static void Layout()
         {
             var width = _host.Width;
-            var docked = width >= DockFrom;
+            var docked = width >= DockFrom || _picker?.Pinned == true && width >= DockedWidth + 320;
             if (_picker != null && _picker.Docked != docked) _picker.Docked = docked;
             var open = _picker != null && _picker.IsOpen;
             _slot.Visibility = open ? Visibility.Visible : Visibility.Collapsed;

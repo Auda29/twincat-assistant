@@ -56,6 +56,9 @@ $taskCount = 0
 function Assert-Integration([bool]$Condition,[string]$Name) {
     if (-not $Condition) {
         Write-Output ('NATIVE phase='+(Field '_chatConnection').Phase+' pending='+(Field '_chatActionPending')+' automating='+(Field '_automating')+' polling='+(Field '_chatPolling')+' model='+(Field '_modelStatus').Text+' banner='+(Field '_bannerText').Text)
+        try {
+            Write-Output ('WEBVIEW '+(JS 'JSON.stringify({ selection: window.__twinCatSource?.stores.sessions.getState().currentSessionId, initialized: window.__twinCatSource?.stores.config.getState().isInitialized, presentationReady: window.__twinCatSource?.presentationReady(), composer: !!document.querySelector("[data-testid=chat-input]"), draft: !!document.querySelector(".oc-draft-center"), dialog: document.querySelector("[role=dialog]")?.textContent?.slice(0,160) })'))
+        } catch { }
         throw "Chat integration failed: $Name"
     }
     $script:taskCount++; Write-Output "PASS $Name"
@@ -273,7 +276,7 @@ try {
     Assert-Integration ($taskBrowser.CoreWebView2 -and (Field '_autoConnectAttempted')) 'opening the native window connects chat without a separate connect click'
     Wait-JS "window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated"
     Assert-Integration ((JS 'document.body.innerText.includes("Unlock OpenChamber")') -eq 'false') 'native sign-in authenticates without showing the password screen'
-    Wait-Native { (Field '_attachPouButton').IsEnabled } 'automatic project chat for PLC_A' $(if($KnowledgeStateSource){600}else{40})
+    Wait-Native { (Field '_attachPouButton').IsEnabled -and (Field '_chatSelection').IsSelected -and (Field '_browser').Visibility -eq [Windows.Visibility]::Visible } 'automatic project chat for PLC_A' $(if($KnowledgeStateSource){600}else{40})
     Assert-Integration ((Field '_strip').Visibility -eq [Windows.Visibility]::Visible -and
         (Field '_browser').Visibility -eq [Windows.Visibility]::Visible -and
         (Field '_splash').Visibility -eq [Windows.Visibility]::Collapsed) 'hidden WebView initializes and authenticates, then reveals chat and bar together'
