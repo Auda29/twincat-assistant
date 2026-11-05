@@ -1,63 +1,79 @@
-# Windows package and installer integration
+# Windows installer and integration contract
 
-The builder accepts an existing absolute application staging directory and
-produces a versioned self-extracting Windows executable:
+The versioned executable is built on Windows from an absolute staging directory:
 
 ```powershell
 .\scripts\Build-WindowsInstaller.ps1 -PackageDirectory C:\staging\application -OutputDirectory C:\staging\installer
 ```
 
-The application inventory uses the contract from `a56eb368`: exactly
-`{schemaVersion:1,version,platform:'win32',architecture:'x64'|'arm64',files:[{path,size,sha256}]}`.
-The manifest is excluded from its sorted `/`-relative list. The validator checks
-sizes, SHA256, complete inventory, path safety and reparse points. It adds
-Windows filename restrictions. The application architecture is independent of
-the initial x86 TcXaeShell host target. The inventory is not a signature.
+The package uses the schema in `a56eb368`: `{schemaVersion:1,version,
+platform:'win32',architecture:'x64'|'arm64',files:[{path,size,sha256}]}`. It
+must additionally contain the unpacked x86 extension in `host/x86/`, including
+`extension.vsixmanifest` and `TwinCatAssistant.IdeHost.dll`. The manifest must
+identify `TwinCatAssistant.Native.X86`, IntegratedShell and x86. Host process
+architecture is independent of the application architecture. The staging
+builder must omit `TCatSysManagerLib.dll` and opaque `.vsix` files; the installer
+refuses them. The complete manifest checks file sizes and hashes, path safety,
+ordering, inventory and links. It does not authenticate the publisher.
 
-The executable accepts `-Action Install|Rollback`, `-InstallRoot`,
-`-HostExecutable`, `-HostSha256`, `-HostFileVersion`, `-XaeFile` and
-`-XaeFileVersion`. Paths must be absolute. It checks the explicitly selected
-TcXaeShell executable name, SHA256, version 15 and x86 PE header and the supplied
-XAE file name and version; it refuses while the selected TcXaeShell is running or a running shell path cannot be inspected.
-It stores selected application files in version directories, validates before
-selection and rollback, and retains earlier versions. It does not migrate or
-modify chat, login, configuration or binding stores. An existing unrelated root
-is refused. Tests use only synthetic temporary roots.
+The production EXE accepts `-Action Install|Rollback -InstallRoot <absolute>`
+and optionally `-HostId <inventory host id>`. It runs its included
+`Get-AssistantHostInventory.ps1 -RequireAlphaTarget` against this machine; no
+supplied inventory parameter is accepted. It requires exactly one selected
+registered `tcxaeshell-x86-tc4024` instance, matching DTE and executable paths,
+TwinCAT `3.1.4024.78`, registered TwinCAT install root, x86 shell, WebView2 and
+.NET Framework from inventory. It refuses a running selected shell or one whose
+process path cannot be inspected. Close it manually; nothing is terminated.
+Other shells and builds remain unaccepted.
 
-**This executable is a package lifecycle candidate, not yet a usable product
-installer.** It does not register or deploy the extension into the selected
-shell, connect the packaged runtime to the existing host, verify the XAE file
-belongs to the selected host, or verify all installed runtime prerequisites. It
-must not be presented as host support. The x86 shell discovery observation in
-NATIVE_PROTOTYPE.md used a particular manually unpacked extension and cache
-marker, not a generally validated registration API. Worker 1's host identity
-contract and Worker 2's actual layout/start integration must be connected before
-end-user installation. Test crash recovery, concurrent updates and real rollback
-in a separate host installation before release.
+The interop DLL must be at `Components/TcBlockDiagram/Common/TCatSysManagerLib.dll`
+under the registered TwinCAT installation. Its .NET assembly identity must match
+the host assembly's reference; the installer copies that local DLL into the
+installed extension and the local rollback snapshot. This verifies identity,
+not every API or live loader behavior. The source build still uses its explicit
+`TwinCatInteropPath` and `Private=true`; the staging builder must remove the
+copied DLL from the distribution before generating its manifest. The repository
+contains no evidence that redistribution of the Beckhoff DLL is permitted, and
+no project license is specified. Retain applicable upstream notices. The
+installer does not determine rights for arbitrary nested archives.
 
-The manual Windows workflow takes an existing application staging artifact from
-a specified run, builds the executable and uploads it as a candidate. Synthetic
-fixtures are only used for tests and are never uploaded. Once available, the
-application builder can provide that staging artifact via
-`Build-ApplicationPackage.ps1 -OutputDirectory <absolute>`; the present
-workflow does not claim to build private upstreams itself.
+The extension is deployed to the target's `Common7/IDE/Extensions/
+TwinCatAssistant.Native.X86`; the existing `extensions.configurationchanged`
+file's timestamp is updated without changing contents. `/UpdateConfiguration`
+is not used. Existing unowned extension directories and other discovered
+Assistant payloads are refused; no old installation is adopted or deleted.
+The chosen install root must be separate from the host extension search path
+and initially empty. A lock serializes operations. Each version retains its
+manifest-validated application and extension snapshot there. The extension is
+staged outside the search directory, swapped while the host is closed, and
+restored after a caught failure; a journal makes an interrupted transaction fail
+closed for manual recovery. Current state and the old payload are retained.
+Snapshots are checked against application files, local interop and installer
+metadata. This does not cover every power-loss or concurrent host-start window;
+inspect `transaction.pending` and the paths it records before recovery. Never
+delete an unknown extension or user data. Existing config, chats, logins,
+project bindings and license data are not migrated or modified.
 
-## Third-party and host dependencies
+## Required backend integration
 
-`native/IdeHost/Host.props` references `TCatSysManagerLib` with `Private=true`,
-and NATIVE_PROTOTYPE.md records that existing VSIX builds copy the local
-Beckhoff interop assembly. No vendor redistribution license was found in this
-repository; the existing dependency review does not establish redistribution
-rights. Do not distribute such a payload as if rights were established. A future
-host integration must obtain a compatible interop assembly from the selected
-TwinCAT installation or establish an actual redistribution right. Do not assume
-that an arbitrary local DLL is binary compatible. The repository itself also
-has no project license (README); upstream notices must be retained. The package
-builder does not establish provenance, legal rights, prerequisite completeness,
-or detect proprietary binaries hidden inside archives.
+Each installed extension contains `assistant-installation.json` with
+`schemaVersion: 1`, `targetId`, `version` and the absolute `applicationRoot`
+of the selected version. Rollback deploys the previous snapshot and therefore
+its previous selection. This is an explicit integration handoff: **the existing
+native host does not yet read this file** and still uses `native-chat.json`'s
+absolute developer paths. The backend/host integration must define and consume
+this selection, including exact package-relative paths for the Node executable,
+`src/native-chat.mjs` or replacement launcher, Windows helper, .NET runtime,
+Core/Chat assets and both MCP executables. It must preserve existing state and
+credentials and prove relocated startup. Until those paths are agreed and
+implemented, registration alone is not a working end-user installation.
 
-The executable and CI candidate are unsigned and have not passed an actual
-TwinCAT host installation, update or rollback. No Git, npm or compilation is
-needed to execute the generated executable, but PowerShell and .NET Framework
-are required on the target. This is not evidence that all application runtime
-prerequisites have been met.
+The manual CI workflow downloads an explicitly named application staging
+artifact from a specified run and uploads the built EXE as a candidate. No
+synthetic package is uploaded. It may consume a future
+`Build-ApplicationPackage.ps1 -OutputDirectory <absolute>` output. Neither CI
+nor fixture tests establish a live host acceptance or release readiness.
+The EXE is unsigned; real installation, upgrade, rollback, host loading,
+prerequisites, recovery and the license review remain to be checked in a
+separate controlled environment. The current test creates synthetic hosts,
+assemblies, package and installation roots only.

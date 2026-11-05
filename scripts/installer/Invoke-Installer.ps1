@@ -1,31 +1,51 @@
 [CmdletBinding()]
 param([Parameter(Mandatory)][ValidateSet('Install','Rollback')][string]$Action,
       [Parameter(Mandatory)][string]$InstallRoot,
-      [Parameter(Mandatory)][string]$HostExecutable,
-      [Parameter(Mandatory)][string]$HostSha256,
-      [Parameter(Mandatory)][string]$HostFileVersion,
-      [Parameter(Mandatory)][string]$XaeFile,
-      [Parameter(Mandatory)][string]$XaeFileVersion)
+      [string]$HostId)
 $ErrorActionPreference = 'Stop'
-foreach ($p in @($InstallRoot,$HostExecutable,$XaeFile)) { if (-not [IO.Path]::IsPathRooted($p)) { throw 'All paths must be absolute.' } }
-if ([IO.Path]::GetFileName($HostExecutable) -ine 'TcXaeShell.exe' -or $HostSha256 -cnotmatch '^[a-f0-9]{64}$') { throw 'Explicit TcXaeShell executable and lowercase SHA256 required.' }
-if (-not (Test-Path -LiteralPath $HostExecutable -PathType Leaf) -or (Get-FileHash -LiteralPath $HostExecutable -Algorithm SHA256).Hash.ToLowerInvariant() -cne $HostSha256 -or (Get-Item -LiteralPath $HostExecutable).VersionInfo.FileVersion -cne $HostFileVersion -or $HostFileVersion -notmatch '^15\.') { throw 'Host identity mismatch.' }
-$stream = [IO.File]::OpenRead($HostExecutable)
-try { $reader = New-Object IO.BinaryReader($stream); if ($reader.ReadUInt16() -ne 0x5a4d) { throw 'Invalid PE.' }; $stream.Position=0x3c; $offset=$reader.ReadInt32(); if ($offset -lt 64 -or $offset -gt $stream.Length-6) { throw 'Invalid PE offset.' }; $stream.Position=$offset; if ($reader.ReadUInt32() -ne 0x4550 -or $reader.ReadUInt16() -ne 0x14c) { throw 'Host must be x86.' } } finally { $stream.Dispose() }
-if (-not (Test-Path -LiteralPath $XaeFile -PathType Leaf) -or [IO.Path]::GetFileName($XaeFile) -ine 'TwinCAT XAE Base.dll' -or (Get-Item -LiteralPath $XaeFile).VersionInfo.FileVersion -cne $XaeFileVersion) { throw 'XAE identity mismatch.' }
-. "$PSScriptRoot/PackageContract.ps1"
-$package = Test-ApplicationPackage (Join-Path $PSScriptRoot 'package')
-$osArch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
-if (($package.architecture -eq 'x64' -and $osArch -ne 'AMD64') -or ($package.architecture -eq 'arm64' -and $osArch -ne 'ARM64')) { throw 'Package architecture does not match Windows.' }
+. "$PSScriptRoot/HostTransaction.ps1"
+$inventoryScript = Join-Path $PSScriptRoot 'Get-AssistantHostInventory.ps1'
+$targetsPath = Join-Path $PSScriptRoot 'host-targets.json'
+# This command always collects local live facts. No supplied-inventory option is exposed.
+$json = & "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -File $inventoryScript -TargetsPath $targetsPath -RequireAlphaTarget
+if ($LASTEXITCODE -ne 0) { throw 'No eligible alpha host found by live inventory.' }
+$inventory = ($json | Out-String) | ConvertFrom-Json
+if ($inventory.collection.mode -cne 'live-read-only') { throw 'Live host inventory required.' }
+$eligible = @($inventory.evaluation.hosts | Where-Object { $_.installerDecision -eq 'eligible' -and $_.targetId -eq 'tcxaeshell-x86-tc4024' })
+if ($HostId) { $eligible = @($eligible | Where-Object { $_.hostId -ceq $HostId }) }
+if ($eligible.Count -ne 1) { throw 'Select exactly one eligible host with -HostId; see Get-AssistantHostInventory.ps1 output.' }
+$hostFacts = @($inventory.facts.hosts | Where-Object { $_.id -ceq $eligible[0].hostId })
+if ($hostFacts.Count -ne 1 -or @($hostFacts[0].running).Count) { throw 'Close the selected TcXaeShell and retry; the installer will not close it.' }
+if ($hostFacts[0].id -cne 'tcxaeshell:TcXaeShell\15.0' -or -not $hostFacts[0].dte.registered -or -not $hostFacts[0].dte.matchesExecutable) { throw 'Host must be registry-discovered with a matching DTE registration.' }
+if ($inventory.facts.twinCat.version -cne '3.1.4024.78') { throw 'Unsupported TwinCAT build.' }
+$hostRoot = [Environment]::ExpandEnvironmentVariables([string]$hostFacts[0].installRoot)
+$executable = [Environment]::ExpandEnvironmentVariables([string]$hostFacts[0].executable.path)
+$interop = [Environment]::ExpandEnvironmentVariables([string]$inventory.facts.twinCat.automationInterop.path)
+$registry = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine,[Microsoft.Win32.RegistryView]::Registry32)
+try {
+    $key = $registry.OpenSubKey('SOFTWARE\Beckhoff\TwinCAT3\3.1', $false)
+    if (-not $key) { throw 'TwinCAT installation root is not registered.' }
+    try { $twincatRoot = [string]$key.GetValue('InstallDir') } finally { $key.Dispose() }
+} finally { $registry.Dispose() }
+if (-not $twincatRoot -or -not [IO.Path]::IsPathRooted($twincatRoot)) { throw 'TwinCAT installation root is not registered.' }
+$expectedInterop = Join-Path $twincatRoot 'Components\TcBlockDiagram\Common\TCatSysManagerLib.dll'
+if (-not [string]::Equals([IO.Path]::GetFullPath($interop),[IO.Path]::GetFullPath($expectedInterop),[StringComparison]::OrdinalIgnoreCase)) { throw 'Interop is not from the registered TwinCAT installation.' }
+if (-not [string]::Equals([IO.Path]::GetFullPath($executable),[IO.Path]::GetFullPath((Join-Path $hostRoot 'Common7\IDE\TcXaeShell.exe')),[StringComparison]::OrdinalIgnoreCase)) { throw 'Host executable is not in the inventoried installation.' }
 foreach ($process in @(Get-Process -Name TcXaeShell -ErrorAction SilentlyContinue)) {
-    if (-not $process.Path) { throw 'A running TcXaeShell path is unavailable; cannot verify host is closed.' }
-    if ([string]::Equals([IO.Path]::GetFullPath($process.Path), [IO.Path]::GetFullPath($HostExecutable), [StringComparison]::OrdinalIgnoreCase)) { throw 'Close the selected TcXaeShell before changing the payload.' }
+    if (-not $process.Path -or [string]::Equals($process.Path,$executable,[StringComparison]::OrdinalIgnoreCase)) { throw 'Close the selected TcXaeShell and retry; the installer will not close it.' }
 }
-if (-not (Test-Path -LiteralPath $InstallRoot)) { New-Item -ItemType Directory -Path $InstallRoot | Out-Null }
-if (-not (Test-Path -LiteralPath (Join-Path $InstallRoot '.twincat-installer-fixture'))) {
-    if (@(Get-ChildItem -LiteralPath $InstallRoot -Force).Count) { throw 'Installation root is not empty or owned.' }
-    New-Item -ItemType Directory -Path (Join-Path $InstallRoot 'versions') | Out-Null
-    Set-Content -LiteralPath (Join-Path $InstallRoot '.twincat-installer-fixture') -Value 'synthetic-only-v1'
+$target = @((Get-Content $targetsPath -Raw | ConvertFrom-Json).targets | Where-Object { $_.id -ceq 'tcxaeshell-x86-tc4024' })
+if ($target.Count -ne 1) { throw 'Host target is missing or ambiguous.' }
+$expectedExtension = Join-Path $hostRoot $target[0].payload.installDirectory
+foreach ($payload in @($hostFacts[0].assistantPayloads)) {
+    $directory = [Environment]::ExpandEnvironmentVariables([string]$payload.directory)
+    if (-not [string]::Equals($directory,$expectedExtension,[StringComparison]::OrdinalIgnoreCase)) { throw 'Another Assistant extension is already present; review it before installing.' }
 }
-& (Join-Path $PSScriptRoot 'Invoke-FixtureLifecycle.ps1') -Action $Action -TestRoot $InstallRoot -PackageDirectory (Join-Path $PSScriptRoot 'package')
-Write-Host 'Versioned application files selected. Host extension registration and packaged startup are not yet integrated.'
+$package = Join-Path $PSScriptRoot 'package'
+if ($Action -eq 'Install') {
+    $m = Test-ApplicationPackage $package
+    $osArch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
+    if (($m.architecture -eq 'x64' -and $osArch -ne 'AMD64') -or ($m.architecture -eq 'arm64' -and $osArch -ne 'ARM64')) { throw 'Application architecture does not match Windows.' }
+}
+Invoke-HostTransaction -Action $Action -InstallRoot $InstallRoot -HostRoot $hostRoot -Interop $interop -Package $package -Target $target[0]
+Write-Host 'Host files registered. Packaged runtime selection requires the integration described in INSTALLER_CONTRACT.md.'
