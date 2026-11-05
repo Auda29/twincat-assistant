@@ -26,8 +26,15 @@ test('corrected native menu retains its resource name and advances the merge rev
   const packageSource = await source('AssistantPackage.cs');
   const revision = Number(packageSource.match(/\[ProvideMenuResource\("Menus\.ctmenu",\s*(\d+)\)\]/)?.[1]);
   assert.ok(revision >= 2, 'an installed version-1 menu must be eligible for remerge');
-  assert.match(await source('Host.props'), /<ResourceName>Menus\.ctmenu<\/ResourceName>/);
+  const hostProps = await source('Host.props');
+  assert.match(hostProps, /<ResourceName>Menus\.ctmenu<\/ResourceName>/);
+  const fileVersion = hostProps.match(/<FileVersion>([\d.]+)<\/FileVersion>/)?.[1];
+  assert.match(fileVersion ?? '', /^\d+\.\d+\.\d+\.\d+$/);
+  assert.equal(hostProps.match(/<AssemblyVersion>([\d.]+)<\/AssemblyVersion>/)?.[1], fileVersion);
+  const application = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(hostProps.match(/<Version>([^<]+)<\/Version>/)?.[1], application.version);
   for (const architecture of ['X86', 'Amd64']) {
-    assert.match(await source(`${architecture}/source.extension.vsixmanifest`), /<Identity\b[^>]*\bVersion="0\.1\.9"/);
+    const manifest = await source(`${architecture}/source.extension.vsixmanifest`);
+    assert.equal(manifest.match(/<Identity\b[^>]*\bVersion="([^"]+)"/)?.[1], fileVersion);
   }
 });
