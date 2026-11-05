@@ -1,7 +1,7 @@
 import { lstat, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { verifyManifest } from '../scripts/application-manifest.mjs';
+import { verifyOperationManifest } from './package-verification-scope.mjs';
 
 export const applicationRoot = fileURLToPath(new URL('../', import.meta.url));
 // The builder changes this constant only in the staged copy.
@@ -16,7 +16,7 @@ export async function verifyPackageIfPresent() {
   const manifestStat = await exists(join(applicationRoot, 'application-manifest.json'));
   if (!markerStat && !manifestStat && !requirePackage) return false;
   if (!markerStat?.isFile() || markerStat.isSymbolicLink() || !manifestStat) throw new Error('Incomplete application package');
-  const manifest = await verifyManifest(applicationRoot);
+  const manifest = await verifyOperationManifest(applicationRoot);
   if (manifest.platform !== process.platform || manifest.architecture !== process.arch) throw new Error('Application package platform mismatch');
   const config = JSON.parse(await readFile(marker, 'utf8'));
   if (JSON.stringify(config) !== JSON.stringify({ version: 1 })) throw new Error('Invalid application package marker');

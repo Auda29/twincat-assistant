@@ -1,7 +1,7 @@
 import { lstat, readFile, realpath } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { applicationRoot, requirePackage, verifyPackageIfPresent } from './package-integrity.mjs';
-import { verifyManifest } from '../scripts/application-manifest.mjs';
+import { verifyOperationManifest } from './package-verification-scope.mjs';
 
 const samePath = (a, b) => typeof a === 'string' && typeof b === 'string'
   && (process.platform === 'win32' ? resolve(a).toLowerCase() === resolve(b).toLowerCase() : resolve(a) === resolve(b));
@@ -56,7 +56,7 @@ export async function previousPackageRuntime(actual, settings) {
   await verifyPackageIfPresent();
   const currentManifest = JSON.parse(await readFile(join(current, 'application-manifest.json'), 'utf8'));
   if (currentManifest.version !== selection.current) throw new Error('Current package identity mismatch');
-  const oldManifest = await verifyManifest(oldRoot);
+  const oldManifest = await verifyOperationManifest(oldRoot);
   if (oldManifest.platform !== process.platform || oldManifest.architecture !== process.arch
       || oldManifest.version !== dirname(oldRoot).slice(versions.length + 1)) throw new Error('Previous package identity mismatch');
   const marker = JSON.parse(await readFile(join(oldRoot, 'src', 'package-runtime.json'), 'utf8'));

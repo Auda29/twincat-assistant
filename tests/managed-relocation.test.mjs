@@ -15,10 +15,10 @@ test('relocation accepts only inventoried sibling versions and exact packaged en
     const old = join(versions,'1.0.0','application'), current = join(versions,'2.0.0','application');
     for (const [root,version] of [[old,'1.0.0'],[current,'2.0.0']]) {
       for (const dir of ['src','scripts','runtime/node','runtime/mcp/knowledge','runtime/mcp/engineering/packages/mcp/dist']) await mkdir(join(root,dir),{recursive:true});
-      for (const file of ['managed-relocation.mjs','package-integrity.mjs']) await cp(resolve('src',file),join(root,'src',file));
+      for (const file of ['managed-relocation.mjs','package-integrity.mjs','package-verification-scope.mjs']) await cp(resolve('src',file),join(root,'src',file));
       const integrity = join(root,'src/package-integrity.mjs');
       await writeFile(integrity,(await readFile(integrity,'utf8')).replace('const requirePackage = false;', 'const requirePackage = true;'));
-      await cp(resolve('scripts/application-manifest.mjs'),join(root,'scripts/application-manifest.mjs'));
+      await writeFile(join(root,'scripts/application-manifest.mjs'), (await readFile(resolve('scripts/application-manifest.mjs'),'utf8')).replace('export async function verifyManifest(root) {', 'export async function verifyManifest(root) { globalThis.inventoryChecks = (globalThis.inventoryChecks ?? 0) + 1;'));
       await cp(process.execPath,join(root,'runtime/node/node.exe'));
       await writeFile(join(root,'src/package-runtime.json'),' {"version":1} ');
       await writeFile(join(root,'src/knowledge-client.mjs'),'// fixture');
@@ -33,6 +33,29 @@ test('relocation accepts only inventoried sibling versions and exact packaged en
     const code = `const {previousPackageRuntime}=await import(${JSON.stringify('file:///')}+process.argv[1].replaceAll('\\\\','/')); console.log(JSON.stringify(await previousPackageRuntime(JSON.parse(process.argv[2]),JSON.parse(process.argv[3]))));`;
     const check = async (c=config,s=settings) => JSON.parse((await run(join(current,'runtime/node/node.exe'),['--input-type=module','-e',code,join(current,'src/managed-relocation.mjs'),JSON.stringify(c),JSON.stringify(s)],{windowsHide:true})).stdout);
     assert.equal((await check()).node,join(old,'runtime/node/node.exe'));
+    const scopedCode = `
+      import assert from 'node:assert/strict';
+      import { writeFile } from 'node:fs/promises';
+      import { pathToFileURL } from 'node:url';
+      const { previousPackageRuntime } = await import(pathToFileURL(process.argv[1]));
+      const { withPackageVerificationScope: operation } = await import(new URL('./package-verification-scope.mjs', pathToFileURL(process.argv[1])));
+      const { verifyPackageIfPresent } = await import(new URL('./package-integrity.mjs', pathToFileURL(process.argv[1])));
+      const actual=JSON.parse(process.argv[2]), settings=JSON.parse(process.argv[3]);
+      const check=()=>previousPackageRuntime(actual,settings);
+      await operation(async()=>{
+        await verifyPackageIfPresent();
+        await Promise.all([check(),check(),check()]);
+        assert.equal(globalThis.inventoryChecks,2);
+        await writeFile(process.argv[4], JSON.stringify({targetId:'tcxaeshell-x86-tc4024',current:'1.0.0'}));
+        await assert.rejects(check(), /selection mismatch/);
+        await writeFile(process.argv[4], JSON.stringify({targetId:'tcxaeshell-x86-tc4024',current:'2.0.0'}));
+      });
+      await writeFile(process.argv[5], 'tampered non-entrypoint');
+      await assert.rejects(operation(check), /inventory mismatch/);
+      await assert.rejects(check(), /inventory mismatch/);
+      await writeFile(process.argv[5], '// fixture');
+    `;
+    await run(join(current,'runtime/node/node.exe'),['--input-type=module','-e',scopedCode,join(current,'src/managed-relocation.mjs'),JSON.stringify(config),JSON.stringify(settings),join(install,'state.json'),join(old,'src/knowledge-client.mjs')],{windowsHide:true});
     const differentlyCased = await run(join(current,'runtime/node/node.exe'), ['--input-type=module','-e',code,join(current,'src/managed-relocation.mjs').toLowerCase(),JSON.stringify(config),JSON.stringify(settings)], { windowsHide:true });
     assert.equal(JSON.parse(differentlyCased.stdout).node, join(old,'runtime/node/node.exe'), 'Windows path casing does not make a valid installation foreign');
     const directSettings = { knowledge: { executable: settings.knowledge.executable } };
