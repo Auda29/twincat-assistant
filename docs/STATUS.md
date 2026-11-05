@@ -5,11 +5,16 @@ from an explicit application package and implements host registration, update
 and rollback for the alpha target. Synthetically tested transactions preserve
 operator data and restore the previous extension after staging/swap failures.
 The native host now consumes the selected packaged runtime and validates its
-entrypoints before launch. The combined implementation passes all 126 Node
+entrypoints before launch. The combined implementation passes all 129 Node
 tests, and the x86 host builds. Manifest-checked sibling package relocation now
 supports existing global and project MCP configuration on update and rollback;
 both versions must recognize the precise prompt policy. Relocatable MCP input
-builds and a full real package/host acceptance remain open. See
+builds are implemented and real Engineering/Knowledge relocation probes passed.
+Engineering and the exact Node/WebView2 notices are staged. Knowledge 0.1.1 has
+no declared license in its pinned wheel/source; its distributable input is not
+published until a reviewed license or permission document is supplied. The full
+application/installer artifact and real-host acceptance therefore remain open. See
+[application inputs](APPLICATION_INPUTS.md),
 [installer contract](INSTALLER_CONTRACT.md) and [relocation limits](INSTALLER_RELOCATION.md).
 
 The revised Analysis system prompt is integrated into global and project chats,

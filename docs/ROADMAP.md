@@ -26,6 +26,10 @@ Konfigurationen zwischen geprüften Geschwisterversionen ist implementiert;
 Grenzen stehen in [Installer-Relokation](INSTALLER_RELOCATION.md). Der
 vollständige Paketbau und die echte Installationsabnahme bleiben offen;
 Punkt 3 ist damit nicht abgeschlossen.
+Der Bau relocatierbarer MCP-Eingaben ist ebenfalls umgesetzt und technisch
+geprüft. Für die weitergebbare Knowledge-0.1.1-Eingabe fehlt noch das
+Lizenz- oder Nutzungsdokument; [Anwendungseingaben](APPLICATION_INPUTS.md)
+beschreibt den konkreten Buildweg und diese verbleibende Eingabegrenze.
 Der neue Analyse-Prompt ist in beiden Konfigurationspfaden eingebunden und
 mit Migrations- und Vertragstests geprüft. Echte Modellantworten und die
 Darstellung im installierten WebView bleiben für Punkt 4 zu prüfen.

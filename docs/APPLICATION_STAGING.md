@@ -14,6 +14,12 @@ Release builds of WindowsHost and the x86 IDE host. Build the host **after** the
 installation-selection changes. Node and its npm installation must have the
 normal Windows layout. The builder also requires these explicit prebuilt inputs:
 
+The [application input builder](APPLICATION_INPUTS.md) now creates these MCP
+runtimes and collects the exact runtime notices. Engineering relocation and a
+technical Knowledge corpus-status probe pass with synthetic state. A
+distributable Knowledge input still requires the missing upstream license or
+permission document; the probe does not publish that input or invent a license.
+
 - `artifacts/application-inputs/node/LICENSE`: the official license and notices
   for the exact Node binary used by the builder, reviewed for redistribution.
 - `artifacts/application-inputs/webview2/LICENSE.txt` and `NOTICE.txt`: the
