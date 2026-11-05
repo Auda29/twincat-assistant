@@ -15,8 +15,15 @@ product labels while retaining third-party contracts and notices. The
 [direct-host evidence](HOST_ACCEPTANCE_20261105.md) covers isolated project
 switches, dirty/save semantics, oversized POU references, reopen and two IDEs.
 It does not close visible UI, member-editor, actual install/update/rollback or
-first-after-logon gates. Prompt/model/embedded-renderer acceptance remains a
-separate open gate. [The handoff](ALPHA_CI_HOST_HANDOFF.md) contains the isolated
+first-after-logon gates. The integrated C1 prompt has 17 real model answers,
+34 pinned-renderer renderings in an x86 WPF WebView2 fixture and 40 exact
+code-copy payloads; the offline evidence verifier and 21 combined
+prompt/migration/recovery tests pass. Installed IDE UI and actual TwinCAT paste
+remain open. C1 is forward-compatible with exact scoped C0 policies; the old C0
+runtime cannot read C1. Installer rollback policy compatibility is still being
+implemented and is not proven by the prompt tests. See
+[prompt acceptance](PROMPT_ACCEPTANCE_20261105.md).
+[The handoff](ALPHA_CI_HOST_HANDOFF.md) contains the isolated
 state, backup, UAC and unmanaged-prototype recovery boundaries.
 
 Integration update, **2026-11-05**: the Windows installer candidate now builds

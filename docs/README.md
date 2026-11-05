@@ -24,6 +24,7 @@ Native acceptance and future engineering write/build milestones remain separate.
 - [Integrated alpha 0.2.0-preview.2 build evidence](releases/alpha-0.2.0-preview.2.md)
 - [Managed profile and project configuration across package versions](INSTALLER_RELOCATION.md)
 - [Analysis profile prompts, migration and evaluation cases](PROFILE_PROMPTS.md)
+- [Real model and native WebView renderer acceptance](PROMPT_ACCEPTANCE_20261105.md)
 - [OpenChamber extension](EXTENSION.md)
 - [Diagnostic bridge and portable safety core](BRIDGE.md)
 - [Slow solution load and PLC editor restoration investigation](SOLUTION_STARTUP_INVESTIGATION.md)
