@@ -974,14 +974,17 @@ namespace TwinCatAssistant.Native
                     throw new InvalidOperationException("Der Baustein wurde geändert. Bitte den aktuellen Stand erneut anhängen.");
                 if (_disposed || documentGeneration != _chatDocumentGeneration)
                     throw new InvalidOperationException("Die Chat-Seite wurde neu geladen. Bitte den Kontext erneut prüfen.");
+                var attachment = ChatContextPolicy.CreateAttachment(snapshot);
                 var serializer = new JavaScriptSerializer();
                 var request = new { sessionId = selection.sessionId, selection.epoch, selection.documentId, contextKey = ProjectKey(snapshot.Identity.ProjectIdentity), auto,
                     item = new { providerId = "twincat-assistant", id = auto ? ChatContextPolicy.ActiveReferenceId : ChatContextPolicy.ReferenceId(snapshot),
-                        title = snapshot.ObjectName + " / " + System.IO.Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile),
-                        url = _origin.AbsoluteUri, text = ChatContextPolicy.AttachmentText(snapshot),
+                        title = snapshot.ObjectName + " / " + System.IO.Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile)
+                            + (attachment.IsSavedReference ? " (gespeicherte Referenz)" : ""),
+                        url = _origin.AbsoluteUri, text = attachment.Text,
                         data = new { revision, reference = ChatContextPolicy.ReferenceId(snapshot), mode = auto ? "following" : "manual",
                             objectKind = snapshot.ObjectKind, owner = snapshot.OwnerName, member = snapshot.MemberPath,
-                            sourceKind = snapshot.SourceKind, dirty = snapshot.Dirty?.State } } };
+                            contentKind = attachment.IsSavedReference ? "saved-object-reference" : "snapshot",
+                            sourceKind = attachment.IsSavedReference ? "saved-project-reference" : snapshot.SourceKind, dirty = snapshot.Dirty?.State } } };
                 // Keep project permission and the active-object metadata intact.
                 // A source revision is attachment data, not a new history scope.
                 var permission = new { request.sessionId, request.epoch, request.documentId, request.contextKey, context = ChatContextMetadata(snapshot, snapshot.Identity.ProjectIdentity) };
