@@ -47,6 +47,16 @@ the application/host SemVer. Both tests in that file then passed. This is a
 targeted rerun after a test-only correction, not a claim that the initial
 141-test run was fully green.
 
+After integrating C1 and strengthening the code-evidence cases, the complete
+combined suite was run again with `node --test --test-concurrency=1
+tests/*.test.mjs`: 145/145 passed, zero skips, 166.79 seconds. The local log is
+`local-data/alpha-host-baseline-20261105-140304/c1-full-node-tests.log`.
+The actual packaged Engineering accessor probe also passed and confirms
+flattened Get/Set output at the unchanged pinned Engineering revision; C1
+reports the missing boundaries. The above local package smoke preceded the C1
+source refresh. A final C1 package/installer CI run and actual C1-to-C0 policy
+rollback are still required; neither is inferred from these unit results.
+
 The reviewed producer baseline is
 `d5a227ac072891bfeb6eb67c40e842e9d2c6346e`, whose runtime/native/dependency files
 match these package inputs. The producer's separate preparation record binds
