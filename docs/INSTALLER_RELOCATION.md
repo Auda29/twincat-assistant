@@ -30,9 +30,13 @@ those incompatible rollbacks must fail closed rather than accept unreviewed
 policy. Earlier unpackaged prototypes without an installer-owned selector and
 retained manifest-checked version are not adopted by this migration.
 
-The global profile's existing two-file update still fails closed if interrupted
-between configuration and settings writes; it does not yet have a recovery
-journal. The project update has its existing validated journal. Process start,
+The global profile now writes a bounded, validated before/after journal before
+changing either file. Inspection completes an interrupted recorded update only
+when both live files still match recorded endpoints and both recorded pairs
+pass the managed policy and package checks. Foreign changes remain refused.
+A killed writer can leave model-consent.lock: establish that every profile writer
+has exited before manually removing that one lock, then restart to recover.
+Never delete the journal or rewrite policy by hand. The project update has its existing validated journal. Process start,
 installation state updates and profile migration do not form a single
 cross-process transaction, and package manifest verification does not protect
 against replacement by someone who can rewrite the package and its manifest.
