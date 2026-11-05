@@ -1,0 +1,25 @@
+name: Windows installer candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Test synthetic lifecycle
+        shell: pwsh
+        run: ./scripts/Test-InstallerFixture.ps1
+      - name: Build application staging directory
+        shell: pwsh
+        run: |
+          $builder = './scripts/Build-ApplicationPackage.ps1'
+          if (-not (Test-Path $builder)) { throw 'Application package builder is not integrated; no installer can be produced.' }
+          & $builder -OutputDirectory (Join-Path $env:RUNNER_TEMP 'twincat-application-package')
+          if (-not $?) { throw 'Application package build failed.' }
+      - name: Validate package and enforce release gates
+        shell: pwsh
+        run: ./scripts/Build-WindowsInstaller.ps1 -PackageDirectory (Join-Path $env:RUNNER_TEMP 'twincat-application-package') -OutputDirectory (Join-Path $env:RUNNER_TEMP 'installer')
+      # No upload until real installer, host identity and redistribution gates exist.
