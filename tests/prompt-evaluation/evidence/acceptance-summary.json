@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-05T13:46:19.122Z",
+  "date": "2026-11-05T13:56:04.867Z",
   "caseCount": 17,
   "renderedCases": 34,
   "renderedAndCopiedBlocks": 40,
@@ -323,7 +323,15 @@
             "ok": true,
             "problems": []
           },
+          "requiredLabels": {
+            "ok": true,
+            "problems": []
+          },
           "mustNotMention": {
+            "ok": true,
+            "problems": []
+          },
+          "minCodeBlocks": {
             "ok": true,
             "problems": []
           }
@@ -393,7 +401,15 @@
             "ok": true,
             "problems": []
           },
+          "requiredLabels": {
+            "ok": true,
+            "problems": []
+          },
           "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "minCodeBlocks": {
             "ok": true,
             "problems": []
           }
@@ -460,7 +476,15 @@
             "ok": true,
             "problems": []
           },
+          "requiredLabels": {
+            "ok": true,
+            "problems": []
+          },
           "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "minCodeBlocks": {
             "ok": true,
             "problems": []
           }
@@ -632,7 +656,23 @@
             "ok": true,
             "problems": []
           },
+          "verbatimFrom": {
+            "ok": true,
+            "problems": []
+          },
+          "requiredLabels": {
+            "ok": true,
+            "problems": []
+          },
+          "forbiddenLabels": {
+            "ok": true,
+            "problems": []
+          },
           "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "minCodeBlocks": {
             "ok": true,
             "problems": []
           }
@@ -648,6 +688,6 @@
     "Real provider, synthetic inputs and MCP fixtures; not real customer-project acceptance.",
     "WPF/WebView2 fixture with exact pinned renderer source, default light theme, actual code-copy handler with in-memory clipboard sink.",
     "No installed IDE interaction, OS clipboard paste, dark theme or owner sign-off.",
-    "Engineering backend accessor probe is revision 3c30383; parent newer backend requires separate validation."
+    "Engineering stays at pinned revision 3c30383; an actual packaged MCP probe separately confirms flattened Get/Set without accessor boundaries."
   ]
 }

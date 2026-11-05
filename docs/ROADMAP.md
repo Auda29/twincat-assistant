@@ -33,9 +33,13 @@ hat Paketstart, beide MCPs, Neustart, EXE-Bau und eingebettete Hashprüfung
 bestanden. Echte Installation, Update und Rollback im Host bleiben offen;
 Punkt 3 ist damit nicht abgeschlossen. Der Bau relocatierbarer MCP-Eingaben ist umgesetzt und
 geprüft; [Anwendungseingaben](APPLICATION_INPUTS.md) beschreibt den Buildweg.
-Der neue Analyse-Prompt ist in beiden Konfigurationspfaden eingebunden und
-mit Migrations- und Vertragstests geprüft. Echte Modellantworten und die
-Darstellung im installierten WebView bleiben für Punkt 4 zu prüfen.
+Der Analyse-Prompt C1 ist in beiden Konfigurationspfaden eingebunden und
+mit Migrations- und Vertragstests geprüft. Die
+[Prompt-Abnahme](PROMPT_ACCEPTANCE_20261105.md) belegt 17 echte Modellantworten,
+34 Renderings im x86-WPF-WebView2-Testcontrol und 40 exakte Kopierinhalte.
+Darstellung in der installierten IDE und tatsächliches Einfügen in TwinCAT
+bleiben für Punkt 4 zu prüfen. Der alte C0-Kandidat kennt C1 nicht;
+die Installer-Rückkehr braucht die geprüfte selektive Policy-Migration.
 Details stehen im [Installer-Vertrag](INSTALLER_CONTRACT.md) und in der
 [Prompt-Dokumentation](PROFILE_PROMPTS.md).
 

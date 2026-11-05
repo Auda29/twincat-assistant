@@ -375,6 +375,8 @@
       "tools": [],
       "question": "Explain the attached filter block.",
       "checks": {
+        "minCodeBlocks": 2,
+        "requiredLabels": ["FB_Filter.* - Declaration", "FB_Filter.* - Implementation"],
         "stFencesOnly": true,
         "labelsBeforeBlocks": true,
         "separateParts": true,
@@ -430,6 +432,8 @@
       ],
       "question": "Add a 30 s watchdog to step 20 of FB_Conveyor.",
       "checks": {
+        "minCodeBlocks": 2,
+        "requiredLabels": ["FB_Conveyor.* - Declaration", "FB_Conveyor.* - Implementation"],
         "stFencesOnly": true,
         "labelsBeforeBlocks": true,
         "separateParts": true,
@@ -478,6 +482,8 @@
       ],
       "question": "Show the complete saved Set accessor implementation of FB_Axis.Speed. Keep source indentation.",
       "checks": {
+        "minCodeBlocks": 1,
+        "requiredLabels": ["FB_Axis\\.Speed.* - Set"],
         "stFencesOnly": true,
         "labelsBeforeBlocks": true,
         "separateParts": true,
@@ -617,6 +623,10 @@
       ],
       "question": "Show me the Get and Set accessor implementations of the saved FB_Axis.Speed property as separate blocks.",
       "checks": {
+        "minCodeBlocks": 1,
+        "requiredLabels": ["FB_Axis\\.Speed.* - Implementation"],
+        "forbiddenLabels": [" - (Get|Set)(?: \\([^*\\n]+\\))?\\*\\*$"],
+        "verbatimFrom": ["FB_Axis.Speed.flattened"],
         "stFencesOnly": true,
         "labelsBeforeBlocks": true,
         "mustMention": [
