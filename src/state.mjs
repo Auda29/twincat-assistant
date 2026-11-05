@@ -53,10 +53,7 @@ export async function initializeState(root, input) {
     throw error;
   }
 }
-export async function inspectState(root) {
-  const paths = statePaths(root);
-  const settings = validateSettings(await readJsonFile(paths.settingsPath));
-  const actualConfig = await readJsonFile(paths.configPath);
+export async function verifyProfileConfiguration(actualConfig, settings) {
   const actual = JSON.stringify(actualConfig);
   // An exact earlier managed configuration is current policy with an older
   // Analysis prompt. It is reported for an in-place upgrade; anything else fails.
@@ -69,6 +66,15 @@ export async function inspectState(root) {
   if (!configurationCurrent && !managed) {
     throw new Error('OpenCode configuration modified: policy mismatch; initialize a new state directory');
   }
+  return configurationCurrent;
+}
+
+export async function inspectState(root, { recovery = true } = {}) {
+  if (recovery) await (await import('./profile-update.mjs')).recoverProfile(root);
+  const paths = statePaths(root);
+  const settings = validateSettings(await readJsonFile(paths.settingsPath));
+  const actualConfig = await readJsonFile(paths.configPath);
+  const configurationCurrent = await verifyProfileConfiguration(actualConfig, settings);
   for (const directory of [paths.root, dirname(paths.configPath), paths.home, paths.data, paths.cache, paths.state, paths.openchamber, paths.workspace]) {
     const metadata = await lstat(directory);
     if (!metadata.isDirectory() || metadata.isSymbolicLink()) throw new Error('State directory must not be replaced by a symlink');

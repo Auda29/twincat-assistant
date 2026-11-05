@@ -1,0 +1,98 @@
+name: Windows package candidate
+on:
+  push:
+    branches: ['ci/alpha-artifact-20261105']
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Run ID containing the application staging artifact
+        required: true
+      artifact_name:
+        description: Name of the application staging artifact
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  reviewed-input:
+    if: github.event_name == 'push' && github.repository == 'Auda29/twincat-assistant' && github.actor == 'Auda29'
+    runs-on: [alpha-input-20261105-65f37807]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Import exactly reviewed staging, refresh Core from this commit
+        shell: pwsh
+        run: |
+          node scripts/stage-ci-application.mjs $env:ALPHA_REVIEWED_APPLICATION (Join-Path $env:RUNNER_TEMP 'application')
+          if ($LASTEXITCODE) { throw 'Reviewed staging import failed' }
+          tar -cf (Join-Path $env:RUNNER_TEMP 'application.tar') -C (Join-Path $env:RUNNER_TEMP 'application') .
+          if ($LASTEXITCODE) { throw 'Application archive failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reviewed-application-input
+          path: ${{ runner.temp }}/application.tar
+          retention-days: 3
+          if-no-files-found: error
+  package:
+    needs: reviewed-input
+    if: always() && (needs.reviewed-input.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: '8.0.425'
+      - run: npm ci --no-audit --no-fund
+      - name: Synthetic installer and prerequisite regressions
+        shell: pwsh
+        run: |
+          ./scripts/Test-InstallerFixture.ps1
+          ./scripts/Test-InstallerPrerequisites.ps1
+      - uses: actions/download-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: reviewed-application-input
+          path: ${{ runner.temp }}/input
+      - name: Extract reviewed input
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory (Join-Path $env:RUNNER_TEMP 'application-package') | Out-Null
+          tar -xf (Join-Path $env:RUNNER_TEMP 'input/application.tar') -C (Join-Path $env:RUNNER_TEMP 'application-package')
+          if ($LASTEXITCODE) { throw 'Application extraction failed' }
+      - uses: actions/download-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/application-package
+      - name: Actual packaged startup, both MCPs and preserved restart state
+        shell: pwsh
+        run: |
+          node scripts/test-built-application.mjs (Join-Path $env:RUNNER_TEMP 'application-package')
+          if ($LASTEXITCODE) { throw 'Actual application smoke failed' }
+      - name: Build and inspect executable candidate
+        shell: pwsh
+        run: |
+          ./scripts/Build-WindowsInstaller.ps1 -PackageDirectory (Join-Path $env:RUNNER_TEMP 'application-package') -OutputDirectory (Join-Path $env:RUNNER_TEMP 'installer')
+          $setup = Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'installer') -Filter '*.exe' | Select-Object -First 1
+          ./scripts/Test-WindowsInstallerPayload.ps1 -InstallerPath $setup.FullName
+          Get-FileHash -LiteralPath $setup.FullName -Algorithm SHA256 | Format-List | Out-File (Join-Path $env:RUNNER_TEMP 'installer/SHA256.txt')
+          $provenance = Join-Path $env:RUNNER_TEMP 'application-package/ci-input-provenance.json'
+          if (Test-Path $provenance) { Copy-Item $provenance (Join-Path $env:RUNNER_TEMP 'installer/ci-input-provenance.json') }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-package-candidate
+          path: ${{ runner.temp }}/installer/*
+          retention-days: 7
+          if-no-files-found: error
