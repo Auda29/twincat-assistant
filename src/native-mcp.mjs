@@ -7,6 +7,7 @@ import { ANALYSIS_PROFILE, PREVIOUS_ANALYSIS_PROMPTS, analysisSystemPrompt } fro
 import { atomicJson, updateProfile } from './profile-update.mjs';
 import { effectiveKnowledge } from './knowledge-paths.mjs';
 import { findProjectWorkspace, projectKey, updateProjectConfiguration, withProjectLock } from './project-workspace.mjs';
+import { currentPackageSettings, previousPackageRuntime } from './managed-relocation.mjs';
 import { applicationRoot, requirePackage, verifyPackageIfPresent } from './package-integrity.mjs';
 
 function path(value) {
@@ -90,21 +91,26 @@ export async function prepareNativeProject(input) {
       targetAmsNetId: '127.0.0.1.1.1', readOnly: true, writeAllowlist: [],
       engineering: { enabled: true, backend: 'configuredProjectFiles', projectFiles: [{ path: identity.project, type: 'plc' }] },
     });
-    const configuration = (selected, system = analysisSystemPrompt({ knowledge: true, engineering: true, project: true })) => {
+    const configuration = (selected, system = analysisSystemPrompt({ knowledge: true, engineering: true, project: true }), runtime = {}) => {
       exactKeys(selected, ['knowledge', 'engineering']);
       exactKeys(selected.engineering, ['entrypoint']);
       const config = createOpenCodeConfig({ knowledge: selected.knowledge,
-        engineering: { entrypoint: selected.engineering.entrypoint, config: engineeringConfig } });
+        engineering: { entrypoint: selected.engineering.entrypoint, config: engineeringConfig } }, runtime);
       // Provider/default model belong to the protected global profile.
       const agent = { ...config.agents[ANALYSIS_PROFILE], system };
       return { mcp: config.mcp, agents: { [ANALYSIS_PROFILE]: agent } };
     };
     // Exact configurations written by earlier releases; only their prompt differs.
-    const previous = selected => PREVIOUS_ANALYSIS_PROMPTS.project.map(system => configuration(selected, system));
+    const previous = async (selected, actual) => {
+      const known = currentPackageSettings(selected) ? PREVIOUS_ANALYSIS_PROMPTS.project.map(system => configuration(selected, system)) : [];
+      const runtime = await previousPackageRuntime(actual, selected);
+      if (runtime) known.push(configuration(selected, undefined, runtime), ...PREVIOUS_ANALYSIS_PROMPTS.project.map(system => configuration(selected, system, runtime)));
+      return known;
+    };
     // Adopt the 0.1.9 directory before updating its managed MCP configuration.
     await atomicJson(index, { version: 2, solution: identity.solution, project: identity.project,
       directory: found.workspace.slice(parent.length + 1) });
-    await updateProjectConfiguration(workspace, identity, settings, configuration, previous);
+    await updateProjectConfiguration(workspace, identity, settings, configuration, previous, currentPackageSettings);
     return { configured: true, workspace, workspaces, project, solution, key, source: 'saved-project-files',
       corpus: settings.knowledge.config ? 'not_probed' : 'not_configured' };
   });

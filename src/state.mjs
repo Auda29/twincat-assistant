@@ -4,6 +4,7 @@ import { resolve, join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createOpenCodeConfig, previousOpenCodeConfigs, validateSettings } from './config.mjs';
 import { readWindowsJson, secureWindowsDirectory } from './windows-native.mjs';
+import { currentPackageSettings, previousPackageRuntime } from './managed-relocation.mjs';
 import { installTwinCatCommands } from './commands.mjs';
 import { installTwinCatThemes, migrateTwinCatThemePreferences, withTwinCatThemes } from './themes.mjs';
 
@@ -55,11 +56,17 @@ export async function initializeState(root, input) {
 export async function inspectState(root) {
   const paths = statePaths(root);
   const settings = validateSettings(await readJsonFile(paths.settingsPath));
-  const actual = JSON.stringify(await readJsonFile(paths.configPath));
+  const actualConfig = await readJsonFile(paths.configPath);
+  const actual = JSON.stringify(actualConfig);
   // An exact earlier managed configuration is current policy with an older
   // Analysis prompt. It is reported for an in-place upgrade; anything else fails.
-  const configurationCurrent = actual === JSON.stringify(createOpenCodeConfig(settings));
-  if (!configurationCurrent && !previousOpenCodeConfigs(settings).some(config => JSON.stringify(config) === actual)) {
+  const configurationCurrent = currentPackageSettings(settings) && actual === JSON.stringify(createOpenCodeConfig(settings));
+  let managed = currentPackageSettings(settings) && previousOpenCodeConfigs(settings).some(config => JSON.stringify(config) === actual);
+  if (!configurationCurrent && !managed) {
+    const runtime = await previousPackageRuntime(actualConfig, settings);
+    if (runtime) managed = [createOpenCodeConfig(settings, runtime), ...previousOpenCodeConfigs(settings, runtime)].some(config => JSON.stringify(config) === actual);
+  }
+  if (!configurationCurrent && !managed) {
     throw new Error('OpenCode configuration modified: policy mismatch; initialize a new state directory');
   }
   for (const directory of [paths.root, dirname(paths.configPath), paths.home, paths.data, paths.cache, paths.state, paths.openchamber, paths.workspace]) {

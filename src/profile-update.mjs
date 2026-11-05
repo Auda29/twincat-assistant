@@ -1,7 +1,7 @@
 import { open, rename, unlink } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { inspectState } from './state.mjs';
+import { inspectState, readJsonFile } from './state.mjs';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
 
 export async function atomicJson(path, value) {
@@ -34,8 +34,15 @@ export async function updateProfile(root, transform) {
     // Also rewrites an exact earlier managed configuration (older Analysis
     // prompt) for unchanged settings; settings.json then stays byte-identical.
     if (JSON.stringify(settings) !== JSON.stringify(current.settings)) {
+      const prior = await readJsonFile(current.paths.configPath);
       await atomicJson(current.paths.configPath, createOpenCodeConfig(settings));
-      await atomicJson(current.paths.settingsPath, settings);
+      try { await atomicJson(current.paths.settingsPath, settings); }
+      catch (error) {
+        // Preserve the validated previous configuration on a caught write
+        // failure. A process crash still fails closed on the next inspection.
+        await atomicJson(current.paths.configPath, prior);
+        throw error;
+      }
     } else if (!current.configurationCurrent) await atomicJson(current.paths.configPath, createOpenCodeConfig(settings));
     return await inspectState(root);
   } finally { await lock.close(); await unlink(lockPath); }

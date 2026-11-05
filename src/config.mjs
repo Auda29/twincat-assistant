@@ -56,14 +56,16 @@ export const READ_TOOLS = Object.freeze([
   'engineering_plc_describe_library',
 ]);
 
-export function createOpenCodeConfig(settings = {}) {
+export function createOpenCodeConfig(settings = {}, runtime = {}) {
+  const node = runtime.node ?? process.execPath;
+  const knowledgeClient = runtime.knowledgeClient ?? fileURLToPath(new URL('./knowledge-client.mjs', import.meta.url));
   settings = validateSettings(settings);
   const servers = {};
   if (settings.knowledge) {
     servers.knowledge = {
       type: 'local', protocol: '2026-07-28', codemode: false,
       command: settings.knowledge.bridge
-        ? [process.execPath, fileURLToPath(new URL('./knowledge-client.mjs', import.meta.url)), settings.knowledge.bridge]
+        ? [node, knowledgeClient, settings.knowledge.bridge]
         : [settings.knowledge.executable, 'serve', '--transport', 'stdio',
           ...(settings.knowledge.config ? ['--config', settings.knowledge.config] : [])],
       timeout: { startup: settings.knowledge.startupTimeout ?? 15000, catalog: 15000, execution: 30000 },
@@ -72,7 +74,7 @@ export function createOpenCodeConfig(settings = {}) {
   if (settings.engineering) {
     servers.engineering = {
       type: 'local', protocol: 'legacy', codemode: false,
-      command: [process.execPath, settings.engineering.entrypoint, '--config', settings.engineering.config],
+      command: [node, settings.engineering.entrypoint, '--config', settings.engineering.config],
       timeout: { startup: 15000, catalog: 15000, execution: 30000 },
     };
   }
@@ -112,8 +114,8 @@ export function createOpenCodeConfig(settings = {}) {
 
 // Exact configurations written by earlier releases for the same settings. They
 // differ only by a reviewed earlier Analysis prompt and may be upgraded in place.
-export function previousOpenCodeConfigs(settings = {}) {
-  const current = createOpenCodeConfig(settings);
+export function previousOpenCodeConfigs(settings = {}, runtime = {}) {
+  const current = createOpenCodeConfig(settings, runtime);
   return PREVIOUS_ANALYSIS_PROMPTS.profile.map(system => {
     const config = structuredClone(current);
     config.agents[ANALYSIS_PROFILE].system = system;

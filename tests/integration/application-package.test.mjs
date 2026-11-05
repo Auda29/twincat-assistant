@@ -9,6 +9,7 @@ import { once } from 'node:events';
 import { existsSync } from 'node:fs';
 import { test } from 'node:test';
 import { createManifest } from '../../scripts/application-manifest.mjs';
+import { ANALYSIS_PROFILE, PREVIOUS_ANALYSIS_PROMPTS } from '../../src/agent-prompts.mjs';
 
 const run = promisify(execFile);
 const repo = resolve('.');
@@ -103,6 +104,84 @@ test('relocated package resolves and starts the protected launcher with syntheti
   } finally {
     if (child && child.exitCode === null) { child.stdin.end(); await Promise.race([once(child, 'exit'), new Promise(r => setTimeout(r, 5000))]); if (child.exitCode === null) child.kill(); }
     await rm(parent, { recursive: true, force: true, maxRetries: 15, retryDelay: 200 });
+  }
+});
+
+
+test('two installed versions rebase managed profile and project on update and rollback', { skip: !canRunFixture, timeout: 300000 }, async () => {
+  const parent = await mkdtemp(join(tmpdir(), 'tc-two-versions-'));
+  let child;
+  async function invoke(root, module, input) {
+    const p = spawn(join(root, 'runtime/node/node.exe'), [join(root, 'src', module)], { env, cwd: parent, stdio: ['pipe','pipe','pipe'], windowsHide: true });
+    let out = '', err = ''; p.stdout.on('data', d => { out += d; }); p.stderr.on('data', d => { err += d; });
+    p.stdin.end(JSON.stringify(input) + '\n');
+    const [code] = await once(p, 'exit'); assert.equal(code, 0, err + out); return JSON.parse(out.trim());
+  }
+  async function start(root, state, mcpConfig) {
+    const port = await freePort();
+    child = spawn(join(root, 'runtime/node/node.exe'), [join(root, 'src/native-chat.mjs')], { env, cwd: parent, stdio: ['pipe','pipe','pipe'], windowsHide: true });
+    let out = '', err = ''; child.stdout.on('data', d => { out += d; }); child.stderr.on('data', d => { err += d; });
+    child.stdin.write(JSON.stringify({ state, port, password: 'synthetic-password-123', mcpConfig }) + '\n');
+    const limit = Date.now() + 45000;
+    while (!out.includes('\n') && child.exitCode === null && Date.now() < limit) await new Promise(r => setTimeout(r, 100));
+    assert.deepEqual(JSON.parse(out.trim()), { status:'ready', port }, err);
+    child.stdin.end(); await once(child, 'exit'); child = null;
+  }
+  try {
+    const staged = await fixture(parent);
+    const installation = join(parent, 'installation'); const versions = join(installation, 'versions');
+    const v1 = join(versions, '1.0.0', 'application'), v2 = join(versions, '2.0.0', 'application');
+    await mkdir(join(versions, '1.0.0'), { recursive:true }); await rename(staged, v1);
+    await rm(join(v1, 'application-manifest.json')); await createManifest(v1, {version:'1.0.0', architecture:process.arch});
+    await mkdir(join(versions, '2.0.0'), {recursive:true}); await cp(v1, v2, {recursive:true});
+    await rm(join(v2, 'application-manifest.json')); await createManifest(v2, {version:'2.0.0', architecture:process.arch});
+    await writeFile(join(installation, '.assistant-install-root'), 'TwinCatAssistant installation v1');
+    const select = async version => writeFile(join(installation, 'state.json'), JSON.stringify({targetId:'tcxaeshell-x86-tc4024',current:version,previous:version === '1.0.0' ? '2.0.0' : '1.0.0'}));
+    const state = join(parent, 'state'), settings = join(parent, 'mcp.json');
+    await writeFile(settings, JSON.stringify({knowledge:{},engineering:{}}));
+    const solution = join(parent, 'Synthetic.sln'), project = join(parent, 'Synthetic.plcproj');
+    await writeFile(solution, 'synthetic'); await writeFile(project, '<Project/>');
+    const request = {state, mcpConfig:settings, solution, project};
+    await select('1.0.0'); await start(v1,state,settings);
+    const first = await invoke(v1, 'native-mcp.mjs', request);
+    const sentinels = [join(state,'data','chat-sentinel'),join(state,'home','login-sentinel'),join(first.workspace,'binding-sentinel')];
+    for (const path of sentinels) await writeFile(path,'preserved');
+    const globalPath = join(state,'config/opencode.json'), scopedPath = join(first.workspace,'opencode.json');
+    const olderGlobal = JSON.parse(await readFile(globalPath,'utf8'));
+    olderGlobal.agents[ANALYSIS_PROFILE].system = PREVIOUS_ANALYSIS_PROMPTS.profile[0];
+    await writeFile(globalPath,JSON.stringify(olderGlobal));
+    const olderProject = JSON.parse(await readFile(scopedPath,'utf8'));
+    olderProject.agents[ANALYSIS_PROFILE].system = PREVIOUS_ANALYSIS_PROMPTS.project[0];
+    await writeFile(scopedPath,JSON.stringify(olderProject));
+    await select('2.0.0');
+    const widened = structuredClone(olderGlobal); widened.agents[ANALYSIS_PROFILE].permissions.push({action:'edit',resource:'*',effect:'allow'});
+    await writeFile(globalPath,JSON.stringify(widened));
+    await assert.rejects(invoke(v2,'native-mcp.mjs',request));
+    await writeFile(globalPath,JSON.stringify(olderGlobal));
+    const oldFile = join(v1,'src/commands.mjs'), original = await readFile(oldFile);
+    await writeFile(oldFile,'tampered');
+    await assert.rejects(invoke(v2,'native-mcp.mjs',request));
+    await writeFile(oldFile,original);
+    await start(v2,state,settings);
+    const foreign = structuredClone(olderProject); foreign.agents[ANALYSIS_PROFILE].system = 'unknown prompt';
+    await writeFile(scopedPath,JSON.stringify(foreign));
+    await assert.rejects(invoke(v2,'native-mcp.mjs',request));
+    await writeFile(scopedPath,JSON.stringify(olderProject));
+    const second = await invoke(v2, 'native-mcp.mjs', request); assert.equal(second.workspace,first.workspace);
+    let global = JSON.parse(await readFile(join(state,'config/opencode.json'),'utf8'));
+    let scoped = JSON.parse(await readFile(join(first.workspace,'opencode.json'),'utf8'));
+    assert.equal(global.mcp.servers.knowledge.command[0],join(v2,'runtime/node/node.exe'));
+    assert.equal(scoped.mcp.servers.engineering.command[0],join(v2,'runtime/node/node.exe'));
+    await select('1.0.0'); await start(v1,state,settings);
+    const rolled = await invoke(v1, 'native-mcp.mjs', request); assert.equal(rolled.workspace,first.workspace);
+    global = JSON.parse(await readFile(join(state,'config/opencode.json'),'utf8'));
+    scoped = JSON.parse(await readFile(join(first.workspace,'opencode.json'),'utf8'));
+    assert.equal(global.mcp.servers.knowledge.command[0],join(v1,'runtime/node/node.exe'));
+    assert.equal(scoped.mcp.servers.engineering.command[0],join(v1,'runtime/node/node.exe'));
+    for (const path of sentinels) assert.equal(await readFile(path,'utf8'),'preserved');
+  } finally {
+    if (child && child.exitCode === null) { child.stdin.end(); await Promise.race([once(child,'exit'),new Promise(r => setTimeout(r,5000))]); if (child.exitCode === null) child.kill(); }
+    await rm(parent,{recursive:true,force:true,maxRetries:15,retryDelay:200});
   }
 });
 
