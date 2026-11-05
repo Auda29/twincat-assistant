@@ -1,0 +1,9 @@
+
+> twincat-assistant@0.1.0-dev.1 build
+> node scripts/build-extension.mjs
+
+
+  dist\extension\panel\main.js  60.3kb
+
+Done in 20ms
+Built C:\Users\NiklasW\.t3\worktrees\twincat-assistant\t3-d744fb97\dist\extension\panel\main.js

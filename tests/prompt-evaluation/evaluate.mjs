@@ -21,8 +21,8 @@ export async function loadCases() {
 
 // Mirrors native/Shared/ChatContextBinding.cs AttachmentText with synthetic identity values.
 export function snapshotText(source) {
-  return 'TwinCAT context snapshot\nObject: ' + source.object + '\nObject kind: POU\nOwning POU: ' + source.object
-    + '\nMember: POU body\nIDE PID: 4242\nSolution: C:\\Synthetic\\Station.sln\nPLC project: C:\\Synthetic\\PLC\\PLC.plcproj'
+  return 'TwinCAT context snapshot\nObject: ' + source.object + '\nObject kind: '+(source.objectKind??'POU')+'\nOwning POU: ' + (source.owner??source.object)
+    + '\nMember: '+(source.member??'POU body')+'\nIDE PID: 4242\nSolution: C:\\Synthetic\\Station.sln\nPLC project: C:\\Synthetic\\PLC\\PLC.plcproj'
     + '\nTree path: PLC/POUs/' + source.object + '\nSource: Automation Interface snapshot\nChanges: ' + source.changes
     + '\nUnsaved editor text is not verified. This snapshot is read-only and may be outdated.'
     + '\nRevision: ' + '0'.repeat(64) + '\n\nDeclaration:\n' + source.declaration
@@ -42,6 +42,7 @@ export function composeCase(fixture, testCase) {
   const parts = testCase.context.map(entry => {
     const [kind, value] = entry.split(':');
     if (kind === 'metadata') return metadataText(value);
+    if (kind === 'reference') { const source=fixture.sources[value]; return 'TwinCAT saved-object reference (no source code attached)\nObject: '+source.object+'\nObject kind: POU\nOwning POU: '+source.object+'\nMember: POU body\nSolution: C:\\Synthetic\\Station.sln\nPLC project: '+source.project+'\nDocument moniker: '+source.sourceFile+'\nTree path: PLC/POUs/'+source.object+'\nEditor changes: unknown\nThe direct snapshot exceeded the attachment limit. No declaration or implementation is included.\nRead the saved object through the engineering MCP in this bound PLC project. Resolve exact project, sourceFile, owning POU and member using engineering_plc_list_pous, then engineering_plc_read_pou with the returned ID. This reads disk state at tool-call time, not a frozen snapshot or live IDE buffer. Unsaved editor changes are not included. Do not save or edit the project.'; }
     if (kind === 'snapshot') return snapshotText(fixture.sources[value]);
     throw new Error('Unknown context part ' + entry);
   });

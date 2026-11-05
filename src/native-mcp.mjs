@@ -3,7 +3,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJsonFile, inspectState } from './state.mjs';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
-import { ANALYSIS_PROFILE, PREVIOUS_ANALYSIS_PROMPTS, analysisSystemPrompt } from './agent-prompts.mjs';
+import { ANALYSIS_PROFILE, previousAnalysisPrompts, analysisSystemPrompt } from './agent-prompts.mjs';
 import { atomicJson, updateProfile } from './profile-update.mjs';
 import { effectiveKnowledge } from './knowledge-paths.mjs';
 import { findProjectWorkspace, projectKey, updateProjectConfiguration, withProjectLock } from './project-workspace.mjs';
@@ -102,9 +102,9 @@ export async function prepareNativeProject(input) {
     };
     // Exact configurations written by earlier releases; only their prompt differs.
     const previous = async (selected, actual) => {
-      const known = currentPackageSettings(selected) ? PREVIOUS_ANALYSIS_PROMPTS.project.map(system => configuration(selected, system)) : [];
+      const known = currentPackageSettings(selected) ? previousAnalysisPrompts({ knowledge: Boolean(selected.knowledge), engineering: true, project: true }).map(system => configuration(selected, system)) : [];
       const runtime = await previousPackageRuntime(actual, selected);
-      if (runtime) known.push(configuration(selected, undefined, runtime), ...PREVIOUS_ANALYSIS_PROMPTS.project.map(system => configuration(selected, system, runtime)));
+      if (runtime) known.push(configuration(selected, undefined, runtime), ...previousAnalysisPrompts({ knowledge: Boolean(selected.knowledge), engineering: true, project: true }).map(system => configuration(selected, system, runtime)));
       return known;
     };
     // Adopt the 0.1.9 directory before updating its managed MCP configuration.

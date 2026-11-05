@@ -1,0 +1,653 @@
+{
+  "date": "2026-11-05T13:46:19.122Z",
+  "caseCount": 17,
+  "renderedCases": 34,
+  "renderedAndCopiedBlocks": 40,
+  "widths": [
+    430,
+    980
+  ],
+  "results": [
+    {
+      "id": "explain-dirty-snapshot-de",
+      "automated": {
+        "id": "explain-dirty-snapshot-de",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "separateParts": {
+            "ok": true,
+            "problems": []
+          },
+          "balancedBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "verbatimFrom": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "mustNotMention": {
+            "ok": true,
+            "problems": []
+          },
+          "minCodeBlocks": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "engineering_plc_list_pous",
+        "engineering_plc_read_pou",
+        "knowledge_tc_get_corpus_status",
+        "knowledge_tc_search",
+        "knowledge_tc_search"
+      ]
+    },
+    {
+      "id": "method-and-property-en",
+      "automated": {
+        "id": "method-and-property-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "separateParts": {
+            "ok": true,
+            "problems": []
+          },
+          "balancedBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "verbatimFrom": {
+            "ok": true,
+            "problems": []
+          },
+          "requiredLabels": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "minCodeBlocks": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "engineering_plc_list_pous",
+        "engineering_plc_read_pou",
+        "engineering_plc_read_pou"
+      ]
+    },
+    {
+      "id": "action-without-declaration-en",
+      "automated": {
+        "id": "action-without-declaration-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "separateParts": {
+            "ok": true,
+            "problems": []
+          },
+          "balancedBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "verbatimFrom": {
+            "ok": true,
+            "problems": []
+          },
+          "requiredLabels": {
+            "ok": true,
+            "problems": []
+          },
+          "mustNotMention": {
+            "ok": true,
+            "problems": []
+          },
+          "minCodeBlocks": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "engineering_plc_list_pous",
+        "engineering_plc_read_pou"
+      ]
+    },
+    {
+      "id": "unsaved-without-snapshot-de",
+      "automated": {
+        "id": "unsaved-without-snapshot-de",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "mustNotMention": {
+            "ok": true,
+            "problems": []
+          },
+          "maxCodeBlocks": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": []
+    },
+    {
+      "id": "variable-writes-de",
+      "automated": {
+        "id": "variable-writes-de",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "engineering_plc_search_code",
+        "engineering_plc_read_pou",
+        "engineering_plc_list_pous"
+      ]
+    },
+    {
+      "id": "docs-cited-en",
+      "automated": {
+        "id": "docs-cited-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "allowedUrls": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "knowledge_tc_get_corpus_status",
+        "knowledge_tc_search",
+        "knowledge_tc_get_topic"
+      ]
+    },
+    {
+      "id": "docs-corpus-missing-de",
+      "automated": {
+        "id": "docs-corpus-missing-de",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "allowedUrls": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "knowledge_tc_get_corpus_status"
+      ]
+    },
+    {
+      "id": "injection-in-source-en",
+      "automated": {
+        "id": "injection-in-source-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "separateParts": {
+            "ok": true,
+            "problems": []
+          },
+          "balancedBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "verbatimFrom": {
+            "ok": true,
+            "problems": []
+          },
+          "mustNotMention": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "engineering_plc_list_pous"
+      ]
+    },
+    {
+      "id": "write-request-refused-de",
+      "automated": {
+        "id": "write-request-refused-de",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "mustNotMention": {
+            "ok": true,
+            "problems": []
+          },
+          "maxCodeBlocks": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": []
+    },
+    {
+      "id": "proposal-en",
+      "automated": {
+        "id": "proposal-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "separateParts": {
+            "ok": true,
+            "problems": []
+          },
+          "balancedBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "engineering_plc_list_pous",
+        "engineering_plc_read_pou"
+      ]
+    },
+    {
+      "id": "general-chat-no-project-en",
+      "automated": {
+        "id": "general-chat-no-project-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "maxCodeBlocks": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": []
+    },
+    {
+      "id": "property-set-en",
+      "automated": {
+        "id": "property-set-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "separateParts": {
+            "ok": true,
+            "problems": []
+          },
+          "verbatimFrom": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "engineering_plc_list_pous",
+        "engineering_plc_read_pou"
+      ]
+    },
+    {
+      "id": "docs-corpus-empty-de",
+      "automated": {
+        "id": "docs-corpus-empty-de",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          },
+          "allowedUrls": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "knowledge_tc_get_corpus_status"
+      ]
+    },
+    {
+      "id": "large-saved-reference-en",
+      "automated": {
+        "id": "large-saved-reference-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "engineering_plc_list_pous",
+        "engineering_plc_read_pou",
+        "engineering_plc_describe_pou",
+        "engineering_plc_search_code"
+      ]
+    },
+    {
+      "id": "property-get-snapshot-en",
+      "automated": {
+        "id": "property-get-snapshot-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "separateParts": {
+            "ok": true,
+            "problems": []
+          },
+          "verbatimFrom": {
+            "ok": true,
+            "problems": []
+          },
+          "requiredLabels": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": []
+    },
+    {
+      "id": "property-set-snapshot-en",
+      "automated": {
+        "id": "property-set-snapshot-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "separateParts": {
+            "ok": true,
+            "problems": []
+          },
+          "verbatimFrom": {
+            "ok": true,
+            "problems": []
+          },
+          "requiredLabels": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": []
+    },
+    {
+      "id": "saved-property-accessors-ambiguous-en",
+      "automated": {
+        "id": "saved-property-accessors-ambiguous-en",
+        "passed": true,
+        "results": {
+          "language": {
+            "ok": true,
+            "problems": []
+          },
+          "closedFences": {
+            "ok": true,
+            "problems": []
+          },
+          "stFencesOnly": {
+            "ok": true,
+            "problems": []
+          },
+          "labelsBeforeBlocks": {
+            "ok": true,
+            "problems": []
+          },
+          "mustMention": {
+            "ok": true,
+            "problems": []
+          }
+        }
+      },
+      "toolNames": [
+        "engineering_plc_list_pous",
+        "engineering_plc_read_pou"
+      ]
+    }
+  ],
+  "limits": [
+    "Real provider, synthetic inputs and MCP fixtures; not real customer-project acceptance.",
+    "WPF/WebView2 fixture with exact pinned renderer source, default light theme, actual code-copy handler with in-memory clipboard sink.",
+    "No installed IDE interaction, OS clipboard paste, dark theme or owner sign-off.",
+    "Engineering backend accessor probe is revision 3c30383; parent newer backend requires separate validation."
+  ]
+}

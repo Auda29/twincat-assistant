@@ -1,0 +1,15 @@
+{
+  "openchamber": {
+    "repository": "https://github.com/openchamber/openchamber.git",
+    "tag": "v2.1.1",
+    "revision": "e302062e3be0686986594fddabdafd8a97c129e5",
+    "version": "2.1.1"
+  },
+  "files": {
+    "components/chat/MarkdownRendererImpl.tsx": "59749c48b0943a0b8327927f27c0545f1ad7f47504d811dc2a3cca3f3e81c288",
+    "components/chat/markdown/markdownCore.ts": "5c43107e456e2ad2e52545af56a780fb1fa636f6f104f78d3a2deb5be9e169b5",
+    "components/chat/markdown/decorate.ts": "9f7a69f516d6b56e6654a1a32dbd10d7c390e4d32895b7285a189f417727bb8b",
+    "components/chat/markdown/codeText.ts": "a2943c96f50a7e91b827c7fe1a57e847d924cbfdab68f76bb14b80f21320b176"
+  },
+  "fixtureBundleSha256": "85fa4daf3ecd7e8472578a4b112bb5a5aca67679e9c0308775aa8dbc9723530e"
+}
