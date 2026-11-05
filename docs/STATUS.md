@@ -1,5 +1,15 @@
 # Implementation status
 
+Actual installation update, **2026-11-05**: the first CI C0 EXE was installed
+with operator-confirmed same-user UAC into the real x86 alpha host. All 22443
+application inventory entries and the installed extension snapshot were checked;
+the original 13-file prototype remains unchanged in backup. The actual installed
+x86 configuration loader selected the package and separate synthetic state.
+Its native session reached protected backend readiness twice; restart preserved
+the sentinel and an independent observer recorded launcher exit 0. These were
+outside-IDE checks, not visible host acceptance. C1 update/rollback and IDE gates
+remain open. See [the actual installation record](HOST_INSTALLATION_20261105.md).
+
 Completion-round update, **2026-11-05**: the real
 [Windows CI run 42034006930](https://github.com/Auda29/twincat-assistant/actions/runs/42034006930)
 passed reviewed input import, protected package startup, both actual MCP probes
