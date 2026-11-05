@@ -10,6 +10,15 @@ The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains 
 
 ## Agreed priorities (2026-11-02)
 
+Host-Zwischenstand vom 05.11.2026: Die read-only Inventarisierung bestätigt
+TcXaeShell/x86 mit TwinCAT 3.1.4024.78 als erstes Alpha-Installationsziel.
+Die [Host-Abnahmematrix](HOST_ACCEPTANCE_MATRIX.md) und
+[`host-targets.json`](../native/host-targets.json) halten konkrete Versionen,
+Installationskriterien und weiterhin offene Abnahmen fest. Zusätzlich ist
+TwinCAT in VS2019 installiert, aber nicht abgenommen. Punkt 1 bleibt bis zum
+Abschluss der offenen Prüfungen im echten Zielhost offen; die Einstufung als
+Alpha-Ziel ersetzt diese Prüfungen nicht.
+
 Die folgenden Zukunftsthemen sind in dieser Reihenfolge vereinbart. Sie sind
 geplant, nicht als umgesetzt oder abgenommen markiert. Die Liste legt keinen
 gemeinsamen Release-Termin für alle sieben Punkte fest.

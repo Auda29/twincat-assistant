@@ -1,5 +1,16 @@
 # Implementation status
 
+Host inventory update, **2026-11-05**: read-only machine discovery confirms
+TwinCAT 3.1.4024.78 and TcXaeShell 15.0.0.0/x86 as the first alpha installation
+target. Full VS2019 with XAE integration is present but unaccepted; Shell64,
+4026 and full VS2022/2026 are not installed. The
+[host acceptance matrix](HOST_ACCEPTANCE_MATRIX.md) records remaining live
+gates, including restored-editor cold startup. The inventory script, target
+description and native diagnostic row are implemented; no host payload was
+installed or real-host acceptance performed for this update. After integration
+with the large-object reference fallback, 12 host-inventory tests and 151 native
+policy/context/chat regressions pass. This does not close roadmap item 1.
+
 Updated: **2026-10-29**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
 `0.1.9`, installed after operator coordination. The source prerelease version is
 `0.1.9`, described in [release notes](releases/native-v0.1.9.md). It adds automatic
