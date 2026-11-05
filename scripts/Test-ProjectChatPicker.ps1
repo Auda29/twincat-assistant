@@ -391,7 +391,9 @@ namespace TwinCatAssistant.Native
             _picker.Show("Anlage_Linie3", "s2", Items());
             Pump();
 
-            // Selection: docked stays open, overlay closes; failures are reported.
+            // Pinning controls lifetime independently of the responsive layout.
+            _picker.Pinned = true;
+            // Selection: pinned stays open; failures are reported.
             Call("SelectEntryAsync", "s5");
             Pump();
             Check(MetaText("s5").Contains("Wird geöffnet"), "opening shows progress on the row");
@@ -402,22 +404,23 @@ namespace TwinCatAssistant.Native
             Pump();
             _gate.SetResult(true);
             Pump();
-            Check(_picker.IsOpen && _closes.Count == 0 && Pending("s5") == null, "docked: a selected chat keeps the bar open");
+            Check(_picker.IsOpen && _closes.Count == 0 && Pending("s5") == null, "pinned: a selected chat keeps the bar open");
             Call("CreateChatAsync");
             Pump();
             Check(Field<TextBlock>("_newLabel").Text == "Wird erstellt …" && !Field<Button>("_newButton").IsEnabled, "Neuer Chat shows its progress");
             Shot("creating", 1100);
             _gate.SetResult(true);
             Pump();
-            Check(_picker.IsOpen && _closes.Count == 0, "docked: Neuer Chat keeps the bar open");
+            Check(_picker.IsOpen && _closes.Count == 0, "pinned: Neuer Chat keeps the bar open");
             Key(Field<TextBox>("_search"), System.Windows.Input.Key.Escape);
             Pump();
-            Check(_picker.IsOpen, "docked: Escape does not close the bar");
+            Check(_picker.IsOpen, "pinned: Escape does not close the bar");
             search.Text = "zone";
             Key(Field<TextBox>("_search"), System.Windows.Input.Key.Escape);
             Pump();
             Check(_picker.IsOpen && search.Text == "", "Escape in the search box clears the search first");
 
+            _picker.Pinned = false;
             SetWidth(390);
             Check(!_picker.Docked && KeyboardNavigation.GetTabNavigation(_picker.View) == KeyboardNavigationMode.Cycle, "overlay keeps Tab inside the bar");
             Call("SelectEntryAsync", "s4");
@@ -448,6 +451,21 @@ namespace TwinCatAssistant.Native
             Field<Button>("_collapseButton").RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             Pump();
             Check(!_picker.IsOpen && _closes.LastOrDefault() == true, "the collapse button closes the bar as a user close");
+            SetWidth(1100);
+            Reopen("s4");
+            Check(_picker.Docked && !_picker.Pinned, "wide geometry does not imply pinning");
+            Call("SelectEntryAsync", "s4"); Pump();
+            Check(!_picker.IsOpen, "unpinned wide bar closes when choosing the current chat");
+            Reopen("s4");
+            Call("SelectEntryAsync", "s5"); Pump(); _gate.SetResult(true); Pump();
+            Check(!_picker.IsOpen, "unpinned wide bar closes after an asynchronous chat selection");
+            Reopen("s4");
+            Call("CreateChatAsync"); Pump(); _gate.SetResult(true); Pump();
+            Check(!_picker.IsOpen, "unpinned wide bar closes after creating a chat");
+            Reopen("s4");
+            Key(Field<TextBox>("_search"), System.Windows.Input.Key.Escape); Pump();
+            Check(!_picker.IsOpen, "unpinned wide bar closes on Escape");
+
             SetWidth(1100);
 
             // Late completions: a closed bar or a new session is never changed.

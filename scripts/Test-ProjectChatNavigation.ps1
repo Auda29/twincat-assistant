@@ -36,7 +36,18 @@ function Test-ProjectChatNavigation {
         $taskChatOrigin=$taskBrowser.TransformToAncestor($taskControl).Transform([Windows.Point]::new(0,0))
         Assert-Integration ($taskChatOrigin.X -ge 220 -and $taskChatOrigin.X -le 400 -and $taskBrowser.ActualWidth -ge 600) 'wide project sidebar sits beside the actual WebView and preserves readable conversation width'
         $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
-        Assert-Integration ($taskPicker.IsOpen) 'browser focus leaves the wide project sidebar open'
+        Assert-Integration (-not $taskPicker.IsOpen) 'browser focus dismisses unpinned wide history'
+        Pump 1200
+        Assert-Integration (-not $taskPicker.IsOpen) 'health polling does not reopen dismissed unpinned wide history'
+        Open-FixtureHistory
+        $taskWidePin=$taskPickerType.GetField('_pinButton',$taskFlags).GetValue($taskPicker)
+        $taskWidePin.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent)); Pump 100
+        $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
+        Assert-Integration ($taskPicker.Pinned -and $taskPicker.IsOpen) 'explicitly pinned wide history survives browser focus'
+        $taskWidePin.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent)); Pump 100
+        $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
+        Assert-Integration (-not $taskPicker.IsOpen) 'unpinning a wide bar restores focus dismissal'
+        Open-FixtureHistory
         Invoke-Chat 'OpenHistoryAsync'
         $taskControl.UpdateLayout(); Pump 100
         Assert-Integration (-not $taskPicker.IsOpen) 'clock closes the wide project sidebar'

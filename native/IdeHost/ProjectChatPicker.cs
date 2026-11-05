@@ -172,8 +172,7 @@ namespace TwinCatAssistant.Native
         public FrameworkElement View => _frame;
         public bool IsOpen => _open;
 
-        // Docked: the bar sits beside the conversation and stays open after
-        // selecting or creating a chat; Tab continues into the chat. Unpinned
+        // Docked describes column geometry only. Pinned controls lifetime. Unpinned
         // overlays close on selection, Escape or outside focus. Pinning keeps
         // the bar open at every width and lets Tab continue into the chat.
         public bool Pinned
@@ -355,7 +354,7 @@ namespace TwinCatAssistant.Native
 
         private void ApplyMode()
         {
-            KeyboardNavigation.SetTabNavigation(_frame, _docked || _pinned ? KeyboardNavigationMode.Continue : KeyboardNavigationMode.Cycle);
+            KeyboardNavigation.SetTabNavigation(_frame, _pinned ? KeyboardNavigationMode.Continue : KeyboardNavigationMode.Cycle);
             _pinButton.ToolTip = _pinned ? "Chatleiste lösen" : "Chatleiste anheften";
             AutomationProperties.SetName(_pinButton, (string)_pinButton.ToolTip);
             var pinGlyph = Glyph(_pinned ? "unpin" : "pin");
@@ -363,7 +362,7 @@ namespace TwinCatAssistant.Native
             _pinButton.Content = pinGlyph;
             if (_pinned) _pinButton.SetResourceReference(Control.ForegroundProperty, "Tc.Primary");
             else _pinButton.SetResourceReference(Control.ForegroundProperty, "Tc.Muted");
-            _collapseButton.ToolTip = _docked || _pinned ? "Chatleiste schließen" : "Chatleiste schließen (Esc)";
+            _collapseButton.ToolTip = _pinned ? "Chatleiste schließen" : "Chatleiste schließen (Esc)";
         }
 
         private void OnAnchorVisibleChanged(object sender, DependencyPropertyChangedEventArgs args) { if (!_anchor.IsVisible) CloseCore(false); }
@@ -946,7 +945,7 @@ namespace TwinCatAssistant.Native
             if (_disposed || !_open || _view != PickerView.Ready) return;
             var entry = Find(id);
             if (entry == null || entry.Archived) return;
-            if (id == _selectedId) { if (!_docked && !_pinned) CloseCore(false); return; }
+            if (id == _selectedId) { if (!_pinned) CloseCore(false); return; }
             var handler = SelectAsync;
             if (handler == null || _pending.ContainsKey(id) || _pending.ContainsValue(Selecting)) return;
             var session = _session;
@@ -964,7 +963,7 @@ namespace TwinCatAssistant.Native
             if (session != _session) return;
             _pending.Remove(id);
             // The host confirms the selection with SetSelected or Show.
-            if (!_docked && !_pinned) CloseCore(false); else Render();
+            if (!_pinned) CloseCore(false); else Render();
         }
 
         private bool CanRename(Entry entry) { return RenameAsync != null && !entry.Archived; }
@@ -1152,7 +1151,7 @@ namespace TwinCatAssistant.Native
             }
             if (session != _session) return;
             _newPending = false;
-            if (!_docked && !_pinned) CloseCore(false); else Render();
+            if (!_pinned) CloseCore(false); else Render();
         }
 
         // The host reloads and answers with Show or ShowError; only a thrown
@@ -1223,8 +1222,8 @@ namespace TwinCatAssistant.Native
                 if (_renameId != null && IsWithin(source, _renameEditor) && !(_pending.TryGetValue(_renameId, out var pending) && pending == Renaming))
                 { args.Handled = true; CancelRename(); return; }
                 if (IsWithin(source, _search) && _search.Text.Length > 0) { args.Handled = true; ClearSearch(); return; }
-                // The docked bar is part of the layout; Escape leaves it open.
-                if (_docked || _pinned) return;
+                // Only an explicitly pinned bar stays open on Escape.
+                if (_pinned) return;
                 args.Handled = true;
                 CloseCore(true);
                 return;

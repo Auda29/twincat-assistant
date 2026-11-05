@@ -545,3 +545,12 @@ Local checks for this candidate: both host architectures build, 132 native
 checks, 99 WPF sidebar checks, 91 Host/WebView navigation checks, 26 adapter
 checks, 14 settings-registry tests and 12 visibility-hook tests pass. Full UI type checking and the source
 UI build pass. These fixtures do not establish installed IDE acceptance.
+
+## Pinning correction, 2026-11-05
+
+Column geometry no longer grants a chat bar a persistent lifetime. At every
+width, an unpinned bar closes on conversation focus, outside clicks, successful
+selection/creation and Escape. Only explicitly pinned bars survive those actions
+and restore automatically for a project. The clock still explicitly opens and
+closes either mode. The first installed candidate incorrectly retained the
+previous wide-window behavior; the operator reported that regression.

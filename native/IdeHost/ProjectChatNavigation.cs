@@ -112,11 +112,11 @@ namespace TwinCatAssistant.Native
             MaintainSidebar();
         }
 
-        // Overlay only: a click outside the bar and the clock closes it.
+        // Unpinned bars close on outside focus at every width.
         private void OnSidebarOutsideMouseDown(object sender, MouseButtonEventArgs args)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_projectChatPicker?.IsOpen != true || SidebarDocked() || SidebarPinned()) return;
+            if (_projectChatPicker?.IsOpen != true || SidebarPinned()) return;
             var source = args.OriginalSource as DependencyObject;
             if (Within(source, _sidebarHost) || Within(source, _historyButton)) return;
             CloseProjectChats();
@@ -191,12 +191,12 @@ namespace TwinCatAssistant.Native
             catch { /* The preference still applies until the IDE closes. */ }
         }
 
-        // Reopens the docked bar for the active project when its stored (or
-        // default) preference says so, once per project and chat document.
+        // Restores only explicitly pinned project bars. A transient unpinned
+        // list must not reopen after focus or selection dismissed it.
         private void MaintainSidebar()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_disposed || !_chatPresented || !(SidebarDocked() || SidebarPinned()) || _strip.Visibility != Visibility.Visible || _browser.Visibility != Visibility.Visible) return;
+            if (_disposed || !_chatPresented || !SidebarPinned() || _strip.Visibility != Visibility.Visible || _browser.Visibility != Visibility.Visible) return;
             if (!_chatAdapterReady || _chatSelection?.authenticated != true || _chatActionPending) return;
             var project = _chatProject;
             if (project == null || (_projectChatPicker?.IsOpen == true && _pickerScope != null)) return;
@@ -256,11 +256,11 @@ namespace TwinCatAssistant.Native
         }
 
         // Transient closes (other popups, browser focus, the context bar) only
-        // concern the narrow overlay; the docked bar is part of the layout.
+        // concern every unpinned bar; only explicit pinning keeps it open.
         private void DismissProjectChatOverlay()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_projectChatPicker?.IsOpen == true && !SidebarDocked() && !SidebarPinned()) CloseProjectChats();
+            if (_projectChatPicker?.IsOpen == true && !SidebarPinned()) CloseProjectChats();
         }
 
         private void CloseProjectChatsOnChange(NativeProjectIdentity project)
@@ -271,7 +271,7 @@ namespace TwinCatAssistant.Native
             var stale = (_pickerScope != null && !SameProject(_pickerScope.Project, project))
                 || (_pickerScope == null && picker?.IsOpen == true && !SameProject(_sidebarProject, project));
             if (!stale) return;
-            if (picker?.IsOpen == true && SidebarDocked() && project != null && SidebarPreference(project) && !_disposed)
+            if (picker?.IsOpen == true && picker.Pinned && project != null && SidebarPreference(project) && !_disposed)
             {
                 // The docked bar stays in place: a new session with the new
                 // project's name and no rows, until its own list is confirmed.
@@ -348,7 +348,7 @@ namespace TwinCatAssistant.Native
                 if (_chatSelection?.IsSelected != true || _chatSelection.sessionId == before || !CanPromptCurrentChat())
                     throw new InvalidOperationException("Der neue Chat wurde nicht bestätigt. Bitte zuerst den Verlauf neu laden.");
                 // The docked bar stays open and lists the new chat at once.
-                if (SidebarDocked() || SidebarPinned()) await LoadPickerAsync(scope, false);
+                if (SidebarPinned()) await LoadPickerAsync(scope, false);
             };
             picker.RetryAsync = () => LoadPickerAsync(scope, true);
             picker.BackAsync = general && project != null ? (Func<Task>)(() => ShowProjectChatsAsync(false)) : null;
