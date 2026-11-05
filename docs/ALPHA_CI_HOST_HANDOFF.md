@@ -250,3 +250,13 @@ ci-input-provenance.json alongside the EXE. Artifact expiry is deliberately
 short, input3days and candidate7days; coordinate retrieval before expiry.
 The CI logs themselves record successful embedded-payload verification. A
 separate local download/EXE reinspection is not claimed until it completes.
+
+The artifact download subsequently completed. The downloaded executable's
+SHA-256 exactly matches the hosted SHA256.txt:
+3b8f9c9ccb09943310c080f44c5277b545e1da1f267f54d60be2ee5ce4482519.
+It is available in this worker's ignored
+local-data/ci-candidate-42034006930/TwinCAT-Assistant-0.1.0-dev.1-x64-setup.exe,
+alongside SHA256.txt and ci-input-provenance.json. The retained provenance
+records source 46f96a17697128721c6c1651a8a0f09dc2297d43 and the reviewed baseline
+manifest. This is a local byte-integrity confirmation of the successful CI
+candidate, not an installation or host acceptance.
