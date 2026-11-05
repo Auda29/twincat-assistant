@@ -2,7 +2,7 @@ import { mkdir, open, readFile, lstat, rm, rename, unlink } from 'node:fs/promis
 import { constants } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { createOpenCodeConfig, validateSettings } from './config.mjs';
+import { createOpenCodeConfig, previousOpenCodeConfigs, validateSettings } from './config.mjs';
 import { readWindowsJson, secureWindowsDirectory } from './windows-native.mjs';
 import { installTwinCatCommands } from './commands.mjs';
 import { installTwinCatThemes, migrateTwinCatThemePreferences, withTwinCatThemes } from './themes.mjs';
@@ -55,8 +55,11 @@ export async function initializeState(root, input) {
 export async function inspectState(root) {
   const paths = statePaths(root);
   const settings = validateSettings(await readJsonFile(paths.settingsPath));
-  const actual = await readJsonFile(paths.configPath);
-  if (JSON.stringify(actual) !== JSON.stringify(createOpenCodeConfig(settings))) {
+  const actual = JSON.stringify(await readJsonFile(paths.configPath));
+  // An exact earlier managed configuration is current policy with an older
+  // Analysis prompt. It is reported for an in-place upgrade; anything else fails.
+  const configurationCurrent = actual === JSON.stringify(createOpenCodeConfig(settings));
+  if (!configurationCurrent && !previousOpenCodeConfigs(settings).some(config => JSON.stringify(config) === actual)) {
     throw new Error('OpenCode configuration modified: policy mismatch; initialize a new state directory');
   }
   for (const directory of [paths.root, dirname(paths.configPath), paths.home, paths.data, paths.cache, paths.state, paths.openchamber, paths.workspace]) {
@@ -78,7 +81,7 @@ export async function inspectState(root) {
       throw new Error('Engineering MCP configuration must be explicitly readOnly with no writeAllowlist');
     }
   }
-  return { configurationVerified: true, nativeEngineering: 'unavailable', corpus: settings.knowledge ? 'not_probed' : 'not_configured', modelCallsEnabled: settings.sourceCodeDisclosureAccepted === true && Boolean(settings.provider || settings.model), files, paths, settings };
+  return { configurationVerified: true, configurationCurrent, nativeEngineering: 'unavailable', corpus: settings.knowledge ? 'not_probed' : 'not_configured', modelCallsEnabled: settings.sourceCodeDisclosureAccepted === true && Boolean(settings.provider || settings.model), files, paths, settings };
 }
 
 export async function prepareChatWorkspace(root) {

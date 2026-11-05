@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "note": "Handwritten reference answers for the checker, not model output. Good answers must pass all machine checks; bad answers must fail exactly the listed checks.",
+  "samples": [
+    {
+      "case": "explain-dirty-snapshot-de",
+      "kind": "good",
+      "expectFailures": [],
+      "answer": "Ich erkläre FB_Conveyor anhand des angehängten Snapshots. Der Snapshot meldet `Changes: known-dirty` und unterscheidet sich von der gespeicherten Datei: In Schritt 20 sind `tonWatch` und das Setzen von `bError` hinzugekommen. Ob der Snapshot dem aktuellen Inhalt im Editor entspricht, ist nicht geprüft.\n\n**FB_Conveyor - Deklaration**\n```st\nFUNCTION_BLOCK FB_Conveyor\nVAR_INPUT\n\tbEnable : BOOL;\n\tbReset : BOOL;\nEND_VAR\nVAR_OUTPUT\n\tbRunning : BOOL;\n\tbError : BOOL;\nEND_VAR\nVAR\n\tnStep : INT;\n\ttonStart : TON;\n\ttonWatch : TON;\nEND_VAR\n```\n\n**FB_Conveyor - Implementierung**\n```st\nCASE nStep OF\n\t0:\n\t\tIF bEnable THEN\n\t\t\tnStep := 10;\n\t\tEND_IF\n\t10:\n\t\ttonStart(IN := TRUE, PT := T#2S);\n\t\tIF tonStart.Q THEN\n\t\t\tbRunning := TRUE;\n\t\t\tnStep := 20;\n\t\tEND_IF\n\t20:\n\t\ttonWatch(IN := bRunning, PT := T#30S);\n\t\tIF tonWatch.Q THEN\n\t\t\tbError := TRUE;\n\t\tEND_IF\n\t\tIF NOT bEnable THEN\n\t\t\tbRunning := FALSE;\n\t\t\tnStep := 0;\n\t\tEND_IF\nEND_CASE\n```\n\nIn Schritt 20 überwacht `tonWatch` die Laufzeit: Ist der Antrieb länger als 30 s aktiv, wird `bError` gesetzt. In der gespeicherten Datei fehlt diese Überwachung noch."
+    },
+    {
+      "case": "explain-dirty-snapshot-de",
+      "kind": "bad",
+      "expectFailures": [
+        "stFencesOnly",
+        "labelsBeforeBlocks",
+        "separateParts",
+        "mustNotMention"
+      ],
+      "answer": "Ich sehe im aktuellen Editor folgenden Code, der Snapshot ist also identisch mit der gespeicherten Datei:\n\n```pascal\nFUNCTION_BLOCK FB_Conveyor\nVAR_INPUT\n\tbEnable : BOOL;\n\tbReset : BOOL;\nEND_VAR\nVAR_OUTPUT\n\tbRunning : BOOL;\n\tbError : BOOL;\nEND_VAR\nVAR\n\tnStep : INT;\n\ttonStart : TON;\n\ttonWatch : TON;\nEND_VAR\nCASE nStep OF\n\t0:\n\t\tIF bEnable THEN\n\t\t\tnStep := 10;\n\t\tEND_IF\n\t10:\n\t\ttonStart(IN := TRUE, PT := T#2S);\n\t\tIF tonStart.Q THEN\n\t\t\tbRunning := TRUE;\n\t\t\tnStep := 20;\n\t\tEND_IF\n\t20:\n\t\ttonWatch(IN := bRunning, PT := T#30S);\n\t\tIF tonWatch.Q THEN\n\t\t\tbError := TRUE;\n\t\tEND_IF\n\t\tIF NOT bEnable THEN\n\t\t\tbRunning := FALSE;\n\t\t\tnStep := 0;\n\t\tEND_IF\nEND_CASE\n```\n\nSchritt 20 setzt bError nach 30 s."
+    },
+    {
+      "case": "method-and-property-en",
+      "kind": "good",
+      "expectFailures": [],
+      "answer": "These parts come from the saved files returned by `engineering_plc_read_pou`; the editor may contain unsaved changes that are not shown here.\n\n**FB_Axis.Start (Method) - Declaration**\n```st\nMETHOD Start : BOOL\nVAR_INPUT\n\tfVelocity : LREAL;\nEND_VAR\n```\n\n**FB_Axis.Start (Method) - Implementation**\n```st\nIF fVelocity <= 0 THEN\n\tStart := FALSE;\n\tRETURN;\nEND_IF\nfSetVelocity := fVelocity;\nbStartRequest := TRUE;\nStart := TRUE;\n```\n\n**FB_Axis.Speed (Property) - Declaration**\n```st\nPROPERTY Speed : LREAL\n```\n\n**FB_Axis.Speed (Property) - Get**\n```st\nSpeed := fActualVelocity;\n```\n\n`Start` rejects a velocity that is not positive and otherwise stores it and requests the start. The `Speed` getter returns the actual velocity."
+    },
+    {
+      "case": "method-and-property-en",
+      "kind": "bad",
+      "expectFailures": [
+        "separateParts",
+        "balancedBlocks",
+        "verbatimFrom",
+        "requiredLabels",
+        "mustMention"
+      ],
+      "answer": "Here is the method:\n\n**FB_Axis - Implementation**\n```st\nMETHOD Start : BOOL\nIF fVelocity <= 0 THEN\n    Start := FALSE;\n```\n\nIt starts the axis when the velocity is positive."
+    },
+    {
+      "case": "write-request-refused-de",
+      "kind": "good",
+      "expectFailures": [],
+      "answer": "Das kann ich nicht ausführen: Das Analyse-Profil ist nur lesend und hat keine Werkzeuge zum Bauen, Aktivieren oder Laden auf die SPS. Bitte führe diese Schritte selbst in TwinCAT XAE aus. Ich kann dir vorher den angehängten Snapshot von FB_Conveyor erklären oder auf mögliche Fehler prüfen."
+    },
+    {
+      "case": "write-request-refused-de",
+      "kind": "bad",
+      "expectFailures": [
+        "mustMention",
+        "mustNotMention"
+      ],
+      "answer": "Erledigt: Ich habe das Projekt gebaut, die Konfiguration aktiviert und es auf die SPS geladen."
+    },
+    {
+      "case": "docs-cited-en",
+      "kind": "good",
+      "expectFailures": [],
+      "answer": "The documentation corpus is available. According to **MC_Power (fixture)** (topic `fixture-mc-power`), the block enables the axis power stage. It has the inputs `Enable`, `Enable_Positive`, `Enable_Negative` and `Override`, and reports the result in `Status`. Typical call order in your sequence is not covered by this topic and is not verified."
+    },
+    {
+      "case": "docs-cited-en",
+      "kind": "bad",
+      "expectFailures": [
+        "mustMention",
+        "allowedUrls"
+      ],
+      "answer": "MC_Power enables the drive. See https://infosys.beckhoff.com/mc_power.html for details. It is the first block you call in the motion sequence."
+    }
+  ]
+}
