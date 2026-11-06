@@ -24,6 +24,7 @@ namespace TwinCatAssistant.Native
         public string DotNetRoot { get; set; }
         public string McpSettingsPath { get; set; }
         public const string TestConfigurationVariable = "TWINCAT_ASSISTANT_TEST_CONFIG";
+        public const string MaintenanceMarkerFileName = "assistant-test-maintenance.json";
         private static string LocalData { get { return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData); } }
         public static string ConfigurationPath { get { return TestProfilePath() == null ? Path.Combine(LocalData, "TwinCatAssistant", "native-chat.json") : Environment.GetEnvironmentVariable(TestConfigurationVariable); } }
         public static string CredentialDirectory { get { return PrivateDirectory("native-chat"); } }
@@ -41,6 +42,11 @@ namespace TwinCatAssistant.Native
         internal static string TestProfilePath()
         {
             var path = Environment.GetEnvironmentVariable(TestConfigurationVariable);
+            RequireMaintenanceContract(HostDirectory(), path);
+            return ResolveTestProfilePath(path);
+        }
+        private static string ResolveTestProfilePath(string path)
+        {
             if (path == null) return null;
             // WebView2 can override CreateAsync's folder via inherited process
             // settings. Do not accept such a shell as an isolated test host.
@@ -59,6 +65,54 @@ namespace TwinCatAssistant.Native
             CheckPrivatePath(profile);
             NativeChatFiles.RequireSingleLink(path);
             return profile;
+        }
+        private static string HostDirectory()
+        {
+            // Never use Location: the host may be shadow-copied. The marker and
+            // selector belong to the original deployed assembly's CodeBase.
+            var uri = new Uri(typeof(NativeChatConfiguration).Assembly.CodeBase);
+            if (!uri.IsFile) throw new InvalidOperationException("Invalid host assembly location.");
+            return Path.GetDirectoryName(uri.LocalPath);
+        }
+        private static string Digest(byte[] bytes)
+        {
+            using (var sha = SHA256.Create())
+                return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
+        }
+        private static void RequireMaintenanceContract(string hostDirectory, string overridePath)
+        {
+            var marker = Path.Combine(hostDirectory, MaintenanceMarkerFileName);
+            // File.Exists hides errors and dangling links. Only actual absence
+            // opts out; unreadable/malformed lab metadata must never fall back.
+            try { File.GetAttributes(marker); }
+            catch (FileNotFoundException) { return; }
+            catch (DirectoryNotFoundException) { return; }
+            CheckPrivatePath(marker);
+            var json = new UTF8Encoding(false, true).GetString(NativeChatFiles.Read(marker, true));
+            // Flat, exact schema; literal property names and no duplicate keys.
+            // Restrict syntax before deserialization, which otherwise accepts
+            // duplicate members. Values remain ordinary JSON escaped strings.
+            const string member = @"(?:""schemaVersion""\s*:\s*1|""(?:configurationPath|configurationSha256|operatorSid|selectorSha256)""\s*:\s*""(?:[^""\\\x00-\x1f]|\\(?:[""\\/bfnrt]|u[0-9a-fA-F]{4}))*"")";
+            if (!System.Text.RegularExpressions.Regex.IsMatch(json, @"\A\s*\{\s*" + member + @"(?:\s*,\s*" + member + @"){4}\s*\}\s*\z"))
+                throw new InvalidOperationException("Invalid host maintenance marker schema.");
+            var values = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
+            if (values == null || values.Count != 5 || !values.ContainsKey("schemaVersion")
+                || !values.ContainsKey("configurationPath") || !values.ContainsKey("configurationSha256")
+                || !values.ContainsKey("operatorSid") || !values.ContainsKey("selectorSha256"))
+                throw new InvalidOperationException("Invalid host maintenance marker schema.");
+            var config = (string)values["configurationPath"];
+            if (!string.Equals((string)values["operatorSid"], WindowsIdentity.GetCurrent().User.Value, StringComparison.Ordinal)
+                || overridePath == null || !string.Equals(config, overridePath, StringComparison.Ordinal))
+                throw new InvalidOperationException("This maintenance host requires its exact private configuration and operator SID.");
+            ResolveTestProfilePath(config);
+            foreach (var key in new[] { "configurationSha256", "selectorSha256" })
+                if (!System.Text.RegularExpressions.Regex.IsMatch((string)values[key], @"\A[0-9a-f]{64}\z"))
+                    throw new InvalidOperationException("Invalid host maintenance digest.");
+            var selector = Path.Combine(hostDirectory, "assistant-installation.json");
+            CheckPrivatePath(selector);
+            if (!string.Equals(Digest(NativeChatFiles.Read(config, true)), (string)values["configurationSha256"], StringComparison.Ordinal)
+                || !string.Equals(Digest(NativeChatFiles.Read(selector, true)), (string)values["selectorSha256"], StringComparison.Ordinal))
+                throw new InvalidOperationException("Host maintenance configuration or package selection changed.");
         }
         internal static void CheckPrivatePath(string path)
         {
@@ -85,15 +139,13 @@ namespace TwinCatAssistant.Native
         {
             // CodeBase retains the extension location when the IDE shadow-copies
             // an assembly; Location may instead name its temporary cache.
-            var hostAssembly = typeof(NativeChatConfiguration).Assembly;
-            var hostUri = new Uri(hostAssembly.CodeBase);
-            if (!hostUri.IsFile) throw new InvalidOperationException("Invalid host assembly location.");
-            var hostDirectory = Path.GetDirectoryName(hostUri.LocalPath);
+            var hostDirectory = HostDirectory();
             return LoadFrom(hostDirectory, ConfigurationPath, Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 Environment.GetEnvironmentVariable("ProgramW6432") ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
         }
         internal static NativeChatConfiguration LoadFrom(string hostDirectory, string configurationPath, string localAppData, string programFiles)
         {
+            RequireMaintenanceContract(hostDirectory, Environment.GetEnvironmentVariable(TestConfigurationVariable));
             var testProfile = TestProfilePath();
             if (testProfile != null && !string.Equals(configurationPath, ConfigurationPath, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Private host test configuration mismatch.");
@@ -435,13 +487,14 @@ namespace TwinCatAssistant.Native
                     throw new IOException("Private host test file must be regular and singly linked.");
             }
         }
-        internal static byte[] Read(string path)
+        internal static byte[] Read(string path, bool singleLink = false)
         {
             using (var handle = CreateFile(path, 0x80000000, 1, IntPtr.Zero, 3, 0x02000000 | 0x00200000, IntPtr.Zero))
             {
                 FileInformation info;
                 if (handle.IsInvalid || !GetFileInformationByHandle(handle, out info) || GetFileType(handle) != 1
-                    || (info.Attributes & (0x10u | 0x400u)) != 0 || info.SizeHigh != 0 || info.SizeLow > 65536)
+                    || (info.Attributes & (0x10u | 0x400u)) != 0 || (singleLink && info.Links != 1)
+                    || info.SizeHigh != 0 || info.SizeLow > 65536)
                     throw new IOException("Native chat file is missing, redirected or oversized.");
                 using (var stream = new FileStream(handle, FileAccess.Read))
                 using (var output = new MemoryStream())
