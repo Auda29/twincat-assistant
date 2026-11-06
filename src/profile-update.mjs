@@ -1,7 +1,7 @@
 import { open, rename, unlink, lstat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { inspectState, readJsonFile, statePaths, verifyProfileConfiguration } from './state.mjs';
+import { inspectState, readJsonFile, statePaths, verifyProfileConfiguration, verifyProfileReferences } from './state.mjs';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
 import { rebasePackageSettings } from './managed-relocation.mjs';
 
@@ -42,6 +42,7 @@ export async function recoverProfileLocked(root) {
     if (!pair || Object.keys(pair).sort().join(',') !== 'config,settings') throw new Error('Invalid profile update journal');
     validateSettings(pair.settings);
     await verifyProfileConfiguration(pair.config, pair.settings);
+    await verifyProfileReferences(pair.settings);
   }
   const settings = await readJsonFile(paths.settingsPath);
   const config = await readJsonFile(paths.configPath);
@@ -70,6 +71,7 @@ export async function writeProfilePair(root, before, after) {
   for (const pair of [before, after]) {
     validateSettings(pair.settings);
     await verifyProfileConfiguration(pair.config, pair.settings);
+    await verifyProfileReferences(pair.settings);
   }
   if (!same(await readJsonFile(paths.settingsPath), before.settings)
       || !same(await readJsonFile(paths.configPath), before.config)) throw new Error('Profile changed under update lock');

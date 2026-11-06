@@ -69,16 +69,10 @@ export async function verifyProfileConfiguration(actualConfig, settings) {
   return configurationCurrent;
 }
 
-export async function inspectState(root, { recovery = true } = {}) {
-  if (recovery) await (await import('./profile-update.mjs')).recoverProfile(root);
-  const paths = statePaths(root);
-  const settings = validateSettings(await readJsonFile(paths.settingsPath));
-  const actualConfig = await readJsonFile(paths.configPath);
-  const configurationCurrent = await verifyProfileConfiguration(actualConfig, settings);
-  for (const directory of [paths.root, dirname(paths.configPath), paths.home, paths.data, paths.cache, paths.state, paths.openchamber, paths.workspace]) {
-    const metadata = await lstat(directory);
-    if (!metadata.isDirectory() || metadata.isSymbolicLink()) throw new Error('State directory must not be replaced by a symlink');
-  }
+// Validate referenced scopes independently of the live settings/config pair.
+// Journal recovery must inspect BOTH recorded endpoints before its first write.
+export async function verifyProfileReferences(input) {
+  const settings = validateSettings(input);
   const files = [];
   for (const path of [settings.knowledge?.executable, settings.knowledge?.config, settings.engineering?.entrypoint, settings.engineering?.config].filter(Boolean)) {
     const metadata = await lstat(path);
@@ -94,6 +88,20 @@ export async function inspectState(root, { recovery = true } = {}) {
       throw new Error('Engineering MCP configuration must be explicitly readOnly with no writeAllowlist');
     }
   }
+  return files;
+}
+
+export async function inspectState(root, { recovery = true } = {}) {
+  if (recovery) await (await import('./profile-update.mjs')).recoverProfile(root);
+  const paths = statePaths(root);
+  const settings = validateSettings(await readJsonFile(paths.settingsPath));
+  const actualConfig = await readJsonFile(paths.configPath);
+  const configurationCurrent = await verifyProfileConfiguration(actualConfig, settings);
+  for (const directory of [paths.root, dirname(paths.configPath), paths.home, paths.data, paths.cache, paths.state, paths.openchamber, paths.workspace]) {
+    const metadata = await lstat(directory);
+    if (!metadata.isDirectory() || metadata.isSymbolicLink()) throw new Error('State directory must not be replaced by a symlink');
+  }
+  const files = await verifyProfileReferences(settings);
   return { configurationVerified: true, configurationCurrent, nativeEngineering: 'unavailable', corpus: settings.knowledge ? 'not_probed' : 'not_configured', modelCallsEnabled: settings.sourceCodeDisclosureAccepted === true && Boolean(settings.provider || settings.model), files, paths, settings };
 }
 

@@ -65,3 +65,38 @@ test('a killed profile writer leaves a lock; coordinated lock removal allows val
     assert.equal(await readFile(join(paths.data,'chat-sentinel'),'utf8'),'kept');
   } finally { if(child) { const exited=once(child,'exit'); child.kill(); await exited; } await rm(parent,{recursive:true,force:true}); }
 });
+
+for (const endpoint of ['before','after']) for (const fault of ['writable','implicit-backend','missing-config']) {
+  test(`journal ${endpoint} ${fault} scope refuses before any config/settings/journal mutation`, async () => {
+    const parent=await mkdtemp(join(tmpdir(),'tc-journal-scope-'));
+    try {
+      const root=join(parent,'profile'), executable=join(parent,'mcp.mjs');await writeFile(executable,'// never executed');
+      const config=join(parent,'engineering.json');
+      if(fault!=='missing-config') await writeFile(config,json({readOnly:fault!=='writable',writeAllowlist:[],engineering:{enabled:true,...(fault==='implicit-backend'?{}:{backend:'configuredProjectFiles'})}}));
+      const good={provider:'openai',sourceCodeDisclosureAccepted:true};
+      const bad={...good,engineering:{entrypoint:executable,config}};
+      const paths=await initializeState(root,good), sentinel=join(paths.data,'latest-chat-login-binding');await writeFile(sentinel,'latest');
+      const pair=settings=>({settings,config:createOpenCodeConfig(settings)});
+      const journal={version:1,before:pair(endpoint==='before'?bad:good),after:pair(endpoint==='after'?bad:good)};
+      const pending=join(root,'.profile-update.json');await writeFile(pending,json(journal));
+      // The live pair is valid. Merely inspecting live settings would miss the
+      // unsafe, non-live endpoint which recovery must also validate.
+      const files=[paths.configPath,paths.settingsPath,pending,sentinel];
+      const bytes=await Promise.all(files.map(file=>readFile(file)));
+      await assert.rejects(inspectState(root),fault==='writable'?/readOnly/:fault==='implicit-backend'?/configuredProjectFiles/:/ENOENT|bounded regular JSON/);
+      assert.deepEqual(await Promise.all(files.map(file=>readFile(file))),bytes);
+    } finally {await rm(parent,{recursive:true,force:true});}
+  });
+}
+
+test('profile update refuses unsafe after scope before creating a journal',async()=>{
+ const parent=await mkdtemp(join(tmpdir(),'tc-write-scope-'));
+ try {
+  const paths=await initializeState(join(parent,'profile'),{}), executable=join(parent,'mcp.mjs'),config=join(parent,'engineering.json');
+  await writeFile(executable,'// never executed');await writeFile(config,json({readOnly:false,engineering:{enabled:true,backend:'configuredProjectFiles'}}));
+  const bytes=await Promise.all([paths.configPath,paths.settingsPath].map(file=>readFile(file)));
+  await assert.rejects(updateProfile(paths.root,()=>({engineering:{entrypoint:executable,config}})),/readOnly/);
+  assert.deepEqual(await Promise.all([paths.configPath,paths.settingsPath].map(file=>readFile(file))),bytes);
+  await assert.rejects(readFile(join(paths.root,'.profile-update.json')),{code:'ENOENT'});
+ } finally {await rm(parent,{recursive:true,force:true});}
+});
