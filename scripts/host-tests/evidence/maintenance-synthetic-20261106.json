@@ -1,0 +1,101 @@
+{
+    "schemaVersion":  1,
+    "scope":  "synthetic maintenance transaction engine only",
+    "completed":  true,
+    "groups":  13,
+    "checks":  [
+                   {
+                       "name":  "prepare/enter/restore/idempotent restore preserves 13 original files, config, state and marker timestamps",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "caught entry failure restores original at all 9 transition boundaries",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "explicit recovery after all 9 entry interruption boundaries",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "explicit recovery after all 8 restore interruption boundaries",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "entry and restore refuse active/unknown processes, wrong SID/host/root/runtime/WebView before writes",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "process appearing after original parking prevents publication and recovery writes until explicit quiescent restore",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "tampered backup/stage/application/plan/journal/private/global/marker refuses before entry mutation",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "restore refuses changed backup/candidate/private/global and contradictory journal without overwriting evidence",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "partial backup, pending atomic write, foreign lock, hardlink, junction and wrong private root refuse without payload/journal mutation",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "unknown/malformed original metadata and existing maintenance marker refuse before run creation",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "existing exact selector/ownership metadata is backed up and restored byte-for-byte",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "production shared kernel lock blocks concurrent entry; released persistent lock needs no PID guessing",
+                       "status":  "passed"
+                   },
+                   {
+                       "name":  "public real surface rejects synthetic plan and exposes no fact/process/SID/host injection",
+                       "status":  "passed"
+                   }
+               ],
+    "entryFaultBoundaries":  [
+                                 "parking-original",
+                                 "after-original-rename",
+                                 "original-parked",
+                                 "publishing-candidate",
+                                 "after-candidate-rename",
+                                 "candidate-published",
+                                 "refreshing-marker",
+                                 "after-marker-touch",
+                                 "entered"
+                             ],
+    "restoreInterruptionBoundaries":  [
+                                          "withdrawing-candidate",
+                                          "after-withdraw-rename",
+                                          "candidate-withdrawn",
+                                          "restoring-original",
+                                          "after-restore-rename",
+                                          "original-restored",
+                                          "after-marker-restore",
+                                          "restored"
+                                      ],
+    "actualIdeStarted":  false,
+    "backendStarted":  false,
+    "nativeAssemblyLoaded":  false,
+    "globalHostMutation":  false,
+    "operatorProfileTouched":  false,
+    "productionInstallerInvoked":  false,
+    "fixtureFilesRetained":  true,
+    "sourceSha256":  {
+                         "Maintenance.Core.ps1":  "66a1619682491d0f940724ab8d6b9dab5499ec8257b85904476c84f21d25ae12",
+                         "Maintenance.psm1":  "7bf3683539cd8806371cee9f67f04bcc53e2b16627c53db4cdb89133e0c2e770",
+                         "Test-Maintenance.ps1":  "e364460207a55a1a36aa5f50b595d181889ba12374ff4ba0dfdffb1075d0f728"
+                     },
+    "runner":  "Windows PowerShell 5, system powershell.exe -NoProfile -NonInteractive",
+    "exitCode":  0,
+    "hashScope":  "sourceSha256 hashes tested working bytes; canonicalLfSha256 accounts for Git CRLF normalization",
+    "canonicalLfSha256":  {
+                              "Maintenance.Core.ps1":  "a00baa36977f6318f0adcfd458cc93ca518c07bfb6d093edb221868467691d3d",
+                              "Maintenance.psm1":  "7bf3683539cd8806371cee9f67f04bcc53e2b16627c53db4cdb89133e0c2e770",
+                              "Test-Maintenance.ps1":  "29e31089af5c2a6d015071ad048a345ac0a6551c1ef6d4007e521b59284958cd"
+                          }
+}
