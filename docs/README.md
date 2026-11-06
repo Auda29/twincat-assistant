@@ -6,6 +6,8 @@ and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
 Native acceptance and future engineering write/build milestones remain separate.
 
+Current checkpoint: [paused implementation and machine state, 2026-11-05](PAUSE_20261105.md).
+
 - [Installation and real local checks](INSTALLATION.md)
 - [Agreed product priorities and host compatibility planning](ROADMAP.md#agreed-priorities-2026-11-02)
 - [TwinCAT 4024/4026 installation variants and host compatibility research](HOST_COMPATIBILITY.md)
@@ -21,6 +23,7 @@ Native acceptance and future engineering write/build milestones remain separate.
 - [Application package layout and installed runtime selection](APPLICATION_STAGING.md)
 - [Local complete application and installer build evidence](ALPHA_DELIVERY_BUILD.md)
 - [Actual CI installer evidence and coordinated host handoff](ALPHA_CI_HOST_HANDOFF.md)
+- [First actual CI installation and installed native backend checks](HOST_INSTALLATION_20261105.md)
 - [Integrated alpha 0.2.0-preview.2 build evidence](releases/alpha-0.2.0-preview.2.md)
 - [Managed profile and project configuration across package versions](INSTALLER_RELOCATION.md)
 - [Analysis profile prompts, migration and evaluation cases](PROFILE_PROMPTS.md)

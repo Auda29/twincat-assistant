@@ -1,5 +1,21 @@
 # Implementation status
 
+**Paused on operator request, 2026-11-05.** The current source includes unaccepted
+installer rollback and package-verification WIP. Its last green CI predates those
+changes. The four roadmap items are not all complete. See the
+[pause handoff](PAUSE_20261105.md) for exact evidence, the open P2 review finding,
+machine state and the next required checks.
+
+Actual installation update, **2026-11-05**: the first CI C0 EXE was installed
+with operator-confirmed same-user UAC into the real x86 alpha host. All 22443
+application inventory entries and the installed extension snapshot were checked;
+the original 13-file prototype remains unchanged in backup. The actual installed
+x86 configuration loader selected the package and separate synthetic state.
+Its native session reached protected backend readiness twice; restart preserved
+the sentinel and an independent observer recorded launcher exit 0. These were
+outside-IDE checks, not visible host acceptance. C1 update/rollback and IDE gates
+remain open. See [the actual installation record](HOST_INSTALLATION_20261105.md).
+
 Completion-round update, **2026-11-05**: the real
 [Windows CI run 42034006930](https://github.com/Auda29/twincat-assistant/actions/runs/42034006930)
 passed reviewed input import, protected package startup, both actual MCP probes
@@ -24,6 +40,13 @@ remain open. C1 is forward-compatible with exact scoped C0 policies; the old C0
 runtime cannot read C1. Installer rollback policy compatibility is still being
 implemented and is not proven by the prompt tests. See
 [prompt acceptance](PROMPT_ACCEPTANCE_20261105.md).
+The separate hosted [Portable checks run 42042008010](https://github.com/Auda29/twincat-assistant/actions/runs/42042008010)
+completed successfully for exact source `491ed3aa687248a46021830d93e9c0e09e209a99`:
+Linux components, Windows lifecycle and source-runtime jobs all passed. This
+includes the fixture portability/Windows temp fixes, actual source build,
+runtime/data compatibility and original provider/login/streaming/tool/MCP
+regressions. It precedes the new installer policy-downgrade implementation,
+which still needs its own tests and final package CI.
 [The handoff](ALPHA_CI_HOST_HANDOFF.md) contains the isolated
 state, backup, UAC and unmanaged-prototype recovery boundaries.
 

@@ -116,7 +116,7 @@ Source of truth: `targets[0].acceptance` in `native/host-targets.json`.
 
 | Gate | Status | Open part |
 | --- | --- | --- |
-| install | partial | Only coordinated manual copies 0.1.1–0.1.9; no installer install/update/rollback |
+| install | partial | First C0 CI installer and installed native backend/restart passed on 2026-11-05; final C1 update/rollback and IDE acceptance remain open. See HOST_INSTALLATION_20261105.md |
 | package-load | passed-user-reported | — |
 | docking | passed-user-reported | Observed without a loaded solution |
 | focus-resize | open | Keyboard focus, resize and theme switch not recorded |

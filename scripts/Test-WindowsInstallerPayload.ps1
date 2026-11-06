@@ -36,5 +36,6 @@ try {
     foreach ($name in @('Invoke-Installer.ps1','HostTransaction.ps1','PackageContract.ps1','RuntimePrerequisites.ps1','Get-AssistantHostInventory.ps1','host-targets.json')) {
         if (-not $entries.ContainsKey($name)) { throw "Missing installer support file: $name" }
     }
+    if (@($manifest.files | Where-Object path -CEQ 'src/rollback-policy.mjs').Count -and -not $entries.ContainsKey('PolicyRollback.ps1')) { throw 'Policy-capable package requires its installer rollback coordinator.' }
     Write-Host "Installer payload verified: version $($manifest.version), $($manifest.files.Count) application files, all sizes and SHA256 hashes match. Installer was not executed."
 } finally { $archive.Dispose(); $stream.Dispose() }

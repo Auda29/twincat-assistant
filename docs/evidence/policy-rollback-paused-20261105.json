@@ -1,0 +1,60 @@
+{
+  "kind": "real-C0-C1-policy-rollback",
+  "checks": [
+    {
+      "name": "actual C0 package installed only into synthetic host",
+      "status": "passed"
+    },
+    {
+      "name": "actual first CI C0 runtime protected startup and project workspace",
+      "status": "passed"
+    },
+    {
+      "name": "actual C1 package synthetic transaction update and protected runtime startup",
+      "status": "passed"
+    },
+    {
+      "name": "all four global scopes downgrade and are read by the actual old C0 runtime",
+      "status": "passed"
+    },
+    {
+      "name": "unsupported engineering-only project refuses before global downgrade",
+      "status": "passed"
+    },
+    {
+      "name": "unknown global prompt, widened rights and outstanding project journal refuse before mutation",
+      "status": "passed"
+    },
+    {
+      "name": "C1 alone recovers a mixed C1-to-C0 profile journal before any completed rollback",
+      "status": "passed"
+    },
+    {
+      "name": "rehashed target with unknown C0 source still refuses capability",
+      "status": "passed"
+    },
+    {
+      "name": "caught after-policy failure keeps C1 selected with valid global/project state",
+      "status": "passed"
+    },
+    {
+      "name": "caught after-swap failure keeps C1 selected with valid global/project state",
+      "status": "passed"
+    },
+    {
+      "name": "integrated rollback swaps real product files then starts actual old C0 on latest same state",
+      "status": "passed"
+    }
+  ],
+  "sourceC0": {
+    "schemaVersion": 1,
+    "sourceCommit": "46f96a17697128721c6c1651a8a0f09dc2297d43",
+    "baseCommit": "cebd35a46daa0cf457f443af7008a4a1f8142ced",
+    "baseManifestSha256": "3c261754d608232077d087df9aca0fa909382789e1a0f8de7d69e96b3068a294",
+    "dependency": "Native x86 DLL built on the verified TwinCAT 4024.78 workstation; vendor interop excluded. Runtime and MCP provenance retained in package."
+  },
+  "operatorStateTouched": false,
+  "realIdeTouched": false,
+  "currentManifestSha256": "7913a2e74726ba2cc5941bb0e7f918eae121b2ac18e50db79f0b84d08b1b33de",
+  "completed": true
+}
