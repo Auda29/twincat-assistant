@@ -58,7 +58,9 @@ jobs:
         run: |
           ./scripts/Test-InstallerFixture.ps1
           ./scripts/Test-InstallerPrerequisites.ps1
-          ./scripts/Test-InstallerProfile.ps1
+          # Match the Windows PowerShell 5 runtime used by Bootstrap.cs.
+          & powershell.exe -NoProfile -File ./scripts/Test-InstallerProfile.ps1
+          if ($LASTEXITCODE) { throw 'Windows PowerShell installer profile checks failed' }
       - uses: actions/download-artifact@v4
         if: github.event_name == 'push'
         with:
