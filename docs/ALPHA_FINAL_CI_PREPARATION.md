@@ -1,5 +1,9 @@
 # Final alpha CI preparation, 2026-11-05
 
+Historical record, superseded for the next candidate by
+[the 2026-11-06 preparation](FINAL_PRODUCER_PREPARATION_20261106.md).
+The input and runner identities below must not be used for the integrated build.
+
 Prepared only. No push, GitHub workflow dispatch, runner registration or host
 mutation is authorized by this preparation record. Parent must first confirm
 the final local package smoke and the final prompt source/test commit, then

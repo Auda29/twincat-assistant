@@ -5,12 +5,12 @@ import { join, resolve } from 'node:path';
 import { createManifest, verifyManifest } from './application-manifest.mjs';
 // This is deliberately a one-candidate import, not automatic adoption of inputs.
 const [input, output] = process.argv.slice(2).map(p => resolve(p));
-const expected = '12f0827fe13cfb1bdd18c54b56f9576b178de6d4c91803f339cf699ec5b03657';
-const base = 'd5a227ac072891bfeb6eb67c40e842e9d2c6346e';
+const expected = 'b38c2e5d20b1b1084934eeba80dca09cfdf26aa35e2742756e47baf503ef4354';
+const base = '6dbb2ade20777f1e666c36bd8ccf7e0dced023ab';
 const sha = value => createHash('sha256').update(value).digest('hex');
 if (sha(await readFile(join(input,'application-manifest.json'))) !== expected) throw new Error('Unreviewed staging input');
 const manifest = await verifyManifest(input);
-if (manifest.version !== '0.2.0-preview.2' || manifest.architecture !== 'x64' || manifest.files.length !== 22085)
+if (manifest.version !== '0.2.0-preview.2' || manifest.architecture !== 'x64' || manifest.files.length !== 22088)
   throw new Error('Reviewed final candidate identity mismatch');
 if (manifest.files.some(f => /(^|\/)tcatsysmanagerlib\.dll$|\.vsix$/i.test(f.path))) throw new Error('Vendor interop or archive refused');
 execFileSync('git',['diff','--exit-code',base,'HEAD','--','native','upstream','package.json','package-lock.json'],{stdio:'inherit'});
