@@ -30,6 +30,21 @@ function fixture(options = {}) {
 }
 const item = { providerId: 'twincat-assistant', id: 'snapshot-one', title: 'FB_Motor / PLC_A', url: 'http://127.0.0.1:3123/', text: 'synthetic ST snapshot' };
 
+test('saved-object references stage in the same bound composer without sending or reading source', () => {
+  const { adapter, input } = fixture();
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'PLC_A' };
+  adapter.permit(expected);
+  const reference = { ...item, title: 'FB_Motor / PLC_A (gespeicherte Referenz)',
+    text: 'TwinCAT saved-object reference (no source code attached)',
+    data: { revision: 'editor-one', reference: 'object-one', contentKind: 'saved-object-reference', sourceKind: 'saved-project-reference' } };
+  adapter.attach({ ...expected, item: reference });
+  assert.deepEqual(input.getState().pendingGuestIssue, reference);
+  assert.equal(adapter.state().attachmentState, 'staging');
+  assert.equal(adapter.state().attachedObject, reference.title);
+  assert.equal(adapter.state().submittedRevision, null);
+  assert.throws(() => adapter.attach({ ...expected, contextKey: 'PLC_B', item: reference }), /Chat binding changed/);
+});
+
 test('consent choices retain connected providers hidden by policy and expose no account data', () => {
   const connected = id => ({ id, name: id, connections: [{ type: 'credential', id: 'private-account', label: 'private-user' }], methods: ['private-method'] });
   const choices = consentProviders([connected('openai'), connected('mcp_private'), connected('search'), { id: 'not-connected', connections: [] }], [{ id: 'search' }]);

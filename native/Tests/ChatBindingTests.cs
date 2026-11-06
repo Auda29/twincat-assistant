@@ -61,10 +61,37 @@ internal static class ChatBindingTests
         Check(ActiveEditorPresentation.Kind("FUNCTION_BLOCK FB_Motor") == "FB" && ActiveEditorPresentation.Kind("  FUNCTION F_Add : INT") == "FUN"
             && ActiveEditorPresentation.Kind("PROGRAM MAIN") == "PRG" && ActiveEditorPresentation.Kind("FUNCTION_BLOCKX") == "ST"
             && ActiveEditorPresentation.Kind(null) == "ST", "context badge derives the POU kind from the declaration keyword");
-        snapshot.Implementation = new string('x', 16000);
-        var refused = false;
-        try { ChatContextPolicy.AttachmentText(snapshot); } catch (InvalidOperationException) { refused = true; }
-        Check(refused, "oversized source is refused without truncation");
+        snapshot.Implementation = "";
+        var overhead = ChatContextPolicy.AttachmentText(snapshot).Length;
+        snapshot.Implementation = new string('x', ChatContextPolicy.DirectAttachmentLimit - overhead);
+        var direct = ChatContextPolicy.CreateAttachment(snapshot);
+        Check(!direct.IsSavedReference && direct.Text.Length == ChatContextPolicy.DirectAttachmentLimit
+            && direct.Text.EndsWith(snapshot.Implementation), "source exactly at the limit remains a complete direct snapshot");
+        snapshot.Implementation += "x";
+        var savedReference = ChatContextPolicy.CreateAttachment(snapshot);
+        Check(savedReference.IsSavedReference && savedReference.Text.Length < ChatContextPolicy.DirectAttachmentLimit
+            && !savedReference.Text.Contains(snapshot.Implementation) && !savedReference.Text.Contains("Declaration:\n"),
+            "oversized source becomes a bounded reference without partial source");
+        Check(savedReference.Text.Contains(first.SolutionFile) && savedReference.Text.Contains(first.ProjectFile)
+            && savedReference.Text.Contains(first.DocumentMoniker) && savedReference.Text.Contains(first.TreePath),
+            "saved reference retains exact solution project document and tree identity");
+        Check(savedReference.Text.Contains("engineering_plc_list_pous") && savedReference.Text.Contains("engineering_plc_read_pou")
+            && savedReference.Text.Contains("returned object ID") && savedReference.Text.Contains("could not be read"),
+            "saved reference requests verified MCP reading and reports unavailable or missing objects honestly");
+        snapshot.Dirty = new DirtyAssessment { State = "known-dirty" };
+        snapshot.OwnerName = "FB_Motor"; snapshot.ObjectName = "Execute";
+        snapshot.ObjectKind = "Method"; snapshot.MemberPath = "Execute";
+        var memberReference = ChatContextPolicy.CreateAttachment(snapshot);
+        Check(memberReference.IsSavedReference && memberReference.Text.Contains("Owning POU: FB_Motor")
+            && memberReference.Text.Contains("Member: Execute") && memberReference.Text.Contains("Object kind: Method"),
+            "oversized member reference preserves its owner and member instead of falling back to the POU body");
+        Check(memberReference.Text.Contains("known-dirty") && memberReference.Text.Contains("Unsaved editor changes are not included")
+            && memberReference.Text.Contains("disk state at tool-call time") && memberReference.Text.Contains("Do not save or edit"),
+            "dirty reference distinguishes future saved-file read from unsaved or frozen editor content");
+        snapshot.Identity = second;
+        var secondReference = ChatContextPolicy.CreateAttachment(snapshot);
+        Check(secondReference.Text.Contains(second.ProjectFile) && !secondReference.Text.Contains(first.ProjectFile),
+            "same-name objects in another project produce a different saved reference");
         Check(ChatContextPolicy.IsPromptRequest("POST", new Uri("http://127.0.0.1:3123/api/session/ses_one/message"), out var session) && session == "ses_one", "prompt route is identified for native binding enforcement");
         Check(!ChatContextPolicy.IsPromptRequest("GET", new Uri("http://127.0.0.1:3123/api/session/ses_one/message"), out _), "read-only message history is not treated as a prompt");
         Check(ChatContextPolicy.IsPromptRequest("POST", new Uri("http://127.0.0.1:3123/API/session/ses_one/message/"), out _), "route casing and trailing slash cannot bypass binding checks");

@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-06",
+  "kind": "initial-maintenance-guard-package-trial",
+  "sourceCheckpoint": "d5715d4d0134221acb82d7cba731fe9d5dd23de1",
+  "workerNativeProductCommit": "c1f080eb5d1860d751b7d4d9bba467870ff9461b",
+  "nativeGuardSourceCommit": "c5790d675c0b4589627688e9de18a35452644b5f",
+  "nativeSha256": "a3c3aa621a3795c2eb3695bca054673e1f7bf9e54af16912cfbd9e8da55d7e3d",
+  "manifestSha256": "cb92a12b61e4aa8841d5c9fb87fb4280f296616271bb92da4e00cd36b0d12e0f",
+  "oldManifestSha256": "e6fe29351f7d5c5100b6e92c9dafb7520efe00c3936d5c1f6e086c6bb77d2bc4",
+  "harnessSha256": "3dd9704030a113baec9b8a213ca477b0bca5a9a12d799e8912dda49143422011",
+  "fixtureSha256": "7a7fc80c3e3631f650ba6565febd78ce0a659d7c0bdc7720bdbc74802b99ad47",
+  "native80StartMs": 33062,
+  "protectedReady": true,
+  "missingOverrideRefused": true,
+  "stopped": true,
+  "exactCurrentPolicy": true,
+  "rebasedKnowledgePath": true,
+  "sentinelPreserved": true,
+  "packageBytesUnchanged": true,
+  "outsideIde": true,
+  "installedHostAcceptance": false,
+  "finalCleanCommitBuild": false
+}

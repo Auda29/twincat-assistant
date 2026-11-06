@@ -37,7 +37,7 @@ namespace TwinCatAssistant.Native
         private ChatSelection _chatSelection;
         private ChatContextBinding _chatBinding;
         private bool _chatActionPending, _chatAdapterReady, _chatPolling, _autoConnectAttempted, _automating;
-        private readonly TextBlock _modelStatus = new TextBlock { Text = "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in OpenChambers Anbieter-Einstellungen eingegeben.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
+        private readonly TextBlock _modelStatus = new TextBlock { Text = "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in den Anbieter-Einstellungen von TwinCAT Assistant Chat eingegeben.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
         private readonly TextBlock _mcpStatus = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
         private DispatcherTimer _chatReconnect, _automationKick, _noticeTimer;
         private int _chatReconnectAttempts, _signInAttempts;
@@ -382,7 +382,7 @@ namespace TwinCatAssistant.Native
                     + (_knowledgeCorpus == "not_configured" ? "Knowledge-Korpus ist noch nicht eingerichtet." : "Knowledge-Korpus separat prüfen.")
                     : servers.Length == 0 ? " Lokale MCP-Konfiguration fehlt." : " Knowledge-Korpus separat prüfen.");
             if (!_chatActionPending)
-                _modelStatus.Text = connected.Length == 0 ? "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in OpenChambers Anbieter-Einstellungen eingegeben."
+                _modelStatus.Text = connected.Length == 0 ? "Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in den Anbieter-Einstellungen von TwinCAT Assistant Chat eingegeben."
                     : "Modellanbieter: " + string.Join(", ", connected.Select(choice => choice.name + (allowed.Contains(choice.id) ? " (freigegeben)" : "")))
                         + (string.IsNullOrEmpty(_chatSelection?.model) ? ". Modell im Chat wählen." : ". Modell: " + _chatSelection.model + ".")
                         + " PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.";
@@ -423,7 +423,7 @@ namespace TwinCatAssistant.Native
             }
             else if (ready && (_chatSelection.providers?.Length ?? 0) == 0)
             {
-                text = "Noch kein Modellanbieter verbunden. Zugangsdaten gibst du nur in OpenChamber ein.";
+                text = "Noch kein Modellanbieter verbunden. Zugangsdaten gibst du nur in TwinCAT Assistant Chat ein.";
                 action = "Anbieter verbinden"; command = () => RunAction(OpenProviderSettingsAsync);
             }
             else if (ready && _knowledgeBusy)
@@ -974,14 +974,17 @@ namespace TwinCatAssistant.Native
                     throw new InvalidOperationException("Der Baustein wurde geändert. Bitte den aktuellen Stand erneut anhängen.");
                 if (_disposed || documentGeneration != _chatDocumentGeneration)
                     throw new InvalidOperationException("Die Chat-Seite wurde neu geladen. Bitte den Kontext erneut prüfen.");
+                var attachment = ChatContextPolicy.CreateAttachment(snapshot);
                 var serializer = new JavaScriptSerializer();
                 var request = new { sessionId = selection.sessionId, selection.epoch, selection.documentId, contextKey = ProjectKey(snapshot.Identity.ProjectIdentity), auto,
                     item = new { providerId = "twincat-assistant", id = auto ? ChatContextPolicy.ActiveReferenceId : ChatContextPolicy.ReferenceId(snapshot),
-                        title = snapshot.ObjectName + " / " + System.IO.Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile),
-                        url = _origin.AbsoluteUri, text = ChatContextPolicy.AttachmentText(snapshot),
+                        title = snapshot.ObjectName + " / " + System.IO.Path.GetFileNameWithoutExtension(snapshot.Identity.ProjectFile)
+                            + (attachment.IsSavedReference ? " (gespeicherte Referenz)" : ""),
+                        url = _origin.AbsoluteUri, text = attachment.Text,
                         data = new { revision, reference = ChatContextPolicy.ReferenceId(snapshot), mode = auto ? "following" : "manual",
                             objectKind = snapshot.ObjectKind, owner = snapshot.OwnerName, member = snapshot.MemberPath,
-                            sourceKind = snapshot.SourceKind, dirty = snapshot.Dirty?.State } } };
+                            contentKind = attachment.IsSavedReference ? "saved-object-reference" : "snapshot",
+                            sourceKind = attachment.IsSavedReference ? "saved-project-reference" : snapshot.SourceKind, dirty = snapshot.Dirty?.State } } };
                 // Keep project permission and the active-object metadata intact.
                 // A source revision is attachment data, not a new history scope.
                 var permission = new { request.sessionId, request.epoch, request.documentId, request.contextKey, context = ChatContextMetadata(snapshot, snapshot.Identity.ProjectIdentity) };

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "status": "prepared-not-pushed",
+  "implementationBaseline": "6dbb2ade20777f1e666c36bd8ccf7e0dced023ab",
+  "parentCheckpoint": "c1f080eb5d1860d751b7d4d9bba467870ff9461b",
+  "probeSourceCommit": "8ee401265825c677d389136184d1aa72163c225b",
+  "input": {
+    "manifestSha256": "b38c2e5d20b1b1084934eeba80dca09cfdf26aa35e2742756e47baf503ef4354",
+    "version": "0.2.0-preview.2",
+    "architecture": "x64",
+    "fileCount": 22088,
+    "fullInventoryVerifiedByImporter": true
+  },
+  "output": {
+    "manifestSha256": "5dc12b324919fab448e29f3e66bc63bb84606c01cf186642ddbd6cb26424b10e",
+    "fileCount": 22089,
+    "fullInventoryVerifiedByImporter": true,
+    "added": [
+      "ci-input-provenance.json"
+    ],
+    "removed": [],
+    "changed": [
+      "src/profile-update.mjs",
+      "src/rollback-policy.mjs",
+      "src/state.mjs"
+    ]
+  },
+  "nativeDllSha256": "0e40d2e8d7a38cf9f3128a8be8efa22b8f92d88b519adecef6b5de4fb6ca83c4",
+  "sourceParityWithImplementation": true,
+  "oldCandidateNegative": {
+    "manifestSha256": "7913a2e74726ba2cc5941bb0e7f918eae121b2ac18e50db79f0b84d08b1b33de",
+    "result": "refused at pinned manifest gate before output directory creation"
+  },
+  "javascriptSyntax": "passed",
+  "powershellParser": "passed",
+  "uniqueWorkflowRunnerLabel": "alpha-integrated-20261106-82f6d9c1",
+  "runnerName": "alpha-integrated-82f6d9c1",
+  "vendorInteropAndVsixExcluded": true,
+  "guardChanges": "only exact reviewed baseline, manifest, count and unique runner identity; no loosened guard",
+  "pushPerformed": false,
+  "runnerRegistered": false,
+  "ciRunStarted": false,
+  "registeredHostMutation": false,
+  "operatorStateTouched": false,
+  "newHostedCiClaim": false,
+  "hostGate": "blocked: no demonstrated global prototype exclusion in suffix Shell",
+  "scope": "local input preparation only; Parent exact Native85 evidence is separate",
+  "sourceComparison": {
+    "trackedSrcFiles": 28,
+    "inputAndOutputMatchCanonicalGitBaselineAfterLfNormalizationAndRequiredIntegrityMarker": true,
+    "changedPayloadFiles": "only CRLF versus LF in the three listed src files; no content difference",
+    "unchangedNativeUpstreamAndDependencies": true
+  }
+}

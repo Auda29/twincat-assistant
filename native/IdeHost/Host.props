@@ -4,6 +4,9 @@
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.2.0-preview.2</Version>
+    <AssemblyVersion>0.2.0.2</AssemblyVersion>
+    <FileVersion>0.2.0.2</FileVersion>
     <AssemblyName>TwinCatAssistant.IdeHost</AssemblyName>
     <RootNamespace>TwinCatAssistant.Native</RootNamespace>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -35,10 +38,12 @@
     <Compile Include="../AssistantPackage.cs;../AssistantControl.cs;../AssistantTheme.cs;../ActiveEditorTracker.cs;../NativeChatRuntime.cs;../ChatIntegration.cs;../DiagnosticsIntegration.cs;../SplashIntegration.cs;../ChatBindingStore.cs;../../Shared/ChatContextBinding.cs;../../Shared/ChatConnectionState.cs;../../Shared/NativeProjectReader.cs;../../Shared/DirtyEvidence.cs;../../Shared/ActiveEditorContext.cs;../../Shared/ActivePouSource.cs;../../Shared/NativeActiveEditorReader.cs" Link="Shared/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../obj/EmbeddedChat.js" LogicalName="TwinCatAssistant.EmbeddedChat.js" />
     <Compile Include="../NativeModelConsent.cs" Link="Shared/NativeModelConsent.cs" />
+    <Compile Include="../NativeInstallationSelection.cs" Link="Shared/NativeInstallationSelection.cs" />
     <Compile Include="../ThreadExportIntegration.cs" Link="Shared/ThreadExportIntegration.cs" />
     <Compile Include="../ProjectChatPicker.cs" Link="Shared/ProjectChatPicker.cs" />
     <Compile Include="../ProjectChatViewState.cs" Link="Shared/ProjectChatViewState.cs" />
     <Compile Include="../ProjectChatNavigation.cs" Link="Shared/ProjectChatNavigation.cs" />
+    <Compile Include="../../Shared/HostIdentity.cs;../HostIdentityReader.cs" Link="Shared/%(Filename)%(Extension)" />
     <VSCTCompile Include="../Commands.vsct"><ResourceName>Menus.ctmenu</ResourceName></VSCTCompile>
     <None Include="source.extension.vsixmanifest"><SubType>Designer</SubType></None>
   </ItemGroup>

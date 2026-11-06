@@ -1,0 +1,230 @@
+{
+  "date": "2026-11-05T13:38:47.952Z",
+  "syntheticRoot": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-accessor-probe-iXR6Nx",
+  "list": {
+    "protocol": "2025-11-25",
+    "era": "legacy",
+    "server": {
+      "name": "twincat-mcp",
+      "version": "0.5.2"
+    },
+    "toolNames": [
+      "ads_connect",
+      "ads_disconnect",
+      "plc_list_symbols",
+      "plc_describe_symbol",
+      "plc_read",
+      "plc_read_many",
+      "plc_list_groups",
+      "plc_read_group",
+      "nc_state",
+      "nc_list_axes",
+      "nc_read_axis",
+      "nc_read_axis_position",
+      "nc_read_axis_status",
+      "nc_read_axis_many",
+      "nc_read_error",
+      "io_list_groups",
+      "io_read",
+      "io_read_many",
+      "io_read_group",
+      "tc_state",
+      "tc_event_list",
+      "tc_runtime_error_list",
+      "tc_log_read",
+      "tc_diagnose_errors",
+      "tc_diagnose_runtime",
+      "tc_list_workbenches",
+      "tc_list_projects",
+      "tc_project_state",
+      "tc_build_project",
+      "plc_build_project",
+      "tc_build_and_get_errors",
+      "tc_error_list",
+      "tc_error_context",
+      "tc_output_read",
+      "tc_resource_read",
+      "hmi_state",
+      "hmi_list_projects",
+      "hmi_preview_info",
+      "hmi_list_controls",
+      "tc_tree_read",
+      "tc_tree_search",
+      "tc_tree_describe_item",
+      "io_list_topology",
+      "io_describe_device",
+      "io_describe_terminal",
+      "plc_list_pous",
+      "plc_read_pou",
+      "plc_search_code",
+      "plc_describe_pou",
+      "plc_list_libraries",
+      "plc_describe_library",
+      "plc_write",
+      "plc_watch",
+      "plc_wait_until",
+      "plc_unwatch",
+      "plc_list_watches",
+      "plc_state",
+      "plc_set_write_mode",
+      "plc_get_write_mode",
+      "plc_evaluate_write_access"
+    ],
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"pous\": [\n    {\n      \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-accessor-probe-ixr6nx\\\\plc.plcproj:pou:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-accessor-probe-ixr6nx\\\\fb_axis.tcpou:fb_axis:0\",\n      \"resourceUri\": \"plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-accessor-probe-ixr6nx%5Cplc.plcproj&name=FB_Axis\",\n      \"name\": \"FB_Axis\",\n      \"qualifiedName\": \"FB_Axis\",\n      \"kind\": \"functionBlock\",\n      \"path\": \"/PLC/FB_Axis\",\n      \"sourceFile\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-accessor-probe-iXR6Nx\\\\FB_Axis.TcPOU\",\n      \"project\": {\n        \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-accessor-probe-ixr6nx\\\\plc.plcproj\",\n        \"name\": \"PLC\",\n        \"path\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-accessor-probe-iXR6Nx\\\\PLC.plcproj\",\n        \"type\": \"plc\",\n        \"exists\": true,\n        \"source\": \"configuredProjectFiles\",\n        \"workbenchId\": \"configured-project-files\",\n        \"resourceUri\": \"tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx%5CPLC.plcproj\",\n        \"folderUri\": \"tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx\"\n      }\n    },\n    {\n      \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-accessor-probe-ixr6nx\\\\plc.plcproj:pou:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-accessor-probe-ixr6nx\\\\fb_axis.tcpou:fb_axis.speed:1\",\n      \"resourceUri\": \"plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-accessor-probe-ixr6nx%5Cplc.plcproj&name=FB_Axis.Speed\",\n      \"name\": \"Speed\",\n      \"qualifiedName\": \"FB_Axis.Speed\",\n      \"kind\": \"property\",\n      \"path\": \"/PLC/FB_Axis.Speed\",\n      \"sourceFile\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-accessor-probe-iXR6Nx\\\\FB_Axis.TcPOU\",\n      \"project\": {\n        \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-accessor-probe-ixr6nx\\\\plc.plcproj\",\n        \"name\": \"PLC\",\n        \"path\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-accessor-probe-iXR6Nx\\\\PLC.plcproj\",\n        \"type\": \"plc\",\n        \"exists\": true,\n        \"source\": \"configuredProjectFiles\",\n        \"workbenchId\": \"configured-project-files\",\n        \"resourceUri\": \"tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx%5CPLC.plcproj\",\n        \"folderUri\": \"tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx\"\n      }\n    }\n  ],\n  \"count\": 2\n}"
+        }
+      ],
+      "structuredContent": {
+        "pous": [
+          {
+            "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-accessor-probe-ixr6nx\\plc.plcproj:pou:c:\\users\\niklasw\\appdata\\local\\temp\\tc-accessor-probe-ixr6nx\\fb_axis.tcpou:fb_axis:0",
+            "resourceUri": "plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-accessor-probe-ixr6nx%5Cplc.plcproj&name=FB_Axis",
+            "name": "FB_Axis",
+            "qualifiedName": "FB_Axis",
+            "kind": "functionBlock",
+            "path": "/PLC/FB_Axis",
+            "sourceFile": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-accessor-probe-iXR6Nx\\FB_Axis.TcPOU",
+            "project": {
+              "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-accessor-probe-ixr6nx\\plc.plcproj",
+              "name": "PLC",
+              "path": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-accessor-probe-iXR6Nx\\PLC.plcproj",
+              "type": "plc",
+              "exists": true,
+              "source": "configuredProjectFiles",
+              "workbenchId": "configured-project-files",
+              "resourceUri": "tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx%5CPLC.plcproj",
+              "folderUri": "tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx"
+            }
+          },
+          {
+            "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-accessor-probe-ixr6nx\\plc.plcproj:pou:c:\\users\\niklasw\\appdata\\local\\temp\\tc-accessor-probe-ixr6nx\\fb_axis.tcpou:fb_axis.speed:1",
+            "resourceUri": "plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-accessor-probe-ixr6nx%5Cplc.plcproj&name=FB_Axis.Speed",
+            "name": "Speed",
+            "qualifiedName": "FB_Axis.Speed",
+            "kind": "property",
+            "path": "/PLC/FB_Axis.Speed",
+            "sourceFile": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-accessor-probe-iXR6Nx\\FB_Axis.TcPOU",
+            "project": {
+              "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-accessor-probe-ixr6nx\\plc.plcproj",
+              "name": "PLC",
+              "path": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-accessor-probe-iXR6Nx\\PLC.plcproj",
+              "type": "plc",
+              "exists": true,
+              "source": "configuredProjectFiles",
+              "workbenchId": "configured-project-files",
+              "resourceUri": "tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx%5CPLC.plcproj",
+              "folderUri": "tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx"
+            }
+          }
+        ],
+        "count": 2
+      }
+    }
+  },
+  "content": {
+    "protocol": "2025-11-25",
+    "era": "legacy",
+    "server": {
+      "name": "twincat-mcp",
+      "version": "0.5.2"
+    },
+    "toolNames": [
+      "ads_connect",
+      "ads_disconnect",
+      "plc_list_symbols",
+      "plc_describe_symbol",
+      "plc_read",
+      "plc_read_many",
+      "plc_list_groups",
+      "plc_read_group",
+      "nc_state",
+      "nc_list_axes",
+      "nc_read_axis",
+      "nc_read_axis_position",
+      "nc_read_axis_status",
+      "nc_read_axis_many",
+      "nc_read_error",
+      "io_list_groups",
+      "io_read",
+      "io_read_many",
+      "io_read_group",
+      "tc_state",
+      "tc_event_list",
+      "tc_runtime_error_list",
+      "tc_log_read",
+      "tc_diagnose_errors",
+      "tc_diagnose_runtime",
+      "tc_list_workbenches",
+      "tc_list_projects",
+      "tc_project_state",
+      "tc_build_project",
+      "plc_build_project",
+      "tc_build_and_get_errors",
+      "tc_error_list",
+      "tc_error_context",
+      "tc_output_read",
+      "tc_resource_read",
+      "hmi_state",
+      "hmi_list_projects",
+      "hmi_preview_info",
+      "hmi_list_controls",
+      "tc_tree_read",
+      "tc_tree_search",
+      "tc_tree_describe_item",
+      "io_list_topology",
+      "io_describe_device",
+      "io_describe_terminal",
+      "plc_list_pous",
+      "plc_read_pou",
+      "plc_search_code",
+      "plc_describe_pou",
+      "plc_list_libraries",
+      "plc_describe_library",
+      "plc_write",
+      "plc_watch",
+      "plc_wait_until",
+      "plc_unwatch",
+      "plc_list_watches",
+      "plc_state",
+      "plc_set_write_mode",
+      "plc_get_write_mode",
+      "plc_evaluate_write_access"
+    ],
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\n  \"pou\": {\n    \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-accessor-probe-ixr6nx\\\\plc.plcproj:pou:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-accessor-probe-ixr6nx\\\\fb_axis.tcpou:fb_axis.speed:1\",\n    \"resourceUri\": \"plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-accessor-probe-ixr6nx%5Cplc.plcproj&name=FB_Axis.Speed\",\n    \"name\": \"Speed\",\n    \"qualifiedName\": \"FB_Axis.Speed\",\n    \"kind\": \"property\",\n    \"path\": \"/PLC/FB_Axis.Speed\",\n    \"sourceFile\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-accessor-probe-iXR6Nx\\\\FB_Axis.TcPOU\",\n    \"project\": {\n      \"id\": \"configuredProjectFiles:c:\\\\users\\\\niklasw\\\\appdata\\\\local\\\\temp\\\\tc-accessor-probe-ixr6nx\\\\plc.plcproj\",\n      \"name\": \"PLC\",\n      \"path\": \"C:\\\\Users\\\\NiklasW\\\\AppData\\\\Local\\\\Temp\\\\tc-accessor-probe-iXR6Nx\\\\PLC.plcproj\",\n      \"type\": \"plc\",\n      \"exists\": true,\n      \"source\": \"configuredProjectFiles\",\n      \"workbenchId\": \"configured-project-files\",\n      \"resourceUri\": \"tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx%5CPLC.plcproj\",\n      \"folderUri\": \"tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx\"\n    },\n    \"declaration\": \"PROPERTY Speed : LREAL\\nVAR\\nEND_VAR\\nVAR\\nEND_VAR\",\n    \"implementation\": \"Speed := fActualVelocity;\\nfSetVelocity := Speed;\",\n    \"rawText\": \"PROPERTY Speed : LREAL\\nVAR\\nEND_VAR\\nVAR\\nEND_VAR\\n\\nSpeed := fActualVelocity;\\nfSetVelocity := Speed;\"\n  }\n}"
+        }
+      ],
+      "structuredContent": {
+        "pou": {
+          "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-accessor-probe-ixr6nx\\plc.plcproj:pou:c:\\users\\niklasw\\appdata\\local\\temp\\tc-accessor-probe-ixr6nx\\fb_axis.tcpou:fb_axis.speed:1",
+          "resourceUri": "plcc://pou?project=configuredProjectFiles%3Ac%3A%5Cusers%5Cniklasw%5Cappdata%5Clocal%5Ctemp%5Ctc-accessor-probe-ixr6nx%5Cplc.plcproj&name=FB_Axis.Speed",
+          "name": "Speed",
+          "qualifiedName": "FB_Axis.Speed",
+          "kind": "property",
+          "path": "/PLC/FB_Axis.Speed",
+          "sourceFile": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-accessor-probe-iXR6Nx\\FB_Axis.TcPOU",
+          "project": {
+            "id": "configuredProjectFiles:c:\\users\\niklasw\\appdata\\local\\temp\\tc-accessor-probe-ixr6nx\\plc.plcproj",
+            "name": "PLC",
+            "path": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-accessor-probe-iXR6Nx\\PLC.plcproj",
+            "type": "plc",
+            "exists": true,
+            "source": "configuredProjectFiles",
+            "workbenchId": "configured-project-files",
+            "resourceUri": "tcfile://file?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx%5CPLC.plcproj",
+            "folderUri": "tcfolder://folder?path=C%3A%5CUsers%5CNiklasW%5CAppData%5CLocal%5CTemp%5Ctc-accessor-probe-iXR6Nx"
+          },
+          "declaration": "PROPERTY Speed : LREAL\nVAR\nEND_VAR\nVAR\nEND_VAR",
+          "implementation": "Speed := fActualVelocity;\nfSetVelocity := Speed;",
+          "rawText": "PROPERTY Speed : LREAL\nVAR\nEND_VAR\nVAR\nEND_VAR\n\nSpeed := fActualVelocity;\nfSetVelocity := Speed;"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+TwinCAT Knowledge MCP 0.1.1: permission record
+
+Repository: Auda29/twincat-knowledge-mcp
+Revision: fff24f410efa687bf39fe6829f5d068b1e80cf8f
+Release: v0.1.1
+Recorded: 2026-11-05
+
+The project owner confirmed in the TwinCAT Assistant implementation session
+that twincat-knowledge-mcp is their own code and may be bundled and distributed
+with the TwinCAT Assistant application and installer.
+
+This records that authorization for the pinned component. It does not select
+a public open-source license, change the upstream wheel, or grant rights to
+third-party dependencies. Their existing licenses and notices remain applicable
+and must be retained in the bundled runtime.
+
+Confirmation context:
+Question: "Ist twincat-knowledge-mcp dein eigener Code und darf er mit dem
+Assistant ausgeliefert werden?"
+Owner response: "ja klar der kommt ja auch von mir"

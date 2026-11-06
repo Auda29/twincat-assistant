@@ -27,6 +27,7 @@ export async function configureNativeModel(input) {
 }
 
 async function main() {
+  await (await import('./package-integrity.mjs')).verifyPackageIfPresent();
   const chunks = [];
   let size = 0;
   for await (const chunk of process.stdin) {

@@ -1,0 +1,54 @@
+{
+  "candidate": "fca292b",
+  "exactAllScopes": true,
+  "scopes": [
+    {
+      "scope": {
+        "knowledge": false,
+        "engineering": false,
+        "project": false
+      },
+      "sha256": "c7027fc3bbeafd93a1d42fa48ddfe24c1fdee62a3003aaee2b8ed61b7323e52f"
+    },
+    {
+      "scope": {
+        "knowledge": false,
+        "engineering": true,
+        "project": false
+      },
+      "sha256": "bf3f64b1e4aaba1f07686513511db939a7cdf5cd377471992fec7f5d4139ad43"
+    },
+    {
+      "scope": {
+        "knowledge": false,
+        "engineering": true,
+        "project": true
+      },
+      "sha256": "c6866e4a2d1fab71d31f82b3dd8f35c95a4519cf8da4d55ca866b8e1e0aa2fec"
+    },
+    {
+      "scope": {
+        "knowledge": true,
+        "engineering": false,
+        "project": false
+      },
+      "sha256": "fc81ac31a66b38632d53ad4124e87bdbec073e84cf4c3252066227f3d84bb8da"
+    },
+    {
+      "scope": {
+        "knowledge": true,
+        "engineering": true,
+        "project": false
+      },
+      "sha256": "89ee7bf430dc85a5707fec54ebda4c6dddda73925277e2bccffb95032fd34901"
+    },
+    {
+      "scope": {
+        "knowledge": true,
+        "engineering": true,
+        "project": true
+      },
+      "sha256": "3e56a8742c3e83a230ef69e75cd45a6f21a1b938038d7b46aef68456ec524162"
+    }
+  ]
+}

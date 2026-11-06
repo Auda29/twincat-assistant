@@ -1,0 +1,22 @@
+[
+  {
+    "event": "start",
+    "at": 1793952242649,
+    "package": "current"
+  },
+  {
+    "event": "complete",
+    "at": 1793952257663,
+    "package": "current"
+  },
+  {
+    "event": "start",
+    "at": 1793952258195,
+    "package": "previous"
+  },
+  {
+    "event": "complete",
+    "at": 1793952272224,
+    "package": "previous"
+  }
+]

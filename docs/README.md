@@ -6,14 +6,31 @@ and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
 Native acceptance and future engineering write/build milestones remain separate.
 
+Current checkpoint: [resumed integration and remaining host gates, 2026-11-06](INTEGRATED_ACCEPTANCE_20261106.md).
+
 - [Installation and real local checks](INSTALLATION.md)
 - [Agreed product priorities and host compatibility planning](ROADMAP.md#agreed-priorities-2026-11-02)
+- [TwinCAT 4024/4026 installation variants and host compatibility research](HOST_COMPATIBILITY.md)
 - [Planned OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md)
 - [Source runtime, persistent project chats and context states](RUNTIME_INTEGRATION.md)
 - [Backend server inventory and Core/Chat/Host ownership](BACKEND_SERVER_INVENTORY.md)
+- [Implemented delivery scope and remaining upstream cleanup](DELIVERY_SCOPE.md)
 - [Common startup contract for Core, Chat and Host](START_CONTRACT.md)
+- [First alpha host target and remaining real-host acceptance](HOST_ACCEPTANCE_MATRIX.md)
+- [Isolated real-host acceptance evidence from 2026-11-05](HOST_ACCEPTANCE_20261105.md)
+- [Windows installer, host registration and rollback contract](INSTALLER_CONTRACT.md)
+- [Building relocatable MCP inputs and collecting runtime notices](APPLICATION_INPUTS.md)
+- [Application package layout and installed runtime selection](APPLICATION_STAGING.md)
+- [Local complete application and installer build evidence](ALPHA_DELIVERY_BUILD.md)
+- [Actual CI installer evidence and coordinated host handoff](ALPHA_CI_HOST_HANDOFF.md)
+- [First actual CI installation and installed native backend checks](HOST_INSTALLATION_20261105.md)
+- [Integrated alpha 0.2.0-preview.2 build evidence](releases/alpha-0.2.0-preview.2.md)
+- [Managed profile and project configuration across package versions](INSTALLER_RELOCATION.md)
+- [Analysis profile prompts, migration and evaluation cases](PROFILE_PROMPTS.md)
+- [Real model and native WebView renderer acceptance](PROMPT_ACCEPTANCE_20261105.md)
 - [OpenChamber extension](EXTENSION.md)
 - [Diagnostic bridge and portable safety core](BRIDGE.md)
+- [Slow solution load and PLC editor restoration investigation](SOLUTION_STARTUP_INVESTIGATION.md)
 - [Native Windows acceptance](WINDOWS_ACCEPTANCE.md)
 - [Active editor implementation and acceptance](ACTIVE_EDITOR.md)
 - [Native chat start and connection](NATIVE_CHAT.md)

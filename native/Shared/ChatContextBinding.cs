@@ -174,8 +174,15 @@ namespace TwinCatAssistant.Native
         }
     }
 
+    public sealed class ChatContextAttachment
+    {
+        public string Text { get; set; }
+        public bool IsSavedReference { get; set; }
+    }
+
     public static class ChatContextPolicy
     {
+        public const int DirectAttachmentLimit = 16000;
         public static string ProjectSelectionKey(string stateRoot, NativeProjectIdentity project)
         {
             if (string.IsNullOrWhiteSpace(stateRoot) || project == null) throw new ArgumentException("Exact profile and project required.");
@@ -197,6 +204,10 @@ namespace TwinCatAssistant.Native
         }
         public static string AttachmentText(ActiveEditorSnapshot snapshot)
         {
+            return CreateAttachment(snapshot).Text;
+        }
+        public static ChatContextAttachment CreateAttachment(ActiveEditorSnapshot snapshot)
+        {
             if (snapshot?.Identity == null) throw new InvalidOperationException("No active POU available.");
             var result = "TwinCAT context snapshot\nObject: " + snapshot.ObjectName
                 + "\nObject kind: " + (snapshot.ObjectKind ?? "POU") + "\nOwning POU: " + (snapshot.OwnerName ?? snapshot.ObjectName)
@@ -207,8 +218,33 @@ namespace TwinCatAssistant.Native
                 + "\nUnsaved editor text is not verified. This snapshot is read-only and may be outdated."
                 + "\nRevision: " + Revision(snapshot) + "\n\nDeclaration:\n" + snapshot.Declaration
                 + "\n\nStructured Text implementation:\n" + snapshot.Implementation;
-            if (result.Length > 16000) throw new InvalidOperationException("This POU exceeds the direct chat attachment limit. No partial source was attached.");
-            return result;
+            if (result.Length <= DirectAttachmentLimit)
+                return new ChatContextAttachment { Text = result };
+
+            // Keep the exact identity, never a truncated source body. The saved
+            // object must be resolved within the already bound project by MCP.
+            var reference = "TwinCAT saved-object reference (no source code attached)"
+                + "\nObject: " + snapshot.ObjectName
+                + "\nObject kind: " + (snapshot.ObjectKind ?? "POU")
+                + "\nOwning POU: " + (snapshot.OwnerName ?? snapshot.ObjectName)
+                + "\nMember: " + (string.IsNullOrEmpty(snapshot.MemberPath) ? "POU body" : snapshot.MemberPath)
+                + "\nSolution: " + snapshot.Identity.SolutionFile
+                + "\nPLC project: " + snapshot.Identity.ProjectFile
+                + "\nDocument moniker: " + snapshot.Identity.DocumentMoniker
+                + "\nTree path: " + snapshot.Identity.TreePath
+                + "\nEditor changes: " + (snapshot.Dirty?.State ?? "unknown")
+                + "\nThe direct snapshot exceeded the attachment limit. No declaration or implementation is included."
+                + "\nRead the saved object through the engineering MCP in this bound PLC project."
+                + " Resolve the exact object using engineering_plc_list_pous and match its project, sourceFile, owning POU and member."
+                + " Then call engineering_plc_read_pou with the returned object ID; verify the returned identity before using its source."
+                + " Do not substitute a same-named object from another file, project or member."
+                + " If the tools are unavailable or no exact saved object exists, report that it could not be read; do not guess its contents."
+                + "\nThis reference reads disk state at tool-call time, not a frozen snapshot or live IDE buffer."
+                + " Unsaved editor changes are not included. Do not save or edit the project."
+                + " Cite the saved object actually returned by the tool and distinguish it from editor state.";
+            if (reference.Length > DirectAttachmentLimit)
+                throw new InvalidOperationException("Die Baustein-Referenz überschreitet das Anhanglimit. Es wurde kein Quelltext angehängt.");
+            return new ChatContextAttachment { Text = reference, IsSavedReference = true };
         }
         // Automatic attachment always uses this chip ID. The composer then
         // replaces the chip in place when another POU becomes active.

@@ -29,7 +29,7 @@ namespace TwinCatAssistant.Native
         private readonly StackPanel _diagnosticRows = new StackPanel { Margin = new Thickness(0, 4, 0, 0) };
         private readonly StackPanel _diagnosticAdvanced = new StackPanel { Visibility = Visibility.Collapsed, Margin = new Thickness(0, 2, 0, 0) };
         private readonly ShapePath _advancedChevron = Icon("chevron", 16);
-        private DiagnosticRow _chatRow, _modelRow, _toolsRow, _knowledgeRow, _helpRow;
+        private DiagnosticRow _chatRow, _modelRow, _toolsRow, _knowledgeRow, _helpRow, _hostRow;
 
         private void BuildDiagnostics()
         {
@@ -51,6 +51,7 @@ namespace TwinCatAssistant.Native
             _toolsRow = DiagnosticLine("Projektwerkzeuge");
             _knowledgeRow = DiagnosticLine("Wissenssuche");
             _helpRow = DiagnosticLine("Beckhoff-Hilfe");
+            _hostRow = DiagnosticLine("IDE-Host");
             // Developer tools: manual connection and local catalog reads.
             _advancedChevron.Margin = new Thickness(0, 0, 4, 0);
             var advancedLabel = new TextBlock { Text = "Erweitert", FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
@@ -182,7 +183,7 @@ namespace TwinCatAssistant.Native
             else if (!ready) ShowRow(_knowledgeRow, "–", "Neutral", _knowledgeSummary.Text);
             else if (knowledge == "unknown") ShowRow(_knowledgeRow, "Status wird geprüft …", "Neutral", _knowledgeSummary.Text);
             else if (knowledge == "failed" && KnowledgeRetrying()) ShowRow(_knowledgeRow, "Verbindet …", "Neutral", "Die Wissenssuche verbindet sich automatisch neu. Der vorbereitete Index bleibt erhalten.");
-            else if (McpFailed(knowledge)) { McpLabel(knowledge, out value, out tone); ShowRow(_knowledgeRow, value, tone, "OpenChamber meldet die Knowledge-Verbindung als " + knowledge + ".", "Neu verbinden", reconnectKnowledge); }
+            else if (McpFailed(knowledge)) { McpLabel(knowledge, out value, out tone); ShowRow(_knowledgeRow, value, tone, "TwinCAT Assistant Core meldet die Knowledge-Verbindung als " + knowledge + ".", "Neu verbinden", reconnectKnowledge); }
             else if (knowledge == "connected" && KnowledgeConnected()) ShowRow(_knowledgeRow, "Bereit", "Success", _knowledgeSummary.Text);
             else if (knowledge == null && !_mcpEnabled) ShowRow(_knowledgeRow, "Nicht konfiguriert", "Warning", _mcpStatus.Text);
             else ShowRow(_knowledgeRow, "Verbindet …", "Neutral", _knowledgeSummary.Text);
@@ -194,6 +195,13 @@ namespace TwinCatAssistant.Native
             else if (state?.phase == "missing") ShowRow(_helpRow, "Keine installierte Hilfe gefunden", "Warning", _knowledgeSummary.Text);
             else if (state?.phase == "external") ShowRow(_helpRow, "Eigene Dokumentationsquelle", "Neutral", _knowledgeSummary.Text);
             else ShowRow(_helpRow, state == null ? "Wird geprüft …" : "Nicht eingerichtet", "Neutral", _knowledgeSummary.Text);
+            // Host identity against the recorded host targets; not a live acceptance.
+            var host = HostIdentityReader.Current;
+            var assessment = HostTargets.Assess(host);
+            ShowRow(_hostRow, HostTargets.Describe(host) + (assessment.AlphaTarget ? " · Alpha-Zielhost" : " · nicht abgenommen"),
+                assessment.AlphaTarget ? "Success" : "Warning",
+                assessment.Reason + " Ziel: " + (assessment.TargetId ?? "keins") + " (" + assessment.Classification + "). Shell "
+                + (host.ExecutableVersion ?? "?") + ", Basis " + (host.ShellBaseVersion ?? "?") + ". Eine Zielhost-Einstufung ist keine Abnahme.");
         }
 
         private void CopyDiagnosticReport()
@@ -201,7 +209,7 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             RenderDiagnostics();
             var report = new StringBuilder("TwinCAT Assistant – Diagnose " + DateTime.Now.ToString("yyyy-MM-dd HH:mm")).AppendLine();
-            foreach (var row in new[] { _chatRow, _modelRow, _toolsRow, _knowledgeRow, _helpRow })
+            foreach (var row in new[] { _chatRow, _modelRow, _toolsRow, _knowledgeRow, _helpRow, _hostRow })
                 report.AppendLine(row.Label + ": " + row.Value.Text + (row.Detail == null ? "" : " — " + row.Detail));
             report.AppendLine("Verbindung: " + _chatConnection.Phase + " · Port " + _port.Text);
             report.AppendLine("Inventar: " + _inventoryStatus.Text);
