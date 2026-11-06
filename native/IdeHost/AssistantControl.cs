@@ -544,9 +544,11 @@ namespace TwinCatAssistant.Native
                 _browser.Visibility = Visibility.Hidden;
                 if (_browser.CoreWebView2 == null)
                 {
-                    var profile = _chatBrowserProfile ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                        "TwinCatAssistant", "WebView2", Process.GetCurrentProcess().Id.ToString());
+                    var profile = _chatBrowserProfile ?? NativeChatConfiguration.WebViewUserDataFolder;
                     var environment = await CoreWebView2Environment.CreateAsync(null, profile);
+                    if (NativeChatConfiguration.TestProfilePath() != null
+                        && !string.Equals(Path.GetFullPath(environment.UserDataFolder), Path.GetFullPath(profile), StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidOperationException("WebView2 did not select the private host test folder.");
                     if (_disposed) return;
                     await _browser.EnsureCoreWebView2Async(environment);
                     if (_disposed) return;
