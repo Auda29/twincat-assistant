@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -70,4 +70,65 @@ test('failed operations revoke their contexts and full inventory rejects additio
   await rm(join(root, 'extra.txt'));
   await rm(join(root, 'non-entrypoint.txt'));
   await assert.rejects(operation(() => verify(root)), /inventory mismatch/);
+});
+
+
+test('failed parallel inventories share rejection and a fresh operation can recover', async t => {
+  const { withPackageVerificationScope: operation, verifyOperationManifest: verify, counter, packages: [root] } = await fixture(t);
+  await writeFile(join(root, 'non-entrypoint.txt'), 'tampered');
+  await operation(async () => {
+    const results = await Promise.allSettled([verify(root), verify(root), verify(root)]);
+    assert.ok(results.every(result => result.status === 'rejected' && /inventory mismatch/.test(result.reason.message)));
+    assert.equal(counter.calls, 1);
+    await writeFile(join(root, 'non-entrypoint.txt'), 'original');
+    await assert.rejects(verify(root), /inventory mismatch/, 'failure is retained for this operation');
+  });
+  await operation(() => verify(root));
+  assert.equal(counter.calls, 2);
+});
+
+test('root aliases cannot reuse a verified root to bypass link guards', async t => {
+  const { withPackageVerificationScope: operation, verifyOperationManifest: verify, packages: [root] } = await fixture(t);
+  const alias = root + '-alias';
+  await symlink(root, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  await operation(async () => {
+    await verify(root);
+    await assert.rejects(verify(alias), /Invalid package root/);
+    // Even the exact cached key must reject a root replaced with a junction.
+    const moved = root + '-moved';
+    await rename(root, moved);
+    await symlink(moved, root, process.platform === 'win32' ? 'junction' : 'dir');
+    await assert.rejects(verify(root), /Invalid package root/);
+  });
+});
+
+test('a cached inventory retains manifest boundary checks and exception callbacks expire', async t => {
+  const { withPackageVerificationScope: operation, verifyOperationManifest: verify, packages: [root] } = await fixture(t);
+  let release, callback;
+  const gate = new Promise(r => { release = r; });
+  await assert.rejects(operation(async () => {
+    await verify(root);
+    callback = gate.then(() => verify(root));
+    const manifest = join(root, 'application-manifest.json');
+    await rename(manifest, manifest + '.saved');
+    await mkdir(manifest);
+    await assert.rejects(verify(root), /Invalid manifest file/);
+    await rm(manifest, { recursive: true });
+    await rename(manifest + '.saved', manifest);
+    throw new Error('abort operation');
+  }), /abort operation/);
+  await writeFile(join(root, 'non-entrypoint.txt'), 'changed');
+  release();
+  await assert.rejects(callback, /inventory mismatch/);
+});
+
+
+test('lexical aliases do not normalize into a cached success and relative paths stay invalid', async t => {
+  const { withPackageVerificationScope: operation, verifyOperationManifest: verify, packages: [root] } = await fixture(t);
+  await operation(async () => {
+    await verify(root);
+    await writeFile(join(root, 'non-entrypoint.txt'), 'tampered');
+    await assert.rejects(verify(root + '/.'), /inventory mismatch/);
+    await assert.rejects(verify('relative-package'), /absolute/);
+  });
 });

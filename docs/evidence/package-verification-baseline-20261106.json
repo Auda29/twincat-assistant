@@ -1,0 +1,67 @@
+[
+  {
+    "event": "start",
+    "at": 1793952141644,
+    "package": "current"
+  },
+  {
+    "event": "complete",
+    "at": 1793952153856,
+    "package": "current"
+  },
+  {
+    "event": "start",
+    "at": 1793952153884,
+    "package": "current"
+  },
+  {
+    "event": "complete",
+    "at": 1793952165105,
+    "package": "current"
+  },
+  {
+    "event": "start",
+    "at": 1793952165623,
+    "package": "current"
+  },
+  {
+    "event": "complete",
+    "at": 1793952176314,
+    "package": "current"
+  },
+  {
+    "event": "start",
+    "at": 1793952176329,
+    "package": "previous"
+  },
+  {
+    "event": "complete",
+    "at": 1793952194187,
+    "package": "previous"
+  },
+  {
+    "event": "start",
+    "at": 1793952194557,
+    "package": "current"
+  },
+  {
+    "event": "complete",
+    "at": 1793952204954,
+    "package": "current"
+  },
+  {
+    "event": "start",
+    "at": 1793952204972,
+    "package": "previous"
+  },
+  {
+    "event": "complete",
+    "at": 1793952216572,
+    "package": "previous"
+  },
+  {
+    "event": "start",
+    "at": 1793952216796,
+    "package": "current"
+  }
+]

@@ -17,7 +17,7 @@ $literal80=[BitConverter]::ToString($move.GetMethodBody().GetILAsByteArray()).Co
 if (-not $literal80) { throw 'Compiled StartAsync no longer contains the 80000ms timeout' }
 $s=[Activator]::CreateInstance($a.GetType('TwinCatAssistant.Native.NativeChatSession'))
 $watch=[Diagnostics.Stopwatch]::StartNew()
-$result=@{state=$State; timeoutMs=80000; success=$false; x86=([IntPtr]::Size -eq 4); compiledTimeout80=$literal80}
+$result=@{state=$State; timeoutMs=80000; success=$false; x86=([IntPtr]::Size -eq 4); compiledTimeout80=$literal80; assemblyVersion=$a.GetName().Version.ToString(); assemblySha256=(Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant()}
 try {
  $s.StartAsync($c,$port,'synthetic-benchmark-password-123').GetAwaiter().GetResult() | Out-Null
  $result.startMs=$watch.ElapsedMilliseconds

@@ -20,7 +20,7 @@ test('independent later MCP requests and inherited callbacks reject package tamp
     const { withPackageVerificationScope: operation }=await import(pathToFileURL(join(root,'src/package-verification-scope.mjs')));
     const { readNativeMcpSettings: request }=await import(pathToFileURL(join(root,'src/native-mcp.mjs')));
     const settings=join(root,'runtime/mcp/default-settings.json');
-    const target=join(root,'ci-input-provenance.json');
+    const target=join(root,'package-lock.json');
     const original=await readFile(target);
     let release, later;
     const gate=new Promise(r=>{release=r;});

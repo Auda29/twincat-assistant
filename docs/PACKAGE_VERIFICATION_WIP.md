@@ -1,5 +1,7 @@
 # Paused package-verification optimization
 
+Completed on 2026-11-06. See [implementation and Native80 evidence](PACKAGE_VERIFICATION.md). The text below records the earlier pause, not the current acceptance result.
+
 Saved at the operator's explicit stop request on 2026-11-05. This is an
 unfinished implementation checkpoint, not an accepted startup improvement.
 

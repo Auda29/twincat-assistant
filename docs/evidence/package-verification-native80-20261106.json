@@ -1,0 +1,402 @@
+{
+  "synthetic": true,
+  "sourceCheckpoint": "10ac14582450a37f9e0a0622ac216020207b8e58",
+  "baselineScopedFilesRef": "dda5221",
+  "oldInputManifestSha256": "e6fe29351f7d5c5100b6e92c9dafb7520efe00c3936d5c1f6e086c6bb77d2bc4",
+  "inputManifestSha256": "12f0827fe13cfb1bdd18c54b56f9576b178de6d4c91803f339cf699ec5b03657",
+  "nativeAssemblySha256": "fc0c3a0855bab48bf6987b3fffe199fa2dce70e012069f461724a1274bde7b3f",
+  "manifestAlgorithmSha256": "46185d2f737cf6e8b73dc7887d845d94f981a4ce88b7aa085125b739bd3a4bd0",
+  "results": "local-data/verification-benchmark/run-1793952120279",
+  "variants": {
+    "baseline": {
+      "compiledTimeout80": true,
+      "stopped": true,
+      "error": "System.Management.Automation.MethodInvocationException: Ausnahme beim Aufrufen von \"GetResult\" mit 0 Argument(en):  \"Local chat startup timed out.\" ---> System.IO.IOException: Local chat startup timed out.\r\n   bei TwinCatAssistant.Native.NativeChatSession.<StartAsync>d__11.MoveNext()\r\n--- Ende der Stapel\u00ef\u00bf\u00bdberwachung vom vorhergehenden Ort, an dem die Ausnahme ausgel\u00ef\u00bf\u00bdst wurde ---\r\n   bei System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()\r\n   bei TwinCatAssistant.Native.NativeChatSession.<StartAsync>d__11.MoveNext()\r\n--- Ende der Stapel\u00ef\u00bf\u00bdberwachung vom vorhergehenden Ort, an dem die Ausnahme ausgel\u00ef\u00bf\u00bdst wurde ---\r\n   bei System.Runtime.CompilerServices.TaskAwaiter.ThrowForNonSuccess(Task task)\r\n   bei System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)\r\n   bei CallSite.Target(Closure , CallSite , Object )\r\n   --- Ende der internen Ausnahmestapel\u00ef\u00bf\u00bdberwachung ---\r\n   bei System.Management.Automation.ExceptionHandlingOps.CheckActionPreference(FunctionContext funcContext, Exception exception)\r\n   bei System.Management.Automation.Interpreter.ActionCallInstruction`2.Run(InterpretedFrame frame)\r\n   bei System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)\r\n   bei System.Management.Automation.Interpreter.EnterTryCatchFinallyInstruction.Run(InterpretedFrame frame)",
+      "state": "baseline",
+      "success": false,
+      "x86": true,
+      "startMs": 85588,
+      "timeoutMs": 80000,
+      "inventories": {
+        "start": {
+          "current": 5,
+          "previous": 2
+        },
+        "complete": {
+          "current": 4,
+          "previous": 2
+        }
+      },
+      "sourceFiles": [
+        {
+          "path": "scripts/application-manifest.mjs",
+          "size": 3767,
+          "sha256": "92623a4c133be47b81d07e9bf74047cb19e8176b61f9c5465d8a55049c7a1f99"
+        },
+        {
+          "path": "src/agent-prompts.mjs",
+          "size": 13013,
+          "sha256": "cd121fc69d652ef7f2a5d36f0871d31aa75f76478e789bcc3cbcadc1d152b7d9"
+        },
+        {
+          "path": "src/analysis-prompts-c0.mjs",
+          "size": 41417,
+          "sha256": "168d201ef50826ee1860f2bb58f987fec137b0e5992a938e4091e5eff22e95a4"
+        },
+        {
+          "path": "src/cli.mjs",
+          "size": 2900,
+          "sha256": "b1f8ce23991b14ba708744135f11d2861e6e02240a05693c587795cae34fae90"
+        },
+        {
+          "path": "src/commands.mjs",
+          "size": 4819,
+          "sha256": "dd694407ed0036f1b244b977e55b351136acbee6d4584ce08cb444873b48ba29"
+        },
+        {
+          "path": "src/config.mjs",
+          "size": 6249,
+          "sha256": "a58862a20bf71031cd03f187c9ff1eef134a2898ce6b5657e22feade06e5e41d"
+        },
+        {
+          "path": "src/embedded-chat.mjs",
+          "size": 31444,
+          "sha256": "4d5377212c7bd8815f05c2960ab5e9efb005c8520c30caf45e7a3527ae3dad07"
+        },
+        {
+          "path": "src/knowledge-broker.mjs",
+          "size": 9031,
+          "sha256": "2a2e68fe36bab2791956df6a6dd46baa4510e1ec85c96804df2ddc84eb1fc6b0"
+        },
+        {
+          "path": "src/knowledge-client.mjs",
+          "size": 3787,
+          "sha256": "0c2c172eafb10c9068a2b2dd042e2d5c109c10538a1b174cb008f6ed5f4d7d59"
+        },
+        {
+          "path": "src/knowledge-paths.mjs",
+          "size": 1575,
+          "sha256": "c37c2b33feb612f8957e824879bf948d4b907eceee1dbac4600b689ba8493bd2"
+        },
+        {
+          "path": "src/launcher.mjs",
+          "size": 2623,
+          "sha256": "540de69a5f361357eb9ee48dfb7a43a83980bf51595ed5cb25551b057c28571a"
+        },
+        {
+          "path": "src/managed-relocation.mjs",
+          "size": 5853,
+          "sha256": "d2c4a092349ea852533cd96b39681664f65f7577204dba777cecec216c81304b"
+        },
+        {
+          "path": "src/native-chat-model.mjs",
+          "size": 2277,
+          "sha256": "0a71f78396ef2cb59f10f2267dcfa62105fa7d32f1f79122329209514f2e52ac"
+        },
+        {
+          "path": "src/native-chat.mjs",
+          "size": 6257,
+          "sha256": "dd76a291efb54229c370c0e11c9b407fe3d49605833b712f9f43546a1adfee1f"
+        },
+        {
+          "path": "src/native-knowledge.mjs",
+          "size": 13210,
+          "sha256": "2e0b553a93dedd5e2e75e46f30476a25f019e4202d721a8ce5baf3f96dd9c943"
+        },
+        {
+          "path": "src/native-mcp.mjs",
+          "size": 7827,
+          "sha256": "853e1949a98a8201bb77300bc5b117c7bc1ddce1c79bd694b282b75280fd860b"
+        },
+        {
+          "path": "src/package-integrity.mjs",
+          "size": 1495,
+          "sha256": "deb8a9b682135851af85379895aa45fe95e1053936df0308711bb717cd3ed8a4"
+        },
+        {
+          "path": "src/package-runtime.json",
+          "size": 14,
+          "sha256": "50208d78350a7a160dec59a82df1499b6ca7da33e54c5eb11c97e342118e68bb"
+        },
+        {
+          "path": "src/package-verification-scope.mjs",
+          "size": 2071,
+          "sha256": "d449e7a53fadaebf0e47b88608b86deb767129709f04afe0a26b4c4f9126cf5d"
+        },
+        {
+          "path": "src/probe.mjs",
+          "size": 1894,
+          "sha256": "10b132b6e81f6178719c7b8fb3c719d0079762518fca2f14e2df0df35c4cb92e"
+        },
+        {
+          "path": "src/profile-update.mjs",
+          "size": 5175,
+          "sha256": "9285fd1b8fceea8d0ba325636221717adfa86cf894223527215c830b2cb80aec"
+        },
+        {
+          "path": "src/project-workspace.mjs",
+          "size": 5900,
+          "sha256": "61af816e19d4bc095fe20e047f96131add63034687736653ae43416770fcc6df"
+        },
+        {
+          "path": "src/rollback-policy.mjs",
+          "size": 12829,
+          "sha256": "b57343a08caa0f153bf529b434e4a0dea3f3f3f9cc351bd1e369dc755afd0d58"
+        },
+        {
+          "path": "src/runtime-paths.mjs",
+          "size": 3742,
+          "sha256": "78fa522dba1bd7d8f7087e8558e82189902664e409cdd0377075bf3ce0c1e037"
+        },
+        {
+          "path": "src/runtime-start.mjs",
+          "size": 1631,
+          "sha256": "662fa8e450c9a8985b3242113b28252586d217111a831bb1d983257b7f20e105"
+        },
+        {
+          "path": "src/shared-chat-runtime.mjs",
+          "size": 1157,
+          "sha256": "4c84973993a3fc7a5da8a985fc62cfc837901e36707115034da46ba7a7eb034e"
+        },
+        {
+          "path": "src/state.mjs",
+          "size": 10264,
+          "sha256": "fb620bf4edd81924aa6d6aa4aab0945a679c0a7b47f0e5d9fec38b1a9d650005"
+        },
+        {
+          "path": "src/supervisor.mjs",
+          "size": 2006,
+          "sha256": "99ff0c082da2b70777eea5b96473fea46837606127be8f1b2e9a25e266d25e65"
+        },
+        {
+          "path": "src/themes.mjs",
+          "size": 8404,
+          "sha256": "52aee3338776185945e3c99c4ac0853295e246ef935364b7980ceea25179a482"
+        },
+        {
+          "path": "src/windows-native.mjs",
+          "size": 5606,
+          "sha256": "b250396feb6b2d73fe3d13ccafa5dd3115e2ecf503f8b6358b2dd0b16955c05d"
+        }
+      ],
+      "sourceInventorySha256": "6f1fd91b607a64449d3d181130da3e4b824348565eeefcf1776152fd2ee24cb2",
+      "applicationManifestSha256": "aec51fef5a4638df0a878168bdbdfd153ece3e4c2ccbc60f01ecf6b292d97880",
+      "beforeConfigSha256": "c063a69ea9958dda1eb6e38d579e91e8085907aeb806bef60ccb1e78e49c809c",
+      "beforeSettingsSha256": "07a69b8dc57504bb822aefe77d040d817c6f2e9cd8f689beeb7bc960c44c3026",
+      "afterConfigSha256": "c063a69ea9958dda1eb6e38d579e91e8085907aeb806bef60ccb1e78e49c809c",
+      "afterSettingsSha256": "07a69b8dc57504bb822aefe77d040d817c6f2e9cd8f689beeb7bc960c44c3026",
+      "sentinelPreserved": true
+    },
+    "optimized": {
+      "compiledTimeout80": true,
+      "protectedReady": true,
+      "stopped": true,
+      "state": "optimized",
+      "success": true,
+      "x86": true,
+      "startMs": 36183,
+      "timeoutMs": 80000,
+      "inventories": {
+        "start": {
+          "current": 1,
+          "previous": 1
+        },
+        "complete": {
+          "current": 1,
+          "previous": 1
+        }
+      },
+      "sourceFiles": [
+        {
+          "path": "scripts/application-manifest.mjs",
+          "size": 3767,
+          "sha256": "92623a4c133be47b81d07e9bf74047cb19e8176b61f9c5465d8a55049c7a1f99"
+        },
+        {
+          "path": "src/agent-prompts.mjs",
+          "size": 13013,
+          "sha256": "cd121fc69d652ef7f2a5d36f0871d31aa75f76478e789bcc3cbcadc1d152b7d9"
+        },
+        {
+          "path": "src/analysis-prompts-c0.mjs",
+          "size": 41417,
+          "sha256": "168d201ef50826ee1860f2bb58f987fec137b0e5992a938e4091e5eff22e95a4"
+        },
+        {
+          "path": "src/cli.mjs",
+          "size": 2900,
+          "sha256": "b1f8ce23991b14ba708744135f11d2861e6e02240a05693c587795cae34fae90"
+        },
+        {
+          "path": "src/commands.mjs",
+          "size": 4819,
+          "sha256": "dd694407ed0036f1b244b977e55b351136acbee6d4584ce08cb444873b48ba29"
+        },
+        {
+          "path": "src/config.mjs",
+          "size": 6249,
+          "sha256": "a58862a20bf71031cd03f187c9ff1eef134a2898ce6b5657e22feade06e5e41d"
+        },
+        {
+          "path": "src/embedded-chat.mjs",
+          "size": 31444,
+          "sha256": "4d5377212c7bd8815f05c2960ab5e9efb005c8520c30caf45e7a3527ae3dad07"
+        },
+        {
+          "path": "src/knowledge-broker.mjs",
+          "size": 9031,
+          "sha256": "2a2e68fe36bab2791956df6a6dd46baa4510e1ec85c96804df2ddc84eb1fc6b0"
+        },
+        {
+          "path": "src/knowledge-client.mjs",
+          "size": 3787,
+          "sha256": "0c2c172eafb10c9068a2b2dd042e2d5c109c10538a1b174cb008f6ed5f4d7d59"
+        },
+        {
+          "path": "src/knowledge-paths.mjs",
+          "size": 1575,
+          "sha256": "c37c2b33feb612f8957e824879bf948d4b907eceee1dbac4600b689ba8493bd2"
+        },
+        {
+          "path": "src/launcher.mjs",
+          "size": 2870,
+          "sha256": "8090abba831d389afa15212394992242efcbfc9acd70cccce3d16a5ee0e7ae15"
+        },
+        {
+          "path": "src/managed-relocation.mjs",
+          "size": 5944,
+          "sha256": "d00b6d1cecd91f0c3f6dbbdb76f45aa9c7de23aea7e6a93188830562b7b1637c"
+        },
+        {
+          "path": "src/native-chat-model.mjs",
+          "size": 2277,
+          "sha256": "0a71f78396ef2cb59f10f2267dcfa62105fa7d32f1f79122329209514f2e52ac"
+        },
+        {
+          "path": "src/native-chat.mjs",
+          "size": 6597,
+          "sha256": "799eeed74c2c83939171eccd256cd6194bfd1ef8549cb24524e31851a393302e"
+        },
+        {
+          "path": "src/native-knowledge.mjs",
+          "size": 13210,
+          "sha256": "2e0b553a93dedd5e2e75e46f30476a25f019e4202d721a8ce5baf3f96dd9c943"
+        },
+        {
+          "path": "src/native-mcp.mjs",
+          "size": 8494,
+          "sha256": "d00cee2bb84bca8c4465390a317966b47a743946b64cc885417d33095e2fe3ed"
+        },
+        {
+          "path": "src/package-integrity.mjs",
+          "size": 1534,
+          "sha256": "b07f6f1e0d6b614142dc12cfff0490033b67d11a3101d1d77f06e003b212cd73"
+        },
+        {
+          "path": "src/package-runtime.json",
+          "size": 14,
+          "sha256": "50208d78350a7a160dec59a82df1499b6ca7da33e54c5eb11c97e342118e68bb"
+        },
+        {
+          "path": "src/package-verification-scope.mjs",
+          "size": 2071,
+          "sha256": "d449e7a53fadaebf0e47b88608b86deb767129709f04afe0a26b4c4f9126cf5d"
+        },
+        {
+          "path": "src/probe.mjs",
+          "size": 1894,
+          "sha256": "10b132b6e81f6178719c7b8fb3c719d0079762518fca2f14e2df0df35c4cb92e"
+        },
+        {
+          "path": "src/profile-update.mjs",
+          "size": 5175,
+          "sha256": "9285fd1b8fceea8d0ba325636221717adfa86cf894223527215c830b2cb80aec"
+        },
+        {
+          "path": "src/project-workspace.mjs",
+          "size": 5900,
+          "sha256": "61af816e19d4bc095fe20e047f96131add63034687736653ae43416770fcc6df"
+        },
+        {
+          "path": "src/rollback-policy.mjs",
+          "size": 12829,
+          "sha256": "b57343a08caa0f153bf529b434e4a0dea3f3f3f9cc351bd1e369dc755afd0d58"
+        },
+        {
+          "path": "src/runtime-paths.mjs",
+          "size": 3742,
+          "sha256": "78fa522dba1bd7d8f7087e8558e82189902664e409cdd0377075bf3ce0c1e037"
+        },
+        {
+          "path": "src/runtime-start.mjs",
+          "size": 1631,
+          "sha256": "662fa8e450c9a8985b3242113b28252586d217111a831bb1d983257b7f20e105"
+        },
+        {
+          "path": "src/shared-chat-runtime.mjs",
+          "size": 1157,
+          "sha256": "4c84973993a3fc7a5da8a985fc62cfc837901e36707115034da46ba7a7eb034e"
+        },
+        {
+          "path": "src/state.mjs",
+          "size": 10264,
+          "sha256": "fb620bf4edd81924aa6d6aa4aab0945a679c0a7b47f0e5d9fec38b1a9d650005"
+        },
+        {
+          "path": "src/supervisor.mjs",
+          "size": 2006,
+          "sha256": "99ff0c082da2b70777eea5b96473fea46837606127be8f1b2e9a25e266d25e65"
+        },
+        {
+          "path": "src/themes.mjs",
+          "size": 8404,
+          "sha256": "52aee3338776185945e3c99c4ac0853295e246ef935364b7980ceea25179a482"
+        },
+        {
+          "path": "src/windows-native.mjs",
+          "size": 5606,
+          "sha256": "b250396feb6b2d73fe3d13ccafa5dd3115e2ecf503f8b6358b2dd0b16955c05d"
+        }
+      ],
+      "sourceInventorySha256": "2f91b1a72c5739668455c91fde86f69e2cc80caf51322e39f60b46ea547ae780",
+      "applicationManifestSha256": "44af33c73ca9b6187cc847b7f9652ce607ac46fa954e5b5e20e1e47950bb56c8",
+      "beforeConfigSha256": "c063a69ea9958dda1eb6e38d579e91e8085907aeb806bef60ccb1e78e49c809c",
+      "beforeSettingsSha256": "07a69b8dc57504bb822aefe77d040d817c6f2e9cd8f689beeb7bc960c44c3026",
+      "afterConfigSha256": "491b5354e5a8ecf1cfd99863652f54011da574c03b5f5172439e48034c0e1ecb",
+      "afterSettingsSha256": "ce7a9ac8f0d1216c0f50a70e7e8ac0211c24f2965f2c9832b36863dc40186cb8",
+      "sentinelPreserved": true,
+      "exactC1Configuration": true,
+      "packagePathRebased": true
+    }
+  },
+  "nativeAssembly": {
+    "fileVersion": "0.2.0.2",
+    "sha256": "fc0c3a0855bab48bf6987b3fffe199fa2dce70e012069f461724a1274bde7b3f",
+    "assemblyVersion": "0.2.0.2",
+    "productVersion": "0.2.0-preview.2+8886fb64f1fe64b19ef1f2a5ea01ec9f9012da1b"
+  },
+  "recordedDate": "2026-11-06",
+  "limits": [
+    "Synthetic C0 state and sibling package layout only. No IDE or operator profile used.",
+    "Frozen Native 0.2.0.2 from input 12f0827f; not the future host-test-override payload.",
+    "Baseline timed out after 80000ms; startMs includes native failure cleanup.",
+    "Scope source uses exact root keys; aliases never inherit cached success.",
+    "Baseline and optimized contain identical non-scoped source, including checkpoint installer recovery, not the pending P2 fix."
+  ],
+  "tests": {
+    "unit": {
+      "passed": 152,
+      "failed": 0,
+      "skipped": 0
+    },
+    "realMcpApiTampering": {
+      "passed": 1,
+      "durationMs": 36376.1675,
+      "file": "package-lock.json",
+      "cases": [
+        "later independent readNativeMcpSettings",
+        "inherited callback after completed scope"
+      ]
+    }
+  }
+}
