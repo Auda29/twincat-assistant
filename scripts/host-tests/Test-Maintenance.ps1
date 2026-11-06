@@ -1,6 +1,6 @@
 # Synthetic files only. No Get-MmLiveFacts, native load, backend, IDE or installer.
 [CmdletBinding()]
-param([string]$EvidencePath)
+param([string]$EvidencePath,[switch]$ProfileOpaqueOnly)
 $ErrorActionPreference='Stop'
 . "$PSScriptRoot/Maintenance.Core.ps1"
 $script:checks=New-Object Collections.Generic.List[object]
@@ -47,6 +47,29 @@ function Assert-Original($f) {
  Assert-MmFileRecord $f.facts.globalConfiguration $f.globalRecord
  Assert-MmFileRecord $f.request.configurationPath $f.configRecord
  foreach($name in @('chat','login','bindings','preferences')){Assert-Test ([IO.File]::ReadAllText((Join-Path $f.profile ($name+'.sentinel'))) -ceq ('latest-'+$name)) 'Private latest state changed.'}
+}
+
+$opaque=New-Fixture
+$stateDirectory=Join-Path $opaque.profile 'state'
+[void][IO.Directory]::CreateDirectory($stateDirectory)
+$opaqueFile=Join-Path $stateDirectory 'chat-login-data.json'
+[IO.File]::WriteAllText($opaqueFile,'synthetic private data must remain opaque')
+$opaqueHandle=[IO.File]::Open($opaqueFile,'Open','ReadWrite','None')
+try {
+ $opaquePlan=Prepare-Fixture $opaque
+ Invoke-Fixture $opaque $opaquePlan
+ Invoke-Fixture $opaque $opaquePlan 'Restore'
+ Assert-Original $opaque
+} finally { $opaqueHandle.Dispose() }
+Assert-Test ([IO.File]::ReadAllText($opaqueFile) -ceq 'synthetic private data must remain opaque') 'Opaque state bytes changed.'
+Add-Check 'exclusive state-content lock does not block prepare, enter or restore'
+if($ProfileOpaqueOnly) {
+ if($EvidencePath) {
+  Assert-MmPath $EvidencePath
+  $core=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'Maintenance.Core.ps1')).Replace("`r`n","`n")
+  Write-MmAtomic $EvidencePath ([ordered]@{kind='targeted-profile-opacity-regression';groups=1;status='passed';coreCanonicalLfSha256=(Get-MmTextHash $core);checks=$script:checks.ToArray();liveActions=$false}) -New
+ }
+ exit 0
 }
 
 $f=New-Fixture; $p=Prepare-Fixture $f; Assert-Original $f

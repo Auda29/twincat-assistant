@@ -1,0 +1,1 @@
+{"kind":"targeted-profile-opacity-regression","groups":1,"status":"passed","coreCanonicalLfSha256":"2ef40e2f744b89bf80a2557de87700947713556b8193a934fbe0df6eb7476c9b","checks":[{"name":"exclusive state-content lock does not block prepare, enter or restore","status":"passed"}],"liveActions":false}

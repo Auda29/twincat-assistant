@@ -98,7 +98,13 @@ function Assert-MmProfile($Plan,$Facts) {
  if((Get-MmHash $config) -cne $Plan.configuration.sha256){throw 'Maintenance private configuration hash mismatch.'}
  $c=Read-MmJson $config 65536; Assert-MmKeys $c 'DotNetRoot,StateRoot'
  if($c.StateRoot -cne (Join-Path (Split-Path $config -Parent) 'state') -or $c.StateRoot -cne $Plan.configuration.stateRoot -or $c.DotNetRoot -cne $Facts.systemDotNetRoot){throw 'Maintenance private state/system runtime mismatch.'}
- [void](Get-MmTree (Split-Path $config -Parent))
+ # User data stays opaque. Inspect only the bounded directory paths needed by
+ # the private contract; never inventory or hash chat/login/browser contents.
+ $profile=Split-Path $config -Parent
+ foreach($directory in @($profile,(Join-Path $profile 'state'),(Join-Path $profile 'native-chat'),(Join-Path $profile 'WebView2'))) {
+  Assert-MmPath $directory
+  if((Test-Path -LiteralPath $directory) -and -not (Get-Item -LiteralPath $directory -Force).PSIsContainer){throw 'Private profile directory conflicts with a file.'}
+ }
  if($Facts.webViewOverride){throw 'Inherited WebView override refused.'}
 }
 function Assert-MmFacts($Plan,[scriptblock]$GetFacts) {

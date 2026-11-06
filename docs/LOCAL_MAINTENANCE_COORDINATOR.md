@@ -45,8 +45,11 @@ StateRoot, system DotNetRoot, global configuration hash/timestamps and process
 quiescence. Private config must already exist at
 `%LOCALAPPDATA%\TwinCatAssistant\host-tests\<id>\native-chat.json`, with ASCII id
 `[a-zA-Z0-9_-]{1,64}`. Only StateRoot (sibling `state`) and DotNetRoot (system
-Program Files/dotnet) are permitted. Reparse paths and hardlinked files refuse
-throughout profile, package, backup and stage. Inherited WebView path/argument
+Program Files/dotnet) are permitted. The config must be regular and single-link;
+only its profile/state/native-chat/WebView2 directory paths and ancestors are
+checked as path metadata. User-data descendants remain opaque: no enumeration,
+content read or hashing, including during restore. Package, backup and stage
+still receive complete file/link validation. Inherited WebView path/argument
 overrides refuse. No private/operator configuration, chats, logins, preferences
 or bindings are created, migrated or restored by this coordinator.
 
@@ -213,3 +216,14 @@ cases, late-owner refusal, tamper/partial-backup/link/metadata/lock checks and
 public-surface rejection. See [sanitized evidence](../scripts/host-tests/evidence/maintenance-synthetic-20261106.json).
 Earlier partial logs are not completion evidence. These results require a new
 independent coordinator review; Native guard review does not cover this module.
+
+## Review fix: private-state opacity
+
+The original 13-group evidence applies to commit 6ab581a. Review identified an
+excessive recursive profile inventory. Profile validation now reads only the
+bounded config and necessary directory metadata. One targeted regression holds
+a synthetic state-content file exclusively locked throughout prepare, enter and
+restore; it passed with unchanged bytes. Use Test-Maintenance.ps1
+-ProfileOpaqueOnly -EvidencePath <fresh-absolute-path> to repeat this case.
+The separate evidence/maintenance-profile-opaque-20261106.json records this fix;
+the original full-matrix evidence has not been rewritten as a new full run.
