@@ -38,7 +38,7 @@ This record does not declare an accepted release or close the installed UI gates
 | Restart, synthetic state preservation, package unchanged | passed |
 | New DLL/private process configuration/C0 migration within Native80 | passed, 35,456 ms |
 | Final executable build and embedded inventory | passed, all 22,088 files |
-| Hosted CI for this exact integration | pending |
+| Hosted portable/source CI at `c1f080e` | passed, all three jobs |
 | Installed IDE/UI/member/paste/first-after-logon | open |
 
 Local raw logs under this checkout's ignored `local-data`:
@@ -126,11 +126,24 @@ OS error 2.
 
 ## Remaining completion gates
 
-Prepare a new reviewed CI producer source/manifest baseline and run hosted CI
-for this exact integration. The old producer is bound to an older native payload
-and must continue to refuse this changed one. The installer worker's additional
-fresh real-package policy regression evidence is tracked separately; its frozen
-old DLL is not evidence for the rebuilt native DLL tested here.
+Hosted [run 42190617865](https://github.com/Auda29/twincat-assistant/actions/runs/42190617865)
+has since passed all three jobs for `c1f080e`: Linux components, Windows lifecycle
+and source runtime. This is the b38 integration source, not the subsequent native
+maintenance guard or a new Windows installer artifact run.
+
+The producer preparation in `02194d7` is bound to this exact b38 package and
+`6dbb2ad`, with a passed import and old-input refusal. It is unpushed and has not
+run in CI. It must continue to refuse the subsequently changed native guard.
+The fresh real-package policy regression evidence in `8ee4012`, integrated as
+`d5715d4`, passes 12 groups including nine P2 negative cases. Its frozen old DLL
+is explicitly not evidence for the rebuilt native DLL tested here.
+
+The separate [local maintenance proposal](LOCAL_MAINTENANCE_ACCEPTANCE_PLAN.md)
+now prepares a guarded local UI test on the workstation. The native guard is
+implemented in `c5790d6`, with 65 synthetic guard checks and 29 private profile
+checks. That change needs its own final package identity, startup test and
+reviewed maintenance coordinator before any global swap. This b38 record remains
+the evidence for the earlier integrated package; do not conflate the candidates.
 
 For real host acceptance, use a demonstrated isolated extension installation,
 or a clean licensed test VM on this workstation. Do not replace the working

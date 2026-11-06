@@ -6,10 +6,14 @@ verification, and the P2 recovery preflight fix. Its complete serial Node suite
 passes 159/159 with no skips; the rebuilt x86 host passes 151 native regressions
 and 29 private-configuration checks. The fresh complete package passes real
 protected startup, both MCPs on synthetic data, restart and state preservation.
-See [the current integration record](INTEGRATED_ACCEPTANCE_20261106.md) for
-artifact identity, remaining checks and the host-isolation blocker. These changes
-have not yet received a new hosted CI run. Roadmap items 1, 3 and 4 retain their
-uncompleted installed-host/UI gates.
+See [the integration record](INTEGRATED_ACCEPTANCE_20261106.md) for artifact
+identity and remaining checks. Hosted portable/source CI for `c1f080e` has now
+passed all three jobs. The subsequent native maintenance guard `c5790d6` passes
+65 synthetic guard checks and 29 private-configuration checks and requires its
+own final package/startup verification. The
+[local maintenance proposal](LOCAL_MAINTENANCE_ACCEPTANCE_PLAN.md) is being
+prepared without changing the working installation. Roadmap items 1, 3 and 4
+retain their uncompleted installed-host/UI gates.
 
 The normal working installation was restored after yesterday's experiment.
 The original native prototype, original user configuration and verified backend
