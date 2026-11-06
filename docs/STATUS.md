@@ -1,10 +1,22 @@
 # Implementation status
 
-**Paused on operator request, 2026-11-05.** The current source includes unaccepted
-installer rollback and package-verification WIP. Its last green CI predates those
-changes. The four roadmap items are not all complete. See the
-[pause handoff](PAUSE_20261105.md) for exact evidence, the open P2 review finding,
-machine state and the next required checks.
+**Resumed on operator request, 2026-11-06.** The isolated integration checkout now
+contains the private native test configuration, completed scoped package
+verification, and the P2 recovery preflight fix. Its complete serial Node suite
+passes 159/159 with no skips; the rebuilt x86 host passes 151 native regressions
+and 29 private-configuration checks. The fresh complete package passes real
+protected startup, both MCPs on synthetic data, restart and state preservation.
+See [the current integration record](INTEGRATED_ACCEPTANCE_20261106.md) for
+artifact identity, remaining checks and the host-isolation blocker. These changes
+have not yet received a new hosted CI run. Roadmap items 1, 3 and 4 retain their
+uncompleted installed-host/UI gates.
+
+The normal working installation was restored after yesterday's experiment.
+The original native prototype, original user configuration and verified backend
+source remain active; the primary checkout stays on recovery `f6e018a`, with
+runtime source `491ed3a`. Today builds and tests use a separate checkout and
+synthetic state. See [the recovery record](LOCAL_RUNTIME_RECOVERY_20261105.md).
+The [pause handoff](PAUSE_20261105.md) remains a historical snapshot.
 
 Actual installation update, **2026-11-05**: the first CI C0 EXE was installed
 with operator-confirmed same-user UAC into the real x86 alpha host. All 22443

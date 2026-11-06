@@ -10,6 +10,18 @@ The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains 
 
 ## Agreed priorities (2026-11-02)
 
+Integrationsstand vom 06.11.2026: Private native Testkonfiguration, begrenzte
+Wiederverwendung voller Paketprüfungen pro Startvorgang und die P2-Korrektur vor
+Profil-Recovery-Schreibzugriffen sind zusammengeführt. 159 Node-Tests ohne Skip,
+151 native Regressionen, 29 Konfigurationschecks sowie der vollständige echte
+Paket-Smoke mit beiden MCPs und Neustart bestehen. Der
+[aktuelle Nachweis](INTEGRATED_ACCEPTANCE_20261106.md) trennt diese Ergebnisse
+von der weiter offenen Host-/UI-Abnahme. Ein frisches Shell-Profil lädt weiterhin
+den globalen Prototyp; eine sichere Trennung der Erweiterungen ist nicht belegt.
+Der Installer verweigert deshalb das Test-Override am gemeinsamen Host. Die
+Arbeitsinstallation bleibt auf dem wiederhergestellten Stand. Punkte 5–7 wurden
+nicht begonnen; die vier Abschlussaufträge sind noch nicht alle abgenommen.
+
 Host-Zwischenstand vom 05.11.2026: Die read-only Inventarisierung bestätigt
 TcXaeShell/x86 mit TwinCAT 3.1.4024.78 als erstes Alpha-Installationsziel.
 Die [Host-Abnahmematrix](HOST_ACCEPTANCE_MATRIX.md) und
