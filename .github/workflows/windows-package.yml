@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Import exactly reviewed staging, refresh Core from this commit
-        shell: pwsh
+        shell: powershell
         run: |
           node scripts/stage-ci-application.mjs $env:ALPHA_REVIEWED_APPLICATION (Join-Path $env:RUNNER_TEMP 'application')
           if ($LASTEXITCODE) { throw 'Reviewed staging import failed' }
