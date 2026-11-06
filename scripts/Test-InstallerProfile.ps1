@@ -1,9 +1,9 @@
 $ErrorActionPreference='Stop'
 . "$PSScriptRoot/installer/HostTransaction.ps1"
 . "$PSScriptRoot/installer/NativeProfile.ps1"
-$base=Join-Path (Split-Path $PSScriptRoot -Parent) ('local-data/test-installer-profile-'+[guid]::NewGuid().ToString('N'))
+$base=[IO.Path]::GetFullPath((Join-Path (Split-Path $PSScriptRoot -Parent) ('local-data/test-installer-profile-'+[guid]::NewGuid().ToString('N'))))
 New-Item -ItemType Directory $base|Out-Null
-$local=Join-Path $base 'local-app-data';$profile=Join-Path $local 'TwinCatAssistant/host-tests/valid_01'
+$local=Join-Path $base 'local-app-data';$profile=[IO.Path]::GetFullPath((Join-Path $local 'TwinCatAssistant/host-tests/valid_01'))
 New-Item -ItemType Directory $profile -Force|Out-Null
 $global=Join-Path $local 'TwinCatAssistant/native-chat.json';$globalRoot=Join-Path $base 'global-state'
 [IO.File]::WriteAllText($global,(@{StateRoot=$globalRoot;DotNetRoot='old-sdk-hint';NodePath='never-executed'}|ConvertTo-Json))
