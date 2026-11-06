@@ -37,5 +37,6 @@ try {
         if (-not $entries.ContainsKey($name)) { throw "Missing installer support file: $name" }
     }
     if (@($manifest.files | Where-Object path -CEQ 'src/rollback-policy.mjs').Count -and -not $entries.ContainsKey('PolicyRollback.ps1')) { throw 'Policy-capable package requires its installer rollback coordinator.' }
+    if (@($manifest.files | Where-Object path -CEQ 'src/rollback-policy.mjs').Count -and -not $entries.ContainsKey('NativeProfile.ps1')) { throw 'Policy-capable package requires native profile isolation preflight.' }
     Write-Host "Installer payload verified: version $($manifest.version), $($manifest.files.Count) application files, all sizes and SHA256 hashes match. Installer was not executed."
 } finally { $archive.Dispose(); $stream.Dispose() }

@@ -5,6 +5,13 @@ param([Parameter(Mandatory)][ValidateSet('Install','Rollback')][string]$Action,
 $ErrorActionPreference = 'Stop'
 . "$PSScriptRoot/HostTransaction.ps1"
 . "$PSScriptRoot/RuntimePrerequisites.ps1"
+. "$PSScriptRoot/NativeProfile.ps1"
+# Resolve process-only isolation before creating any install state.
+$profile = Resolve-InstallerProfile
+$policyStateRoot = $profile.StateRoot
+if ($profile.Contract -ceq 'host-test-override-v1') {
+    throw 'Private data override is validated, but registered-host deployment is forbidden until an isolated extension-search target is implemented.'
+}
 $inventoryScript = Join-Path $PSScriptRoot 'Get-AssistantHostInventory.ps1'
 $targetsPath = Join-Path $PSScriptRoot 'host-targets.json'
 # This command always collects local live facts. No supplied-inventory option is exposed.
@@ -57,19 +64,5 @@ if ($Action -eq 'Rollback') {
 }
 $programs = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
 Assert-ApplicationRuntimePrerequisites $runtimePackage (Join-Path $programs 'dotnet')
-# Read only this same Windows user's native configuration. Executable paths,
-# credentials and MCP commands from it are never passed to the helper.
-$policyStateRoot = Join-Path $env:LOCALAPPDATA 'TwinCatAssistant/operator-state'
-if ($Action -in @('Install','Rollback')) {
-    $nativeConfig = Join-Path $env:LOCALAPPDATA 'TwinCatAssistant/native-chat.json'
-    if (Test-Path -LiteralPath $nativeConfig) {
-        Assert-NoLinks $nativeConfig
-        $nativeFile = Get-Item -LiteralPath $nativeConfig
-        if ($nativeFile.Length -gt 65536) { throw 'Native configuration too large.' }
-        $native = Get-Content -LiteralPath $nativeConfig -Raw | ConvertFrom-Json
-        if (-not $native.StateRoot -or -not [IO.Path]::IsPathRooted([string]$native.StateRoot)) { throw 'Native StateRoot must be absolute.' }
-        $policyStateRoot = [IO.Path]::GetFullPath([string]$native.StateRoot)
-    }
-}
 Invoke-HostTransaction -PolicyStateRoot $policyStateRoot -Action $Action -InstallRoot $InstallRoot -HostRoot $hostRoot -Interop $interop -Package $package -Target $target[0]
 Write-Host 'Host files registered with the selected packaged runtime. Real-host acceptance remains separate.'

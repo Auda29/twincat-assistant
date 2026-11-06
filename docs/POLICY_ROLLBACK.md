@@ -102,3 +102,32 @@ no registered-host installation, IDE attach, provider call or PLC operation.
 Real-package results and failures are recorded in the private ignored evidence
 file, with a sanitized committed summary after completion. No fixture or direct
 configuration read closes the real registered-host install/update/rollback gate.
+
+## Process-only host-test contract v1, 2026-11-06
+
+Installer preflight matches native source 85e45fd. A process-only
+TWINCAT_ASSISTANT_TEST_CONFIG must name the canonical single-link file
+%LOCALAPPDATA%/TwinCatAssistant/host-tests/<id>/native-chat.json, with an ASCII
+id of 1-64 letters, digits, underscore or hyphen. Its only fields are the exact
+profile/state StateRoot and system ProgramW6432/dotnet DotNetRoot. Executable,
+repository and MCP fields are refused. Missing, redirected, hardlinked, foreign
+or malformed overrides never cause a global native-chat.json fallback read.
+Existing profile files/directories are checked before any installation state is
+created. Inherited WebView2 folder/argument overrides are refused, matching the
+native validator. Resolver preflight is read-only; no global config is rewritten.
+
+StateRoot/SID binding uses the validated process selection before Install or
+Rollback. However, private data alone does not isolate the registered host's
+extension directory. Until an explicitly isolated extension-search target is
+implemented, Invoke-Installer refuses the test override before inventory or any
+file swap. The resolver and synthetic transaction tests establish data-contract
+checks, not an isolated real-host installation. Parent owns the discovery and
+subsequent real host acceptance.
+
+Read-only scope validation now precedes all global journal recovery writes.
+Both journal endpoint configurations and their referenced MCP files/Engineering
+scopes are checked under the existing lock. A valid live endpoint cannot hide
+an unsafe non-live endpoint. readOnly:false, an implicit/non-file backend and
+missing configuration each preserve config/settings/journal bytes on refusal.
+The same shared checks apply to a newly written profile pair before its journal
+is created. Historical frozen package evidence remains separate from this fix.
