@@ -84,13 +84,33 @@ await pass('all four global scopes downgrade and are read by the actual old C0 r
  }
 });
 async function unchangedGlobal(action) {const before=await Promise.all([readFile(configFile),readFile(settingsFile)]);await action();const after=await Promise.all([readFile(configFile),readFile(settingsFile)]);assert.deepEqual(after,before);}
+await pass('P2 global scope references including both pending-journal endpoints refuse without mutation',async()=>{
+ const original=await Promise.all([readFile(configFile),readFile(settingsFile)]), journal=join(state,'.profile-update.json');
+ for(const endpoint of ['live','before','after']) for(const fault of ['writable','implicit-backend','missing-config']) {
+  const configPath=join(work,'p2-'+endpoint+'-'+fault+'.json');
+  if(fault!=='missing-config')await writeFile(configPath,JSON.stringify({readOnly:fault!=='writable',writeAllowlist:[],engineering:{enabled:true,...(fault==='implicit-backend'?{}:{backend:'configuredProjectFiles'})}}));
+  const good={settings:JSON.parse(original[1]),config:JSON.parse(original[0])};
+  const settings={...good.settings,engineering:{entrypoint:join(current,'runtime/mcp/engineering/packages/mcp/dist/index.js'),config:configPath}};
+  const config=await evalAt(current,`const {createOpenCodeConfig}=await import(${JSON.stringify(moduleUrl(current,'config'))});console.log(JSON.stringify(createOpenCodeConfig(JSON.parse(process.argv[1]))));`,[JSON.stringify(settings)]);
+  try {
+   if(endpoint==='live'){await writeFile(configFile,JSON.stringify(config));await writeFile(settingsFile,JSON.stringify(settings));}
+   else await writeFile(journal,JSON.stringify({version:1,before:endpoint==='before'?{settings,config}:good,after:endpoint==='after'?{settings,config}:good}));
+   const files=[configFile,settingsFile,...(endpoint==='live'?[]:[journal])],bytes=await Promise.all(files.map(f=>readFile(f)));
+   await refused();assert.deepEqual(await Promise.all(files.map(f=>readFile(f))),bytes);await checkSentinels();
+  } finally {await writeFile(configFile,original[0]);await writeFile(settingsFile,original[1]);if(endpoint!=='live'){const {unlink}=await import('node:fs/promises');await unlink(journal);}}
+ }
+});
 await pass('unsupported engineering-only project refuses before global downgrade',async()=>{
  const [receiptBytes,configBytes]=await Promise.all([readFile(receiptFile),readFile(projectConfig)]);
  try {
   const receipt=JSON.parse(receiptBytes);delete receipt.settings.knowledge;await writeFile(receiptFile,JSON.stringify(receipt));
   const scoped=await evalAt(current,`const {createOpenCodeConfig}=await import(${JSON.stringify(moduleUrl(current,'config'))});const {analysisSystemPrompt,ANALYSIS_PROFILE}=await import(${JSON.stringify(moduleUrl(current,'agent-prompts'))});const c=createOpenCodeConfig(JSON.parse(process.argv[1]));c.agents[ANALYSIS_PROFILE].system=analysisSystemPrompt({knowledge:false,engineering:true,project:true});console.log(JSON.stringify({mcp:c.mcp,agents:c.agents}));`,[JSON.stringify({engineering:{entrypoint:receipt.settings.engineering.entrypoint,config:join(location.workspace,'engineering.json')}})]);
   await writeFile(projectConfig,JSON.stringify(scoped));
-  await unchangedGlobal(()=>refused());
+  const pending=join(state,'.profile-update.json');
+  const globalPair={settings:JSON.parse(await readFile(settingsFile,'utf8')),config:JSON.parse(await readFile(configFile,'utf8'))};
+  await writeFile(pending,JSON.stringify({version:1,before:globalPair,after:globalPair}));
+  const pendingBytes=await readFile(pending);
+  try{await unchangedGlobal(()=>refused());assert.deepEqual(await readFile(pending),pendingBytes);}finally{const {unlink}=await import('node:fs/promises');await unlink(pending);}
  } finally {await writeFile(receiptFile,receiptBytes);await writeFile(projectConfig,configBytes);}
 });
 await pass('unknown global prompt, widened rights and outstanding project journal refuse before mutation',async()=>{

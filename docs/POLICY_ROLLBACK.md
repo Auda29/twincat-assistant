@@ -131,3 +131,30 @@ an unsafe non-live endpoint. readOnly:false, an implicit/non-file backend and
 missing configuration each preserve config/settings/journal bytes on refusal.
 The same shared checks apply to a newly written profile pair before its journal
 is created. Historical frozen package evidence remains separate from this fix.
+
+## New P2 evidence, 2026-11-06
+
+[The new regression record](evidence/policy-rollback-p2-20261106.json) is a fresh
+12-group run, not reuse of the archived 11 checks. Actual first CI C0 and real
+frozen C1 components were used in a new synthetic host/profile. C1 Core came
+from 4116ecb, including P2 and f9d7fde, with byte equality to parent 6dbb2ad.
+Its manifest is 6126b38887ca04ccd1ca81a04efa3f8910c7b5ade4419e0db92a159268ac85ed.
+The Native DLL remained the frozen baseline: this is explicitly not Native85
+or registered-host/UI acceptance. Parent owns that separate combined evidence.
+
+The complete C0 to C1 to C0 protected startup/project-workspace sequence passed.
+All four global scopes were read by the actual C0 runtime after downgrade.
+New chat/login/binding sentinels created after C1 survived. Unsupported project
+scope with an existing global journal, unknown policies/rights, null/false/0
+project journals, rehashed unknown target source and both caught failure
+boundaries refused safely or retained a usable C1 state as appropriate.
+
+Nine additional reference cases cover live, journal-before and journal-after
+with readOnly:false, implicit backend and missing configuration. Config,
+settings, journal bytes and sentinels stayed unchanged on refusal. C1 alone
+recovered a valid mixed journal. No C0 startup on a C1-containing journal was
+claimed. Final product inventories and per-pair journal/lock cleanup passed.
+The full serial Node suite passed 159/159, and targeted profile/state/prompt
+checks passed 25/25, zero skips. Legacy PS5 installer/profile checks passed too.
+No Main worktree, OperatorState, registered host, provider or PLC was used as
+a mutation target. This is not a system-wide zero-read audit.
