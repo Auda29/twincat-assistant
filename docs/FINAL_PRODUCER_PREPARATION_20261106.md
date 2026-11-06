@@ -1,5 +1,9 @@
 # Integrated producer preparation, 2026-11-06
 
+Historical b38 preparation. The active scripts now target the later guarded
+package; see [guarded producer preparation](GUARDED_PRODUCER_PREPARATION_20261106.md).
+The input identities and results below remain evidence for b38 only.
+
 Preparation only: no push, workflow dispatch, runner registration, executable
 execution or registered-host deployment. This supersedes the November 5
 producer baseline. Parent release is still required before any CI action.

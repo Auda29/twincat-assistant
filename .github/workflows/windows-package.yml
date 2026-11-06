@@ -16,7 +16,7 @@ permissions:
 jobs:
   reviewed-input:
     if: github.event_name == 'push' && github.repository == 'Auda29/twincat-assistant' && github.actor == 'Auda29'
-    runs-on: [alpha-integrated-20261106-82f6d9c1]
+    runs-on: [alpha-guard-20261106-73a94c62]
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

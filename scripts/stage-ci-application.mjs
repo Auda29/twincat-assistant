@@ -5,8 +5,8 @@ import { join, resolve } from 'node:path';
 import { createManifest, verifyManifest } from './application-manifest.mjs';
 // This is deliberately a one-candidate import, not automatic adoption of inputs.
 const [input, output] = process.argv.slice(2).map(p => resolve(p));
-const expected = 'b38c2e5d20b1b1084934eeba80dca09cfdf26aa35e2742756e47baf503ef4354';
-const base = '6dbb2ade20777f1e666c36bd8ccf7e0dced023ab';
+const expected = '6ee4eb9bb5c83de02f60cdea06ecf918e33c50d4baf5a3da2c39a01b2e7da271';
+const base = 'b0bf7c2ab18e6a6ff0daaeacb3fdbbbe80ff5b99';
 const sha = value => createHash('sha256').update(value).digest('hex');
 if (sha(await readFile(join(input,'application-manifest.json'))) !== expected) throw new Error('Unreviewed staging input');
 const manifest = await verifyManifest(input);
