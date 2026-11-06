@@ -50,11 +50,45 @@ records source, harness, fixture, package and native hashes without profile path
 
 ## Final coordinated candidate
 
-A clean-commit native rebuild, fresh final package, repeated guard/private
-checks and exact-package Native80 test are pending. The source receipt retains
-the already verified pinned Core executable and separately rebuilt Chat UI;
-there is no claim of an additional Core compilation. The final package identity
-must supersede, not overwrite or silently adopt, the initial cb92 trial.
+Parent rebuilt the complete native inputs from clean commit
+`b0bf7c2ab18e6a6ff0daaeacb3fdbbbe80ff5b99`, including EmbeddedChat, WindowsHost,
+ReadOnlyProbe and x86 IdeHost, with the pinned SDK 8.0.425. All 151 native
+regressions, 65 guard checks and 29 private-contract checks passed on this new
+build. Its six VSTHRD010 warnings are unchanged. The source receipt retains the
+already verified pinned Core executable and separately rebuilt Chat UI; there
+is no claim of an additional Core compilation.
+
+The final coordinated DLL has SHA-256
+`77e03ab221db44cd2a4eb442fa778f22de3da565940272312e540d85bac10ffd`,
+ProductVersion `0.2.0-preview.2+b0bf7c2ab18e6a6ff0daaeacb3fdbbbe80ff5b99`.
+The fresh package at `artifacts/alpha-maintenance-final-20261106/application`
+has 22,088 entries and manifest SHA-256
+`6ee4eb9bb5c83de02f60cdea06ecf918e33c50d4baf5a3da2c39a01b2e7da271`.
+It contains no active maintenance marker. Relative to the initial cb92 trial,
+only the native host DLL and WindowsHost DLL/EXE changed. The original trial
+package and its evidence remain unchanged.
+
+Exact-package marked Native80 passed in 34,251 ms. The missing-override launch
+was refused; protected readiness, owner stop, exact C1 policy, rebased Knowledge
+path, preserved sentinel and all four full input/copy manifests passed. Raw
+report: `local-data/guarded-final-native-20261106/report.json`.
+
+Full real package smoke passed protected startup, both real MCP probes on
+synthetic files, restart and state preservation. No provider or PLC action.
+The final EXE was built and its complete embedded 22,088-file inventory verified,
+without invoking Main or installing it. It is 236,380,160 bytes, SHA-256
+`e2453d084198bc33d77b2aa8df9fc82e6b45f238ca672f396941fe9b71679590`, under
+`artifacts/alpha-maintenance-final-20261106/installer/`.
+Logs: `local-data/maintenance-final-smoke-20261106.log` and
+`local-data/maintenance-final-installer-20261106.log`.
+The [final machine-readable evidence](evidence/native-maintenance-final-20261106.json)
+keeps the source and artifact identities separate from the initial trial.
+
+Raw native build log: `local-data/maintenance-final-native-build-20261106.log`.
+Fresh guard evidence:
+`local-data/maintenance-guard-a69688bc8c0a45b3bca4c4c3d8978d88/result.json`;
+private-contract evidence:
+`local-data/private-host-config-0ff932866579458c8a1ea0e7492cbe1f/result.json`.
 
 The older producer preparation `02194d7` is bound to b38/6dbb only. A producer
 for this new native guard requires a separately reviewed final source/manifest

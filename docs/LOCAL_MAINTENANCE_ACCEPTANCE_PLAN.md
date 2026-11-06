@@ -96,3 +96,21 @@ unobserved gates remain open until their exact candidate and path are tested.
 This plan prepares a local alternative to the VM. It does not weaken the private
 configuration contract or prove the maintenance coordinator safe before its
 implementation and synthetic recovery tests have passed.
+
+## Concrete process blocker and offline handoff
+
+The current conservative process preflight also refuses three Codex controller
+Node processes. They are not product backends, but no exception or automatic
+termination is implemented. An official REPL reset cleared bindings without
+ending these processes. A possible operator-run maintenance window therefore
+requires saving the handoff, closing the owning application normally, and
+rechecking process quiescence from an independent PowerShell. Closing an IDE
+alone is insufficient for this particular preflight. Do not start that window
+until the concrete coordinator and independent restoration have been reviewed.
+
+The journal and pre/post-rename hashes cannot guarantee exclusion of foreign
+writers or a newly launched IDE. The proposed operating condition is an explicitly
+supervised cooperative window. No race-free OS isolation is claimed; a process
+appearing later blocks further writes, including automated restoration. The
+original backup and journal must remain available for a separately reviewed
+manual recovery. No public entry has been executed or approved by these tests.
