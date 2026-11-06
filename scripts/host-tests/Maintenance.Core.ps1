@@ -18,7 +18,11 @@ function Assert-MmPath([string]$Path) {
  }
 }
 function Get-MmHash([string]$Path) {
- Assert-MmPath $Path; Assert-MmRegular $Path
+ Assert-MmPath $Path
+ return (Get-MmLeafHash $Path)
+}
+function Get-MmLeafHash([string]$Path) {
+ Assert-MmRegular $Path
  $stream=[IO.File]::Open($Path,'Open','Read','Read')
  try { $s=[Security.Cryptography.SHA256]::Create(); try { return ([BitConverter]::ToString($s.ComputeHash($stream))).Replace('-','').ToLowerInvariant() } finally { $s.Dispose() } } finally { $stream.Dispose() }
 }
@@ -39,16 +43,21 @@ function Get-MmTree([string]$Root) {
  Assert-MmPath $Root
  if (-not (Test-Path -LiteralPath $Root -PathType Container)) { throw 'Maintenance tree missing.' }
  $entries=New-Object Collections.Generic.List[object]
+ $progress=[Diagnostics.Stopwatch]::StartNew()
  $walk={ param($dir,$prefix)
   foreach($e in @(Get-ChildItem -LiteralPath $dir -Force | Sort-Object Name)) {
-   Assert-MmPath $e.FullName
+   # Root ancestors were checked once; every traversed child is checked before
+   # descending. Do not repeatedly walk the same ancestors for every file.
+   if($e.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Maintenance reparse path refused.'}
    $relative=if($prefix){$prefix+'/'+$e.Name}else{$e.Name}
    if ($e.Name -match '[<>:"|?*\x00-\x1f]' -or $e.Name.EndsWith('.') -or $e.Name.EndsWith(' ')) { throw 'Unsafe maintenance tree name.' }
    if($e.PSIsContainer) { $entries.Add([pscustomobject][ordered]@{path=$relative;kind='directory';writeTicks=$e.LastWriteTimeUtc.Ticks;creationTicks=$e.CreationTimeUtc.Ticks}); & $walk $e.FullName $relative }
-   else { $entries.Add([pscustomobject][ordered]@{path=$relative;kind='file';size=$e.Length;sha256=(Get-MmHash $e.FullName);writeTicks=$e.LastWriteTimeUtc.Ticks;creationTicks=$e.CreationTimeUtc.Ticks}) }
+   else { $entries.Add([pscustomobject][ordered]@{path=$relative;kind='file';size=$e.Length;sha256=(Get-MmLeafHash $e.FullName);writeTicks=$e.LastWriteTimeUtc.Ticks;creationTicks=$e.CreationTimeUtc.Ticks}) }
+   if($progress.ElapsedMilliseconds -ge 2000){Write-Progress -Activity 'Maintenance file verification' -Status ($Root+' : '+$entries.Count+' entries checked');$progress.Restart()}
   }
  }
  & $walk $Root ''
+ Write-Progress -Activity 'Maintenance file verification' -Completed
  return $entries.ToArray()
 }
 function Assert-MmTree([string]$Root,$Expected) {

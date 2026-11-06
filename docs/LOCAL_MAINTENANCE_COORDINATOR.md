@@ -227,3 +227,18 @@ restore; it passed with unchanged bytes. Use Test-Maintenance.ps1
 -ProfileOpaqueOnly -EvidencePath <fresh-absolute-path> to repeat this case.
 The separate evidence/maintenance-profile-opaque-20261106.json records this fix;
 the original full-matrix evidence has not been rewritten as a new full run.
+
+## Large-package preparation progress
+
+Tree validation now checks root ancestors once and checks every child for reparse
+points before descent. Each file still receives regular/single-link validation
+and full SHA-256 hashing; direct file operations retain full ancestor validation.
+A two-second progress update reports the current tree and entry count. This
+removes repeated ancestor-provider calls for each of the 22,088 package files.
+The cooperative-window limitation is unchanged.
+
+All 14 synthetic groups passed after this change, including the locked-state
+case and link/recovery matrix. The profile junction fixture now targets the
+validated WebView2 directory, consistent with opaque user-data descendants.
+Evidence: scripts/host-tests/evidence/maintenance-path-walk-20261106.json.
+The earlier failed diagnostic run remains in local-data and is not a pass.

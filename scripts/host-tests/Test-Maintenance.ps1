@@ -161,7 +161,7 @@ foreach($kind in @('partial-backup','writing','wrong-lock','hardlink','junction'
   'writing' {[IO.File]::WriteAllText((Join-Path $run 'journal.json.writing'),'interrupted')}
   'wrong-lock' {[IO.File]::WriteAllText((Join-Path $run 'maintenance.lock'),('f'*64))}
   'hardlink' {New-Item -ItemType HardLink -Path (Join-Path $f.profile 'linked-config') -Target $f.request.configurationPath | Out-Null}
-  'junction' {[void][IO.Directory]::CreateDirectory((Join-Path $f.root 'foreign')); New-Item -ItemType Junction -Path (Join-Path $f.profile 'junction') -Target (Join-Path $f.root 'foreign') | Out-Null}
+  'junction' {[void][IO.Directory]::CreateDirectory((Join-Path $f.root 'foreign')); New-Item -ItemType Junction -Path (Join-Path $f.profile 'WebView2') -Target (Join-Path $f.root 'foreign') | Out-Null}
   'profile-root' {Write-MmAtomic $f.request.configurationPath ([ordered]@{StateRoot=(Join-Path $f.root 'wrong');DotNetRoot=$f.facts.systemDotNetRoot})}
  }
  $journalHash=Get-MmHash (Join-Path $run 'journal.json')
