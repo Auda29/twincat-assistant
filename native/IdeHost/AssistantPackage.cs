@@ -83,8 +83,16 @@ namespace TwinCatAssistant.Native
     {
         public AssistantToolWindow() : base(null)
         {
-            Caption = "TwinCAT Assistant — read-only";
+            ThreadHelper.ThrowIfNotOnUIThread();
             Content = new AssistantControl();
+            UpdateCaption();
+            HostText.Changed += UpdateCaption;
+        }
+        private void UpdateCaption()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            Caption = HostText.Get("ReadOnlyCaption");
+            if (Frame is IVsWindowFrame frame) frame.SetProperty((int)__VSFPROPID.VSFPROPID_Caption, Caption);
         }
         public override void OnToolWindowCreated()
         {
@@ -105,7 +113,7 @@ namespace TwinCatAssistant.Native
         protected override void Dispose(bool disposing)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (disposing) (Content as AssistantControl)?.Dispose();
+            if (disposing) { HostText.Changed -= UpdateCaption; (Content as AssistantControl)?.Dispose(); }
             base.Dispose(disposing);
         }
     }

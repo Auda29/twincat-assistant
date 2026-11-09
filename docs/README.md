@@ -10,6 +10,7 @@ Current checkpoint: [resumed integration and remaining host gates, 2026-11-06](I
 
 - [Preview 3 installer and first-menu-click fix](releases/native-v0.2.0-preview.3.md)
 - [Graphical Windows setup](INSTALLER_UI.md)
+- [German/English UI, shared language choice and verification](LANGUAGE_SUPPORT.md)
 
 - [Installation and real local checks](INSTALLATION.md)
 - [Agreed product priorities and host compatibility planning](ROADMAP.md#agreed-priorities-2026-11-02)

@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="utf-8"?><root><resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>2.0</value></resheader><resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader><resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="H000" xml:space="preserve"><value>Anhängen</value><comment>native/IdeHost/ChatIntegration.cs:352</comment></data>
+  <data name="H001" xml:space="preserve"><value>Wird angehängt</value><comment>native/IdeHost/ChatIntegration.cs:352</comment></data>
+  <data name="H002" xml:space="preserve"><value>Vorgemerkt</value><comment>native/IdeHost/ChatIntegration.cs:352</comment></data>
+  <data name="H003" xml:space="preserve"><value>Erneut anhängen</value><comment>native/IdeHost/ChatIntegration.cs:352</comment></data>
+  <data name="H004" xml:space="preserve"><value>Aktualisieren</value><comment>native/IdeHost/DiagnosticsIntegration.cs:194</comment></data>
+  <data name="H005" xml:space="preserve"><value>Der lokale Chat startet beim Öffnen automatisch.</value><comment>native/IdeHost/AssistantControl.cs:67</comment></data>
+  <data name="H006" xml:space="preserve"><value>Inventar nicht geladen. Die Editor-Verfolgung nutzt diesen Katalog nicht.</value><comment>native/IdeHost/AssistantControl.cs:434</comment></data>
+  <data name="H008" xml:space="preserve"><value>Chats dieses Projekts anzeigen</value><comment>native/IdeHost/ProjectChatNavigation.cs:93</comment></data>
+  <data name="H009" xml:space="preserve"><value>Neuer Chat</value><comment>native/IdeHost/ProjectChatPicker.cs:591</comment></data>
+  <data name="H012" xml:space="preserve"><value>Weitere Aktionen</value><comment>native/IdeHost/AssistantControl.cs:186</comment></data>
+  <data name="H013" xml:space="preserve"><value>Ausblenden</value><comment>native/IdeHost/AssistantControl.cs:241</comment></data>
+  <data name="H014" xml:space="preserve"><value>Die IDE-Editorbindung fehlt. TwinCAT Assistant erneut über das Menü öffnen.</value><comment>native/IdeHost/AssistantControl.cs:356</comment></data>
+  <data name="H015" xml:space="preserve"><value>Die Editor-Dienste der IDE sind nicht verfügbar. Toolfenster erneut öffnen.</value><comment>native/IdeHost/AssistantControl.cs:370</comment></data>
+  <data name="H016" xml:space="preserve"><value>Kein PLC-Projekt aktiv</value><comment>native/IdeHost/AssistantControl.cs:422</comment></data>
+  <data name="H017" xml:space="preserve"><value>Snapshot aus TwinCAT. Ungespeicherter Editorinhalt ist nicht verifiziert.</value><comment>native/IdeHost/AssistantControl.cs:398</comment></data>
+  <data name="H018" xml:space="preserve"><value>Öffne einen Structured-Text-Baustein in dieser IDE.</value><comment>native/IdeHost/AssistantControl.cs:404</comment></data>
+  <data name="H019" xml:space="preserve"><value>Klicken für die ST-Vorschau{0}IDE PID {1}{2}{3}{4}{5}{6}{7}</value><comment>native/IdeHost/AssistantControl.cs:405</comment></data>
+  <data name="H020" xml:space="preserve"><value>IDE PID {0}: {1} Katalogziele. {2}</value><comment>native/IdeHost/AssistantControl.cs:447</comment></data>
+  <data name="H021" xml:space="preserve"><value>Editor-Verfolgung nicht verfügbar.</value><comment>native/IdeHost/AssistantControl.cs:449</comment></data>
+  <data name="H022" xml:space="preserve"><value>Aktiver Lesevorgang: {0} ms; Maximum: {1} ms. Kein Quelltext an den Chat übergeben.</value><comment>native/IdeHost/AssistantControl.cs:450</comment></data>
+  <data name="H023" xml:space="preserve"><value>Diagnose-Inventar nicht verfügbar; erneut lesen, wenn die IDE bereit ist.</value><comment>native/IdeHost/AssistantControl.cs:453</comment></data>
+  <data name="H024" xml:space="preserve"><value>Manueller Diagnose-Lesevorgang. Änderungsstand: {0}. {1}</value><comment>native/IdeHost/AssistantControl.cs:465</comment></data>
+  <data name="H025" xml:space="preserve"><value>Diagnose-Lesevorgang abgelehnt; den genauen Solution-Kontext neu lesen.</value><comment>native/IdeHost/AssistantControl.cs:469</comment></data>
+  <data name="H026" xml:space="preserve"><value>Unter Diagnose einen Loopback-Port zwischen 1024 und 65535 eintragen.</value><comment>native/IdeHost/AssistantControl.cs:478</comment></data>
+  <data name="H027" xml:space="preserve"><value>Lokalen Chat einrichten: scripts/Configure-NativeChat.ps1 mit Repository-, Node- und .NET-SDK-Pfad ausführen. Konfiguration: {0}</value><comment>native/IdeHost/AssistantControl.cs:513</comment></data>
+  <data name="H028" xml:space="preserve"><value>Die Einrichtung des lokalen Chats fehlt oder ist ungültig.</value><comment>native/IdeHost/AssistantControl.cs:514</comment></data>
+  <data name="H029" xml:space="preserve"><value>Geschützter lokaler Chat-Dienst wird gestartet …</value><comment>native/IdeHost/AssistantControl.cs:519</comment></data>
+  <data name="H031" xml:space="preserve"><value>Der Chat-Browser wurde beendet. Neu verbinden erstellt ihn neu.</value><comment>native/IdeHost/AssistantControl.cs:565</comment></data>
+  <data name="H033" xml:space="preserve"><value>{&quot;code&quot;:&quot;TWINCAT_READ_ONLY&quot;,&quot;error&quot;:&quot;Datei-, Git-, Terminal- und Update-Aktionen sind im eingebetteten TwinCAT-Chat gesperrt.&quot;}</value><comment>native/IdeHost/AssistantControl.cs:577</comment></data>
+  <data name="H035" xml:space="preserve"><value>{&quot;code&quot;:&quot;TWINCAT_CONTEXT_UNBOUND&quot;,&quot;error&quot;:&quot;Diese Unterhaltung gehört nicht zum aktiven TwinCAT-Projekt. Einen Projektchat öffnen.&quot;}</value><comment>native/IdeHost/AssistantControl.cs:583</comment></data>
+  <data name="H037" xml:space="preserve"><value>Chat-Verbindung fehlgeschlagen. Laufzeit-Einrichtung, Port und eine bestehende Profilsperre unter Diagnose prüfen.</value><comment>native/IdeHost/AssistantControl.cs:601</comment></data>
+  <data name="H038" xml:space="preserve"><value>Lokaler Chat verbunden und angemeldet.</value><comment>native/IdeHost/AssistantControl.cs:662</comment></data>
+  <data name="H039" xml:space="preserve"><value>Lokaler Chat verbunden. Anmeldung läuft …</value><comment>native/IdeHost/AssistantControl.cs:663</comment></data>
+  <data name="H040" xml:space="preserve"><value>Der lokale Chat-Dienst wurde beendet. Er wird automatisch neu gestartet.</value><comment>native/IdeHost/AssistantControl.cs:678</comment></data>
+  <data name="H041" xml:space="preserve"><value>Der lokale Chat-Dienst ist nicht mehr erreichbar.</value><comment>native/IdeHost/AssistantControl.cs:696</comment></data>
+  <data name="H043" xml:space="preserve"><value>Modellanbieter: noch keiner verbunden. Zugangsdaten werden nur in den Anbieter-Einstellungen von TwinCAT Assistant Chat eingegeben.</value><comment>native/IdeHost/ChatIntegration.cs:385</comment></data>
+  <data name="H044" xml:space="preserve"><value>Chat-Integration nicht verfügbar. Version und Verbindung unter Diagnose prüfen.</value><comment>native/IdeHost/ChatIntegration.cs:150</comment></data>
+  <data name="H045" xml:space="preserve"><value>Der automatische Anhang konnte nicht bestätigt werden. Bitte erneut versuchen.</value><comment>native/IdeHost/ChatIntegration.cs:281</comment></data>
+  <data name="H046" xml:space="preserve"><value>Erneut versuchen</value><comment>native/IdeHost/ProjectChatPicker.cs:806</comment></data>
+  <data name="H047" xml:space="preserve"><value>Neuer allgemeiner Chat</value><comment>native/IdeHost/ChatIntegration.cs:487</comment></data>
+  <data name="H048" xml:space="preserve"><value>Neuer Chat für {0}</value><comment>native/IdeHost/ChatIntegration.cs:409</comment></data>
+  <data name="H049" xml:space="preserve"><value>{0}: Öffne einen ST-Baustein, um ihn anzuhängen.</value><comment>native/IdeHost/ChatIntegration.cs:354</comment></data>
+  <data name="H050" xml:space="preserve"><value>Dieser Stand von {0} ist für die nächste Nachricht vorgemerkt. Erst Absenden überträgt ihn an das Modell.</value><comment>native/IdeHost/ChatIntegration.cs:355</comment></data>
+  <data name="H051" xml:space="preserve"><value>{0}: Gibt den aktuellen Stand von {1} für die nächste Nachricht frei. Erst Absenden überträgt ihn an das Modell. Das PLC-Projekt wird nicht verändert.</value><comment>native/IdeHost/ChatIntegration.cs:356</comment></data>
+  <data name="H052" xml:space="preserve"><value>Allgemeiner Chat</value><comment>native/IdeHost/ChatIntegration.cs:414</comment></data>
+  <data name="H054" xml:space="preserve"><value>Chat aus {0}</value><comment>native/IdeHost/ChatIntegration.cs:361</comment></data>
+  <data name="H056" xml:space="preserve"><value>Projekt erkannt</value><comment>native/IdeHost/ChatIntegration.cs:362</comment></data>
+  <data name="H057" xml:space="preserve"><value>Seit Anhang geändert</value><comment>native/IdeHost/ChatIntegration.cs:363</comment></data>
+  <data name="H059" xml:space="preserve"><value>Ungespeichert</value><comment>native/IdeHost/ChatIntegration.cs:364</comment></data>
+  <data name="H060" xml:space="preserve"><value>Gespeichert</value><comment>native/IdeHost/ChatIntegration.cs:365</comment></data>
+  <data name="H062" xml:space="preserve"><value>Stand unbekannt</value><comment>native/IdeHost/ChatIntegration.cs:366</comment></data>
+  <data name="H064" xml:space="preserve"><value>MCP-Status wird geprüft. Letzter bestätigter Stand: </value><comment>native/IdeHost/ChatIntegration.cs:377</comment></data>
+  <data name="H065" xml:space="preserve"><value>MCP: </value><comment>native/IdeHost/ChatIntegration.cs:377</comment></data>
+  <data name="H066" xml:space="preserve"><value>noch nicht eingerichtet oder noch nicht verbunden.</value><comment>native/IdeHost/ChatIntegration.cs:378</comment></data>
+  <data name="H069" xml:space="preserve"><value>nicht verfügbar</value><comment>native/IdeHost/ChatIntegration.cs:380</comment></data>
+  <data name="H070" xml:space="preserve"><value> Projektwerkzeuge lesen gespeicherte Dateien. {0}</value><comment>native/IdeHost/ChatIntegration.cs:381</comment></data>
+  <data name="H071" xml:space="preserve"><value>Knowledge-Korpus ist noch nicht eingerichtet.</value><comment>native/IdeHost/ChatIntegration.cs:382</comment></data>
+  <data name="H072" xml:space="preserve"><value>Knowledge-Korpus separat prüfen.</value><comment>native/IdeHost/ChatIntegration.cs:382</comment></data>
+  <data name="H073" xml:space="preserve"><value> Lokale MCP-Konfiguration fehlt.</value><comment>native/IdeHost/ChatIntegration.cs:383</comment></data>
+  <data name="H074" xml:space="preserve"><value> Knowledge-Korpus separat prüfen.</value><comment>native/IdeHost/ChatIntegration.cs:383</comment></data>
+  <data name="H075" xml:space="preserve"><value>Modellanbieter: {0}{1} PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.</value><comment>native/IdeHost/ChatIntegration.cs:386</comment></data>
+  <data name="H076" xml:space="preserve"><value> (freigegeben)</value><comment>native/IdeHost/ChatIntegration.cs:386</comment></data>
+  <data name="H077" xml:space="preserve"><value>. Modell im Chat wählen.</value><comment>native/IdeHost/ChatIntegration.cs:387</comment></data>
+  <data name="H078" xml:space="preserve"><value>. Modell: {0}.</value><comment>native/IdeHost/ChatIntegration.cs:387</comment></data>
+  <data name="H079" xml:space="preserve"><value>Der lokale Chat ist noch nicht eingerichtet. Configure-NativeChat.ps1 ausführen.</value><comment>native/IdeHost/ChatIntegration.cs:399</comment></data>
+  <data name="H080" xml:space="preserve"><value>Diagnose</value><comment>native/IdeHost/DiagnosticsIntegration.cs:41</comment></data>
+  <data name="H081" xml:space="preserve"><value>Verbindung zum lokalen Chat unterbrochen. Neuer Versuch läuft …</value><comment>native/IdeHost/ChatIntegration.cs:402</comment></data>
+  <data name="H082" xml:space="preserve"><value>Verbindung zum lokalen Chat unterbrochen.</value><comment>native/IdeHost/ChatIntegration.cs:402</comment></data>
+  <data name="H083" xml:space="preserve"><value>Neu verbinden</value><comment>native/IdeHost/KnowledgeIntegration.cs:192</comment></data>
+  <data name="H084" xml:space="preserve"><value>Diese Unterhaltung gehört zu {0} und ist hier nur lesbar.</value><comment>native/IdeHost/ChatIntegration.cs:408</comment></data>
+  <data name="H085" xml:space="preserve"><value>Dieser Projektchat gehört zu {0}. Öffne einen Baustein daraus, um weiterzuschreiben.</value><comment>native/IdeHost/ChatIntegration.cs:413</comment></data>
+  <data name="H086" xml:space="preserve"><value>Diese Unterhaltung verwendet noch die frühere Projektanbindung. Starte einen neuen Projektchat.</value><comment>native/IdeHost/ChatIntegration.cs:420</comment></data>
+  <data name="H087" xml:space="preserve"><value>Diese Unterhaltung ist in einer anderen TwinCAT-Instanz geöffnet.</value><comment>native/IdeHost/ChatIntegration.cs:421</comment></data>
+  <data name="H088" xml:space="preserve"><value>Neuer Projektchat</value><comment>native/IdeHost/ChatIntegration.cs:422</comment></data>
+  <data name="H089" xml:space="preserve"><value>Noch kein Modellanbieter verbunden. Zugangsdaten gibst du nur in TwinCAT Assistant Chat ein.</value><comment>native/IdeHost/ChatIntegration.cs:426</comment></data>
+  <data name="H090" xml:space="preserve"><value>Anbieter verbinden</value><comment>native/IdeHost/ChatIntegration.cs:427</comment></data>
+  <data name="H091" xml:space="preserve"><value>Die Beckhoff-Hilfe wird für die Wissenssuche vorbereitet. Du kannst weiterchatten.</value><comment>native/IdeHost/ChatIntegration.cs:431</comment></data>
+  <data name="H092" xml:space="preserve"><value>Fortschritt</value><comment>native/IdeHost/DiagnosticsIntegration.cs:181</comment></data>
+  <data name="H093" xml:space="preserve"><value>Eine neuere Beckhoff-Hilfe ist installiert. Der bisherige Suchindex bleibt verfügbar.</value><comment>native/IdeHost/ChatIntegration.cs:436</comment></data>
+  <data name="H094" xml:space="preserve"><value>Installierte Beckhoff-Hilfe für die Wissenssuche verwenden.</value><comment>native/IdeHost/ChatIntegration.cs:441</comment></data>
+  <data name="H095" xml:space="preserve"><value>Für die Wissenssuche wurde noch keine installierte Beckhoff-Hilfe gefunden.</value><comment>native/IdeHost/ChatIntegration.cs:442</comment></data>
+  <data name="H096" xml:space="preserve"><value>Die Wissenssuche konnte noch nicht eingerichtet werden.</value><comment>native/IdeHost/ChatIntegration.cs:443</comment></data>
+  <data name="H097" xml:space="preserve"><value>Einrichten</value><comment>native/IdeHost/KnowledgeIntegration.cs:97</comment></data>
+  <data name="H098" xml:space="preserve"><value>Ohne Projekt- und Bausteinkontext</value><comment>native/IdeHost/ChatIntegration.cs:487</comment></data>
+  <data name="H099" xml:space="preserve"><value>Allgemeine Chats …</value><comment>native/IdeHost/ChatIntegration.cs:488</comment></data>
+  <data name="H100" xml:space="preserve"><value>Getrennter Verlauf ohne Projektkontext</value><comment>native/IdeHost/ChatIntegration.cs:488</comment></data>
+  <data name="H101" xml:space="preserve"><value>Gesamten Chat kopieren</value><comment>native/IdeHost/ChatIntegration.cs:490</comment></data>
+  <data name="H102" xml:space="preserve"><value>Alle gespeicherten Nachrichten als Markdown</value><comment>native/IdeHost/ChatIntegration.cs:490</comment></data>
+  <data name="H103" xml:space="preserve"><value>Chat als Markdown speichern …</value><comment>native/IdeHost/ChatIntegration.cs:491</comment></data>
+  <data name="H104" xml:space="preserve"><value>Vollständigen Verlauf als .md-Datei exportieren</value><comment>native/IdeHost/ChatIntegration.cs:491</comment></data>
+  <data name="H105" xml:space="preserve"><value>Baustein automatisch anhängen</value><comment>native/IdeHost/ChatIntegration.cs:492</comment></data>
+  <data name="H106" xml:space="preserve"><value>Bei jeder Änderung neu vormerken</value><comment>native/IdeHost/ChatIntegration.cs:492</comment></data>
+  <data name="H107" xml:space="preserve"><value>Modellanbieter</value><comment>native/IdeHost/ChatIntegration.cs:496</comment></data>
+  <data name="H108" xml:space="preserve"><value>Anbieter und Modelle verwalten …</value><comment>native/IdeHost/ChatIntegration.cs:505</comment></data>
+  <data name="H109" xml:space="preserve"><value>Noch nicht eingerichtet</value><comment>native/IdeHost/ChatIntegration.cs:508</comment></data>
+  <data name="H110" xml:space="preserve"><value>Deutsch</value><comment>native/IdeHost/KnowledgeIntegration.cs:78</comment></data>
+  <data name="H111" xml:space="preserve"><value>Englisch</value><comment>native/IdeHost/KnowledgeIntegration.cs:78</comment></data>
+  <data name="H112" xml:space="preserve"><value>Beckhoff-Hilfe wird vorbereitet</value><comment>native/IdeHost/ChatIntegration.cs:510</comment></data>
+  <data name="H113" xml:space="preserve"><value>Läuft</value><comment>native/IdeHost/ChatIntegration.cs:510</comment></data>
+  <data name="H114" xml:space="preserve"><value>Beckhoff-Hilfe · {0}{1}</value><comment>native/IdeHost/ChatIntegration.cs:513</comment></data>
+  <data name="H115" xml:space="preserve"><value> · Update verfügbar</value><comment>native/IdeHost/DiagnosticsIntegration.cs:193</comment></data>
+  <data name="H116" xml:space="preserve"><value>Getrennt</value><comment>native/IdeHost/DiagnosticsIntegration.cs:158</comment></data>
+  <data name="H117" xml:space="preserve"><value>Bereit</value><comment>native/IdeHost/DiagnosticsIntegration.cs:187</comment></data>
+  <data name="H118" xml:space="preserve"><value>Status offen</value><comment>native/IdeHost/ChatIntegration.cs:519</comment></data>
+  <data name="H119" xml:space="preserve"><value>Verbindet</value><comment>native/IdeHost/ChatIntegration.cs:520</comment></data>
+  <data name="H120" xml:space="preserve"><value>Wissenssuche</value><comment>native/IdeHost/KnowledgeIntegration.cs:61</comment></data>
+  <data name="H121" xml:space="preserve"><value>Diagnose anzeigen</value><comment>native/IdeHost/ChatIntegration.cs:527</comment></data>
+  <data name="H122" xml:space="preserve"><value>Einstellung konnte nicht gespeichert werden; sie gilt bis zum Schließen der IDE.</value><comment>native/IdeHost/ChatIntegration.cs:628</comment></data>
+  <data name="H123" xml:space="preserve"><value>Der aktive Baustein wird jetzt automatisch angehängt, sobald er sich ändert. Erst Absenden überträgt ihn.</value><comment>native/IdeHost/ChatIntegration.cs:630</comment></data>
+  <data name="H124" xml:space="preserve"><value>Automatisches Anhängen ist aus. Der automatisch folgende Anhang wurde entfernt; manuelle Anhänge bleiben erhalten.</value><comment>native/IdeHost/ChatIntegration.cs:634</comment></data>
+  <data name="H125" xml:space="preserve"><value>Der aktive ST-Baustein ist nicht eindeutig verfügbar.</value><comment>native/IdeHost/ChatIntegration.cs:655</comment></data>
+  <data name="H126" xml:space="preserve"><value>Das PLC-Projekt ist nicht eindeutig verfügbar.</value><comment>native/IdeHost/ChatIntegration.cs:668</comment></data>
+  <data name="H127" xml:space="preserve"><value>Die Projektwerkzeuge konnten nicht eingerichtet werden. Diagnose und lokale MCP-Konfiguration prüfen.</value><comment>native/IdeHost/ChatIntegration.cs:708</comment></data>
+  <data name="H128" xml:space="preserve"><value>Die gespeicherte Projektzuordnung konnte nicht gelesen werden. Es wurde kein neuer Chat angelegt.</value><comment>native/IdeHost/ChatIntegration.cs:730</comment></data>
+  <data name="H129" xml:space="preserve"><value>Gespeicherter Projektkontext noch nicht verfügbar.</value><comment>native/IdeHost/ChatIntegration.cs:747</comment></data>
+  <data name="H130" xml:space="preserve"><value>Gespeicherte Unterhaltung noch nicht auswählbar.</value><comment>native/IdeHost/ChatIntegration.cs:750</comment></data>
+  <data name="H131" xml:space="preserve"><value>Der Projektverlauf konnte noch nicht geladen werden. Es wurde kein neuer Chat angelegt.</value><comment>native/IdeHost/ChatIntegration.cs:758</comment></data>
+  <data name="H132" xml:space="preserve"><value>Projektverlauf nicht bestätigt.</value><comment>native/IdeHost/ChatIntegration.cs:801</comment></data>
+  <data name="H133" xml:space="preserve"><value>Projektverlauf nicht verfügbar.</value><comment>native/IdeHost/ChatIntegration.cs:803</comment></data>
+  <data name="H134" xml:space="preserve"><value>Projektverlauf noch nicht geladen.</value><comment>native/IdeHost/ChatIntegration.cs:807</comment></data>
+  <data name="H136" xml:space="preserve"><value>Projektchat konnte nicht angelegt werden.</value><comment>native/IdeHost/ChatIntegration.cs:852</comment></data>
+  <data name="H137" xml:space="preserve"><value>Chat-Erstellung nicht bestätigt. Keine automatische Wiederholung; Verlauf prüfen.</value><comment>native/IdeHost/ChatIntegration.cs:855</comment></data>
+  <data name="H138" xml:space="preserve"><value>Der neue allgemeine Chat ist nicht verfügbar.</value><comment>native/IdeHost/ChatIntegration.cs:859</comment></data>
+  <data name="H139" xml:space="preserve"><value>Projekt gewechselt. Der neue Chat wurde nicht zugeordnet.</value><comment>native/IdeHost/ChatIntegration.cs:866</comment></data>
+  <data name="H140" xml:space="preserve"><value>Chat konnte nicht angelegt werden. Verbindung prüfen.</value><comment>native/IdeHost/ChatIntegration.cs:872</comment></data>
+  <data name="H141" xml:space="preserve"><value>Zuerst eine Unterhaltung öffnen.</value><comment>native/IdeHost/ChatIntegration.cs:921</comment></data>
+  <data name="H142" xml:space="preserve"><value>Projekt oder Arbeitsbereich gewechselt. Chat nicht zugeordnet.</value><comment>native/IdeHost/ChatIntegration.cs:883</comment></data>
+  <data name="H143" xml:space="preserve"><value>Chat-Zuordnung nicht verfügbar.</value><comment>native/IdeHost/ChatIntegration.cs:940</comment></data>
+  <data name="H144" xml:space="preserve"><value>Ein Projekt-Arbeitsbereich kann nicht als allgemeiner Chat freigegeben werden.</value><comment>native/IdeHost/ChatIntegration.cs:922</comment></data>
+  <data name="H145" xml:space="preserve"><value>Der Chatverlauf wird noch geladen. Der Baustein kann angehängt werden, sobald der Chat bereit ist.</value><comment>native/IdeHost/ChatIntegration.cs:963</comment></data>
+  <data name="H146" xml:space="preserve"><value>Ein manueller Anhang wird noch verarbeitet.</value><comment>native/IdeHost/ChatIntegration.cs:966</comment></data>
+  <data name="H147" xml:space="preserve"><value>Chat-Zuordnung geändert. Kein Quelltext angehängt.</value><comment>native/IdeHost/ChatIntegration.cs:970</comment></data>
+  <data name="H148" xml:space="preserve"><value>Der Baustein wurde geändert. Bitte den aktuellen Stand erneut anhängen.</value><comment>native/IdeHost/ChatIntegration.cs:974</comment></data>
+  <data name="H149" xml:space="preserve"><value>Die Chat-Seite wurde neu geladen. Bitte den Kontext erneut prüfen.</value><comment>native/IdeHost/ChatIntegration.cs:976</comment></data>
+  <data name="H150" xml:space="preserve"><value> (gespeicherte Referenz)</value><comment>native/IdeHost/ChatIntegration.cs:982</comment></data>
+  <data name="H151" xml:space="preserve"><value>Der Editorinhalt konnte nicht angehängt werden. Bitte den aktiven Baustein und den Chat prüfen.</value><comment>native/IdeHost/ChatIntegration.cs:1003</comment></data>
+  <data name="H152" xml:space="preserve"><value>Das Eingabefeld hat den automatischen Anhang noch nicht bestätigt. Bitte den Chatverlauf fertig laden lassen und erneut versuchen.</value><comment>native/IdeHost/ChatIntegration.cs:1012</comment></data>
+  <data name="H153" xml:space="preserve"><value>Die Chat-Zuordnung hat sich geändert. Bitte den Projektchat erneut auswählen.</value><comment>native/IdeHost/ChatIntegration.cs:1019</comment></data>
+  <data name="H154" xml:space="preserve"><value>Im Eingabefeld wartet noch ein anderer Dateianhang. Bitte diesen zuerst übernehmen oder entfernen.</value><comment>native/IdeHost/ChatIntegration.cs:1020</comment></data>
+  <data name="H155" xml:space="preserve"><value>Ein manueller Baustein-Anhang wird noch verarbeitet. Bitte kurz warten.</value><comment>native/IdeHost/ChatIntegration.cs:1021</comment></data>
+  <data name="H156" xml:space="preserve"><value>Der Baustein-Anhang konnte nicht vollständig geprüft werden. Es wurde kein Teilinhalt übertragen.</value><comment>native/IdeHost/ChatIntegration.cs:1022</comment></data>
+  <data name="H157" xml:space="preserve"><value>Das Eingabefeld konnte den Anhang nicht übernehmen. Bitte den Chat erneut laden und nochmals anhängen.</value><comment>native/IdeHost/ChatIntegration.cs:1023</comment></data>
+  <data name="H158" xml:space="preserve"><value>Chat-Auswahl geändert.</value><comment>native/IdeHost/ChatIntegration.cs:1042</comment></data>
+  <data name="H159" xml:space="preserve"><value>Modellanbieter {0} wird freigegeben …</value><comment>native/IdeHost/ChatIntegration.cs:1044</comment></data>
+  <data name="H161" xml:space="preserve"><value>Modellanbieter {0} ist für diesen Assistant zugelassen. {1} PLC-Schreib- und Shell-Werkzeuge bleiben gesperrt.</value><comment>native/IdeHost/ChatIntegration.cs:1061</comment></data>
+  <data name="H162" xml:space="preserve"><value>Modell im Chat wählen.</value><comment>native/IdeHost/ChatIntegration.cs:1062</comment></data>
+  <data name="H163" xml:space="preserve"><value>Standardmodell: {0}.</value><comment>native/IdeHost/ChatIntegration.cs:1062</comment></data>
+  <data name="H164" xml:space="preserve"><value>Freigabe des Modellanbieters konnte nicht bestätigt werden.</value><comment>native/IdeHost/ChatIntegration.cs:1068</comment></data>
+  <data name="H165" xml:space="preserve"><value>Der Modellanbieter {0} konnte nicht freigegeben werden.</value><comment>native/IdeHost/ChatIntegration.cs:1070</comment></data>
+  <data name="H166" xml:space="preserve"><value>Bericht kopieren</value><comment>native/IdeHost/DiagnosticsIntegration.cs:42</comment></data>
+  <data name="H167" xml:space="preserve"><value>Kopiert den Status als Text, z. B. für eine Fehlermeldung. Enthält keinen Quelltext und keine Zugangsdaten.</value><comment>native/IdeHost/DiagnosticsIntegration.cs:44</comment></data>
+  <data name="H168" xml:space="preserve"><value>Diagnose ausblenden</value><comment>native/IdeHost/DiagnosticsIntegration.cs:45</comment></data>
+  <data name="H169" xml:space="preserve"><value>Chat</value><comment>native/IdeHost/DiagnosticsIntegration.cs:49</comment></data>
+  <data name="H170" xml:space="preserve"><value>Modell</value><comment>native/IdeHost/DiagnosticsIntegration.cs:50</comment></data>
+  <data name="H171" xml:space="preserve"><value>Projektwerkzeuge</value><comment>native/IdeHost/DiagnosticsIntegration.cs:51</comment></data>
+  <data name="H172" xml:space="preserve"><value>Erweitert</value><comment>native/IdeHost/DiagnosticsIntegration.cs:57</comment></data>
+  <data name="H173" xml:space="preserve"><value>Werkzeuge zur Fehlersuche. Gelesener Quelltext bleibt in diesem Fenster und geht nicht an den Chat.</value><comment>native/IdeHost/DiagnosticsIntegration.cs:66</comment></data>
+  <data name="H174" xml:space="preserve"><value>Port</value><comment>native/IdeHost/DiagnosticsIntegration.cs:70</comment></data>
+  <data name="H175" xml:space="preserve"><value>Verbinden</value><comment>native/IdeHost/DiagnosticsIntegration.cs:168</comment></data>
+  <data name="H176" xml:space="preserve"><value>IDE-Kontext lesen</value><comment>native/IdeHost/DiagnosticsIntegration.cs:74</comment></data>
+  <data name="H177" xml:space="preserve"><value>Lokal lesen</value><comment>native/IdeHost/DiagnosticsIntegration.cs:76</comment></data>
+  <data name="H178" xml:space="preserve"><value>Status wird geprüft …</value><comment>native/IdeHost/DiagnosticsIntegration.cs:184</comment></data>
+  <data name="H179" xml:space="preserve"><value>Verbunden</value><comment>native/IdeHost/DiagnosticsIntegration.cs:159</comment></data>
+  <data name="H180" xml:space="preserve"><value>Verbindet …</value><comment>native/IdeHost/DiagnosticsIntegration.cs:189</comment></data>
+  <data name="H181" xml:space="preserve"><value>Deaktiviert</value><comment>native/IdeHost/DiagnosticsIntegration.cs:144</comment></data>
+  <data name="H182" xml:space="preserve"><value>Anmeldung nötig</value><comment>native/IdeHost/DiagnosticsIntegration.cs:145</comment></data>
+  <data name="H183" xml:space="preserve"><value>Nicht verfügbar</value><comment>native/IdeHost/DiagnosticsIntegration.cs:146</comment></data>
+  <data name="H184" xml:space="preserve"><value>Nicht eingerichtet</value><comment>native/IdeHost/DiagnosticsIntegration.cs:197</comment></data>
+  <data name="H185" xml:space="preserve"><value>Anmeldung läuft …</value><comment>native/IdeHost/DiagnosticsIntegration.cs:160</comment></data>
+  <data name="H186" xml:space="preserve"><value>Nicht verbunden</value><comment>native/IdeHost/DiagnosticsIntegration.cs:161</comment></data>
+  <data name="H187" xml:space="preserve"><value>Kein Anbieter verbunden</value><comment>native/IdeHost/DiagnosticsIntegration.cs:168</comment></data>
+  <data name="H188" xml:space="preserve"><value>Anbieter nicht freigegeben</value><comment>native/IdeHost/DiagnosticsIntegration.cs:169</comment></data>
+  <data name="H189" xml:space="preserve"><value> · Modell im Chat wählen</value><comment>native/IdeHost/DiagnosticsIntegration.cs:170</comment></data>
+  <data name="H190" xml:space="preserve"><value>Nur im Projektchat</value><comment>native/IdeHost/DiagnosticsIntegration.cs:175</comment></data>
+  <data name="H191" xml:space="preserve"><value>Projektwerkzeuge lesen gespeicherte Dateien des aktiven PLC-Projekts. Im allgemeinen Chat sind sie nicht verbunden.</value><comment>native/IdeHost/DiagnosticsIntegration.cs:175</comment></data>
+  <data name="H192" xml:space="preserve"><value>Wird vorbereitet …</value><comment>native/IdeHost/DiagnosticsIntegration.cs:181</comment></data>
+  <data name="H193" xml:space="preserve"><value>Die Wissenssuche verbindet sich automatisch neu. Der vorbereitete Index bleibt erhalten.</value><comment>native/IdeHost/DiagnosticsIntegration.cs:185</comment></data>
+  <data name="H194" xml:space="preserve"><value>TwinCAT Assistant Core meldet die Knowledge-Verbindung als {0}.</value><comment>native/IdeHost/DiagnosticsIntegration.cs:186</comment></data>
+  <data name="H195" xml:space="preserve"><value>Nicht konfiguriert</value><comment>native/IdeHost/DiagnosticsIntegration.cs:188</comment></data>
+  <data name="H196" xml:space="preserve"><value>{0} · {1} Artikel{2}</value><comment>native/IdeHost/DiagnosticsIntegration.cs:193</comment></data>
+  <data name="H197" xml:space="preserve"><value>Keine installierte Hilfe gefunden</value><comment>native/IdeHost/DiagnosticsIntegration.cs:195</comment></data>
+  <data name="H198" xml:space="preserve"><value>Eigene Dokumentationsquelle</value><comment>native/IdeHost/DiagnosticsIntegration.cs:196</comment></data>
+  <data name="H199" xml:space="preserve"><value>Wird geprüft …</value><comment>native/IdeHost/DiagnosticsIntegration.cs:197</comment></data>
+  <data name="H200" xml:space="preserve"><value> · Alpha-Zielhost</value><comment>native/IdeHost/DiagnosticsIntegration.cs:201</comment></data>
+  <data name="H201" xml:space="preserve"><value> · nicht abgenommen</value><comment>native/IdeHost/DiagnosticsIntegration.cs:201</comment></data>
+  <data name="H202" xml:space="preserve"><value>{0} Ziel: {1} ({2}). Shell {3}, Basis {4}. Eine Zielhost-Einstufung ist keine Abnahme.</value><comment>native/IdeHost/DiagnosticsIntegration.cs:203</comment></data>
+  <data name="H203" xml:space="preserve"><value>TwinCAT Assistant – Diagnose {0}</value><comment>native/IdeHost/DiagnosticsIntegration.cs:211</comment></data>
+  <data name="H204" xml:space="preserve"><value>Verbindung: {0} · Port {1}</value><comment>native/IdeHost/DiagnosticsIntegration.cs:214</comment></data>
+  <data name="H205" xml:space="preserve"><value>Inventar: {0}</value><comment>native/IdeHost/DiagnosticsIntegration.cs:215</comment></data>
+  <data name="H206" xml:space="preserve"><value>Hinweis: {0}</value><comment>native/IdeHost/DiagnosticsIntegration.cs:216</comment></data>
+  <data name="H207" xml:space="preserve"><value>Diagnosebericht kopiert. Er enthält keinen Quelltext und keine Zugangsdaten.</value><comment>native/IdeHost/DiagnosticsIntegration.cs:217</comment></data>
+  <data name="H208" xml:space="preserve"><value>Die Zwischenablage ist gerade nicht verfügbar.</value><comment>native/IdeHost/DiagnosticsIntegration.cs:218</comment></data>
+  <data name="H210" xml:space="preserve"><value>Wissenssuche im Projektchat verfügbar.</value><comment>native/IdeHost/KnowledgeIntegration.cs:40</comment></data>
+  <data name="H211" xml:space="preserve"><value>Die Verbindung zur Wissenssuche wird aufgebaut …</value><comment>native/IdeHost/KnowledgeIntegration.cs:41</comment></data>
+  <data name="H212" xml:space="preserve"><value>Wissenssuche verbunden.</value><comment>native/IdeHost/KnowledgeIntegration.cs:44</comment></data>
+  <data name="H213" xml:space="preserve"><value>Die Wissenssuche verbindet …</value><comment>native/IdeHost/KnowledgeIntegration.cs:45</comment></data>
+  <data name="H214" xml:space="preserve"><value>Die Verbindung wird erneut aufgebaut …</value><comment>native/IdeHost/KnowledgeIntegration.cs:46</comment></data>
+  <data name="H215" xml:space="preserve"><value>Die Verbindung zur Wissenssuche ist fehlgeschlagen.</value><comment>native/IdeHost/KnowledgeIntegration.cs:46</comment></data>
+  <data name="H216" xml:space="preserve"><value>Die Wissenssuche ist deaktiviert.</value><comment>native/IdeHost/KnowledgeIntegration.cs:47</comment></data>
+  <data name="H217" xml:space="preserve"><value>Die Wissenssuche benötigt eine Anmeldung.</value><comment>native/IdeHost/KnowledgeIntegration.cs:48</comment></data>
+  <data name="H218" xml:space="preserve"><value>Der Verbindungsstatus wird geprüft. Der vorbereitete Index bleibt erhalten.</value><comment>native/IdeHost/KnowledgeIntegration.cs:49</comment></data>
+  <data name="H219" xml:space="preserve"><value>Einrichtung schließen</value><comment>native/IdeHost/KnowledgeIntegration.cs:62</comment></data>
+  <data name="H220" xml:space="preserve"><value>Abbrechen</value><comment>native/IdeHost/ProjectChatPicker.cs:476</comment></data>
+  <data name="H221" xml:space="preserve"><value>Neu suchen</value><comment>native/IdeHost/KnowledgeIntegration.cs:67</comment></data>
+  <data name="H222" xml:space="preserve"><value>Installierte Hilfe</value><comment>native/IdeHost/KnowledgeIntegration.cs:71</comment></data>
+  <data name="H223" xml:space="preserve"><value>Installierte Beckhoff-Hilfe wird gesucht …</value><comment>native/IdeHost/KnowledgeIntegration.cs:79</comment></data>
+  <data name="H224" xml:space="preserve"><value>Beckhoff-Hilfe wird lokal aufbereitet. Das kann einige Minuten dauern.</value><comment>native/IdeHost/KnowledgeIntegration.cs:80</comment></data>
+  <data name="H225" xml:space="preserve"><value>Der Suchindex wird geprüft …</value><comment>native/IdeHost/KnowledgeIntegration.cs:81</comment></data>
+  <data name="H226" xml:space="preserve"><value>Die geprüfte Wissenssuche wird aktiviert …</value><comment>native/IdeHost/KnowledgeIntegration.cs:82</comment></data>
+  <data name="H227" xml:space="preserve"><value>Die Verbindung zur vollständigen Dokumentation wird geprüft …</value><comment>native/IdeHost/KnowledgeIntegration.cs:83</comment></data>
+  <data name="H228" xml:space="preserve"><value>Einrichtung abgebrochen. Du kannst sie später erneut starten.</value><comment>native/IdeHost/KnowledgeIntegration.cs:84</comment></data>
+  <data name="H229" xml:space="preserve"><value>Die Einrichtung konnte nicht abgeschlossen werden. Vorhandene Dokumentation bleibt erhalten. Erneut versuchen.</value><comment>native/IdeHost/KnowledgeIntegration.cs:85</comment></data>
+  <data name="H230" xml:space="preserve"><value>Eine eigene Dokumentationsquelle ist konfiguriert. Sie wird durch die automatische Einrichtung nicht ersetzt.</value><comment>native/IdeHost/KnowledgeIntegration.cs:86</comment></data>
+  <data name="H231" xml:space="preserve"><value>Dokumentation bereit · {0} · {1} Artikel.{2}{3}{4}</value><comment>native/IdeHost/KnowledgeIntegration.cs:87</comment></data>
+  <data name="H232" xml:space="preserve"><value> Eine neuere installierte Hilfe ist verfügbar.</value><comment>native/IdeHost/KnowledgeIntegration.cs:88</comment></data>
+  <data name="H233" xml:space="preserve"><value>Keine installierte Beckhoff-Hilfe erkannt. Installiere InfoSys und wähle danach Neu suchen.</value><comment>native/IdeHost/KnowledgeIntegration.cs:89</comment></data>
+  <data name="H234" xml:space="preserve"><value>Verwende die installierte Beckhoff-Hilfe für Antworten mit Quellen. Die Dokumente werden einmal lokal aufbereitet.</value><comment>native/IdeHost/KnowledgeIntegration.cs:90</comment></data>
+  <data name="H235" xml:space="preserve"><value>Index aktualisieren</value><comment>native/IdeHost/KnowledgeIntegration.cs:97</comment></data>
+  <data name="H236" xml:space="preserve"><value>Wissenssuche eingerichtet. Die Verbindung konnte noch nicht bestätigt werden.</value><comment>native/IdeHost/KnowledgeIntegration.cs:192</comment></data>
+  <data name="H237" xml:space="preserve"><value>Chatleiste schließen</value><comment>native/IdeHost/ProjectChatPicker.cs:381</comment></data>
+  <data name="H238" xml:space="preserve"><value>Chats anzeigen</value><comment>native/IdeHost/ProjectChatNavigation.cs:93</comment></data>
+  <data name="H239" xml:space="preserve"><value>Der Chat wird gerade vorbereitet. Bitte kurz warten.</value><comment>native/IdeHost/ProjectChatNavigation.cs:299</comment></data>
+  <data name="H240" xml:space="preserve"><value>Allgemeine Chats</value><comment>native/IdeHost/ProjectChatPicker.cs:581</comment></data>
+  <data name="H241" xml:space="preserve"><value>Der neue Chat wurde nicht bestätigt. Bitte zuerst den Verlauf neu laden.</value><comment>native/IdeHost/ProjectChatNavigation.cs:349</comment></data>
+  <data name="H242" xml:space="preserve"><value>Der Verlauf konnte nicht geladen werden. Deine Chats bleiben erhalten.</value><comment>native/IdeHost/ProjectChatNavigation.cs:390</comment></data>
+  <data name="H243" xml:space="preserve"><value>Dieser Chat ist nicht mehr unter den offenen Chats verfügbar.</value><comment>native/IdeHost/ProjectChatNavigation.cs:413</comment></data>
+  <data name="H244" xml:space="preserve"><value>Projektwerkzeuge noch nicht verfügbar.</value><comment>native/IdeHost/ProjectChatNavigation.cs:423</comment></data>
+  <data name="H245" xml:space="preserve"><value>Dieser Chat konnte noch nicht geöffnet werden.</value><comment>native/IdeHost/ProjectChatNavigation.cs:425</comment></data>
+  <data name="H246" xml:space="preserve"><value>Dieser Chat gehört nicht zum ausgewählten Verlauf.</value><comment>native/IdeHost/ProjectChatNavigation.cs:438</comment></data>
+  <data name="H247" xml:space="preserve"><value>In diesem Chat läuft noch eine Antwort.</value><comment>native/IdeHost/ProjectChatNavigation.cs:439</comment></data>
+  <data name="H248" xml:space="preserve"><value>Zuerst den erledigten Chat wieder öffnen.</value><comment>native/IdeHost/ProjectChatNavigation.cs:440</comment></data>
+  <data name="H249" xml:space="preserve"><value>Zuerst einen Chat öffnen.</value><comment>native/IdeHost/ProjectChatNavigation.cs:447</comment></data>
+  <data name="H250" xml:space="preserve"><value>Die Änderung wurde nicht bestätigt. Bitte den Verlauf erneut laden.</value><comment>native/IdeHost/ProjectChatNavigation.cs:470</comment></data>
+  <data name="H251" xml:space="preserve"><value>Änderung nicht bestätigt. Bitte vor einem erneuten Versuch den Verlauf laden.</value><comment>native/IdeHost/ProjectChatNavigation.cs:476</comment></data>
+  <data name="H252" xml:space="preserve"><value>Dieser Chat gehört zu einem anderen Projekt oder wird in einer anderen IDE verwendet.</value><comment>native/IdeHost/ProjectChatNavigation.cs:495</comment></data>
+  <data name="H253" xml:space="preserve"><value>Dieser Chat enthält noch keinen abgeschlossenen Austausch. Der bisherige Titel bleibt erhalten.</value><comment>native/IdeHost/ProjectChatNavigation.cs:501</comment></data>
+  <data name="H254" xml:space="preserve"><value>Der gespeicherte Chatverlauf konnte nicht vollständig geladen werden. Bitte erneut versuchen.</value><comment>native/IdeHost/ProjectChatNavigation.cs:502</comment></data>
+  <data name="H255" xml:space="preserve"><value>In diesem Chat läuft noch eine Antwort oder sein Status ist noch nicht bestätigt. Bitte kurz warten.</value><comment>native/IdeHost/ProjectChatNavigation.cs:503</comment></data>
+  <data name="H256" xml:space="preserve"><value>Bitte zuerst den erledigten Chat wieder öffnen.</value><comment>native/IdeHost/ProjectChatNavigation.cs:504</comment></data>
+  <data name="H257" xml:space="preserve"><value>Der Modellanbieter hat einen fehlerhaften Titel geliefert. Der bisherige Titel bleibt erhalten. Bitte erneut versuchen.</value><comment>native/IdeHost/ProjectChatNavigation.cs:505</comment></data>
+  <data name="H258" xml:space="preserve"><value>Der Modellanbieter konnte die Titelanfrage nicht abschließen. Bitte Anbieter und Modell prüfen. Der bisherige Titel bleibt erhalten.</value><comment>native/IdeHost/ProjectChatNavigation.cs:506</comment></data>
+  <data name="H259" xml:space="preserve"><value>Die Titelanfrage wurde nicht bestätigt. Bitte den Verlauf neu laden und erneut versuchen. Der bisherige Titel bleibt erhalten.</value><comment>native/IdeHost/ProjectChatNavigation.cs:507</comment></data>
+  <data name="H260" xml:space="preserve"><value>Chats durchsuchen</value><comment>native/IdeHost/ProjectChatPicker.cs:414</comment></data>
+  <data name="H261" xml:space="preserve"><value>Chatleiste</value><comment>native/IdeHost/ProjectChatPicker.cs:146</comment></data>
+  <data name="H262" xml:space="preserve"><value>Chatleiste lösen</value><comment>native/IdeHost/ProjectChatPicker.cs:358</comment></data>
+  <data name="H263" xml:space="preserve"><value>Chatleiste anheften</value><comment>native/IdeHost/ProjectChatPicker.cs:377</comment></data>
+  <data name="H264" xml:space="preserve"><value>Chatleiste schließen (Esc)</value><comment>native/IdeHost/ProjectChatPicker.cs:365</comment></data>
+  <data name="H265" xml:space="preserve"><value>Zurück zu den Projektchats</value><comment>native/IdeHost/ProjectChatPicker.cs:374</comment></data>
+  <data name="H266" xml:space="preserve"><value>Suche zurücksetzen</value><comment>native/IdeHost/ProjectChatPicker.cs:838</comment></data>
+  <data name="H267" xml:space="preserve"><value>Meldung ausblenden</value><comment>native/IdeHost/ProjectChatPicker.cs:448</comment></data>
+  <data name="H268" xml:space="preserve"><value>Neuer Chattitel</value><comment>native/IdeHost/ProjectChatPicker.cs:463</comment></data>
+  <data name="H269" xml:space="preserve"><value>Speichern</value><comment>native/IdeHost/ProjectChatPicker.cs:770</comment></data>
+  <data name="H270" xml:space="preserve"><value>Keine offenen Chats mit diesem Suchbegriff.</value><comment>native/IdeHost/ProjectChatPicker.cs:544</comment></data>
+  <data name="H271" xml:space="preserve"><value>Keine offenen Chats. Neuer Chat beginnt einen.</value><comment>native/IdeHost/ProjectChatPicker.cs:544</comment></data>
+  <data name="H272" xml:space="preserve"><value>Aktives Projekt</value><comment>native/IdeHost/ProjectChatPicker.cs:581</comment></data>
+  <data name="H273" xml:space="preserve"><value>Allgemeine Chats ohne Projekt- und Bausteinkontext</value><comment>native/IdeHost/ProjectChatPicker.cs:583</comment></data>
+  <data name="H274" xml:space="preserve"><value>Chats im Projekt {0}</value><comment>native/IdeHost/ProjectChatPicker.cs:583</comment></data>
+  <data name="H275" xml:space="preserve"><value>Neuer allgemeiner Chat ohne Projektkontext</value><comment>native/IdeHost/ProjectChatPicker.cs:590</comment></data>
+  <data name="H276" xml:space="preserve"><value>Neuer Chat in diesem Projekt</value><comment>native/IdeHost/ProjectChatPicker.cs:590</comment></data>
+  <data name="H277" xml:space="preserve"><value>Wird erstellt …</value><comment>native/IdeHost/ProjectChatPicker.cs:825</comment></data>
+  <data name="H278" xml:space="preserve"><value>Erledigte Chats</value><comment>native/IdeHost/ProjectChatPicker.cs:602</comment></data>
+  <data name="H279" xml:space="preserve"><value>Erledigte Chats einklappen</value><comment>native/IdeHost/ProjectChatPicker.cs:612</comment></data>
+  <data name="H280" xml:space="preserve"><value>Als erledigt markierte Chats anzeigen und wieder öffnen</value><comment>native/IdeHost/ProjectChatPicker.cs:612</comment></data>
+  <data name="H281" xml:space="preserve"><value>Erledigte Chats, {0}{1}{2}</value><comment>native/IdeHost/ProjectChatPicker.cs:613</comment></data>
+  <data name="H282" xml:space="preserve"><value> Treffer</value><comment>native/IdeHost/ProjectChatPicker.cs:613</comment></data>
+  <data name="H283" xml:space="preserve"><value>, ausgeklappt</value><comment>native/IdeHost/ProjectChatPicker.cs:613</comment></data>
+  <data name="H284" xml:space="preserve"><value>, eingeklappt</value><comment>native/IdeHost/ProjectChatPicker.cs:613</comment></data>
+  <data name="H285" xml:space="preserve"><value>, geöffnet</value><comment>native/IdeHost/ProjectChatPicker.cs:665</comment></data>
+  <data name="H286" xml:space="preserve"><value>, Antwort läuft</value><comment>native/IdeHost/ProjectChatPicker.cs:665</comment></data>
+  <data name="H287" xml:space="preserve"><value>Eingabe öffnet den Chat. F2 benennt um, Kontextmenütaste zeigt weitere Aktionen.</value><comment>native/IdeHost/ProjectChatPicker.cs:666</comment></data>
+  <data name="H288" xml:space="preserve"><value>Aktionen für „{0}“</value><comment>native/IdeHost/ProjectChatPicker.cs:678</comment></data>
+  <data name="H289" xml:space="preserve"><value>Wird geöffnet …</value><comment>native/IdeHost/ProjectChatPicker.cs:737</comment></data>
+  <data name="H290" xml:space="preserve"><value>Wieder öffnen</value><comment>native/IdeHost/ProjectChatPicker.cs:694</comment></data>
+  <data name="H291" xml:space="preserve"><value>Zurück zu den offenen Chats; Verlauf und Anhänge bleiben erhalten</value><comment>native/IdeHost/ProjectChatPicker.cs:698</comment></data>
+  <data name="H292" xml:space="preserve"><value>„{0}“ wieder öffnen</value><comment>native/IdeHost/ProjectChatPicker.cs:699</comment></data>
+  <data name="H293" xml:space="preserve"><value>Wird umbenannt …</value><comment>native/IdeHost/ProjectChatPicker.cs:737</comment></data>
+  <data name="H294" xml:space="preserve"><value>Titel wird generiert …</value><comment>native/IdeHost/ProjectChatPicker.cs:738</comment></data>
+  <data name="H295" xml:space="preserve"><value>Wird als erledigt markiert …</value><comment>native/IdeHost/ProjectChatPicker.cs:738</comment></data>
+  <data name="H296" xml:space="preserve"><value>Wird wieder geöffnet …</value><comment>native/IdeHost/ProjectChatPicker.cs:738</comment></data>
+  <data name="H297" xml:space="preserve"><value>Antwort läuft</value><comment>native/IdeHost/ProjectChatPicker.cs:747</comment></data>
+  <data name="H298" xml:space="preserve"><value>Die Antwort läuft weiter, auch wenn ein anderer Chat geöffnet wird.</value><comment>native/IdeHost/ProjectChatPicker.cs:750</comment></data>
+  <data name="H299" xml:space="preserve"><value>Erledigt</value><comment>native/IdeHost/ProjectChatPicker.cs:759</comment></data>
+  <data name="H300" xml:space="preserve"><value>Keine Aktivität bekannt</value><comment>native/IdeHost/ProjectChatPicker.cs:759</comment></data>
+  <data name="H301" xml:space="preserve"><value>Speichert …</value><comment>native/IdeHost/ProjectChatPicker.cs:770</comment></data>
+  <data name="H302" xml:space="preserve"><value>Chats werden geladen …</value><comment>native/IdeHost/ProjectChatPicker.cs:787</comment></data>
+  <data name="H303" xml:space="preserve"><value>Chats konnten nicht geladen werden.</value><comment>native/IdeHost/ProjectChatPicker.cs:795</comment></data>
+  <data name="H304" xml:space="preserve"><value>Wird geladen …</value><comment>native/IdeHost/ProjectChatPicker.cs:806</comment></data>
+  <data name="H305" xml:space="preserve"><value>Noch keine allgemeinen Chats.</value><comment>native/IdeHost/ProjectChatPicker.cs:822</comment></data>
+  <data name="H306" xml:space="preserve"><value>In diesem Projekt gibt es noch keine Chats.</value><comment>native/IdeHost/ProjectChatPicker.cs:822</comment></data>
+  <data name="H307" xml:space="preserve"><value>Neuen Chat beginnen</value><comment>native/IdeHost/ProjectChatPicker.cs:825</comment></data>
+  <data name="H308" xml:space="preserve"><value>Keine Treffer für „{0}“.</value><comment>native/IdeHost/ProjectChatPicker.cs:837</comment></data>
+  <data name="H309" xml:space="preserve"><value>Umbenennen</value><comment>native/IdeHost/ProjectChatPicker.cs:873</comment></data>
+  <data name="H310" xml:space="preserve"><value>Titel automatisch generieren</value><comment>native/IdeHost/ProjectChatPicker.cs:875</comment></data>
+  <data name="H311" xml:space="preserve"><value>Erst nach Abschluss der laufenden Antwort möglich.</value><comment>native/IdeHost/ProjectChatPicker.cs:878</comment></data>
+  <data name="H312" xml:space="preserve"><value>Titel aus dem Chatverlauf erzeugen und speichern.</value><comment>native/IdeHost/ProjectChatPicker.cs:875</comment></data>
+  <data name="H313" xml:space="preserve"><value>Als erledigt markieren</value><comment>native/IdeHost/ProjectChatPicker.cs:878</comment></data>
+  <data name="H314" xml:space="preserve"><value>Unter „Erledigte Chats“ ablegen. Verlauf und Anhänge bleiben erhalten; jederzeit wieder zu öffnen.</value><comment>native/IdeHost/ProjectChatPicker.cs:879</comment></data>
+  <data name="H315" xml:space="preserve"><value>Der Chat konnte nicht geöffnet werden.</value><comment>native/IdeHost/ProjectChatPicker.cs:960</comment></data>
+  <data name="H316" xml:space="preserve"><value>Bitte einen Titel eingeben.</value><comment>native/IdeHost/ProjectChatPicker.cs:1008</comment></data>
+  <data name="H317" xml:space="preserve"><value>Umbenennen fehlgeschlagen.</value><comment>native/IdeHost/ProjectChatPicker.cs:1023</comment></data>
+  <data name="H318" xml:space="preserve"><value>Der Titel konnte nicht generiert werden.</value><comment>native/IdeHost/ProjectChatPicker.cs:1059</comment></data>
+  <data name="H319" xml:space="preserve"><value>Als erledigt markieren fehlgeschlagen.</value><comment>native/IdeHost/ProjectChatPicker.cs:1100</comment></data>
+  <data name="H320" xml:space="preserve"><value>Wieder öffnen fehlgeschlagen.</value><comment>native/IdeHost/ProjectChatPicker.cs:1126</comment></data>
+  <data name="H321" xml:space="preserve"><value>Neuer Chat konnte nicht erstellt werden.</value><comment>native/IdeHost/ProjectChatPicker.cs:1149</comment></data>
+  <data name="H322" xml:space="preserve"><value>Erneuter Versuch fehlgeschlagen.</value><comment>native/IdeHost/ProjectChatPicker.cs:1174</comment></data>
+  <data name="H323" xml:space="preserve"><value>Unbenannter Chat</value><comment>native/IdeHost/ProjectChatPicker.cs:1368</comment></data>
+  <data name="H324" xml:space="preserve"><value>gerade eben</value><comment>native/IdeHost/ProjectChatPicker.cs:1389</comment></data>
+  <data name="H325" xml:space="preserve"><value>vor {0} Min.</value><comment>native/IdeHost/ProjectChatPicker.cs:1390</comment></data>
+  <data name="H326" xml:space="preserve"><value>heute, {0}</value><comment>native/IdeHost/ProjectChatPicker.cs:1391</comment></data>
+  <data name="H327" xml:space="preserve"><value>gestern, {0}</value><comment>native/IdeHost/ProjectChatPicker.cs:1392</comment></data>
+  <data name="H328" xml:space="preserve"><value>Letzte Aktivität: {0}</value><comment>native/IdeHost/ProjectChatPicker.cs:1399</comment></data>
+  <data name="H329" xml:space="preserve"><value>Wird geladen</value><comment>native/IdeHost/ProjectChatPicker.cs:1468</comment></data>
+  <data name="H332" xml:space="preserve"><value>Chat wird geladen …</value><comment>native/IdeHost/SplashIntegration.cs:36</comment></data>
+  <data name="H333" xml:space="preserve"><value>Der Chat wurde nicht rechtzeitig bereit. Verbindung und Chat-Integration unter Diagnose prüfen und neu verbinden.</value><comment>native/IdeHost/SplashIntegration.cs:95</comment></data>
+  <data name="H334" xml:space="preserve"><value>Der Chatverlauf ist noch nicht für den Export verfügbar.</value><comment>native/IdeHost/ThreadExportIntegration.cs:36</comment></data>
+  <data name="H335" xml:space="preserve"><value>Der vollständige Chatverlauf konnte nicht geladen werden. Es wurde nichts exportiert.</value><comment>native/IdeHost/ThreadExportIntegration.cs:50</comment></data>
+  <data name="H336" xml:space="preserve"><value>Die Unterhaltung wurde gewechselt. Bitte den Export im gewünschten Chat erneut starten.</value><comment>native/IdeHost/ThreadExportIntegration.cs:57</comment></data>
+  <data name="H337" xml:space="preserve"><value>Der Chatverlauf ist für diesen Export zu groß.</value><comment>native/IdeHost/ThreadExportIntegration.cs:59</comment></data>
+  <data name="H338" xml:space="preserve"><value>Der Chat-Export ist ungültig. Es wurde nichts gespeichert oder kopiert.</value><comment>native/IdeHost/ThreadExportIntegration.cs:65</comment></data>
+  <data name="H339" xml:space="preserve"><value>Chatverlauf als Markdown speichern</value><comment>native/IdeHost/ThreadExportIntegration.cs:68</comment></data>
+  <data name="H340" xml:space="preserve"><value>Markdown (*.md)|*.md</value><comment>native/IdeHost/ThreadExportIntegration.cs:69</comment></data>
+  <data name="H341" xml:space="preserve"><value>Bitte eine Markdown-Datei mit der Endung .md wählen.</value><comment>native/IdeHost/ThreadExportIntegration.cs:73</comment></data>
+  <data name="H342" xml:space="preserve"><value>Chatverlauf als Markdown gespeichert.</value><comment>native/IdeHost/ThreadExportIntegration.cs:75</comment></data>
+  <data name="H343" xml:space="preserve"><value>Gesamten gespeicherten Chatverlauf kopiert.</value><comment>native/IdeHost/ThreadExportIntegration.cs:80</comment></data>
+  <data name="H344" xml:space="preserve"><value>Der Chat-Export wurde durch einen Seitenwechsel oder eine Zeitüberschreitung beendet.</value><comment>native/IdeHost/ThreadExportIntegration.cs:86</comment></data>
+  <data name="H345" xml:space="preserve"><value>Der Chatverlauf konnte nicht kopiert oder gespeichert werden. Bitte erneut versuchen.</value><comment>native/IdeHost/ThreadExportIntegration.cs:91</comment></data>
+  <data name="LanguageLabel" xml:space="preserve"><value>Sprache</value><comment>Host language integration</comment></data>
+  <data name="ReadOnlyCaption" xml:space="preserve"><value>TwinCAT Assistant — nur lesend</value><comment>Host language integration</comment></data>
+  <data name="LanguageSaveFailed" xml:space="preserve"><value>Die Sprachauswahl konnte nicht gespeichert werden. Sie gilt bis zum Schließen der IDE.</value><comment>Host language integration</comment></data>
+  <data name="SourceUnverified" xml:space="preserve"><value>Ungespeicherter Editorinhalt ist nicht verifiziert.</value></data>
+  <data name="SourceState" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="SourceNoContext" xml:space="preserve"><value>Kein Quelltextkontext gebunden.</value></data>
+  <data name="SourceNoObject" xml:space="preserve"><value>Kein aktiver ST-Baustein</value></data>
+  <data name="SourceOpenObject" xml:space="preserve"><value>Öffne einen Structured-Text-Baustein in dieser IDE.</value></data>
+  <data name="DirtyDocument" xml:space="preserve"><value>Das zugehörige IDE-Dokument meldet ungespeicherte Änderungen.</value></data>
+  <data name="DirtyDifference" xml:space="preserve"><value>Der aktuelle Engineering-Text unterscheidet sich vom gespeicherten Objekt.</value></data>
+  <data name="DirtyUnavailable" xml:space="preserve"><value>Die eindeutige Zuordnung zum gespeicherten Quelltext oder Dokument ist nicht verfügbar.</value></data>
+  <data name="DirtyClean" xml:space="preserve"><value>Das eindeutig zugeordnete Dokument ist gespeichert; aktueller und gespeicherter Text stimmen überein.</value></data>
+  <data name="DirtyUnknown" xml:space="preserve"><value>Kein verbindlicher Änderungsnachweis aus dem eindeutig zugeordneten geöffneten Dokument.</value></data>
+  <data name="EditorResolving" xml:space="preserve"><value>Aktiver Editor wird zugeordnet …</value></data>
+  <data name="EditorUpdating" xml:space="preserve"><value>Aktiver Editorkontext wird aktualisiert …</value></data>
+  <data name="EditorChanged" xml:space="preserve"><value>Der aktive Editor wurde gewechselt. Kontext wird zugeordnet …</value></data>
+  <data name="EditorUnavailable" xml:space="preserve"><value>Der aktive Editorkontext ist nicht verfügbar. Die Prüfung wird automatisch wiederholt.</value></data>
+  <data name="ProjectUnavailable" xml:space="preserve"><value>PLC-Projektkontext ist nicht verfügbar.</value></data>
+  <data name="EditorServices" xml:space="preserve"><value>Die nativen Editor-Dienste sind nicht verfügbar.</value></data>
+  <data name="SolutionMissing" xml:space="preserve"><value>In dieser IDE ist keine Solution geöffnet.</value></data>
+  <data name="EditorMismatch" xml:space="preserve"><value>Aktiver Dokumentrahmen und TwinCAT-Dokument stimmen nicht überein.</value></data>
+  <data name="EditorUnbound" xml:space="preserve"><value>Der aktive Editor ist keinem TwinCAT-Objekt eindeutig zugeordnet.</value></data>
+  <data name="MemberMismatch" xml:space="preserve"><value>Rahmen und Dokument verweisen auf unterschiedliche Baustein-Member.</value></data>
+  <data name="MemberUnresolved" xml:space="preserve"><value>Der aktive Baustein-Member konnte nicht eindeutig zugeordnet werden.</value></data>
+  <data name="SourceNotST" xml:space="preserve"><value>Die aktive Implementierung ist kein lesbarer Structured Text.</value></data>
+  <data name="ProjectAmbiguous" xml:space="preserve"><value>Wähle ein PLC-Projekt in dieser IDE. Es ist kein Projekt eindeutig zugeordnet.</value></data>
+  <data name="ProjectUnbound" xml:space="preserve"><value>Es ist kein PLC-Projekt zugeordnet.</value></data>
+  <data name="ProjectDiscovery" xml:space="preserve"><value>Wähle ein PLC-Projekt. Die automatische Projekterkennung ist unvollständig.</value></data>
+  <data name="EditorChange" xml:space="preserve"><value>Der aktive Editor wurde gewechselt.</value></data>
+  <data name="SourceLimit" xml:space="preserve"><value>Das aktive Objekt überschreitet das lokale Quelltextlimit.</value></data>
+  <data name="SourceChanged" xml:space="preserve"><value>Das aktive Objekt wurde beim Lesen geändert. Die Prüfung wird automatisch wiederholt.</value></data>
+  <data name="ObjectUnsupported" xml:space="preserve"><value>Das aktive Objekt ist kein unterstützter Baustein, keine Aktion, Methode oder Property.</value></data>
+  <data name="OwnerMissing" xml:space="preserve"><value>Der aktive Member hat keinen eindeutig zugeordneten Baustein.</value></data>
+  <data name="OwnerMismatch" xml:space="preserve"><value>Der aktive Member gehört zu einem anderen Baustein.</value></data>
+  <data name="DeclarationMissing" xml:space="preserve"><value>Das aktive Objekt hat keine lesbare Deklaration.</value></data>
+  <data name="AccessorIncomplete" xml:space="preserve"><value>Die Liste der Property-Zugriffe ist unvollständig.</value></data>
+  <data name="AccessorAmbiguous" xml:space="preserve"><value>Der Property-Zugriff ist nicht eindeutig zugeordnet.</value></data>
+  <data name="FrameUnbound" xml:space="preserve"><value>Der aktive Dokumentrahmen hat keine eindeutige Dokumentidentität.</value></data>
+  <data name="ConnectionIdle" xml:space="preserve"><value>Der lokale Chat startet beim Öffnen automatisch.</value></data>
+  <data name="ConnectionStarting" xml:space="preserve"><value>Lokaler Chat-Dienst wird geprüft …</value></data>
+  <data name="ConnectionReady" xml:space="preserve"><value>Dienst bereit. TwinCAT Assistant Chat wird geladen …</value></data>
+  <data name="ConnectionLoading" xml:space="preserve"><value>TwinCAT Assistant Chat wird geladen …</value></data>
+  <data name="ConnectionFailed" xml:space="preserve"><value>Chat-Seite konnte nicht geladen werden ({0}). Dienst prüfen und neu verbinden.</value></data>
+  <data name="ConnectionLoaded" xml:space="preserve"><value>Chat-Seite geladen. Anmeldung erfolgt automatisch; nativer Quelltext ist nicht angehängt.</value></data>
+  <data name="HostUnknown" xml:space="preserve"><value>Unbekannter Host</value></data>
+  <data name="ValueUnknown" xml:space="preserve"><value>unbekannt</value></data>
+  <data name="McpConnected" xml:space="preserve"><value>verbunden</value></data>
+  <data name="McpConnecting" xml:space="preserve"><value>verbindet</value></data>
+  <data name="Host4026" xml:space="preserve"><value>TwinCAT 4026 in der 32-Bit-Shell ist für den Assistant nicht abgenommen.</value></data>
+  <data name="HostBuildUnknown" xml:space="preserve"><value>Der TwinCAT-3.1-Build wurde nicht erkannt.</value></data>
+  <data name="HostAlpha" xml:space="preserve"><value>Alpha-Zielhost; offene Abnahmepunkte bleiben offen.</value></data>
+  <data name="Host64" xml:space="preserve"><value>Für TcXaeShell64 gibt es kein validiertes Installationsziel und keine Abnahme.</value></data>
+  <data name="Host2026" xml:space="preserve"><value>Kein Installationspaket unterstützt Visual Studio 2026.</value></data>
+  <data name="HostVS" xml:space="preserve"><value>TwinCAT im vollständigen Visual Studio ist für den Assistant nicht abgenommen.</value></data>
+  <data name="HostUnrecognized" xml:space="preserve"><value>Der Host wurde nicht als bekannte TwinCAT-Engineeringumgebung erkannt.</value></data>
+  <data name="HostVersionMismatch" xml:space="preserve"><value>Die Shell-Version {0} weicht vom Alpha-Ziel ab.</value></data>
+  <data name="HostUnverifiedBuild" xml:space="preserve"><value>TwinCAT {0} ist kein geprüfter Build des Alpha-Ziels.</value></data>
+  <data name="ValueNone" xml:space="preserve"><value>keins</value></data>
+</root>

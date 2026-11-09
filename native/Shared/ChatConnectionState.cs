@@ -5,7 +5,7 @@ namespace TwinCatAssistant.Native
         public long Generation { get; private set; }
         public ulong NavigationId { get; private set; }
         public string Phase { get; private set; } = "idle";
-        public string Message { get; private set; } = "Der lokale Chat startet beim Öffnen automatisch.";
+        public string Message { get; private set; } = HostText.Get("ConnectionIdle");
         public bool PageLoaded { get { return Phase == "loaded"; } }
 
         public long Begin()
@@ -13,31 +13,31 @@ namespace TwinCatAssistant.Native
             Generation++;
             NavigationId = 0;
             Phase = "starting";
-            Message = "Lokaler Chat-Dienst wird geprüft …";
+            Message = HostText.Get("ConnectionStarting");
             return Generation;
         }
         public void Loading(long generation)
         {
             if (generation != Generation) return;
             Phase = "loading";
-            Message = "Dienst bereit. OpenChamber wird geladen …";
+            Message = HostText.Get("ConnectionReady");
         }
         public void Navigating(ulong navigationId)
         {
             NavigationId = navigationId;
             Phase = "loading";
-            Message = "OpenChamber wird geladen …";
+            Message = HostText.Get("ConnectionLoading");
         }
         public void Completed(ulong navigationId, bool success, int httpStatus, string error)
         {
             if (navigationId != NavigationId || NavigationId == 0) return;
             if (!success || httpStatus < 200 || httpStatus >= 400)
             {
-                Fail(Generation, "Chat-Seite konnte nicht geladen werden (" + error + "). Dienst prüfen und neu verbinden.");
+                Fail(Generation, HostText.Format("ConnectionFailed", error));
                 return;
             }
             Phase = "loaded";
-            Message = "Chat-Seite geladen. Anmeldung erfolgt automatisch; nativer Quelltext ist nicht angehängt.";
+            Message = HostText.Get("ConnectionLoaded");
         }
         public void Fail(long generation, string message)
         {

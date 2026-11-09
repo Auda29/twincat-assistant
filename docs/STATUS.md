@@ -1,5 +1,14 @@
 # Implementation status
 
+**Deutsch/Englisch, 2026-11-09.** Roadmap 6 ist auf
+`feat/de-en-localization` implementiert: zentrale native Ressourcen, synchronisierte
+Sprachauswahl in Host und Chat sowie Speicherung neben den vorhandenen
+Host-Präferenzen. Der gebaute Chat wurde im Browser geprüft, das tatsächliche
+WPF-Control außerhalb der IDE mit isoliertem Profil. Quelltext, Chattitel, Entwürfe
+und Anhänge werden nicht übersetzt. [Umfang und Nachweise](LANGUAGE_SUPPORT.md)
+trennen diese Prüfungen von der noch offenen installierten IDE-Abnahme. Keine
+Installation, kein Release und keine Änderungen an Operatorprofilen.
+
 **Product cleanup branch, 2026-11-09.** The next source/runtime change removes
 unused server services, specializes the foreground CLI, prunes unreachable
 feature files and native dependencies, and applies TwinCAT Assistant identity

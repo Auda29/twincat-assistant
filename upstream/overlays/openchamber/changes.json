@@ -625,6 +625,10 @@
       [
         "'openChamberLogo.aria.logo': 'OpenChamber logo'",
         "'openChamberLogo.aria.logo': 'TwinCAT Assistant Chat logo'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"Open an ST object to start its project chat automatically. Use + above to start a general chat.\",\n  'common.loading':"
       ]
     ]
   },
@@ -1018,6 +1022,10 @@
       [
         "'walkthrough.blocked.serverUnsupported.description': 'Der OpenChamber-Server, mit dem diese App verbunden ist, hat die Walkthrough-API nicht beantwortet — er ist also älter als die App. Aktualisieren Sie den Server auf 1.18 oder neuer und aktualisieren Sie dann die Ansicht.'",
         "'walkthrough.blocked.serverUnsupported.description': 'Der TwinCAT Assistant Chat-Server, mit dem diese App verbunden ist, hat die Walkthrough-API nicht beantwortet — er ist also älter als die App. Aktualisieren Sie den Server auf 1.18 oder neuer und aktualisieren Sie dann die Ansicht.'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"Öffne einen ST-Baustein, dann startet der passende Projektchat automatisch. Mit + oben beginnt ein allgemeiner Chat.\",\n  'common.loading':"
       ]
     ]
   },
@@ -1415,6 +1423,10 @@
       [
         "\"openChamberLogo.aria.logo\": \"Logo de OpenChamber\"",
         "\"openChamberLogo.aria.logo\": \"Logo de TwinCAT Assistant Chat\""
+      ],
+      [
+        "  \"common.loading\":",
+        "  'twincat.chat.empty.intro': \"Abre un objeto ST para iniciar automáticamente el chat de su proyecto. Usa + arriba para iniciar un chat general.\",\n  \"common.loading\":"
       ]
     ]
   },
@@ -1820,6 +1832,10 @@
       [
         "'onboarding.desktopRecovery.remoteIncompatible.description': 'Le serveur OpenChamber à l’adresse « {host} » n’est pas compatible avec cette version de l’application. Mettez OpenChamber à jour sur le serveur, puis réessayez.'",
         "'onboarding.desktopRecovery.remoteIncompatible.description': 'Le serveur TwinCAT Assistant Chat à l’adresse « {host} » n’est pas compatible avec cette version de l’application. Mettez TwinCAT Assistant Chat à jour sur le serveur, puis réessayez.'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"Ouvrez un objet ST pour démarrer automatiquement le chat de son projet. Utilisez + en haut pour démarrer un chat général.\",\n  'common.loading':"
       ]
     ]
   },
@@ -2213,6 +2229,10 @@
       [
         "'openChamberLogo.aria.logo': 'OpenChamberロゴ'",
         "'openChamberLogo.aria.logo': 'TwinCAT Assistant Chatロゴ'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"ST オブジェクトを開くと、そのプロジェクトのチャットが自動的に始まります。一般チャットを始めるには上の + を使ってください。\",\n  'common.loading':"
       ]
     ]
   },
@@ -2606,6 +2626,10 @@
       [
         "'openChamberLogo.aria.logo': 'OpenChamber 로고'",
         "'openChamberLogo.aria.logo': 'TwinCAT Assistant Chat 로고'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"ST 객체를 열면 해당 프로젝트 채팅이 자동으로 시작됩니다. 일반 채팅을 시작하려면 위의 +를 사용하세요.\",\n  'common.loading':"
       ]
     ]
   },
@@ -3003,6 +3027,10 @@
       [
         "'openChamberLogo.aria.logo': 'OpenChamber-logo'",
         "'openChamberLogo.aria.logo': 'TwinCAT Assistant Chat-logo'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"Open een ST-object om de projectchat automatisch te starten. Gebruik + bovenaan om een algemene chat te starten.\",\n  'common.loading':"
       ]
     ]
   },
@@ -3400,6 +3428,10 @@
       [
         "'onboarding.localSetup.status.watching': 'Czekanie na OpenCode v2'",
         "'onboarding.localSetup.status.watching': 'Czekanie na TwinCAT Assistant Core v2'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"Otwórz obiekt ST, aby automatycznie rozpocząć czat projektu. Użyj + u góry, aby rozpocząć czat ogólny.\",\n  'common.loading':"
       ]
     ]
   },
@@ -3797,6 +3829,10 @@
       [
         "\"openChamberLogo.aria.logo\": \"Logo do OpenChamber\"",
         "\"openChamberLogo.aria.logo\": \"Logo do TwinCAT Assistant Chat\""
+      ],
+      [
+        "  \"common.loading\":",
+        "  'twincat.chat.empty.intro': \"Abra um objeto ST para iniciar automaticamente o chat do projeto. Use + acima para iniciar um chat geral.\",\n  \"common.loading\":"
       ]
     ]
   },
@@ -4194,6 +4230,10 @@
       [
         "'worktree.bootstrap.toast.authorizationRequired': 'OpenChamber repository\\'ye veya submodule\\'lerine ulaşamıyor. Erişimi Repository\\'yi yapılandır\\'da ayarlayıp tekrar deneyin.'",
         "'worktree.bootstrap.toast.authorizationRequired': 'TwinCAT Assistant Chat repository\\'ye veya submodule\\'lerine ulaşamıyor. Erişimi Repository\\'yi yapılandır\\'da ayarlayıp tekrar deneyin.'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"Bir ST nesnesi açıldığında proje sohbeti otomatik olarak başlar. Genel sohbet başlatmak için yukarıdaki + düğmesini kullanın.\",\n  'common.loading':"
       ]
     ]
   },
@@ -4591,6 +4631,10 @@
       [
         "\"openChamberLogo.aria.logo\": \"Логотип OpenChamber\"",
         "\"openChamberLogo.aria.logo\": \"Логотип TwinCAT Assistant Chat\""
+      ],
+      [
+        "  \"common.loading\":",
+        "  'twincat.chat.empty.intro': \"Відкрийте об’єкт ST, щоб автоматично почати чат проєкту. Натисніть + угорі, щоб почати загальний чат.\",\n  \"common.loading\":"
       ]
     ]
   },
@@ -4992,6 +5036,10 @@
       [
         "'openChamberLogo.aria.logo': 'OpenChamber 标志'",
         "'openChamberLogo.aria.logo': 'TwinCAT Assistant Chat 标志'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"打开 ST 对象即可自动启动对应的项目聊天。使用上方的 + 开始普通聊天。\",\n  'common.loading':"
       ]
     ]
   },
@@ -5393,6 +5441,10 @@
       [
         "'openChamberLogo.aria.logo': 'OpenChamber 標誌'",
         "'openChamberLogo.aria.logo': 'TwinCAT Assistant Chat 標誌'"
+      ],
+      [
+        "  'common.loading':",
+        "  'twincat.chat.empty.intro': \"開啟 ST 物件即可自動啟動對應的專案聊天。使用上方的 + 開始一般聊天。\",\n  'common.loading':"
       ]
     ]
   },
@@ -12045,6 +12097,15 @@
       [
         "<svg width=\"32\" height=\"32\" viewBox=\"0 0 32 32\" xmlns=\"http://www.w3.org/2000/svg\">\n  <style>\n    :root {\n      color: #111111;\n    }\n\n    @media (prefers-color-scheme: dark) {\n      :root {\n        color: #f5f5f5;\n      }\n    }\n  </style>\n  <!-- OpenChamber logo - simplified for favicon -->\n  <g transform=\"translate(16, 16) scale(0.48)\">\n    <!-- Left face - with fill -->\n    <path d=\"M0 0 L-26 -15 L-26 15 L0 30 Z\" fill=\"currentColor\" fill-opacity=\"0.25\" stroke=\"currentColor\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    <!-- Right face - with fill -->\n    <path d=\"M0 0 L26 -15 L26 15 L0 30 Z\" fill=\"currentColor\" fill-opacity=\"0.4\" stroke=\"currentColor\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    <!-- Top face - open -->\n    <path d=\"M0 -30 L-26 -15 L0 0 L26 -15 Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n    <!-- O logo - hollow rectangle frame on top face with gray fill inside -->\n    <g transform=\"matrix(0.866, 0.5, -0.866, 0.5, 0, -15) scale(0.55)\">\n      <rect x=\"-12\" y=\"-14\" width=\"24\" height=\"28\" fill=\"currentColor\" fill-opacity=\"0.4\" stroke=\"currentColor\" stroke-width=\"8\"/>\n    </g>\n  </g>\n</svg>\n",
         "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" role=\"img\" aria-label=\"TwinCAT Assistant\"><style>:root{color:#111}@media(prefers-color-scheme:dark){:root{color:#f5f5f5}}</style><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"5\" y=\"5\" width=\"54\" height=\"54\" rx=\"12\"/><path d=\"M14 21h18M23 21v22M49 23a11 11 0 1 0 0 18\"/></g></svg>\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/components/sections/openchamber/OpenChamberVisualSettings.tsx",
+    "changes": [
+      [
+        "locales.map((availableLocale) => (",
+        "locales.filter((availableLocale) => availableLocale === 'de' || availableLocale === 'en').map((availableLocale) => ("
       ]
     ]
   }

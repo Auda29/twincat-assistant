@@ -10,6 +10,13 @@ The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains 
 
 ## Agreed priorities (2026-11-02)
 
+Sprachumstellung vom 09.11.2026: Punkt 6 ist auf dem separaten Produktbranch
+implementiert. Host und Chat teilen Deutsch/Englisch und speichern die Auswahl;
+der Host übernimmt sie auch bei wechselnder Backend-Adresse. Katalog-, WPF- und
+Browserprüfungen sind dokumentiert in [Sprachunterstützung](LANGUAGE_SUPPORT.md).
+Die Prüfung dieses neuen Stands in der installierten TwinCAT-Shell bleibt offen.
+Punkte 5 und 7 wurden dabei nicht begonnen.
+
 Bereinigung vom 09.11.2026: Der neue Produktbranch entfernt weitere Serverdienste
 und nicht mehr benötigte Pakete, vereinfacht die Einstellungen und ersetzt eigene
 Produkttexte. Die [Umfangs- und Nachweisübersicht](PRODUCT_CLEANUP_20261109.md)

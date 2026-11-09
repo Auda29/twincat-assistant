@@ -37,16 +37,16 @@ namespace TwinCatAssistant.Native
 
         private string KnowledgeConnectionText()
         {
-            if(_chatSelection?.IsSelected!=true||_chatBinding?.IsGeneral==true)return "Wissenssuche im Projektchat verfügbar.";
-            if(_knowledgeConnecting)return "Die Verbindung zur Wissenssuche wird aufgebaut …";
+            if(_chatSelection?.IsSelected!=true||_chatBinding?.IsGeneral==true)return HostText.Get("H210");
+            if(_knowledgeConnecting)return HostText.Get("H211");
             switch(McpState("knowledge"))
             {
-                case "connected": return "Wissenssuche verbunden.";
-                case "pending": return "Die Wissenssuche verbindet …";
-                case "failed": return KnowledgeRetrying()?"Die Verbindung wird erneut aufgebaut …":"Die Verbindung zur Wissenssuche ist fehlgeschlagen.";
-                case "disabled": return "Die Wissenssuche ist deaktiviert.";
-                case "needs_auth": return "Die Wissenssuche benötigt eine Anmeldung.";
-                default: return "Der Verbindungsstatus wird geprüft. Der vorbereitete Index bleibt erhalten.";
+                case "connected": return HostText.Get("H212");
+                case "pending": return HostText.Get("H213");
+                case "failed": return KnowledgeRetrying()?HostText.Get("H214"):HostText.Get("H215");
+                case "disabled": return HostText.Get("H216");
+                case "needs_auth": return HostText.Get("H217");
+                default: return HostText.Get("H218");
             }
         }
 
@@ -58,44 +58,43 @@ namespace TwinCatAssistant.Native
             _knowledgeSummary.SetResourceReference(TextBlock.ForegroundProperty,"Tc.Muted");
             _knowledgeProgress.SetResourceReference(Control.ForegroundProperty,"Tc.Primary");
             _knowledgeProgress.SetResourceReference(Control.BackgroundProperty,"Tc.Border");
-            var title=new TextBlock { Text="Wissenssuche",FontWeight=FontWeights.SemiBold,FontSize=13 };
-            var close=IconButton("close","Einrichtung schließen",()=>{_knowledgePanel.Visibility=Visibility.Collapsed;return Task.CompletedTask;});
+            var title=new TextBlock { Text=HostText.Get("H120"),FontWeight=FontWeights.SemiBold,FontSize=13 };
+            var close=IconButton("close",HostText.Get("H219"),()=>{_knowledgePanel.Visibility=Visibility.Collapsed;return Task.CompletedTask;});
             var head=new DockPanel();DockPanel.SetDock(close,Dock.Right);head.Children.Add(close);head.Children.Add(title);
-            _knowledgeStart=AsyncButton("Einrichten",SetupKnowledgeAsync);_knowledgeStart.SetResourceReference(StyleProperty,"Tc.SecondaryButton");
-            _knowledgeCancel=AsyncButton("Abbrechen",()=>{_knowledgeCancellation?.Cancel();return Task.CompletedTask;});
+            _knowledgeStart=AsyncButton(HostText.Get("H097"),SetupKnowledgeAsync);_knowledgeStart.SetResourceReference(StyleProperty,"Tc.SecondaryButton");
+            _knowledgeCancel=AsyncButton(HostText.Get("H220"),()=>{_knowledgeCancellation?.Cancel();return Task.CompletedTask;});
             _knowledgeCancel.SetResourceReference(StyleProperty,"Tc.SecondaryButton");_knowledgeCancel.Visibility=Visibility.Collapsed;
-            var scan=AsyncButton("Neu suchen",async()=>{_knowledgeChecked=DateTime.MinValue;await RefreshKnowledgeAsync(true);});
+            var scan=AsyncButton(HostText.Get("H221"),async()=>{_knowledgeChecked=DateTime.MinValue;await RefreshKnowledgeAsync(true);});
             scan.SetResourceReference(StyleProperty,"Tc.SecondaryButton");
             var actions=new WrapPanel();actions.Children.Add(_knowledgeStart);actions.Children.Add(_knowledgeCancel);actions.Children.Add(scan);
             _knowledgeSources.SelectionChanged+=(sender,args)=>RenderKnowledge();
-            var label=new TextBlock {Text="Installierte Hilfe",FontSize=12};label.SetResourceReference(TextBlock.ForegroundProperty,"Tc.Muted");
+            var label=new TextBlock {Text=HostText.Get("H222"),FontSize=12};label.SetResourceReference(TextBlock.ForegroundProperty,"Tc.Muted");
             _knowledgePanel.Child=new StackPanel { Children={head,_knowledgeText,label,_knowledgeSources,_knowledgeProgress,actions} };
         }
         private void RenderKnowledge()
         {
-            if(_disposed)return;
-            var state=_knowledgeState;
-            var language=state?.language=="de"?"Deutsch":"Englisch";
-            var text=state==null?"Installierte Beckhoff-Hilfe wird gesucht …"
-                :state.phase=="indexing"?"Beckhoff-Hilfe wird lokal aufbereitet. Das kann einige Minuten dauern."
-                :state.phase=="validating"?"Der Suchindex wird geprüft …"
-                :state.phase=="activating"?"Die geprüfte Wissenssuche wird aktiviert …"
-                :state.phase=="verifying"?"Die Verbindung zur vollständigen Dokumentation wird geprüft …"
-                :state.phase=="cancelled"?"Einrichtung abgebrochen. Du kannst sie später erneut starten."
-                :state.phase=="error"?"Die Einrichtung konnte nicht abgeschlossen werden. Vorhandene Dokumentation bleibt erhalten. Erneut versuchen."
-                :state.phase=="external"?"Eine eigene Dokumentationsquelle ist konfiguriert. Sie wird durch die automatische Einrichtung nicht ersetzt."
-                :state.ready?"Dokumentation bereit · "+language+" · "+state.topics.ToString("N0")+" Artikel."
-                    +(state.phase=="update"?" Eine neuere installierte Hilfe ist verfügbar.":"")+Environment.NewLine+KnowledgeConnectionText()
-                :state.phase=="missing"?"Keine installierte Beckhoff-Hilfe erkannt. Installiere InfoSys und wähle danach Neu suchen."
-                :"Verwende die installierte Beckhoff-Hilfe für Antworten mit Quellen. Die Dokumente werden einmal lokal aufbereitet.";
-            _knowledgeText.Text=text;_knowledgeSummary.Text=text;
-            _knowledgeProgress.Visibility=_knowledgeBusy?Visibility.Visible:Visibility.Collapsed;
-            _knowledgeCancel.Visibility=_knowledgeBusy?Visibility.Visible:Visibility.Collapsed;
-            _knowledgeCancel.IsEnabled=_knowledgeBusy&&state?.phase!="activating"&&state?.phase!="verifying"&&state?.complete!=true;
-            _knowledgeSources.IsEnabled=!_knowledgeBusy;
-            _knowledgeStart.IsEnabled=!_knowledgeBusy&&_knowledgeSources.SelectedItem is KnowledgeSource&&state?.phase!="external";
-            _knowledgeStart.Content=state?.ready==true?"Index aktualisieren":"Einrichten";
-            RenderDiagnostics();
+            ThreadHelper.ThrowIfNotOnUIThread();
+            try
+            {
+                if (_disposed)
+                    return;
+                var state = _knowledgeState;
+                var language = state?.language == "de" ? HostText.Get("H110") : HostText.Get("H111");
+                var text = state == null ? HostText.Get("H223") : state.phase == "indexing" ? HostText.Get("H224") : state.phase == "validating" ? HostText.Get("H225") : state.phase == "activating" ? HostText.Get("H226") : state.phase == "verifying" ? HostText.Get("H227") : state.phase == "cancelled" ? HostText.Get("H228") : state.phase == "error" ? HostText.Get("H229") : state.phase == "external" ? HostText.Get("H230") : state.ready ? HostText.Format("H231", new object[] { language, state.topics.ToString("N0"), (state.phase == "update" ? HostText.Get("H232") : ""), Environment.NewLine, KnowledgeConnectionText() }) : state.phase == "missing" ? HostText.Get("H233") : HostText.Get("H234");
+                _knowledgeText.Text = text;
+                _knowledgeSummary.Text = text;
+                _knowledgeProgress.Visibility = _knowledgeBusy ? Visibility.Visible : Visibility.Collapsed;
+                _knowledgeCancel.Visibility = _knowledgeBusy ? Visibility.Visible : Visibility.Collapsed;
+                _knowledgeCancel.IsEnabled = _knowledgeBusy && state?.phase != "activating" && state?.phase != "verifying" && state?.complete != true;
+                _knowledgeSources.IsEnabled = !_knowledgeBusy;
+                _knowledgeStart.IsEnabled = !_knowledgeBusy && _knowledgeSources.SelectedItem is KnowledgeSource && state?.phase != "external";
+                _knowledgeStart.Content = state?.ready == true ? HostText.Get("H235") : HostText.Get("H097");
+                RenderDiagnostics();
+            }
+            finally
+            {
+                ApplyLanguageBindings();
+            }
         }
         private void ShowKnowledgeSetup(){_menuPopup.IsOpen=false;_knowledgePanel.Visibility=Visibility.Visible;RenderKnowledge();RunAction(()=>RefreshKnowledgeAsync(true));}
         private async Task RefreshKnowledgeAsync(bool force=false)
@@ -189,7 +188,7 @@ namespace TwinCatAssistant.Native
                 await Task.Delay(200);
             }
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if(!_disposed&&generation==_chatDocumentGeneration&&!quiet)Notify("Wissenssuche eingerichtet. Die Verbindung konnte noch nicht bestätigt werden.","warning","Neu verbinden",()=>BeginKnowledgeReconnect(force:true));
+            if(!_disposed&&generation==_chatDocumentGeneration&&!quiet)Notify(HostText.Get("H236"),"warning",HostText.Get("H083"),()=>BeginKnowledgeReconnect(force:true));
         }
     }
 }
