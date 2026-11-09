@@ -170,7 +170,8 @@ namespace TwinCatAssistant.Native
             else ShowRow(_modelRow, enabled.name + (string.IsNullOrEmpty(model) ? " · Modell im Chat wählen" : " · " + model.Substring(model.IndexOf('/') + 1)), "Success", _modelStatus.Text);
             // Project tools (engineering MCP): saved project files only.
             var tools = McpState("engineering");
-            if (!ready) ShowRow(_toolsRow, "–", "Neutral", _mcpStatus.Text);
+            if (ProjectSetupFailed) ShowRow(_toolsRow, "Einrichtung fehlgeschlagen", "Error", _mcpFailureMessage);
+            else if (!ready) ShowRow(_toolsRow, "–", "Neutral", _mcpStatus.Text);
             else if (tools != null) { McpLabel(tools, out value, out tone); ShowRow(_toolsRow, value, tone, _mcpStatus.Text); }
             else if (_chatProject == null || _chatBinding?.IsGeneral == true) ShowRow(_toolsRow, "Nur im Projektchat", "Neutral", "Projektwerkzeuge lesen gespeicherte Dateien des aktiven PLC-Projekts. Im allgemeinen Chat sind sie nicht verbunden.");
             else if (!_mcpEnabled) ShowRow(_toolsRow, "Nicht eingerichtet", "Neutral", _mcpStatus.Text);
@@ -178,7 +179,8 @@ namespace TwinCatAssistant.Native
             // Knowledge search: the live MCP connection, not only the last reload.
             var knowledge = McpState("knowledge");
             Action reconnectKnowledge = () => { _knowledgeConnectionKey = null; BeginKnowledgeReconnect(force:true); };
-            if (_knowledgeBusy) ShowRow(_knowledgeRow, "Wird vorbereitet …", "Neutral", _knowledgeSummary.Text, "Fortschritt", ShowKnowledgeSetup);
+            if (ProjectSetupFailed) ShowRow(_knowledgeRow, "Projektchat nicht eingerichtet", "Warning", _mcpFailureMessage);
+            else if (_knowledgeBusy) ShowRow(_knowledgeRow, "Wird vorbereitet …", "Neutral", _knowledgeSummary.Text, "Fortschritt", ShowKnowledgeSetup);
             else if (_knowledgeState?.ready != true) ShowRow(_knowledgeRow, "Nicht eingerichtet", "Warning", _knowledgeSummary.Text, "Einrichten", ShowKnowledgeSetup);
             else if (!ready) ShowRow(_knowledgeRow, "–", "Neutral", _knowledgeSummary.Text);
             else if (knowledge == "unknown") ShowRow(_knowledgeRow, "Status wird geprüft …", "Neutral", _knowledgeSummary.Text);

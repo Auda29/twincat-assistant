@@ -57,7 +57,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
-            var failed = _setupMissing || _chatConnection.Phase == "failed";
+            var failed = _setupMissing || _chatConnection.Phase == "failed" || ProjectSetupFailed;
             if (failed) _chatPresented = false;
             else if (_chatConnection.PageLoaded && _chatAdapterReady && CanPresentChat())
                 _chatPresented = true;
@@ -91,7 +91,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _chatReadyTimeout.Stop();
-            if (_disposed || _chatPresented || _chatConnection.Phase == "failed") return;
+            if (_disposed || _chatPresented || _chatConnection.Phase == "failed" || _projectSetupPending || ProjectSetupFailed) return;
             _chatConnection.Fail(_chatConnection.Generation, "Der Chat wurde nicht rechtzeitig bereit. Verbindung und Chat-Integration unter Diagnose prüfen und neu verbinden.");
             ShowChatStatus();
         }
