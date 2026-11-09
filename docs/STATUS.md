@@ -1,5 +1,14 @@
 # Implementation status
 
+**Product cleanup branch, 2026-11-09.** The next source/runtime change removes
+unused server services, specializes the foreground CLI, prunes unreachable
+feature files and native dependencies, and applies TwinCAT Assistant identity
+to product text, the logo and the About page. See
+[the cleanup record](PRODUCT_CLEANUP_20261109.md) for its exact scope and checks.
+It is separate from the published Preview 3 and has not been installed on the
+operator workstation. Remaining shared helpers and generic client entry points
+are explicitly recorded; this does not close Roadmap 2 or installed UI gates.
+
 **Preview 3 follow-up, 2026-11-09.** The first-menu-click defect has been traced
 to the installed SDK 15 synchronous tool-window creation fallback and fixed with
 an explicit frame-show call. The x86 host is rebuilt as `0.2.0.3`; the complete

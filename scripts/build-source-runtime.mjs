@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, lstat, open } from 'node:fs/promises';
 import { dirname, join, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applySourceOverlay, replacementInputs } from './source-overlay.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const lock = JSON.parse(await readFile(join(root, 'upstream/source-lock.json'), 'utf8'));
@@ -35,11 +36,7 @@ const edits = JSON.parse(await readFile(join(root, 'upstream/overlays/openchambe
 const expected = new Map();
 for (const edit of edits) {
   const original = execFileSync('git', ['show', lock.openchamber.revision + ':' + edit.file], { cwd: chamber, encoding: 'utf8', windowsHide: true });
-  let changed = original;
-  for (const [before, after] of edit.changes) {
-    if (changed.split(before).length !== 2) throw new Error('Source overlay no longer matches ' + edit.file);
-    changed = changed.replace(before, after);
-  }
+  const changed = await applySourceOverlay(original, edit);
   expected.set(edit.file, baseline ? original : changed);
 }
 const normalize = value => value.replace(/\r\n/g, '\n');
@@ -99,7 +96,9 @@ const receipt = { version: 1, sourceContract: baseline ? 0 : 1, platform: proces
   opencode: { path: relative(root, opencode).replace(/\\/g, '/'), ...lock.opencode },
   openchamber: { path: relative(root, openchamber).replace(/\\/g, '/'), ...lock.openchamber }, hashes };
 receipt.inputs = Object.fromEntries(await Promise.all(['upstream/source-lock.json', 'upstream/overlays/openchamber/changes.json',
-  'upstream/overlays/openchamber/twincat.ts', 'upstream/overlays/openchamber/install.ts', 'tools/package-lock.json', 'scripts/build-source-runtime.mjs']
+  'upstream/overlays/openchamber/twincat.ts', 'upstream/overlays/openchamber/install.ts',
+  'scripts/source-overlay.mjs', ...replacementInputs(edits),
+  'tools/package-lock.json', 'scripts/build-source-runtime.mjs']
   .map(async file => [file, hash(await readFile(join(root, file)))])));
 await writeFile(join(artifacts, baseline ? 'baseline.json' : 'runtime.json'), JSON.stringify(receipt, null, 2) + '\n');
 console.log('Built existing OpenCode and OpenChamber sources. Runtime receipt written.');

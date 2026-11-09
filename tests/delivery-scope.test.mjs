@@ -6,9 +6,11 @@ import { join } from 'node:path';
 import { reduceDeliveryFiles } from '../scripts/build-application-package.mjs';
 const overlay = JSON.parse(await readFile(new URL('../upstream/overlays/openchamber/changes.json', import.meta.url)));
 const server = overlay.find(e => e.file === 'packages/web/server/index.js');
-const gate = server.changes.find(([before]) => before === '  const app = express();')[1];
+const serverSource = await readFile(new URL('../upstream/overlays/openchamber/' + server.replacement, import.meta.url), 'utf8');
+const gate = serverSource.match(/const app = express\(\);[\s\S]*?(?=\s*const serverStartedAt)/)?.[0];
+assert.ok(gate, 'product middleware precedes startup routes');
 
-test('delivery boundary refuses excluded routes before proxy, keeps chat and attachment contracts', () => {
+test('delivery boundary refuses excluded routes before proxy, keeps chat and attachment contracts', async () => {
   let middleware;
   Function('express', gate)(() => ({ use(fn) { middleware = fn; } }));
   function request(path) {
@@ -17,6 +19,10 @@ test('delivery boundary refuses excluded routes before proxy, keeps chat and att
     return { status, next };
   }
   for (const path of ['/api/terminal/create', '/api/browser-control/claim', '/api/dev-servers',
+    '/api/github/accounts', '/api/git/worktree', '/api/gitlab/accounts', '/api/linear/issues',
+    '/api/scheduled-tasks', '/api/routing', '/api/guests', '/api/extensions', '/api/openchamber-control',
+    '/api/spaces', '/api/tunnels', '/api/relay', '/api/pairing', '/auth/pairing',
+    '/api/dictation', '/api/tts', '/api/notifications/push', '/api/notifications/auto-accept',
     '/api/fs/write', '/api/fs/exec/job', '/api/fs/delete', '/api/fs/rename', '/api/fs/clone', '/api/fs/mkdir', '/api/fs/reveal',
     '/api/opencode/upgrade', '/api/opencode/upgrade-status', '/api/opencode/install-v2',
     '/api/openchamber/update-check', '/api/openchamber/update-install', '/API/FS/WRITE', '/api/fs/%77rite', '/api//fs/write/']) {
@@ -25,12 +31,13 @@ test('delivery boundary refuses excluded routes before proxy, keeps chat and att
   for (const path of ['/auth/session', '/api/integration', '/api/provider/openai/auth', '/api/config',
     '/api/session/a/interrupt', '/api/session/a/message', '/api/event/ws', '/api/global/event/ws',
     '/api/message-queue', '/api/mcp', '/api/fs/read', '/api/fs/raw', '/api/fs/stat', '/api/fs/upload',
-    '/api/openchamber/models-metadata', '/api/fs/writer']) {
+    '/api/openchamber/models-metadata', '/api/twincat/product', '/api/notifications/stream', '/api/fs/writer']) {
     assert.deepEqual(request(path), { status: 200, next: true }, path);
   }
   assert.deepEqual(request('/api/fs/%ZZ'), { status: 400, next: false });
-  assert.ok(server.changes.some(([a,b]) => a.includes('import { createTerminalRuntime }') && !b.includes('import')));
-  assert.ok(server.changes.some(([a,b]) => a.trim() === 'createTerminalRuntime,' && b.includes('() => null')));
+  assert.doesNotMatch(serverSource, /import .*createTerminalRuntime/);
+  const startup = await readFile(new URL('../upstream/overlays/openchamber/server/startup-pipeline-runtime.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(startup, /createTerminalRuntime|createDictationRuntime/);
 });
 
 test('package reduction removes redundant distribution Core and server tests, retains modules and notices', async () => {

@@ -23,8 +23,15 @@ export async function runtimePaths(mode = process.env.TWINCAT_ASSISTANT_RUNTIME)
     for (const name of ['opencode', 'openchamber']) {
       if (receipt[name]?.revision !== lock[name].revision || receipt[name]?.version !== lock[name].version) throw new Error('Source runtime revision mismatch');
     }
+    const edits = JSON.parse(await readFile(join(root, 'upstream/overlays/openchamber/changes.json'), 'utf8'));
+    const replacements = edits.filter(edit => edit.replacement !== undefined).map(edit => {
+      if (!/^(server\/[a-z0-9-]+\.js|ui\/[a-z0-9-]+\.tsx)$/.test(edit.replacement)) throw new Error('Invalid source replacement input');
+      return 'upstream/overlays/openchamber/' + edit.replacement;
+    });
     for (const file of ['upstream/source-lock.json', 'upstream/overlays/openchamber/changes.json',
-      'upstream/overlays/openchamber/twincat.ts', 'upstream/overlays/openchamber/install.ts', 'tools/package-lock.json', 'scripts/build-source-runtime.mjs']) {
+      'upstream/overlays/openchamber/twincat.ts', 'upstream/overlays/openchamber/install.ts',
+      'scripts/source-overlay.mjs', ...replacements,
+      'tools/package-lock.json', 'scripts/build-source-runtime.mjs']) {
       if (receipt.inputs?.[file] !== createHash('sha256').update(await readFile(join(root, file))).digest('hex'))
         throw new Error('Source build inputs changed; rebuild the runtime');
     }

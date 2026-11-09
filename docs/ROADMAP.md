@@ -10,6 +10,13 @@ The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains 
 
 ## Agreed priorities (2026-11-02)
 
+Bereinigung vom 09.11.2026: Der neue Produktbranch entfernt weitere Serverdienste
+und nicht mehr benötigte Pakete, vereinfacht die Einstellungen und ersetzt eigene
+Produkttexte. Die [Umfangs- und Nachweisübersicht](PRODUCT_CLEANUP_20261109.md)
+benennt auch die verbleibenden gemeinsamen Hilfen und Client-Einstiege.
+Dieser Stand ist vom veröffentlichten Preview-3-Installer getrennt. Punkt 2
+bleibt eine schrittweise Bereinigung; Punkte 5–7 wurden dabei nicht begonnen.
+
 Integrationsstand vom 06.11.2026: Private native Testkonfiguration, begrenzte
 Wiederverwendung voller Paketprüfungen pro Startvorgang und die P2-Korrektur vor
 Profil-Recovery-Schreibzugriffen sind zusammengeführt. 159 Node-Tests ohne Skip,

@@ -64,7 +64,7 @@ export async function verifyProfileConfiguration(actualConfig, settings) {
     if (runtime) managed = [createOpenCodeConfig(settings, runtime), ...previousOpenCodeConfigs(settings, runtime)].some(config => JSON.stringify(config) === actual);
   }
   if (!configurationCurrent && !managed) {
-    throw new Error('OpenCode configuration modified: policy mismatch; initialize a new state directory');
+    throw new Error('TwinCAT Assistant Core configuration modified: policy mismatch; restore or migrate the managed configuration');
   }
   return configurationCurrent;
 }
@@ -137,7 +137,7 @@ export async function prepareChatWorkspace(root) {
     else throw error;
   }
   if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)
-      || (preferences.projects !== undefined && !Array.isArray(preferences.projects))) throw new Error('Invalid OpenChamber project preferences');
+      || (preferences.projects !== undefined && !Array.isArray(preferences.projects))) throw new Error('Invalid TwinCAT Assistant Chat project preferences');
   await installTwinCatThemes(status.paths.openchamber);
   await migrateTwinCatThemePreferences(status.paths.openchamber, readJsonFile);
   let value = withTwinCatThemes(preferences);

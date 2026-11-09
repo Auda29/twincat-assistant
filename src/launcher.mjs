@@ -1,6 +1,6 @@
 import { withPackageVerificationScope } from './package-verification-scope.mjs';
 import { isAbsolute } from 'node:path';
-import { lstat } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { prepareChatWorkspace, runtimeEnvironment } from './state.mjs';
 import { upgradeProfileConfiguration } from './profile-update.mjs';
@@ -14,6 +14,7 @@ async function prepareLaunchOperation(root, options, inherited = process.env) {
   await upgradeProfileConfiguration(root);
   const status = await prepareChatWorkspace(root);
   const env = runtimeEnvironment(root, status.settings, inherited);
+  env.TWINCAT_ASSISTANT_VERSION = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
   env.OPENCODE_BINARY = options.opencode;
   env.OPENCHAMBER_UI_PASSWORD = inherited.OPENCHAMBER_UI_PASSWORD;
   const args = [options.openchamber, 'serve', '--foreground', '--host', '127.0.0.1', '--port', String(options.port)];

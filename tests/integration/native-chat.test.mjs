@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm, lstat } from 'node:fs/promises';
+import { mkdtemp, rm, lstat, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -57,8 +57,27 @@ test('native owner starts pinned protected chat and stdin EOF stops its process 
     assert.equal(login.status, 200);
     const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
     if ((await runtimePaths()).sourceContract) {
+      assert.equal((await fetch(`${origin}/api/twincat/product`)).status, 401);
+      const product = await fetch(`${origin}/api/twincat/product`, { headers: { cookie } });
+      assert.equal(product.status, 200);
+      assert.deepEqual(await product.json(), { name: 'TwinCAT Assistant', version: JSON.parse(await readFile('package.json', 'utf8')).version });
+      const eventsAbort = new AbortController();
+      const events = await fetch(`${origin}/api/openchamber/events`, { headers: { cookie }, signal: eventsAbort.signal });
+      assert.equal(events.status, 200, 'chat metadata stream must survive scheduler removal');
+      assert.match(events.headers.get('content-type'), /text\/event-stream/);
+      const eventReader = events.body.getReader();
+      try { assert.match(new TextDecoder().decode((await eventReader.read()).value), /openchamber:event-stream-ready/); }
+      finally { eventsAbort.abort(); await eventReader.cancel().catch(() => {}); }
+      for (const body of [{ goal: true, prompt: 'synthetic' }, { worktree: { name: 'synthetic' } }]) {
+        const refused = await fetch(`${origin}/api/openchamber/sessions`, { method: 'POST', headers: { cookie, origin, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+        assert.equal(refused.status, 400);
+        assert.match((await refused.json()).error, /outside TwinCAT Assistant delivery scope/);
+      }
       for (const path of ['/api/terminal/create', '/api/browser-control/claim', '/api/dev-servers', '/api/fs/write',
-        '/api/fs/exec', '/api/opencode/upgrade', '/api/openchamber/update-install']) {
+        '/api/fs/exec', '/api/opencode/upgrade', '/api/openchamber/update-install',
+        '/api/github/accounts', '/api/git/worktree', '/api/linear/issues', '/api/scheduled-tasks',
+        '/api/routing', '/api/guests', '/api/extensions', '/api/spaces', '/api/tunnels',
+        '/api/pairing', '/auth/pairing', '/api/dictation', '/api/tts', '/api/notifications/push']) {
         for (const method of ['GET', 'POST']) {
           const response = await fetch(origin + path, { method, headers: { cookie, origin }, signal: AbortSignal.timeout(5000) });
           assert.equal(response.status, 404, method + ' ' + path);
