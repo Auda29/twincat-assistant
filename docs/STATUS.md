@@ -1,5 +1,25 @@
 # Implementation status
 
+**Preview 3 follow-up, 2026-11-09.** The first-menu-click defect has been traced
+to the installed SDK 15 synchronous tool-window creation fallback and fixed with
+an explicit frame-show call. The x86 host is rebuilt as `0.2.0.3`; the complete
+`0.2.0-preview.3` application package passes protected startup, both real MCP
+probes on synthetic files, restart, state preservation and unchanged-package
+verification. See the [Preview 3 release notes](releases/native-v0.2.0-preview.3.md).
+The installer retains the graphical setup and automatic administrator request.
+This candidate uses a local Windows package/installer build, reusing the pinned
+Core/Chat/MCP inputs; it is not claimed as a new hosted-CI installer artifact.
+
+The unmanaged workstation prototype was removed with verified backups before
+ordinary installer use. The operator installed Preview 2 Setup 1. Its inherited
+developer-path profile was rejected by packaged policy verification; a bounded,
+backed-up migration changed only twenty managed configuration/receipt files for
+the global profile and nine project workspaces. Strict installed profile
+verification now reports current configuration. Chats, credentials, cookies and
+PLC source files were not migrated or reset. See the [local migration record](PROTOTYPE_PROFILE_MIGRATION_20261109.md).
+Live reconnection, the installed Preview 3 first-click behavior, real managed
+update/rollback and first-after-logon remain unconfirmed. Points 5–7 remain open.
+
 **Publication completed, 2026-11-09.** PR #15 merged as `b82f19a`; the saved
 preparation helper/handoff was integrated as `edd68ea`. The exact source
 `3292137` passed the actual [Windows installer pipeline](https://github.com/Auda29/twincat-assistant/actions/runs/42220003076)
