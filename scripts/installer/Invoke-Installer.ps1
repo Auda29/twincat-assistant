@@ -3,6 +3,7 @@ param([Parameter(Mandatory)][ValidateSet('Install','Rollback')][string]$Action,
       [Parameter(Mandatory)][string]$InstallRoot,
       [string]$HostId)
 $ErrorActionPreference = 'Stop'
+Write-Host 'Pruefe Benutzerprofil und TwinCAT-Host ...'
 . "$PSScriptRoot/HostTransaction.ps1"
 . "$PSScriptRoot/RuntimePrerequisites.ps1"
 . "$PSScriptRoot/NativeProfile.ps1"
@@ -51,6 +52,7 @@ foreach ($payload in @($hostFacts[0].assistantPayloads)) {
 }
 $package = Join-Path $PSScriptRoot 'package'
 if ($Action -eq 'Install') {
+    Write-Host 'Pruefe alle Dateien des Anwendungspakets ...'
     $m = Test-ApplicationPackage $package
     $osArch = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
     if (($m.architecture -eq 'x64' -and $osArch -ne 'AMD64') -or ($m.architecture -eq 'arm64' -and $osArch -ne 'ARM64')) { throw 'Application architecture does not match Windows.' }
@@ -64,5 +66,6 @@ if ($Action -eq 'Rollback') {
 }
 $programs = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
 Assert-ApplicationRuntimePrerequisites $runtimePackage (Join-Path $programs 'dotnet')
+Write-Host 'Voraussetzungen erfuellt. Installiere bzw. stelle die ausgewaehlte Version wieder her ...'
 Invoke-HostTransaction -PolicyStateRoot $policyStateRoot -Action $Action -InstallRoot $InstallRoot -HostRoot $hostRoot -Interop $interop -Package $package -Target $target[0]
 Write-Host 'Host files registered with the selected packaged runtime. Real-host acceptance remains separate.'
