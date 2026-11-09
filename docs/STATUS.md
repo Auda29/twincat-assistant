@@ -1,5 +1,25 @@
 # Implementation status
 
+**Publication completed, 2026-11-09.** PR #15 merged as `b82f19a`; the saved
+preparation helper/handoff was integrated as `edd68ea`. The exact source
+`3292137` passed the actual [Windows installer pipeline](https://github.com/Auda29/twincat-assistant/actions/runs/42220003076)
+and portable/source checks. The [0.2.0 Preview 2 alpha release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-preview.2)
+is published with its CI-built EXE, SHA256.txt and CI provenance. The downloaded
+EXE is 240,836,096 bytes, SHA-256
+`91b490bf40b6c8f9c64868de1a4b84e34fff188a97b967c08f19b75682472402`,
+matching the CI checksum; provenance binds source `3292137`, base `b0bf7c2` and
+application input manifest `6ee4eb9b...`.
+
+Only `main` and the still-needed recovery branch remain on the remote. Local
+worktrees, build outputs and recovery backups were retained. The normal working
+checkout is still `f6e018a`/runtime `491ed3a`; no new workstation installation
+was performed. Existing unmanaged prototypes require a verified one-time
+migration before ordinary installer use. Installed host/UI/member/paste,
+real update/rollback and first-after-logon acceptance remain open for Roadmap
+1–4; publication does not close them. Points 5–7 were not started.
+
+The dated entries below retain the earlier integration/acceptance history.
+
 **Resumed on operator request, 2026-11-06.** The isolated integration checkout now
 contains the private native test configuration, completed scoped package
 verification, and the P2 recovery preflight fix. Its complete serial Node suite

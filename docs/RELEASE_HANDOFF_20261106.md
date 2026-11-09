@@ -1,5 +1,14 @@
 # Release handoff, 2026-11-06
 
+**Completed on 2026-11-09:** PR #15 merged, the helper/handoff also integrated
+into main, and the CI-built alpha published as
+[native-v0.2.0-preview.2](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-preview.2).
+Actual run 42220003076 passed. CI EXE SHA-256:
+`91b490bf40b6c8f9c64868de1a4b84e34fff188a97b967c08f19b75682472402`.
+Five fully merged remote branches were deleted; recovery and all local backups
+remain. The snapshot below describes the previous Friday departure, not current
+publication status. Live installation and UI acceptance are still outstanding.
+
 Operator departure deadline: 13:50 Europe/Berlin. No installation was performed.
 Do not publish an unverified release or force a merge to meet the deadline.
 
