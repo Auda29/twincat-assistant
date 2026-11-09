@@ -32,12 +32,24 @@ namespace TwinCatAssistant.Native
                     {
                         var window = await ShowToolWindowAsync(typeof(AssistantToolWindow), 0, true, DisposalToken);
                         await JoinableTaskFactory.SwitchToMainThreadAsync(DisposalToken);
+                        var frame = window?.Frame as IVsWindowFrame;
+                        if (frame == null) throw new InvalidOperationException("Assistant tool window frame unavailable.");
+                        // SDK 15.9's synchronous creation fallback does not run
+                        // ShowToolWindowAsync's after-frame-creation callback.
+                        // Show explicitly on the first invocation as well.
+                        ErrorHandler.ThrowOnFailure(frame.Show());
                         var dte = await GetServiceAsync(typeof(SDTE)) as DTE;
                         var rdt = await GetServiceAsync(typeof(SVsRunningDocumentTable)) as IVsRunningDocumentTable;
                         var selection = await GetServiceAsync(typeof(SVsShellMonitorSelection)) as IVsMonitorSelection;
                         ((AssistantControl)window.Content).Bind(dte, selection, rdt, path => GetDirty(rdt, path));
                     }
-                    catch { /* A failed toolwindow must not crash or mutate the IDE. */ }
+                    catch (OperationCanceledException) when (DisposalToken.IsCancellationRequested) { }
+                    catch (Exception error)
+                    {
+                        // Keep failures diagnosable without recording editor text.
+                        await JoinableTaskFactory.SwitchToMainThreadAsync(DisposalToken);
+                        ActivityLog.LogError("TwinCAT Assistant", "OpenToolWindow failed: " + error.GetType().Name + " (0x" + error.HResult.ToString("X8") + ")");
+                    }
                 }).FileAndForget("TwinCatAssistant/OpenToolWindow");
             }, new CommandID(new Guid("bd34d6a6-75aa-4df3-9b1a-f3b341fc4544"), 0x0100)));
         }
