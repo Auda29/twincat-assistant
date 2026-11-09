@@ -1,5 +1,8 @@
 # Local development and operator setup
 
+For packaged installation, use the [Preview 3 release instructions](releases/native-v0.2.0-preview.3.md).
+The commands below are for development checkouts, not prerequisites for using the EXE installer.
+
 This is a development checkout, not a supported TwinCAT installer. Commands are
 run at the repository root. Windows operator commands now require the built
 native helper for safe JSON reads and Job Object ownership. Build it before

@@ -26,15 +26,17 @@ blocks and attachments. Model requests go to the provider you configure.
 
 ## Getting started
 
-The alpha is currently installed from source. You need Windows with TwinCAT
-XAE and access to a supported model provider. Documentation search uses the
+Download the [Preview 3 Windows installer](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-preview.3)
+for TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on Windows x64. You also need
+.NET 8 runtime, WebView2 and access to a supported model provider. Documentation search uses the
 Knowledge MCP with a prepared corpus, which can be created from locally
 installed Beckhoff InfoSys help.
 
-1. Follow the [installation guide](docs/INSTALLATION.md) to build the native
-   host and configure the local runtime and MCPs. The
-   [source runtime guide](upstream/README.md) covers the pinned OpenCode and
-   OpenChamber builds.
+1. Close TcXaeShell, verify the downloaded setup checksum and double-click the
+   EXE. Confirm UAC with your normal Windows account. The setup window handles
+   installation and managed updates without Git, npm or compilation. See the
+   [release notes](docs/releases/native-v0.2.0-preview.3.md), including the separate
+   migration requirement for old unpackaged prototypes.
 2. Open the TwinCAT Assistant tool window, connect your model provider and
    select a model in the chat.
 3. Open a PLC project and select a Structured Text POU. Attach its snapshot
@@ -45,6 +47,9 @@ installed Beckhoff InfoSys help.
 The native host has separate x86 and amd64 builds. Live IDE testing currently
 focuses on x86; the [verification notes](docs/WINDOWS_ACCEPTANCE.md) track the
 compatibility and acceptance boundaries.
+
+For development builds, use the [development setup](docs/INSTALLATION.md) and
+[pinned source runtime guide](upstream/README.md).
 
 ## Alpha scope
 
