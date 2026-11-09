@@ -23,17 +23,177 @@ namespace TwinCatAssistant.Native
         public string StateRoot { get; set; }
         public string DotNetRoot { get; set; }
         public string McpSettingsPath { get; set; }
-        public static string ConfigurationPath { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TwinCatAssistant", "native-chat.json"); } }
-        public static string CredentialDirectory { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TwinCatAssistant", "native-chat"); } }
+        public const string TestConfigurationVariable = "TWINCAT_ASSISTANT_TEST_CONFIG";
+        public const string MaintenanceMarkerFileName = "assistant-test-maintenance.json";
+        private static string LocalData { get { return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData); } }
+        public static string ConfigurationPath { get { return TestProfilePath() == null ? Path.Combine(LocalData, "TwinCatAssistant", "native-chat.json") : Environment.GetEnvironmentVariable(TestConfigurationVariable); } }
+        public static string CredentialDirectory { get { return PrivateDirectory("native-chat"); } }
+        public static string WebViewUserDataFolder { get { return Path.Combine(PrivateDirectory("WebView2"), Process.GetCurrentProcess().Id.ToString()); } }
+        private static string PrivateDirectory(string name)
+        {
+            var profile = TestProfilePath();
+            var directory = Path.Combine(profile ?? Path.Combine(LocalData, "TwinCatAssistant"), name);
+            if (profile != null) CheckPrivateTree(directory);
+            return directory;
+        }
+
+        // Opt-in for a deliberately launched acceptance shell only. A bad override
+        // must fail closed even when preferences/credentials load before config.
+        internal static string TestProfilePath()
+        {
+            var path = Environment.GetEnvironmentVariable(TestConfigurationVariable);
+            RequireMaintenanceContract(HostDirectory(), path);
+            return ResolveTestProfilePath(path);
+        }
+        private static string ResolveTestProfilePath(string path)
+        {
+            if (path == null) return null;
+            // WebView2 can override CreateAsync's folder via inherited process
+            // settings. Do not accept such a shell as an isolated test host.
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER"))
+                || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")))
+                throw new InvalidOperationException("Remove inherited WebView2 overrides from the private test process.");
+            var parent = Path.Combine(LocalData, "TwinCatAssistant", "host-tests");
+            if (string.IsNullOrWhiteSpace(path) || !Path.IsPathRooted(path) || path.StartsWith(@"\\", StringComparison.Ordinal)
+                || !string.Equals(Path.GetFullPath(path), path, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Invalid private host test configuration path.");
+            var profile = Path.GetDirectoryName(path);
+            if (!string.Equals(Path.GetFileName(path), "native-chat.json", StringComparison.Ordinal)
+                || !string.Equals(Path.GetDirectoryName(profile), parent, StringComparison.OrdinalIgnoreCase)
+                || !System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(profile), @"\A[A-Za-z0-9_-]{1,64}\z"))
+                throw new InvalidOperationException("Use a private host-tests profile configuration.");
+            CheckPrivatePath(profile);
+            NativeChatFiles.RequireSingleLink(path);
+            return profile;
+        }
+        private static string HostDirectory()
+        {
+            // Never use Location: the host may be shadow-copied. The marker and
+            // selector belong to the original deployed assembly's CodeBase.
+            var uri = new Uri(typeof(NativeChatConfiguration).Assembly.CodeBase);
+            if (!uri.IsFile) throw new InvalidOperationException("Invalid host assembly location.");
+            return Path.GetDirectoryName(uri.LocalPath);
+        }
+        private static string Digest(byte[] bytes)
+        {
+            using (var sha = SHA256.Create())
+                return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
+        }
+        private static void RequireMaintenanceContract(string hostDirectory, string overridePath)
+        {
+            var marker = Path.Combine(hostDirectory, MaintenanceMarkerFileName);
+            // File.Exists hides errors and dangling links. Only actual absence
+            // opts out; unreadable/malformed lab metadata must never fall back.
+            try { File.GetAttributes(marker); }
+            catch (FileNotFoundException) { return; }
+            catch (DirectoryNotFoundException) { return; }
+            CheckPrivatePath(marker);
+            var json = new UTF8Encoding(false, true).GetString(NativeChatFiles.Read(marker, true));
+            // Flat, exact schema; literal property names and no duplicate keys.
+            // Restrict syntax before deserialization, which otherwise accepts
+            // duplicate members. Values remain ordinary JSON escaped strings.
+            const string member = @"(?:""schemaVersion""\s*:\s*1|""(?:configurationPath|configurationSha256|operatorSid|selectorSha256)""\s*:\s*""(?:[^""\\\x00-\x1f]|\\(?:[""\\/bfnrt]|u[0-9a-fA-F]{4}))*"")";
+            if (!System.Text.RegularExpressions.Regex.IsMatch(json, @"\A\s*\{\s*" + member + @"(?:\s*,\s*" + member + @"){4}\s*\}\s*\z"))
+                throw new InvalidOperationException("Invalid host maintenance marker schema.");
+            var values = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json);
+            if (values == null || values.Count != 5 || !values.ContainsKey("schemaVersion")
+                || !values.ContainsKey("configurationPath") || !values.ContainsKey("configurationSha256")
+                || !values.ContainsKey("operatorSid") || !values.ContainsKey("selectorSha256"))
+                throw new InvalidOperationException("Invalid host maintenance marker schema.");
+            var config = (string)values["configurationPath"];
+            if (!string.Equals((string)values["operatorSid"], WindowsIdentity.GetCurrent().User.Value, StringComparison.Ordinal)
+                || overridePath == null || !string.Equals(config, overridePath, StringComparison.Ordinal))
+                throw new InvalidOperationException("This maintenance host requires its exact private configuration and operator SID.");
+            ResolveTestProfilePath(config);
+            foreach (var key in new[] { "configurationSha256", "selectorSha256" })
+                if (!System.Text.RegularExpressions.Regex.IsMatch((string)values[key], @"\A[0-9a-f]{64}\z"))
+                    throw new InvalidOperationException("Invalid host maintenance digest.");
+            var selector = Path.Combine(hostDirectory, "assistant-installation.json");
+            CheckPrivatePath(selector);
+            if (!string.Equals(Digest(NativeChatFiles.Read(config, true)), (string)values["configurationSha256"], StringComparison.Ordinal)
+                || !string.Equals(Digest(NativeChatFiles.Read(selector, true)), (string)values["selectorSha256"], StringComparison.Ordinal))
+                throw new InvalidOperationException("Host maintenance configuration or package selection changed.");
+        }
+        internal static void CheckPrivatePath(string path)
+        {
+            for (var current = path; !string.IsNullOrEmpty(current); current = Path.GetDirectoryName(current))
+            {
+                try { if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) throw new IOException("Redirected private host test path."); }
+                catch (FileNotFoundException) { }
+                catch (DirectoryNotFoundException) { }
+            }
+        }
+        internal static void CheckPrivateTree(string directory)
+        {
+            CheckPrivatePath(directory);
+            if (!Directory.Exists(directory)) return;
+            foreach (var entry in Directory.EnumerateFileSystemEntries(directory))
+            {
+                CheckPrivatePath(entry);
+                if (Directory.Exists(entry)) CheckPrivateTree(entry);
+                else NativeChatFiles.RequireSingleLink(entry);
+            }
+        }
 
         public static NativeChatConfiguration Load()
         {
-            var result = new JavaScriptSerializer().Deserialize<NativeChatConfiguration>(Encoding.UTF8.GetString(NativeChatFiles.Read(ConfigurationPath)));
+            // CodeBase retains the extension location when the IDE shadow-copies
+            // an assembly; Location may instead name its temporary cache.
+            var hostDirectory = HostDirectory();
+            return LoadFrom(hostDirectory, ConfigurationPath, Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                Environment.GetEnvironmentVariable("ProgramW6432") ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
+        }
+        internal static NativeChatConfiguration LoadFrom(string hostDirectory, string configurationPath, string localAppData, string programFiles)
+        {
+            RequireMaintenanceContract(hostDirectory, Environment.GetEnvironmentVariable(TestConfigurationVariable));
+            var testProfile = TestProfilePath();
+            if (testProfile != null && !string.Equals(configurationPath, ConfigurationPath, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Private host test configuration mismatch.");
+            var selected = NativeInstallationSelection.SelectRoot(Path.Combine(hostDirectory, "assistant-installation.json"));
+            if (testProfile != null && selected == null) throw new InvalidOperationException("Private host tests require an installer package selection.");
+            if (selected == null && File.Exists(Path.Combine(hostDirectory, ".assistant-owner")))
+                throw new InvalidOperationException("Installed extension has no application selection.");
+            NativeChatConfiguration result;
+            if (File.Exists(configurationPath))
+                result = new JavaScriptSerializer().Deserialize<NativeChatConfiguration>(Encoding.UTF8.GetString(NativeChatFiles.Read(configurationPath)));
+            else if (selected != null)
+                result = new NativeChatConfiguration {
+                    StateRoot = Path.Combine(localAppData, "TwinCatAssistant", "operator-state"),
+                    DotNetRoot = Path.Combine(programFiles, "dotnet")
+                };
+            else throw new InvalidOperationException("Native chat configuration is missing.");
+            if (result == null) throw new InvalidOperationException("Invalid native chat configuration.");
+            if (testProfile != null)
+            {
+                var fields = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(Encoding.UTF8.GetString(NativeChatFiles.Read(configurationPath)));
+                if (fields == null || fields.Count != 2 || !fields.ContainsKey("StateRoot") || !fields.ContainsKey("DotNetRoot")
+                    || !string.Equals(result.StateRoot, Path.Combine(testProfile, "state"), StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(result.DotNetRoot, Path.Combine(programFiles, "dotnet"), StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Private host config permits only its exact StateRoot and system DotNetRoot.");
+                CheckPrivateTree(testProfile);
+            }
+            if (selected != null) {
+                result.RepositoryRoot = selected;
+                result.NodePath = Path.Combine(selected, "runtime", "node", "node.exe");
+                if (string.IsNullOrWhiteSpace(result.DotNetRoot) || !File.Exists(Path.Combine(result.DotNetRoot, "dotnet.exe")))
+                    result.DotNetRoot = Path.Combine(programFiles, "dotnet");
+                if (string.IsNullOrEmpty(result.McpSettingsPath))
+                    result.McpSettingsPath = Path.Combine(selected, "runtime", "mcp", "default-settings.json");
+            }
             result.Validate();
             return result;
         }
         public void Validate()
         {
+            var testProfile = TestProfilePath();
+            if (testProfile != null)
+            {
+                if (!string.Equals(StateRoot, Path.Combine(testProfile, "state"), StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Private host StateRoot mismatch.");
+                CheckPrivatePath(StateRoot);
+                CheckPrivatePath(CredentialDirectory);
+                CheckPrivatePath(WebViewUserDataFolder);
+            }
             if (!string.IsNullOrEmpty(McpSettingsPath) && (!Path.IsPathRooted(McpSettingsPath)
                 || McpSettingsPath.Length > 2048 || !File.Exists(McpSettingsPath)))
                 throw new InvalidOperationException("Configure an absolute native MCP settings file.");
@@ -317,13 +477,24 @@ namespace TwinCatAssistant.Native
     // Same no-follow, bounded leaf read contract as the existing Windows helper.
     internal static class NativeChatFiles
     {
-        internal static byte[] Read(string path)
+        internal static void RequireSingleLink(string path)
+        {
+            using (var handle = CreateFile(path, 0, 1 | 2 | 4, IntPtr.Zero, 3, 0x00200000, IntPtr.Zero))
+            {
+                FileInformation info;
+                if (handle.IsInvalid || !GetFileInformationByHandle(handle, out info) || GetFileType(handle) != 1
+                    || (info.Attributes & (0x10u | 0x400u)) != 0 || info.Links != 1)
+                    throw new IOException("Private host test file must be regular and singly linked.");
+            }
+        }
+        internal static byte[] Read(string path, bool singleLink = false)
         {
             using (var handle = CreateFile(path, 0x80000000, 1, IntPtr.Zero, 3, 0x02000000 | 0x00200000, IntPtr.Zero))
             {
                 FileInformation info;
                 if (handle.IsInvalid || !GetFileInformationByHandle(handle, out info) || GetFileType(handle) != 1
-                    || (info.Attributes & (0x10u | 0x400u)) != 0 || info.SizeHigh != 0 || info.SizeLow > 65536)
+                    || (info.Attributes & (0x10u | 0x400u)) != 0 || (singleLink && info.Links != 1)
+                    || info.SizeHigh != 0 || info.SizeLow > 65536)
                     throw new IOException("Native chat file is missing, redirected or oversized.");
                 using (var stream = new FileStream(handle, FileAccess.Read))
                 using (var output = new MemoryStream())

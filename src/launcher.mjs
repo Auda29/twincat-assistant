@@ -1,14 +1,17 @@
+import { withPackageVerificationScope } from './package-verification-scope.mjs';
 import { isAbsolute } from 'node:path';
 import { lstat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { prepareChatWorkspace, runtimeEnvironment } from './state.mjs';
+import { upgradeProfileConfiguration } from './profile-update.mjs';
 
-export async function prepareLaunch(root, options, inherited = process.env) {
+async function prepareLaunchOperation(root, options, inherited = process.env) {
   if (typeof inherited.OPENCHAMBER_UI_PASSWORD !== 'string' || !inherited.OPENCHAMBER_UI_PASSWORD.trim()) throw new Error('A UI password must be supplied through OPENCHAMBER_UI_PASSWORD');
   if (!Number.isInteger(options.port) || options.port < 1024 || options.port > 65535) throw new Error('Invalid loopback port');
   for (const path of [options.openchamber, options.opencode]) {
     if (typeof path !== 'string' || !isAbsolute(path) || !(await lstat(path)).isFile()) throw new Error('Select absolute upstream executable files');
   }
+  await upgradeProfileConfiguration(root);
   const status = await prepareChatWorkspace(root);
   const env = runtimeEnvironment(root, status.settings, inherited);
   env.OPENCODE_BINARY = options.opencode;
@@ -32,4 +35,8 @@ export async function runVersion(command, args, env, cwd, expected, timeout = 10
     if (version !== expected) throw new Error();
     return version;
   } catch { throw new Error('Upstream version verification failed'); }
+}
+
+export function prepareLaunch(...args) {
+  return withPackageVerificationScope(() => prepareLaunchOperation(...args));
 }

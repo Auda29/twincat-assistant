@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.7.2": {
+      "EnvDTE": {
+        "type": "Direct",
+        "requested": "[8.0.2, )",
+        "resolved": "8.0.2",
+        "contentHash": "u8Blk4h4kYywOVR5kgApLe1gbEj5BDAhK1k21nYv1gDmmISS3efziVN1j6REoiqROk7XuMX2Kk87Kv0whFqLBA==",
+        "dependencies": {
+          "stdole": "7.0.3302"
+        }
+      },
+      "Microsoft.NETFramework.ReferenceAssemblies.net472": {
+        "type": "Direct",
+        "requested": "[1.0.3, )",
+        "resolved": "1.0.3",
+        "contentHash": "0E7evZXHXaDYYiLRfpyXvCh+yzM2rNTyuZDI+ZO7UUqSc6GfjePiXTdqJGtgIKUwdI81tzQKmaWprnUiPj9hAw=="
+      },
+      "stdole": {
+        "type": "Transitive",
+        "resolved": "7.0.3302",
+        "contentHash": "2314LjTYA+nRknLNzqKY/qrJH21jKhEp/bMTOCTPyidoVYI+3EtyI73Y91NOzCFP2OgzeYnk+uKbTWWuGIMLjA=="
+      }
+    },
+    ".NETFramework,Version=v4.7.2/win-x86": {}
+  }
+}

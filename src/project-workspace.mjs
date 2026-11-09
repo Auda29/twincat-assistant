@@ -57,7 +57,9 @@ export async function withProjectLock(parent, key, action) {
 
 // A tiny journal covers the two managed JSON files. After an interrupted write,
 // replay only the recorded, validated configuration for this exact PLC project.
-export async function updateProjectConfiguration(workspace, initial, settings, configuration) {
+// `previous` lists exact configurations of earlier releases for the same
+// settings; such a file is upgraded like a settings change, never adopted blindly.
+export async function updateProjectConfiguration(workspace, initial, settings, configuration, previous = () => [], currentSettingsAllowed = () => true) {
   const receiptFile = join(workspace, 'project.json');
   const configFile = join(workspace, 'opencode.json');
   const journalFile = join(workspace, '.configuration.json');
@@ -70,23 +72,22 @@ export async function updateProjectConfiguration(workspace, initial, settings, c
   }
   if (![1, 2].includes(receipt.version) || receipt.solution !== initial.solution || receipt.project !== initial.project)
     throw new Error('Project workspace modified');
-  const previous = configuration(receipt.settings);
   let actual = await optionalJson(configFile);
   const journal = await optionalJson(journalFile);
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const managed = async (value, selected) => (currentSettingsAllowed(selected) && same(value, configuration(selected))) || (await previous(selected, value)).some(item => same(value, item));
   if (journal) {
     if (journal.version !== 1 || journal.solution !== initial.solution || journal.project !== initial.project)
       throw new Error('Project configuration journal modified');
-    const before = configuration(journal.before);
     const after = configuration(journal.after);
     if ((!same(receipt.settings, journal.before) && !same(receipt.settings, journal.after))
-      || (!same(actual, before) && !same(actual, after))) throw new Error('Project configuration modified');
+      || (!(await managed(actual, journal.before)) && !(await managed(actual, journal.after)))) throw new Error('Project configuration modified');
     await atomicJson(configFile, after);
     receipt = { ...receipt, version: 2, settings: journal.after };
     await atomicJson(receiptFile, receipt);
     await unlink(journalFile);
     actual = after;
-  } else if (actual !== null && !same(actual, previous)) throw new Error('Native MCP workspace modified');
+  } else if (actual !== null && !(await managed(actual, receipt.settings))) throw new Error('Native MCP workspace modified');
   const next = configuration(settings);
   if (same(actual, next) && same(receipt.settings, settings)) {
     if (receipt.version !== 2) await atomicJson(receiptFile, { ...receipt, version: 2 });

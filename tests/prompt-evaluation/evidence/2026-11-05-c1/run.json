@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-05T13:44:35.930Z",
+  "model": {
+    "providerID": "github-copilot",
+    "id": "gpt-6.1-sol",
+    "variant": "high"
+  },
+  "receipt": {
+    "version": 1,
+    "sourceContract": 1,
+    "platform": "win32",
+    "arch": "x64",
+    "opencode": {
+      "path": "local-data/upstream/opencode/packages/cli/dist/cli-windows-x64/bin/opencode.exe",
+      "repository": "https://github.com/anomalyco/opencode.git",
+      "tag": "v2.0.23",
+      "revision": "0fd7e2829449b052abf0078666669302923d77af",
+      "version": "2.0.23"
+    },
+    "openchamber": {
+      "path": "local-data/upstream/openchamber/packages/web/bin/cli.js",
+      "repository": "https://github.com/openchamber/openchamber.git",
+      "tag": "v2.1.1",
+      "revision": "e302062e3be0686986594fddabdafd8a97c129e5",
+      "version": "2.1.1"
+    },
+    "hashes": {
+      "local-data/upstream/opencode/packages/cli/dist/cli-windows-x64/bin/opencode.exe": "30e24bb0533e06ade8146d6a5f2de9a368a4ed2fec343bf1f46f3698417840da",
+      "local-data/upstream/openchamber/packages/web/bin/cli.js": "4e299d365d4b37084b0c43a40afab25d9cfaf479e4ffc28545b2786153b30e22",
+      "local-data/upstream/openchamber/packages/web/dist/index.html": "5ea25e169025ce8a58f21bd6f3b5c1dfebafbd5f5f4700590428deee31a55365"
+    },
+    "inputs": {
+      "upstream/source-lock.json": "c18f61236581ada5f13e1dee5d4a496bc936aa744c991b125eaf48e00b03553a",
+      "upstream/overlays/openchamber/changes.json": "4a4bf8e5f0458dd2fc390b120e3bf2c651c080a6d465cf7364d44cf082745aaa",
+      "upstream/overlays/openchamber/twincat.ts": "ebe6cecc161baf7316513540d491b8cd2e61cac4a8a8e5fa63dd5ae804693654",
+      "upstream/overlays/openchamber/install.ts": "34b8f93ad0127aea8bb0e5d87a691c9e741405ebd84fac657a0aeb16a98688a9",
+      "tools/package-lock.json": "9b4f89f7b428ef791ee0b4849042aa4096472e13ed0c4ef138f5f1d33f54e120",
+      "scripts/build-source-runtime.mjs": "b5fab1f9e159d3f8ebea387a1ffecfaa1f89c6b2a6921ad1f05f7dbade2b031e"
+    }
+  },
+  "fixtureRoot": "C:\\Users\\NiklasW\\AppData\\Local\\Temp\\tc-prompt-evaluation-66e9e814-cdb0-4aaa-816e-18aa5e9cfa3f",
+  "credentialHandling": "Runtime loaded original credential storage; evaluator never read credential values",
+  "sessionDatabase": "Existing operator database, own new synthetic sessions only"
+}

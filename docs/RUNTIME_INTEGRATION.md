@@ -5,8 +5,10 @@ This branch implements the first two agreed groups from
 from its unchanged source at `0fd7e2829449b052abf0078666669302923d77af`.
 OpenChamber 2.1.1 at `e302062e3be0686986594fddabdafd8a97c129e5` receives a small
 source overlay connecting its existing composer and stores to the native host.
-No shell, Git, file or other functionality is removed from upstream sources.
-The Assistant's existing read-only permissions remain in force.
+The later [delivery scope](DELIVERY_SCOPE.md) disables terminal, browser-control,
+dev-server discovery, general FS mutation/execution and independent upstream
+updaters in the source application. Git and shared services remain for later
+separation. The Assistant's existing read-only permissions remain in force.
 
 Build inputs and commands are described in [upstream](../upstream/README.md).
 
@@ -521,3 +523,36 @@ UI and web type checks, source-contract lint and four original composer test
 files also pass. Fixture profiles, provider records and PLC sources are
 synthetic; these checks do not modify the operator profile or establish live
 IDE/editor or PLC/compiler acceptance. Deployment remains separate.
+
+## Optional session information and pinned chat navigation, 2026-11-05
+
+Session information remains available through a dedicated button in the right
+rail. In the embedded Assistant it starts hidden, including on existing profiles.
+The choice is stored through the existing profile settings registry, separately
+from the general OpenChamber panel preference. Widening the window does not
+activate it. When explicitly opened, it uses the existing inline panel when it
+fits and the existing overlay otherwise. Dismissing the overlay also disables
+automatic inline display. The detailed Chat information surface remains separate.
+
+The native chat sidebar has an explicit pin button. A pinned bar survives chat
+selection, creation, Escape and browser focus changes. It docks beside the chat
+when at least 320 px remain for the conversation; at smaller widths it remains
+an overlay until explicitly collapsed or unpinned. Existing automatic docking
+from 760 px is unchanged. Pinning and open/closed state are separate preferences
+per PLC project and operator profile. Older view-state files remain readable.
+General-chat pinning lasts for the current host session and does not change a
+PLC project's preference. This candidate has not been installed in the operator
+IDE or accepted there yet.
+Local checks for this candidate: both host architectures build, 132 native
+checks, 99 WPF sidebar checks, 91 Host/WebView navigation checks, 26 adapter
+checks, 14 settings-registry tests and 12 visibility-hook tests pass. Full UI type checking and the source
+UI build pass. These fixtures do not establish installed IDE acceptance.
+
+## Pinning correction, 2026-11-05
+
+Column geometry no longer grants a chat bar a persistent lifetime. At every
+width, an unpinned bar closes on conversation focus, outside clicks, successful
+selection/creation and Escape. Only explicitly pinned bars survive those actions
+and restore automatically for a project. The clock still explicitly opens and
+closes either mode. The first installed candidate incorrectly retained the
+previous wide-window behavior; the operator reported that regression.

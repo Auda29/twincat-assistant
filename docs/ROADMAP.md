@@ -6,7 +6,63 @@ evidence; this document defines the order of work and milestone exit gates.
 [MVP](MVP.md) describes the eventual product, not the permissions of the current
 prototype. No delivery dates or effort estimates are committed.
 
+The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains open. Host acceptance must include cold startup with restored PLC editors and the Assistant tool window. The observed toolbox wait has not been attributed to the Assistant.
+
 ## Agreed priorities (2026-11-02)
+
+Integrationsstand vom 06.11.2026: Private native Testkonfiguration, begrenzte
+Wiederverwendung voller Paketprüfungen pro Startvorgang und die P2-Korrektur vor
+Profil-Recovery-Schreibzugriffen sind zusammengeführt. 159 Node-Tests ohne Skip,
+151 native Regressionen, 29 Konfigurationschecks sowie der vollständige echte
+Paket-Smoke mit beiden MCPs und Neustart bestehen. Der
+[aktuelle Nachweis](INTEGRATED_ACCEPTANCE_20261106.md) trennt diese Ergebnisse
+von der weiter offenen Host-/UI-Abnahme. Ein frisches Shell-Profil lädt weiterhin
+den globalen Prototyp; eine sichere Trennung der Erweiterungen ist nicht belegt.
+Der Installer verweigert deshalb das Test-Override am gemeinsamen Host. Die
+Arbeitsinstallation bleibt auf dem wiederhergestellten Stand. Punkte 5–7 wurden
+nicht begonnen; die vier Abschlussaufträge sind noch nicht alle abgenommen.
+
+Host-Zwischenstand vom 05.11.2026: Die read-only Inventarisierung bestätigt
+TcXaeShell/x86 mit TwinCAT 3.1.4024.78 als erstes Alpha-Installationsziel.
+Die [Host-Abnahmematrix](HOST_ACCEPTANCE_MATRIX.md) und
+[`host-targets.json`](../native/host-targets.json) halten konkrete Versionen,
+Installationskriterien und weiterhin offene Abnahmen fest. Zusätzlich ist
+TwinCAT in VS2019 installiert, aber nicht abgenommen. Punkt 1 bleibt bis zum
+Abschluss der offenen Prüfungen im echten Zielhost offen; die Einstufung als
+Alpha-Ziel ersetzt diese Prüfungen nicht.
+
+Implementierungsstand vom selben Tag: Installer-Registrierung, Update und
+Payload-Rollback sind mit synthetischen Hosts geprüft. Der Host löst den
+Runtime-Start jetzt aus dem ausgewählten Paket auf. Die Migration verwalteter
+Konfigurationen zwischen geprüften Geschwisterversionen ist implementiert;
+Grenzen stehen in [Installer-Relokation](INSTALLER_RELOCATION.md). Der
+vollständige Paketbau und Installerbau sind jetzt lokal erfolgreich. Der
+Knowledge-Eigentümer hat die Bündelung freigegeben; die Freigabe ist im Repo
+dokumentiert. Der [Buildnachweis](ALPHA_DELIVERY_BUILD.md) enthält die echten
+Paket-/MCP-Startprüfungen und die Kontrolle des eingebetteten Installer-Payloads.
+Der echte [Windows-CI-Lauf](https://github.com/Auda29/twincat-assistant/actions/runs/42034006930)
+hat Paketstart, beide MCPs, Neustart, EXE-Bau und eingebettete Hashprüfung
+bestanden. Echte Installation, Update und Rollback im Host bleiben offen;
+Punkt 3 ist damit nicht abgeschlossen. Der Bau relocatierbarer MCP-Eingaben ist umgesetzt und
+geprüft; [Anwendungseingaben](APPLICATION_INPUTS.md) beschreibt den Buildweg.
+Der Analyse-Prompt C1 ist in beiden Konfigurationspfaden eingebunden und
+mit Migrations- und Vertragstests geprüft. Die
+[Prompt-Abnahme](PROMPT_ACCEPTANCE_20261105.md) belegt 17 echte Modellantworten,
+34 Renderings im x86-WPF-WebView2-Testcontrol und 40 exakte Kopierinhalte.
+Darstellung in der installierten IDE und tatsächliches Einfügen in TwinCAT
+bleiben für Punkt 4 zu prüfen. Der alte C0-Kandidat kennt C1 nicht;
+die Installer-Rückkehr braucht die geprüfte selektive Policy-Migration.
+Details stehen im [Installer-Vertrag](INSTALLER_CONTRACT.md) und in der
+[Prompt-Dokumentation](PROFILE_PROMPTS.md).
+
+Weitere Abschlussnachweise vom 05.11.2026: Die
+[Auslieferungsabgrenzung](DELIVERY_SCOPE.md) für Punkt 2 ist implementiert und
+mit einem echten vollständigen Paket geprüft. Die
+[isolierte Host-Abnahme](HOST_ACCEPTANCE_20261105.md) belegt direkte
+Editor-/Projektlesevorgänge im Zielhost; sichtbare UI, Member-Editoren und
+First-after-logon sind weiterhin offen. Der integrierte Folgekandidat
+[`0.2.0-preview.2`](releases/alpha-0.2.0-preview.2.md) ist noch kein
+installierter oder abgenommener Release. Punkte 5–7 wurden nicht begonnen.
 
 Die folgenden Zukunftsthemen sind in dieser Reihenfolge vereinbart. Sie sind
 geplant, nicht als umgesetzt oder abgenommen markiert. Die Liste legt keinen

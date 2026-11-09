@@ -1,5 +1,109 @@
 # Implementation status
 
+**Resumed on operator request, 2026-11-06.** The isolated integration checkout now
+contains the private native test configuration, completed scoped package
+verification, and the P2 recovery preflight fix. Its complete serial Node suite
+passes 159/159 with no skips; the rebuilt x86 host passes 151 native regressions
+and 29 private-configuration checks. The fresh complete package passes real
+protected startup, both MCPs on synthetic data, restart and state preservation.
+See [the integration record](INTEGRATED_ACCEPTANCE_20261106.md) for artifact
+identity and remaining checks. Hosted portable/source CI for `c1f080e` has now
+passed all three jobs. The subsequent native maintenance guard `c5790d6` passes
+65 synthetic guard checks and 29 private-configuration checks and requires its
+own final package/startup verification. The
+[local maintenance proposal](LOCAL_MAINTENANCE_ACCEPTANCE_PLAN.md) is being
+prepared without changing the working installation. Roadmap items 1, 3 and 4
+retain their uncompleted installed-host/UI gates.
+
+The normal working installation was restored after yesterday's experiment.
+The original native prototype, original user configuration and verified backend
+source remain active; the primary checkout stays on recovery `f6e018a`, with
+runtime source `491ed3a`. Today builds and tests use a separate checkout and
+synthetic state. See [the recovery record](LOCAL_RUNTIME_RECOVERY_20261105.md).
+The [pause handoff](PAUSE_20261105.md) remains a historical snapshot.
+
+Actual installation update, **2026-11-05**: the first CI C0 EXE was installed
+with operator-confirmed same-user UAC into the real x86 alpha host. All 22443
+application inventory entries and the installed extension snapshot were checked;
+the original 13-file prototype remains unchanged in backup. The actual installed
+x86 configuration loader selected the package and separate synthetic state.
+Its native session reached protected backend readiness twice; restart preserved
+the sentinel and an independent observer recorded launcher exit 0. These were
+outside-IDE checks, not visible host acceptance. C1 update/rollback and IDE gates
+remain open. See [the actual installation record](HOST_INSTALLATION_20261105.md).
+
+Completion-round update, **2026-11-05**: the real
+[Windows CI run 42034006930](https://github.com/Auda29/twincat-assistant/actions/runs/42034006930)
+passed reviewed input import, protected package startup, both actual MCP probes
+on synthetic data, restart/state preservation, EXE build and embedded inventory
+verification. Its downloaded EXE matches the CI checksum. This proves that
+candidate's CI chain, not a real host installation. The later integrated
+candidate is `0.2.0-preview.2`, native version `0.2.0.2`; its own package/CI
+evidence must be recorded separately.
+
+The [delivery scope](DELIVERY_SCOPE.md) now blocks excluded runtime endpoints,
+removes the redundant distribution Core and server tests, and replaces our
+product labels while retaining third-party contracts and notices. The
+[direct-host evidence](HOST_ACCEPTANCE_20261105.md) covers isolated project
+switches, dirty/save semantics, oversized POU references, reopen and two IDEs.
+It does not close visible UI, member-editor, actual install/update/rollback or
+first-after-logon gates. The integrated C1 prompt has 17 real model answers,
+34 pinned-renderer renderings in an x86 WPF WebView2 fixture and 40 exact
+code-copy payloads; the offline evidence verifier, 21 combined
+prompt/migration/recovery tests and the subsequent complete serial Node suite
+(145/145, no skips, 166.79 seconds) pass. Installed IDE UI and actual TwinCAT paste
+remain open. C1 is forward-compatible with exact scoped C0 policies; the old C0
+runtime cannot read C1. Installer rollback policy compatibility is still being
+implemented and is not proven by the prompt tests. See
+[prompt acceptance](PROMPT_ACCEPTANCE_20261105.md).
+The separate hosted [Portable checks run 42042008010](https://github.com/Auda29/twincat-assistant/actions/runs/42042008010)
+completed successfully for exact source `491ed3aa687248a46021830d93e9c0e09e209a99`:
+Linux components, Windows lifecycle and source-runtime jobs all passed. This
+includes the fixture portability/Windows temp fixes, actual source build,
+runtime/data compatibility and original provider/login/streaming/tool/MCP
+regressions. It precedes the new installer policy-downgrade implementation,
+which still needs its own tests and final package CI.
+[The handoff](ALPHA_CI_HOST_HANDOFF.md) contains the isolated
+state, backup, UAC and unmanaged-prototype recovery boundaries.
+
+Integration update, **2026-11-05**: the Windows installer candidate now builds
+from an explicit application package and implements host registration, update
+and rollback for the alpha target. Synthetically tested transactions preserve
+operator data and restore the previous extension after staging/swap failures.
+The native host now consumes the selected packaged runtime and validates its
+entrypoints before launch. The combined implementation passes all 129 Node
+tests, and the x86 host builds. Manifest-checked sibling package relocation now
+supports existing global and project MCP configuration on update and rollback;
+both versions must recognize the precise prompt policy. Relocatable MCP input
+builds are implemented and real Engineering/Knowledge relocation probes passed.
+The owner has confirmed Knowledge bundling permission, recorded under
+`upstream/permissions/knowledge-0.1.1.txt`. Both MCP runtimes and exact runtime
+notices are staged. The full application and 524 MB installer candidate now
+build; real protected startup, both MCP calls, preserved restart state and all
+22,442 embedded file hashes pass. Real-host acceptance remains open. See the
+[local delivery build record](ALPHA_DELIVERY_BUILD.md),
+[application inputs](APPLICATION_INPUTS.md),
+[installer contract](INSTALLER_CONTRACT.md) and [relocation limits](INSTALLER_RELOCATION.md).
+
+The revised Analysis system prompt is integrated into global and project chats,
+with exact recognition/migration of the two previous managed prompts. Thirteen
+prompt/migration tests pass; actual model answer quality and embedded renderer
+acceptance remain open. The large-object saved-reference fallback is now also
+covered by the system prompt. A rollback to an older prompt implementation needs
+compatible managed configurations; extension-file rollback alone does not prove
+this. See [profile prompts](PROFILE_PROMPTS.md).
+
+Host inventory update, **2026-11-05**: read-only machine discovery confirms
+TwinCAT 3.1.4024.78 and TcXaeShell 15.0.0.0/x86 as the first alpha installation
+target. Full VS2019 with XAE integration is present but unaccepted; Shell64,
+4026 and full VS2022/2026 are not installed. The
+[host acceptance matrix](HOST_ACCEPTANCE_MATRIX.md) records remaining live
+gates, including restored-editor cold startup. The inventory script, target
+description and native diagnostic row are implemented; no host payload was
+installed or real-host acceptance performed for this update. After integration
+with the large-object reference fallback, 12 host-inventory tests and 151 native
+policy/context/chat regressions pass. This does not close roadmap item 1.
+
 Updated: **2026-10-29**. Operator package: `0.1.0-dev.1`; installed x86 prototype:
 `0.1.9`, installed after operator coordination. The source prerelease version is
 `0.1.9`, described in [release notes](releases/native-v0.1.9.md). It adds automatic
@@ -305,3 +409,25 @@ green lifecycle job is not native acceptance. See
 Continue with [Windows acceptance](WINDOWS_ACCEPTANCE.md); do not enable writes
 because the portable tests pass. No deployment, online change, forcing, PLC
 start/stop or runtime write is exposed by this foundation.
+## 2026-11-05 local panel and navigation candidate
+
+The embedded session information panel now starts hidden and has a dedicated
+right-rail toggle. Its own profile preference survives a service/page restart.
+The native project chat bar now supports explicit pinning, including persistent
+project preferences and narrow-window focus handling. See
+[the runtime behavior](RUNTIME_INTEGRATION.md#optional-session-information-and-pinned-chat-navigation-2026-11-05).
+
+Local verification: X86 and Amd64 hosts build; 132 native policy/context/chat
+checks, 99 WPF sidebar checks, 91 actual Host/WebView/runtime navigation checks,
+26 adapter checks, 14 upstream settings-registry tests and 12 visibility-hook tests pass. The full UI
+TypeScript check and source UI build pass. Existing VSTHRD010 warnings in
+KnowledgeIntegration and DiagnosticsIntegration remain. WPF and WebView captures
+were inspected for the pinned sidebar and the wide/narrow session panel.
+Fixtures use private state and synthetic projects, with no model or PLC action.
+This candidate is not pushed or installed and has no live IDE acceptance yet.
+
+The [cold solution-load investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains
+open. The captured main thread waited in TwinCAT/Visual Studio toolbox
+initialization while restoring a PLC editor. The operator's successful restart
+skipped document restoration; this does not establish or exclude an indirect
+Assistant effect.

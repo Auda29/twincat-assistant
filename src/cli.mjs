@@ -3,9 +3,11 @@ import { isAbsolute } from 'node:path';
 import { prepareRuntimeLaunch } from './runtime-start.mjs';
 import { supervise } from './supervisor.mjs';
 import { initializeState, inspectState, readJsonFile } from './state.mjs';
+import { verifyPackageIfPresent } from './package-integrity.mjs';
 
 const HELP = `TwinCAT Assistant operator tools (no native IDE or runtime writes)\n\ninit --settings ABSOLUTE_JSON --state NEW_ABSOLUTE_DIRECTORY\ndoctor --state ABSOLUTE_DIRECTORY\nstart --state ABSOLUTE_DIRECTORY [--port 3123] [--opencode ABSOLUTE_BINARY] [--openchamber ABSOLUTE_CLI_JS]\n\nstart requires OPENCHAMBER_UI_PASSWORD and the pinned upstream installation.\n`;
 try {
+  await verifyPackageIfPresent();
   const { values, positionals } = parseArgs({ options: { settings: { type: 'string' }, state: { type: 'string' }, help: { type: 'boolean', short: 'h' }, port: { type: 'string' }, opencode: { type: 'string' }, openchamber: { type: 'string' } }, allowPositionals: true, strict: true });
   if (values.help || positionals.length === 0) console.log(HELP);
   else {

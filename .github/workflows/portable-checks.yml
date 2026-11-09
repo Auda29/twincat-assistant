@@ -66,7 +66,14 @@ jobs:
       - name: Install pinned actual upstream runtime (no private MCP checkouts)
         run: npm ci --prefix upstream --no-audit --no-fund
       - name: Check Windows operator, JSON and owned process-tree regressions
-        run: npm test
+        # Canonical runner temp avoids Windows 8.3 aliases being mistaken for
+        # redirected installation paths by the deliberately strict path guard.
+        env:
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+        # Compiler/process fixtures have bounded deadlines; avoid oversubscribing
+        # the hosted runner with every test file's child processes at once.
+        run: node --test --test-concurrency=1 tests/*.test.mjs
       - name: Execute shared dirty-evidence policy regressions (not IDE acceptance)
         run: |
           dotnet restore native/Tests/Native.Tests.csproj --locked-mode

@@ -21,6 +21,14 @@ function Test-ProjectChatNavigation {
         Await-Task ($taskHandler.DynamicInvoke($Arguments)) | Out-Null
     }
     function Picker-Entries { return @($taskControl.GetType().GetField('_pickerScope',$taskFlags).GetValue($taskControl).Entries) }
+    function Save-PanelView([string]$Name) {
+        $taskOutput=Join-Path $taskRepo 'local-data/panel-sidebar-views'
+        [IO.Directory]::CreateDirectory($taskOutput) | Out-Null
+        $taskStream=[IO.File]::Open((Join-Path $taskOutput ($Name+'.png')),[IO.FileMode]::Create)
+        try { Await-Task ($taskBrowser.CoreWebView2.CapturePreviewAsync([Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat]::Png,$taskStream)) | Out-Null }
+        finally { $taskStream.Dispose() }
+    }
+
     $taskNavigationWidth=$taskWindow.Width
     try {
         $taskWindow.Width=1100; Pump 200
@@ -28,7 +36,18 @@ function Test-ProjectChatNavigation {
         $taskChatOrigin=$taskBrowser.TransformToAncestor($taskControl).Transform([Windows.Point]::new(0,0))
         Assert-Integration ($taskChatOrigin.X -ge 220 -and $taskChatOrigin.X -le 400 -and $taskBrowser.ActualWidth -ge 600) 'wide project sidebar sits beside the actual WebView and preserves readable conversation width'
         $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
-        Assert-Integration ($taskPicker.IsOpen) 'browser focus leaves the wide project sidebar open'
+        Assert-Integration (-not $taskPicker.IsOpen) 'browser focus dismisses unpinned wide history'
+        Pump 1200
+        Assert-Integration (-not $taskPicker.IsOpen) 'health polling does not reopen dismissed unpinned wide history'
+        Open-FixtureHistory
+        $taskWidePin=$taskPickerType.GetField('_pinButton',$taskFlags).GetValue($taskPicker)
+        $taskWidePin.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent)); Pump 100
+        $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
+        Assert-Integration ($taskPicker.Pinned -and $taskPicker.IsOpen) 'explicitly pinned wide history survives browser focus'
+        $taskWidePin.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent)); Pump 100
+        $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
+        Assert-Integration (-not $taskPicker.IsOpen) 'unpinning a wide bar restores focus dismissal'
+        Open-FixtureHistory
         Invoke-Chat 'OpenHistoryAsync'
         $taskControl.UpdateLayout(); Pump 100
         Assert-Integration (-not $taskPicker.IsOpen) 'clock closes the wide project sidebar'
@@ -43,6 +62,40 @@ function Test-ProjectChatNavigation {
         Assert-Integration ($taskPicker.IsOpen -and [Math]::Abs($taskChatOrigin.X) -lt 1 -and $taskBrowser.ActualWidth -ge 370) 'narrow project sidebar overlays the conversation without shrinking the WebView'
         $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
         Assert-Integration (-not $taskPicker.IsOpen) 'browser focus dismisses the narrow sidebar overlay'
+        Open-FixtureHistory
+        $taskPinButton=$taskPickerType.GetField('_pinButton',$taskFlags).GetValue($taskPicker)
+        $taskPinButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent)); Pump 100
+        $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
+        Assert-Integration ($taskPicker.Pinned -and $taskPicker.IsOpen) 'pinned narrow history survives real browser focus'
+        Assert-Integration ($taskViews.SidebarPinned($global:taskIntegrationSnapshot.Identity.ProjectIdentity) -eq $true) 'pinning is stored for this PLC project'
+        $taskWindow.Width=650; Pump 200
+        $taskChatOrigin=$taskBrowser.TransformToAncestor($taskControl).Transform([Windows.Point]::new(0,0))
+        Assert-Integration ($taskPicker.Docked -and $taskChatOrigin.X -ge 270 -and $taskBrowser.ActualWidth -ge 320) 'pinned history reserves its own column below the automatic dock breakpoint'
+        $taskPinButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent)); Pump 100
+        $taskBrowser.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.UIElement]::GotFocusEvent))
+        Assert-Integration (-not $taskPicker.Pinned -and -not $taskPicker.IsOpen) 'unpin restores the transient overlay focus behavior'
+        $taskWindow.Width=1100; Pump 200
+        $taskPicker.Close(); $taskControl.UpdateLayout(); Pump 100
+        Wait-JS 'Boolean(document.querySelector("[data-testid=twincat-session-information-toggle]"))'
+        Assert-Integration ((JS 'window.__twinCatSource.stores.ui.getState().twinCatSessionInformationEnabled') -eq 'false') 'embedded session information defaults to hidden even in a wide window'
+        Save-PanelView 'session-hidden-wide'
+        JS 'document.querySelector("[data-testid=twincat-session-information-toggle]").click()' | Out-Null
+        Wait-JS 'window.__twinCatSource.stores.ui.getState().workStatusPanelVisible'
+        Assert-Integration ((JS 'document.querySelector("[data-testid=twincat-session-information-toggle]").getAttribute("aria-pressed")') -eq '"true"') 'session information opens through its own right rail button'
+        Pump 300; Save-PanelView 'session-shown-wide'
+        JS 'document.querySelector("[data-testid=twincat-session-information-toggle]").click()' | Out-Null
+        Wait-JS '!window.__twinCatSource.stores.ui.getState().twinCatSessionInformationEnabled'
+        $taskWindow.Width=1250; Pump 200
+        Assert-Integration ((JS 'window.__twinCatSource.stores.ui.getState().workStatusPanelVisible') -eq 'false') 'widening does not reopen explicitly hidden session information'
+        $taskWindow.Width=650; Pump 200
+        JS 'document.querySelector("[data-testid=twincat-session-information-toggle]").click()' | Out-Null
+        Wait-JS 'window.__twinCatSource.stores.ui.getState().workStatusOverlayOpen'
+        Assert-Integration ((JS 'window.__twinCatSource.stores.ui.getState().twinCatSessionInformationEnabled') -eq 'true') 'narrow session information is accessible as an explicit overlay'
+        Pump 300; Save-PanelView 'session-shown-narrow'
+        JS 'document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))' | Out-Null
+        Wait-JS '!window.__twinCatSource.stores.ui.getState().twinCatSessionInformationEnabled'
+        Assert-Integration ((JS 'window.__twinCatSource.stores.ui.getState().workStatusOverlayOpen') -eq 'false') 'Escape closes the overlay without leaving automatic wide-window activation enabled'
+
     } finally {
         $taskPicker.Close()
         $taskWindow.Width=$taskNavigationWidth; Pump 150
@@ -137,6 +190,9 @@ function Test-ProjectChatNavigation {
     Open-FixtureHistory
     Invoke-PickerAction 'RenameAsync' @($taskB,'Neuer bearbeitet, aber nicht ausgewählt')
     $taskPicker.Close()
+    JS 'document.querySelector("[data-testid=twincat-session-information-toggle]").click()' | Out-Null
+    Wait-JS 'window.__twinCatSource.stores.ui.getState().twinCatSessionInformationEnabled'
+    Pump 1800 # Let the original settings auto-save complete before restarting its service.
     Await-Task ($taskSession.StopAsync()) | Out-Null
     $taskRestartDeadline=[DateTime]::UtcNow.AddSeconds(110)
     do {
@@ -148,4 +204,8 @@ function Test-ProjectChatNavigation {
     Wait-JS "window.__twinCatInstall==='ready' && window.__twinCatChat.state().authenticated" 40
     Wait-Native { (Field '_chatSelection').sessionId -eq $taskA -and -not (Field '_chatActionPending') -and -not (Field '_automating') } 'real runtime restart restores the last selected older conversation'
     Assert-Integration ((Field '_chatSelection').sessionId -eq $taskA -and (Field '_chatBinding').ProjectFile.EndsWith('PLC_A.plcproj')) 'project selection and binding survive runtime and page recreation'
+    Wait-JS 'window.__twinCatSource.stores.ui.getState().twinCatSessionInformationEnabled' 20
+    Assert-Integration ((JS 'window.__twinCatSource.stores.ui.getState().twinCatSessionInformationEnabled') -eq 'true') 'session information choice survives the service and page restart'
+    JS 'document.querySelector("[data-testid=twincat-session-information-toggle]").click()' | Out-Null
+
 }

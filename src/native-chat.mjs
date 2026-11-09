@@ -1,3 +1,4 @@
+import { withPackageVerificationScope } from './package-verification-scope.mjs';
 import { createInterface } from 'node:readline';
 import { createServer } from 'node:net';
 import { lstat } from 'node:fs/promises';
@@ -7,6 +8,7 @@ import { initializeState, inspectState } from './state.mjs';
 import { prepareRuntimeLaunch } from './runtime-start.mjs';
 import { supervise } from './supervisor.mjs';
 import { configureNativeMcp } from './native-mcp.mjs';
+import { verifyPackageIfPresent } from './package-integrity.mjs';
 
 export function validateNativeChatRequest(value) {
   if (!value || Object.keys(value).some(key => !['state', 'port', 'password', 'mcpConfig'].includes(key))
@@ -59,19 +61,23 @@ async function assertFreePort(port) {
 }
 
 export async function startNativeChat(request, signal, report, options = {}) {
-  const { state, port } = validateNativeChatRequest(request);
-  await assertFreePort(port); // refuse an occupied port rather than adopting another service
-  try { await lstat(state); }
-  catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-    await initializeState(state, {}); // first-run profile has no provider, MCP or source disclosure
-  }
-  if (request.mcpConfig) await configureNativeMcp(state, request.mcpConfig);
-  else if ((await inspectState(state)).settings.engineering)
-    throw new Error('Native project access requires project-scoped MCP setup, not a global engineering backend');
-  const plan = await prepareRuntimeLaunch(state, {
-    runtime: options.runtime, port,
-  }, { ...process.env, OPENCHAMBER_UI_PASSWORD: request.password });
+  const plan = await withPackageVerificationScope(async () => {
+    await verifyPackageIfPresent();
+    const { state, port } = validateNativeChatRequest(request);
+    await assertFreePort(port); // refuse an occupied port rather than adopting another service
+    try { await lstat(state); }
+    catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      await initializeState(state, {}); // first-run profile has no provider, MCP or source disclosure
+    }
+    if (request.mcpConfig) await configureNativeMcp(state, request.mcpConfig);
+    else if ((await inspectState(state)).settings.engineering)
+      throw new Error('Native project access requires project-scoped MCP setup, not a global engineering backend');
+    return prepareRuntimeLaunch(state, {
+      runtime: options.runtime, port,
+    }, { ...process.env, OPENCHAMBER_UI_PASSWORD: request.password });
+  });
+  const { state, port } = request;
   const owner = new AbortController();
   const stop = () => owner.abort();
   signal.addEventListener('abort', stop, { once: true });

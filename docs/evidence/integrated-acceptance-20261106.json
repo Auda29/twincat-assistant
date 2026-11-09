@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-06",
+  "integrationSource": "6dbb2ade20777f1e666c36bd8ccf7e0dced023ab",
+  "nodeTests": {
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 216280.2837,
+    "passed": 159
+  },
+  "nativeRegressions": 151,
+  "privateConfigChecks": 29,
+  "package": {
+    "bothMcpSyntheticProbes": true,
+    "restartStatePreservation": true,
+    "protectedStartup": true,
+    "version": "0.2.0-preview.2",
+    "manifestSha256": "b38c2e5d20b1b1084934eeba80dca09cfdf26aa35e2742756e47baf503ef4354",
+    "files": 22088,
+    "architecture": "x64"
+  },
+  "native": {
+    "startMs": 35456,
+    "assemblySha256": "0e40d2e8d7a38cf9f3128a8be8efa22b8f92d88b519adecef6b5de4fb6ca83c4",
+    "harnessSha256": "65ce6c00a99df921ccdec35d5f7872ea25fa94e04a21a69bd528a568d6f0e4a0",
+    "exactCurrentPolicy": true,
+    "stopped": true,
+    "rebasedKnowledgePath": true,
+    "publicPrivateConfiguration": true,
+    "protectedReady": true,
+    "packageBytesUnchanged": true,
+    "compiledTimeoutMs": 80000,
+    "sentinelPreserved": true,
+    "fixtureSha256": "9a15f2b49a864139ad9536ff382b76b39405feb13cdf2b1046b5fa51c54f5b0f"
+  },
+  "firstC0ManifestSha256": "e6fe29351f7d5c5100b6e92c9dafb7520efe00c3936d5c1f6e086c6bb77d2bc4",
+  "outsideIde": true,
+  "installedHostAcceptance": false,
+  "operatorPrototypeFilesVerified": 13,
+  "operatorConfigBytesUnchanged": true,
+  "hostedCI": "pending",
+  "executableInspection": "passed, 22088 files",
+  "executable": {
+    "executed": false,
+    "sha256": "6ccdd89d3917ad98c9e1c9034ee234613df1298450edde17a680e3d49cee9d10",
+    "bytes": 236379648
+  }
+}

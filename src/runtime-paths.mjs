@@ -2,9 +2,15 @@ import { lstat, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve, relative, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyPackageIfPresent } from './package-integrity.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 export async function runtimePaths(mode = process.env.TWINCAT_ASSISTANT_RUNTIME) {
+  if (await verifyPackageIfPresent()) {
+    if (mode !== undefined) throw new Error('Runtime selection is unavailable in an application package');
+    return { opencode: join(root, 'runtime/opencode/opencode.exe'),
+      openchamber: join(root, 'upstream/node_modules/@openchamber/web/bin/cli.js'), sourceContract: 1 };
+  }
   if (mode !== undefined && !['source', 'distribution'].includes(mode)) throw new Error('Invalid runtime selection');
   const receiptFile = join(root, 'artifacts/source-runtime/runtime.json');
   const stat = await lstat(receiptFile).catch(error => { if (error.code === 'ENOENT') return null; throw error; });

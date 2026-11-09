@@ -16,6 +16,33 @@ Installed IDE startup and project-context acceptance remain open. See the
 
 ## Setup
 
+### Large-object attachment fallback
+
+Native chat attaches a complete context snapshot up to 16,000 characters,
+including metadata. Above that limit it stages a **gespeicherte Referenz**
+instead of refusing the attachment or truncating source. This reference carries
+the solution, PLC project, document moniker, tree path, owning POU and member,
+but no declaration or implementation. The same explicit attachment/automatic
+attachment setting and project/session checks apply. Staging alone does not
+submit a message or call an MCP tool.
+
+After submission, the model is instructed to resolve the exact saved object
+through `engineering_plc_list_pous` and read its returned ID with
+`engineering_plc_read_pou`, checking project, source file and member identity.
+Unavailable tools or a missing/ambiguous saved object must be reported rather
+than replaced by another object. The reference reads saved files at tool-call
+time; it does not freeze their contents, save the editor or include unsaved
+changes. Small objects continue to use the existing direct snapshot format.
+
+Portable policy and composer regressions cover this fallback. Run
+`node --test tests/integration/saved-object-reference.test.mjs` with
+`TC_ENGINEERING_CHECKOUT` pointing to the built pinned engineering checkout
+to verify actual MCP listing and ID-based reads of a large synthetic POU and
+its method. This test uses no provider or PLC runtime. Actual model tool
+selection and the installed native UI still require host acceptance.
+
+### Configuration
+
 First configure the protected chat runtime using
 [Configure-NativeChat.ps1](../scripts/Configure-NativeChat.ps1). Install Knowledge
 and build the engineering checkout at the revisions in [Installation](INSTALLATION.md):

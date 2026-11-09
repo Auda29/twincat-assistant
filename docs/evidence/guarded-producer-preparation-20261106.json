@@ -1,0 +1,17 @@
+﻿{
+    "date":  "2026-11-06",
+    "kind":  "guarded-producer-preparation-only",
+    "inputManifest":  "6ee4eb9bb5c83de02f60cdea06ecf918e33c50d4baf5a3da2c39a01b2e7da271",
+    "sourceBaseline":  "b0bf7c2ab18e6a6ff0daaeacb3fdbbbe80ff5b99",
+    "inputFiles":  22088,
+    "outputFiles":  22089,
+    "outputManifest":  "14fce7e436030c391e3d5763d999f06c2bcf6fd1685de935803fb1306fb2baab",
+    "scriptSha256":  "e15f84eadf2a10be7d83e6a25facf9b151e9687187b77e034a80aa7557555fd9",
+    "runnerScriptSha256":  "94f07b1b39f56478ab7cda7986db8f8e4aaa9237f4d6d8d47d8638adc9a55871",
+    "positiveImport":  "passed",
+    "oldInputRefusedBeforeOutput":  true,
+    "runnerLabel":  "alpha-guard-20261106-73a94c62",
+    "runnerRegistered":  false,
+    "hostChanged":  false,
+    "actualInstallerCI":  "pending"
+}
