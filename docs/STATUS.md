@@ -1,5 +1,15 @@
 # Implementation status
 
+**Beta 1 Setup 1, 2026-11-10.** PR #21 is merged and the corrected installer is
+published as Latest. It recognizes empty ZIP directories with either separator,
+shows bundled/current/rollback versions and identifies fresh install versus
+update before starting. Same/retained versions and unknown/pending state are not
+offered as new installations. The actual EXE extraction and manifest verification
+of all 21,538 files pass; all six source CI checks pass. The application remains
+Beta 1/native 0.2.0.7 with its original manifest. A read-only discovery probe
+reported installed Preview 6 and bundled Beta 1; no installation was executed.
+[Setup revision and limits](releases/native-v0.2.0-beta.1-setup.1.md).
+
 **Beta 1, 2026-11-10.** PR #16 and #17 are merged. Product cleanup and saved DE/EN
 selection are published as GitHub Latest with Preview 6 startup/MCP fixes. The
 integrated state passes 163 Node tests without skips, 940 native checks,

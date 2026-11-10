@@ -37,7 +37,7 @@ installed Beckhoff InfoSys help.
 1. Close TcXaeShell, verify the downloaded setup checksum and double-click the
    EXE. Confirm UAC with your normal Windows account. The setup window handles
    installation and managed updates without Git, npm or compilation. See the
-   [release notes](docs/releases/native-v0.2.0-beta.1.md), and the separate
+   [release notes](docs/releases/native-v0.2.0-beta.1-setup.1.md), and the separate
    [migration notes for old unpackaged prototypes](docs/PROTOTYPE_PROFILE_MIGRATION_20261109.md).
 2. Open the TwinCAT Assistant tool window, connect your model provider and
    select a model in the chat.
@@ -83,6 +83,7 @@ indexes and user project files are not bundled with the application.
 
 ## Documentation
 
+- [Beta 1 Setup 1: extraction fix and version overview](docs/releases/native-v0.2.0-beta.1-setup.1.md)
 - [0.2.0 Beta 1 release notes](docs/releases/native-v0.2.0-beta.1.md)
 - [German/English UI and saved language selection](docs/LANGUAGE_SUPPORT.md)
 - [Installation and configuration](docs/INSTALLATION.md)
