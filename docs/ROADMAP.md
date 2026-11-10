@@ -1,178 +1,140 @@
 # Implementation Roadmap
 
-Priorities updated: **2026-11-02**. The older implementation and milestone
-snapshots below retain their dates. [Status](STATUS.md) records implementation
-evidence; this document defines the order of work and milestone exit gates.
-[MVP](MVP.md) describes the eventual product, not the permissions of the current
-prototype. No delivery dates or effort estimates are committed.
+Priorities updated: **2026-11-02**. Older implementation/milestone snapshots retain
+their dates. [Status](STATUS.md) records evidence; this document defines work order
+and exit gates. [MVP](MVP.md) describes the eventual product, not current prototype
+permissions. No delivery dates or effort estimates are committed.
 
-The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains open. Host acceptance must include cold startup with restored PLC editors and the Assistant tool window. The observed toolbox wait has not been attributed to the Assistant.
+The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains
+open. Host acceptance must include cold startup with restored PLC editors and the
+Assistant window. The observed toolbox wait has not been attributed to Assistant.
 
 ## Agreed priorities (2026-11-02)
 
-Integration vom 10.11.2026: Beta 1 vereint Produktbereinigung und die gespeicherte
-DE/EN-Sprachauswahl mit den aktuellen Startfixes. Der Start von Preview 6 wurde
-vom Bediener in der installierten TcXaeShell bestätigt. Die übrigen Host-Gates
-und die sichtbare Sprachabnahme bleiben offen; Punkte 5 und 7 sind nicht umgesetzt.
-Die folgenden datierten Einträge bleiben historische Umsetzungsnachweise.
+Integration, 2026-11-10: Beta 1 combines product cleanup and saved DE/EN selection
+with current startup fixes. The operator confirmed Preview 6 startup in installed
+TcXaeShell. Other Host gates and visible language acceptance remain open; items 5
+and 7 are not implemented. The dated entries below remain historical evidence.
 
-Sprachumstellung vom 09.11.2026: Punkt 6 ist auf dem separaten Produktbranch
-implementiert. Host und Chat teilen Deutsch/Englisch und speichern die Auswahl;
-der Host übernimmt sie auch bei wechselnder Backend-Adresse. Katalog-, WPF- und
-Browserprüfungen sind dokumentiert in [Sprachunterstützung](LANGUAGE_SUPPORT.md).
-Die Prüfung dieses neuen Stands in der installierten TwinCAT-Shell bleibt offen.
-Punkte 5 und 7 wurden dabei nicht begonnen.
+Language implementation, 2026-11-09: item 6 is implemented on the separate product
+branch. Host/Chat share German/English and save the selection; Host restores it
+across backend-address changes. Catalog/WPF/browser checks are in
+[Language support](LANGUAGE_SUPPORT.md). Installed-shell acceptance of that state
+remains open. This work did not begin items 5 or 7.
 
-Bereinigung vom 09.11.2026: Der neue Produktbranch entfernt weitere Serverdienste
-und nicht mehr benötigte Pakete, vereinfacht die Einstellungen und ersetzt eigene
-Produkttexte. Die [Umfangs- und Nachweisübersicht](PRODUCT_CLEANUP_20261109.md)
-benennt auch die verbleibenden gemeinsamen Hilfen und Client-Einstiege.
-Dieser Stand ist vom veröffentlichten Preview-3-Installer getrennt. Punkt 2
-bleibt eine schrittweise Bereinigung; Punkte 5–7 wurden dabei nicht begonnen.
+Cleanup, 2026-11-09: the product branch removes more server services/unneeded
+packages, simplifies settings and replaces product text. The
+[scope/evidence record](PRODUCT_CLEANUP_20261109.md) also identifies retained shared
+helpers/client entry points. That state is separate from published Preview 3.
+Item 2 remains incremental cleanup; that work did not begin items 5–7.
 
-Integrationsstand vom 06.11.2026: Private native Testkonfiguration, begrenzte
-Wiederverwendung voller Paketprüfungen pro Startvorgang und die P2-Korrektur vor
-Profil-Recovery-Schreibzugriffen sind zusammengeführt. 159 Node-Tests ohne Skip,
-151 native Regressionen, 29 Konfigurationschecks sowie der vollständige echte
-Paket-Smoke mit beiden MCPs und Neustart bestehen. Der
-[aktuelle Nachweis](INTEGRATED_ACCEPTANCE_20261106.md) trennt diese Ergebnisse
-von der weiter offenen Host-/UI-Abnahme. Ein frisches Shell-Profil lädt weiterhin
-den globalen Prototyp; eine sichere Trennung der Erweiterungen ist nicht belegt.
-Der Installer verweigert deshalb das Test-Override am gemeinsamen Host. Die
-Arbeitsinstallation bleibt auf dem wiederhergestellten Stand. Punkte 5–7 wurden
-nicht begonnen; die vier Abschlussaufträge sind noch nicht alle abgenommen.
+Integration, 2026-11-06: private native test configuration, bounded reuse of full
+verification per startup and P2 preflight before profile-recovery writes are
+integrated. 159 Node tests without skips, 151 native regressions, 29 configuration
+checks and complete package smoke with both MCPs/restart pass.
+[Evidence](INTEGRATED_ACCEPTANCE_20261106.md) distinguishes this from open Host/UI
+acceptance. Fresh shell profiles still load the global prototype; extension
+isolation is unproven. The installer therefore refuses the test override on the
+shared Host. The working installation remains restored. Items 5–7 have not begun;
+the four completion assignments are not all accepted.
 
-Host-Zwischenstand vom 05.11.2026: Die read-only Inventarisierung bestätigt
-TcXaeShell/x86 mit TwinCAT 3.1.4024.78 als erstes Alpha-Installationsziel.
-Die [Host-Abnahmematrix](HOST_ACCEPTANCE_MATRIX.md) und
-[`host-targets.json`](../native/host-targets.json) halten konkrete Versionen,
-Installationskriterien und weiterhin offene Abnahmen fest. Zusätzlich ist
-TwinCAT in VS2019 installiert, aber nicht abgenommen. Punkt 1 bleibt bis zum
-Abschluss der offenen Prüfungen im echten Zielhost offen; die Einstufung als
-Alpha-Ziel ersetzt diese Prüfungen nicht.
+Host checkpoint, 2026-11-05: read-only inventory confirms TcXaeShell x86 with
+TwinCAT 3.1.4024.78 as the first alpha installation target.
+[Acceptance matrix](HOST_ACCEPTANCE_MATRIX.md) and
+[`host-targets.json`](../native/host-targets.json) record versions, criteria and
+open acceptance. TwinCAT in VS2019 is installed but unaccepted. Item 1 stays open
+until real-target checks are complete; alpha classification does not replace them.
 
-Implementierungsstand vom selben Tag: Installer-Registrierung, Update und
-Payload-Rollback sind mit synthetischen Hosts geprüft. Der Host löst den
-Runtime-Start jetzt aus dem ausgewählten Paket auf. Die Migration verwalteter
-Konfigurationen zwischen geprüften Geschwisterversionen ist implementiert;
-Grenzen stehen in [Installer-Relokation](INSTALLER_RELOCATION.md). Der
-vollständige Paketbau und Installerbau sind jetzt lokal erfolgreich. Der
-Knowledge-Eigentümer hat die Bündelung freigegeben; die Freigabe ist im Repo
-dokumentiert. Der [Buildnachweis](ALPHA_DELIVERY_BUILD.md) enthält die echten
-Paket-/MCP-Startprüfungen und die Kontrolle des eingebetteten Installer-Payloads.
-Der echte [Windows-CI-Lauf](https://github.com/Auda29/twincat-assistant/actions/runs/42034006930)
-hat Paketstart, beide MCPs, Neustart, EXE-Bau und eingebettete Hashprüfung
-bestanden. Echte Installation, Update und Rollback im Host bleiben offen;
-Punkt 3 ist damit nicht abgeschlossen. Der Bau relocatierbarer MCP-Eingaben ist umgesetzt und
-geprüft; [Anwendungseingaben](APPLICATION_INPUTS.md) beschreibt den Buildweg.
-Der Analyse-Prompt C1 ist in beiden Konfigurationspfaden eingebunden und
-mit Migrations- und Vertragstests geprüft. Die
-[Prompt-Abnahme](PROMPT_ACCEPTANCE_20261105.md) belegt 17 echte Modellantworten,
-34 Renderings im x86-WPF-WebView2-Testcontrol und 40 exakte Kopierinhalte.
-Darstellung in der installierten IDE und tatsächliches Einfügen in TwinCAT
-bleiben für Punkt 4 zu prüfen. Der alte C0-Kandidat kennt C1 nicht;
-die Installer-Rückkehr braucht die geprüfte selektive Policy-Migration.
-Details stehen im [Installer-Vertrag](INSTALLER_CONTRACT.md) und in der
-[Prompt-Dokumentation](PROFILE_PROMPTS.md).
+Implementation on the same date: installer registration, update and payload
+rollback are verified on synthetic hosts. Host resolves runtime startup from the
+selected package. Managed-configuration migration between verified sibling
+versions is implemented; see [relocation limits](INSTALLER_RELOCATION.md).
+Complete package/installer builds pass locally. Knowledge's owner approved
+bundling, with approval recorded in the repository. [Build evidence](ALPHA_DELIVERY_BUILD.md)
+includes actual package/MCP startup and embedded-payload checks. The actual
+[Windows CI run](https://github.com/Auda29/twincat-assistant/actions/runs/42034006930)
+passed package startup, both MCPs, restart, EXE build and embedded hashes. Real
+Host installation/update/rollback remain open; item 3 is not complete.
+Relocatable MCP input builds are implemented/verified; see
+[Application inputs](APPLICATION_INPUTS.md).
 
-Weitere Abschlussnachweise vom 05.11.2026: Die
-[Auslieferungsabgrenzung](DELIVERY_SCOPE.md) für Punkt 2 ist implementiert und
-mit einem echten vollständigen Paket geprüft. Die
-[isolierte Host-Abnahme](HOST_ACCEPTANCE_20261105.md) belegt direkte
-Editor-/Projektlesevorgänge im Zielhost; sichtbare UI, Member-Editoren und
-First-after-logon sind weiterhin offen. Der integrierte Folgekandidat
-[`0.2.0-preview.2`](releases/alpha-0.2.0-preview.2.md) ist noch kein
-installierter oder abgenommener Release. Punkte 5–7 wurden nicht begonnen.
+Analysis prompt C1 is integrated in both configuration paths with migration and
+contract tests. [Prompt acceptance](PROMPT_ACCEPTANCE_20261105.md) establishes
+17 real responses, 34 x86-WPF-WebView2 renderings and 40 exact copy results.
+Installed IDE display and actual TwinCAT paste remain for item 4. Old C0 does not
+recognize C1; returning via installer requires reviewed selective policy migration.
+See [installer contract](INSTALLER_CONTRACT.md) and [profile prompts](PROFILE_PROMPTS.md).
 
-Die folgenden Zukunftsthemen sind in dieser Reihenfolge vereinbart. Sie sind
-geplant, nicht als umgesetzt oder abgenommen markiert. Die Liste legt keinen
-gemeinsamen Release-Termin für alle sieben Punkte fest.
+Further evidence, 2026-11-05: item 2's [delivery boundary](DELIVERY_SCOPE.md) is
+implemented and verified with a complete real package. [Isolated Host acceptance](HOST_ACCEPTANCE_20261105.md)
+establishes direct editor/project reads in the target Host; visible UI, member
+editors and first-after-logon remain open. The integrated follow-up
+[`0.2.0-preview.2`](releases/alpha-0.2.0-preview.2.md) is not yet installed or
+accepted at this checkpoint. Items 5–7 have not begun.
 
-1. **Kompatibilität eingrenzen und Zielhosts festlegen.** Die unterstützte
-   Hostkombination für die erste installierbare Alpha bestimmen. Ausgangspunkt
-   ist die bisher praktisch geprüfte TcXaeShell/x86. Technische Unterschiede zu
-   TwinCAT 4026, der 64-Bit-TwinCAT-Shell und TwinCAT innerhalb von Visual Studio
-   untersuchen. Eine Kompatibilitätsmatrix mit konkretem TwinCAT-/XAE-Build,
-   Shell- beziehungsweise Visual-Studio-Version, Prozessarchitektur und
-   Windows-Version führen. Benötigte Anpassungen und Installationspakete je
-   Kombination bestimmen und Installation, Start, Andocken, WebView/Chat,
-   Projekt- und Editorbindung, Baustein-/Member-Erkennung, Anhänge sowie beide
-   MCPs im jeweiligen echten Host prüfen. Unterschiede beim Zugriff auf
-   ungespeicherten Editorinhalt ausdrücklich erfassen. Erfolgreiche Builds und
-   vorhandene x86-Abnahmen belegen noch keine Kompatibilität der anderen Hosts.
-   Die erste Installerversion kann den bereits geprüften Host bedienen, während
-   weitere Varianten ihre eigene Umsetzung und Abnahme erhalten. Die Ergebnisse
-   auch bei Editor-Profil und Inline-Vervollständigung berücksichtigen.
+The following future work was agreed in this order. The list itself does not
+mark implementation/acceptance or commit one release date for all seven items.
 
-2. **Backend für die Auslieferung vorbereiten und schrittweise bereinigen.**
-   Zuerst den Produktstart vom Entwickler-Checkout lösen, Installationspfade
-   vereinheitlichen und die benötigten Bestandteile als gebautes Anwendungspaket
-   mit einem geprüften Manifest abgrenzen. Auf Basis der
-   [Server-Bestandsaufnahme](BACKEND_SERVER_INVENTORY.md) ungenutzte Funktionen,
-   Routen und Abhängigkeiten prüfen und schrittweise entfernen. Sichtbare und
-   interne OpenCode-/OpenChamber-Bezeichnungen dort ersetzen, wo sie unsere
-   Produktmodule meinen: TwinCAT Assistant Core, Chat und Host. Herkunft,
-   Lizenzen und erforderliche Drittanbieterhinweise bleiben nachvollziehbar.
-   Bestehende Anbieter, Logins, Modelle, Streaming, Abbruch, Agentenablauf,
-   Werkzeugaufrufe, beide MCPs und Gesprächsspeicherung bleiben erhalten.
-   Speicherpfade, Konfigurationsschlüssel und Datenformate nur mit geprüfter
-   Migration ändern; vorhandene Chats, Projektbindungen und Anmeldungen erhalten.
-   Die weitere Bereinigung wird in kleinen Schritten fortgeführt; ihre komplette
-   Fertigstellung ist keine Voraussetzung für den ersten Installer.
+1. **Define supported hosts and compatibility boundaries.** Select the first
+   installable alpha combination, starting with practically checked TcXaeShell
+   x86. Investigate TwinCAT 4026, the 64-bit shell and Visual Studio integration.
+   Maintain exact TwinCAT/XAE build, shell/VS version, process architecture and
+   Windows version. Determine adaptations/packages per combination and verify
+   installation, startup, docking, WebView/Chat, project/editor binding, POU/member
+   detection, attachments and both MCPs in each actual Host. Record differences
+   in unsaved-buffer access explicitly. Successful builds/existing x86 acceptance
+   do not establish other-host compatibility. The initial installer may serve the
+   verified Host while others receive separate implementation/acceptance. Feed
+   findings into editor-profile and inline-completion design.
 
-3. **Einfache Installation aus der CI bereitstellen.** Ein versioniertes,
-   für Nutzer direkt installierbares Paket aus den geprüften CI-Builds erzeugen.
-   Host, Core, Chat, beide MCPs und ihre Laufzeitvoraussetzungen gemeinsam
-   berücksichtigen. Die Installation soll ohne Git-Checkout, npm oder eigenes
-   Kompilieren möglich sein. Paketformat, die zunächst unterstützte
-   IDE-/Architekturvariante und benötigte Laufzeitkomponenten vor der Umsetzung
-   festlegen. Erstinstallation, Update und Rückkehr zum vorherigen Stand prüfen;
-   vorhandene Konfiguration, Chats und Anmeldungen bei Updates erhalten.
-   Aufbauend auf [Installation](INSTALLATION.md) und
-   [Startvertrag](START_CONTRACT.md) dokumentieren, was der Nutzer tun muss.
+2. **Prepare the backend for delivery and incremental cleanup.** Separate startup
+   from developer checkouts, standardize installation paths and bound a built
+   application with a verified manifest. Use the [server inventory](BACKEND_SERVER_INVENTORY.md)
+   to remove unused functionality/routes/dependencies incrementally. Rename
+   visible/internal OpenCode/OpenChamber identifiers where they denote our Core,
+   Chat and Host modules while preserving attribution/licenses/notices. Retain
+   providers, logins, models, streaming, cancellation, agent/tool execution, both
+   MCPs and conversation persistence. Change paths/keys/formats only with verified
+   migration preserving chats/bindings/sign-ins. Complete cleanup is not required
+   for the first installer.
 
-4. **Systemprompts der Profile prüfen.** Mit dem Analyse-Profil beginnen und
-   gemeinsame Regeln für spätere Profile festhalten. Prüfen, ob der Agent
-   TwinCAT-/Structured-Text-Code lesbar und im vorhandenen Renderer korrekt
-   darstellt: passende Codeblöcke, Einrückung, klare Zuordnung von Deklaration,
-   Implementierung, Aktion, Methode und Property sowie vollständige, kopierbare
-   Ausschnitte. Gespeicherter Code, angehängter Snapshot und verifizierter
-   Editorinhalt müssen sprachlich unterscheidbar bleiben. An repräsentativen
-   TwinCAT-Fragen prüfen, einschließlich Quellenangaben, Unsicherheit und der
-   tatsächlichen Werkzeuge und Rechte des jeweiligen Profils. Die Promptprüfung
-   kann unabhängig vom Installer auch früher durchgeführt werden.
+3. **Deliver an easy CI-built installation.** Produce a versioned installable
+   package from verified CI builds, considering Host/Core/Chat, both MCPs and
+   prerequisites together. Require no Git checkout, npm or local compilation.
+   Define package format, initial IDE/architecture and runtimes before implementation.
+   Verify first installation, update and return to the prior version, preserving
+   configuration/chats/sign-ins. Document user actions based on
+   [Installation](INSTALLATION.md) and [startup contract](START_CONTRACT.md).
 
-5. **Editor-Profil als Gegenpart zu Analyse ergänzen.** Kontrollierte Änderungen
-   am eindeutig gebundenen PLC-Projekt ermöglichen. Analyse bleibt lesend.
-   Bestehende Agenten- und Werkzeuglogik weiterverwenden; die Schreibanbindung
-   mit Vorschau/Diff, Freigabe, Prüfung des Ausgangsstands und Wiederherstellung
-   gemäß [Engineering Safety](ENGINEERING_SAFETY.md) umsetzen. Ungespeicherte
-   Änderungen und Projektwechsel berücksichtigen. Das Profil allein erteilt
-   noch keine Schreibrechte und schaltet keine PLC-Runtime-Aktionen frei.
+4. **Review profile system prompts.** Start with Analysis and shared future-profile
+   rules. Verify readable TwinCAT/ST rendering: appropriate code blocks/indentation,
+   distinct declaration/implementation/action/method/property and complete copyable
+   excerpts. Distinguish saved code, attached snapshots and verified editor content.
+   Test representative questions, sources, uncertainty and actual profile tools/
+   permissions. Prompt review may start independently before installer completion.
 
-6. **Mehrsprachigkeit ergänzen, zunächst Deutsch und Englisch.** Die Oberfläche
-   von Host und Chat einschließlich Menüs, Dialogen, Status- und Fehlermeldungen
-   konsistent übersetzen. Sprache auswählbar machen und die Auswahl speichern.
-   Texte zentral verwalten und weitere Sprachen später ergänzen können.
-   Beide Sprachen auf vollständige Übersetzungen und passende Darstellung prüfen.
-   Quellcode und vorhandene Gesprächsinhalte bleiben in ihrer Originalsprache;
-   die Antwortsprache des Agenten bei der Prüfung der Profilprompts berücksichtigen.
+5. **Add an Editor profile alongside Analysis.** Permit controlled changes in the
+   exact bound PLC project while Analysis remains read-only. Reuse agent/tool
+   logic; add preview/diff, approval, original-state checks and restoration under
+   [Engineering Safety](ENGINEERING_SAFETY.md). Account for unsaved changes/project
+   switching. The profile alone grants no writes or PLC runtime actions.
 
-7. **Inline-Codevervollständigung ergänzen.** Vorschläge direkt im TwinCAT-Editor
-   anbieten, getrennt vom Chatablauf. Vorab unterstützte Editoren und ST-Objekte,
-   Auslösung, Kontextumfang, Modellanbindung und akzeptable Antwortzeit festlegen.
-   Vorschläge müssen sich ausdrücklich übernehmen oder verwerfen lassen und bei
-   weiterem Tippen oder Editorwechsel veralten beziehungsweise abbrechen.
-   Ungespeicherter Text und dessen Übertragung brauchen einen eindeutigen Vertrag;
-   keine automatische Übernahme oder Speicherung von Vorschlägen.
+6. **Add localization, initially German and English.** Consistently translate Host
+   and Chat menus/dialogs/status/errors, expose and save language choice, centralize
+   text and support later languages. Verify completeness/presentation in both.
+   Source/conversation contents remain original; account for response language
+   in profile-prompt review.
 
-Der nächste größere Meilenstein ist eine einfach installierbare Version mit
-einem verlässlichen Analyse-Profil. Editor-Profil und Inline-Vervollständigung
-bauen auf diesem Stand auf.
+7. **Add inline code completion.** Offer suggestions in the TwinCAT editor separately
+   from Chat. Define supported editors/ST objects, trigger, context, model connection
+   and acceptable latency. Require explicit accept/discard and invalidate/cancel
+   after typing or editor changes. Unsaved text/transmission needs an explicit
+   contract; never accept/save suggestions automatically.
 
-Die offene [Knowledge-Startzeit-Untersuchung](KNOWLEDGE_STARTUP_INVESTIGATION.md)
-bleibt separat dokumentiert. Die neue Prioritätenliste erklärt sie nicht für
-erledigt. Schreib- und Compiler-Meilensteine behalten ihre eigenen Abnahmen.
+The next major milestone is an easily installed version with reliable Analysis.
+Editor profile and inline completion build on it. The
+[Knowledge startup investigation](KNOWLEDGE_STARTUP_INVESTIGATION.md) remains
+separate and open. Write/compiler milestones retain their own acceptance.
 
 ## Current implementation branch
 

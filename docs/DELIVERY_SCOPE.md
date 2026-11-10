@@ -1,131 +1,122 @@
-# Begrenzter Auslieferungsumfang für Core, Chat und Host
+# Bounded delivery scope for Core, Chat and Host
 
-**Folgeschritt vom 09.11.2026:** Der tatsächliche Rückbau von Servermodulen,
-CLI, nativen Abhängigkeiten und Produkttexten steht in
-[Produktbereinigung](PRODUCT_CLEANUP_20261109.md). Dessen Umfang ersetzt die
-entsprechenden „später“-Entscheidungen der folgenden ursprünglichen Matrix.
-Die datierten Nachweise vom 05.11. bleiben historische Nachweise.
+**Follow-up, 2026-11-09:** actual removal of server modules, CLI functionality,
+native dependencies and product text is documented in
+[Product cleanup](PRODUCT_CLEANUP_20261109.md). Its scope supersedes corresponding
+“later” decisions in the original matrix below. Evidence dated 2026-11-05 remains
+historical evidence.
 
-Dieser Schritt konkretisiert Punkt 2 anhand von BACKEND_SERVER_INVENTORY.md.
-Er beansprucht keine vollständige Entfernung aller Upstream-Zusatzfunktionen.
-Maßgeblich ist der source-gebaute Anwendungspfad. Die ausdrückliche Referenz-
-distribution bleibt für Entwicklungs- und Kompatibilitätsprüfungen unverändert.
-Es werden keine Operator-Daten gelesen, verschoben oder gelöscht.
+This step implements roadmap item 2 using BACKEND_SERVER_INVENTORY.md. It does
+not claim complete removal of all upstream extras. The source-built application
+path is authoritative. The explicit reference distribution remains unchanged for
+development/compatibility checks. No operator data is read, moved or deleted.
 
-Der ausgelieferte Client ist ausschließlich der native TwinCAT Assistant Host
-mit WebView am lokalen Webserver. Web-Verbindungen zu diesem Source-Server
-erhalten dieselben expliziten 404-Antworten. Electron, VS Code, hosted mobile
-und Capacitor mobile sind keine Auslieferungsziele dieses Pakets und wurden
-nicht gebaut oder abgenommen. Ein Client, der sich trotzdem an diesen Server
-bindet, kann die gesperrten HTTP-Funktionen ebenfalls nicht verwenden. Die
-eigenständigen Upstream-Distributionen erhalten dieses Overlay nicht.
+The only delivered client is native TwinCAT Assistant Host with WebView against
+the local server. Web connections to the same source server receive the same
+explicit 404 responses. Electron, VS Code, hosted mobile and Capacitor mobile
+are not delivery targets and were neither built nor accepted. Other clients
+connecting to this server cannot use refused HTTP features either. Standalone
+upstream distributions do not receive this overlay.
 
-## Entscheidungen und Umsetzung
+## Decisions and implementation
 
-| Inventurposition | Entscheidung für diesen Auslieferungsschritt | Umsetzung und verbleibende Grenze |
+| Inventory area | Decision for this step | Implementation and remaining limit |
 | --- | --- | --- |
-| Start, Auth, Proxy, Ereignisse, Anbieter, Modelle, Nachrichten und Werkzeuge | Behalten | Launcher, Credential-Sperre, SSE/WS-Brücke und Agentenimplementierung unverändert. Keine Namensersetzung in APIs oder Anbieterverträgen. |
-| Verlauf, Archive, Ordner, Queue, Sitzungsstatus | Behalten | Bestehende IDs, Datenbanken, Queue-Dateien und Metadaten bleiben bei ihren Besitzern. |
-| Einstellungen, Anhänge, Projekt-/POU-Kontext, beide MCPs | Behalten | Lesen, raw/stat/list, Preview und Upload bleiben erreichbar. Native Projektbindung und eingefrorene Referenzen unverändert. |
-| Terminal/PTY | Deaktivieren | Server-Einstieg importiert/erzeugt die Terminal-Runtime nicht mehr. Kein Terminal-WS-Handler, keine Shell-Erkennung, kein PTY-Leerlaufintervall. HTTP-Familie zusätzlich vor Proxy gesperrt. Bestehende eingebettete Context-Rail blendet den Einstieg aus. |
-| Allgemeine FS-Manipulation/Ausführung | Deaktivieren | Alle Methoden für write/delete/rename/exec/mkdir/clone/reveal mit Unterpfaden liefern 404 vor der ursprünglichen Route. Upload bleibt bewusst erhalten. Dies ersetzt keine globale Dateisystem-Sandbox. |
-| Browser-Control und Dev-Server | Deaktivieren | Routenregistrierungen entfernt, HTTP-Familien vor Proxy gesperrt. Eingebettete Browser-/Terminal-Panels bleiben ausgeblendet. Interne Browser-Broker und Scanner-Hilfen bleiben wegen weiterer gemeinsamer Aufrufer im Code. |
-| Updater/Installer | Eigenständige Upstream-Updater deaktivieren | OpenCode upgrade/upgrade-status/install-v2 und OpenChamber update-check/update-install liefern 404. Version/health/compatibility bleiben lesbar. Installer und CI werden hier nicht geändert. |
-| Paketbestand | Reduzieren | Nach gesperrtem npm-ci entfällt die redundante npm-Distribution @opencode/cli samt Plattformpaketen. Der explizit konfigurierte source-gebaute Core bleibt unter runtime/opencode. Serverdateien *.test.js/*.spec.js entfallen. Neue transitive CLI-Verbraucher führen zum Buildfehler. Lizenzen bleiben erhalten. |
-| Git/Worktrees, Repository-Accounts/SSH, GitHub/GitLab/Linear, Tracked Items, Walkthroughs | Später schrittweise zerlegen | Keine Löschung von Konten, historischen Verzeichnissen oder Referenzdaten. Die vorhandene eingebettete Navigation blendet die zugehörigen Panels bereits aus. Serverdienste sind damit nicht als entfernt ausgewiesen. |
-| Tunnel/Relay/Pairing/Remote/Spaces | Spätere Trennung | Bestehendes Relay-off und Loopback-Start bleiben. Gemeinsame Auth-/Transportmodule werden nicht entfernt. Dieser Schritt behauptet keine neue allgemeine Remote-Sperre. |
-| Diktat/TTS, Push/APNS, Quoten/Modellmetadaten, Themes/PWA | Behalten bis zur gesonderten Trennung | Sprache benötigt eigene Produktentscheidung; Push teilt Statuskomposition, Metadaten/Themes werden im Chat verwendet. Keine pauschale Entfernung ihrer Abhängigkeiten. |
-| Goal/Assist/Work, Routing/Small Model/Magic Prompts, Scheduler, Permission-Auto-Accept | Spätere Einzelprüfung | Keine neue Automatik aktiviert. Die bestehende eingebettete Sperre der interaktiven Auto-Accept-Bedienung bleibt. Agentenlauf und manuelle Werkzeugfreigaben bleiben unabhängig davon erhalten. |
-| Agent Memory, Project Context, Session Knowledge, Nachrichtensuche | Behalten bis Daten-/Nutzungsprüfung | Kein Löschen vorhandener Persistenz. Session Knowledge ist nicht der Beckhoff-Knowledge-MCP. |
-| Guests/Extensions, Control-API, verwaltetes Agentenwerkzeug, Plugins | Später schrittweise trennen | Gemeinsame Konfigurations-/Sitzungsdienste und TwinCAT-Referenztransport erhalten. |
+| Startup, auth, proxy, events, providers, models, messages, tools | Retain | Launcher, credential lock, SSE/WS bridge and agent implementation unchanged. No API/provider contract renaming. |
+| History, archives, folders, queue, session status | Retain | IDs, databases, queue files and metadata remain with their owners. |
+| Settings, attachments, project/POU context, both MCPs | Retain | Read, raw/stat/list, preview and upload remain reachable. Native project binding and frozen references unchanged. |
+| Terminal/PTY | Disable | Server entry no longer imports/creates terminal runtime. No terminal WS handler, shell discovery or PTY idle interval. HTTP family also refused before proxy. Embedded context rail hides entry point. |
+| Generic filesystem mutation/execution | Disable | All write/delete/rename/exec/mkdir/clone/reveal methods and subpaths return 404 before original routes. Upload intentionally remains. This is not a global filesystem sandbox. |
+| Browser control and dev server | Disable | Route registration removed; HTTP families refused before proxy. Embedded browser/terminal panels remain hidden. Internal broker/scanner helpers remain because of shared consumers. |
+| Updater/installer | Disable independent upstream updaters | OpenCode upgrade/upgrade-status/install-v2 and OpenChamber update-check/update-install return 404. Version/health/compatibility remain readable. Installer and CI unchanged here. |
+| Package inventory | Reduce | After locked npm-ci, redundant npm @opencode/cli and platform packages are removed. Explicit source Core remains under runtime/opencode. Server *.test.js/*.spec.js files are removed. New transitive CLI consumers fail the build. Licenses remain. |
+| Git/worktrees, repository accounts/SSH, GitHub/GitLab/Linear, tracked items, walkthroughs | Decompose later | No accounts, historical directories or reference data deleted. Embedded navigation already hides panels; this does not establish removal of server services. |
+| Tunnel/relay/pairing/remote/Spaces | Separate later | Existing relay-off and loopback startup remain. Shared auth/transport modules retained. No new general remote-access refusal is claimed. |
+| Dictation/TTS, push/APNS, quotas/model metadata, themes/PWA | Retain until separate decomposition | Speech needs a product decision; push shares status composition, and metadata/themes are used by Chat. No blanket dependency removal. |
+| Goal/Assist/Work, routing/small model/magic prompts, scheduler, permission auto-accept | Review individually later | No new automation enabled. Existing embedded refusal of interactive auto-accept remains. Agent execution and manual tool approval remain independent. |
+| Agent memory, project context, session knowledge, message search | Retain pending data/usage review | Existing persistence is not deleted. Session knowledge is not the Beckhoff Knowledge MCP. |
+| Guests/extensions, control API, managed agent tool, plugins | Separate incrementally later | Shared configuration/session services and TwinCAT reference transport retained. |
 
-## Benennung und Herkunft
+## Naming and attribution
 
-Eigene Modulzuständigkeiten heißen TwinCAT Assistant Core, Chat und Host gemäß
-START_CONTRACT.md. Der HTML-Titel, PWA-Titel und der dynamische Fenstertitel des
-Source-Chats heißen TwinCAT Assistant Chat. Eigene native Anbieter-Hinweise
-verweisen auf TwinCAT Assistant Chat, der native Knowledge-Status auf TwinCAT
-Assistant Core. Upstream-Paketnamen, Versionsausgaben, API- und Umgebungsnamen,
-Konfigurationsschlüssel, bestehende Datenpfade und Drittanbieter-Lizenzen bleiben
-unverändert. Insbesondere sind OpenCode und OpenChamber weiterhin die korrekten
-Herkunftsnamen; Funktionen wie createOpenCodeConfig schreiben deren Vertrag und
-sind keine umzubenennenden Produktmarken.
+Product module ownership is named TwinCAT Assistant Core, Chat and Host as in
+START_CONTRACT.md. Source Chat's HTML, PWA and dynamic window titles use TwinCAT
+Assistant Chat. Native provider hints refer to Chat; native Knowledge status
+refers to Core. Upstream package names, version outputs, API/environment names,
+configuration keys, data paths and third-party licenses remain unchanged.
+OpenCode and OpenChamber remain correct attribution names; functions such as
+`createOpenCodeConfig` write their contracts and are not product-brand names to
+replace.
 
-## Reproduktion und Nachweisgrenzen
+## Reproduction and evidence boundaries
 
-- `node scripts/build-source-runtime.mjs` baut beide gepinnten Quellen wirklich.
-  Nach Overlay-Änderungen ist ein neuer Source-Build erforderlich. `--ui-only`
-  darf nur den durch Receipt und Binärhash geprüften unveränderten Core wiederverwenden.
-- `node --test tests/delivery-scope.test.mjs` prüft ausgeschlossene und erhaltene
-  Routen, kodierte Pfade, Paketentfernung, Lizenz-/Produktmodulerhalt und die
-  Verweigerung bei neuen CLI-Verbrauchern.
-- `npm test` prüft die bestehenden Node-Verträge einschließlich Daten-/Policy-
-  und Prozessbesitztests. Vorher WindowsHost mit SDK 8.0.425 bauen.
-- `node --test tests/integration/native-chat.test.mjs` prüft den echten Source-
-  Listener, GET/POST-Sperren mit Cookie, Anbieterregistrierung mit synthetischem
-  Schlüssel, Modellkatalog/Einwilligung und sauberes Ende der Prozesskette.
-- `node scripts/build-application-package.mjs <absoluter neuer Pfad>` prüft
-  Receipt, MCP-Manifeste und Versionen, baut das vollständige Anwendungspaket.
-- `node scripts/test-built-application.mjs <Paketpfad>` prüft geschützten Start,
-  Routensperren, beide echten MCPs mit synthetischen Dateien sowie Neustart und
-  unveränderte Integrität. Keine Modellanfrage, PLC-/ADS-/Compileraktion.
+- `node scripts/build-source-runtime.mjs` actually builds both pinned sources.
+  Overlay changes require a new source build. `--ui-only` may reuse only the
+  unchanged Core verified by receipt and binary hash.
+- `node --test tests/delivery-scope.test.mjs` checks refused/retained routes,
+  encoded paths, package removal, licenses/product modules and refusal of new
+  CLI consumers.
+- `npm test` checks Node contracts including data/policy and process ownership.
+  Build WindowsHost using SDK 8.0.425 first.
+- `node --test tests/integration/native-chat.test.mjs` checks the actual source
+  listener, cookie-authenticated GET/POST refusals, synthetic-key provider
+  registration, model catalog/consent and clean process-tree shutdown.
+- `node scripts/build-application-package.mjs <new-absolute-path>` verifies
+  receipt, MCP manifests and versions and builds the complete application.
+- `node scripts/test-built-application.mjs <package-path>` checks protected
+  startup, refused routes, both real MCPs on synthetic files, restart and unchanged
+  integrity. No model, PLC, ADS or compiler action.
 
-Lockfiles im Paket dokumentieren die npm-Installationsinputs vor der expliziten
-Reduktion. Das abschließende Anwendungsmanifest dokumentiert die wirklich
-verbleibenden Dateien. PTY-/Sprachpakete bleiben vorerst in der gesperrten
-Upstream-Abhängigkeitsinstallation; ihr pauschales Entfernen wäre keine geprüfte
-Entkopplung. Die entfernte npm-Core-Distribution ist dagegen vollständig durch
-den expliziten Source-Core ersetzt.
+Packaged lockfiles describe npm inputs before explicit reduction; the final
+application manifest describes retained files. At this checkpoint, PTY/speech
+packages remain in the locked upstream dependency installation: blanket removal
+would not be verified separation. The removed npm Core distribution is fully
+replaced by the explicit source Core.
 
-Fixtures belegen keine echten Anbieter-OAuth-Verfahren, Modellantworten,
-Streaming-Abnahme am bezahlten Modell oder installierte IDE-Nutzung. Reale
-Host-Abnahme, Update/Rollback und diese Anbieterprüfungen bleiben externe Gates
-beim Parent. Punkte 5 bis 7 werden nicht begonnen. Ein Paketbau schließt diese
-externen Gates nicht durch Umbenennen oder Fixture-Ergebnisse.
-## Lokaler Prüflauf am 05.11.2026
+Fixtures do not establish real provider OAuth, model responses, paid-model
+streaming acceptance or installed IDE use. Real Host acceptance, update/rollback
+and provider checks remain external gates owned by the parent. This step does
+not begin items 5–7. Naming changes and fixtures cannot close those gates.
 
-- Vollständiger Source-Build von OpenCode 2.0.23 und OpenChamber 2.1.1,
-  anschließend geprüfter UI-Rebuild mit der endgültigen Titeländerung.
-  Receipt `artifacts/source-runtime/runtime.json`, SHA-256
-  `8471c25df8800dacf185e7b4999bbf90094fa0349d2b2a74a757304c2e5fbeb4`.
-- Isoliertes SDK 8.0.425; WindowsHost und x86-IdeHost erfolgreich gebaut,
-  151 native Policy-/Kontext-/Chat-Regressionen bestanden. Die bestehenden
-  VSTHRD010-Warnungen in Knowledge-/Diagnosecode bleiben sichtbar.
-- 131 Node-Tests seriell bestanden, ohne übersprungene Tests. Ein vorausgehender
-  paralleler Lauf bestand 130 von 131 Tests; die Prozess-Fixture erreichte unter
-  Last ihr Bereitschaftsfenster nicht. Der serielle Gesamtlauf löst diesen
-  offenen Teststand auf. Frühere fehlende Worktree-Abhängigkeiten und Helper
-  wurden eingerichtet und sind keine externen Blocker.
-- Vier Integrationsfälle bestanden, ohne Skip: synthetischer Paketbuilder,
-  echter nativer Source-Listener mit Routensperren und Anbieter-/Modellkatalog,
-  native Eingabegrenze sowie getrennte Session-/Credential-Datenkopie zwischen
-  Referenzdistribution und Source-Runtime.
-- Zwölf originale Upstream-Tests zu Event-Stream und Startup-Pipeline bestanden.
-  UI- und Web-Typechecks bestanden. Syntaxprüfung des Server-Einstiegs bestanden.
-- `oxlint` über die drei geänderten Upstream-Module meldet 60 bestehende Fehler.
-  Ein Vergleich mit den unveränderten Dateien aus dem gepinnten Git-Stand meldet
-  dieselben 60 Fehler. Sie betreffen vorhandene `typeof`-Prüfungen und bedingte
-  Objekt-Spreads; die neue Routensperre fügt diese Muster nicht hinzu. Lint wird deshalb nicht als grün
-  behauptet. Dead-code-Analyse ausgeführt, vorhandenen Backlog geprüft; der
-  Terminal-Parser bleibt wegen des Event-Stream-Imports erforderlich.
-- Vollständiges Anwendungspaket unter `artifacts/scope-delivery-application`,
-  22.085 inventarisierte Dateien, 690.756.123 Dateibytes. Kein npm-CLI-Paket
-  `@opencode/cli` oder dessen Plattformpakete, keine Chat-Server-Testdatei.
-  Anwendungsmanifest SHA-256
+## Local verification, 2026-11-05
+
+- Complete source build of OpenCode 2.0.23 and OpenChamber 2.1.1, then verified
+  UI rebuild with final title change. Receipt `artifacts/source-runtime/runtime.json`,
+  SHA-256 `8471c25df8800dacf185e7b4999bbf90094fa0349d2b2a74a757304c2e5fbeb4`.
+- Isolated SDK 8.0.425; WindowsHost and x86 IdeHost built, 151 native
+  policy/context/chat regressions passed. Existing VSTHRD010 warnings in Knowledge
+  and diagnostics remain visible.
+- 131 serial Node tests passed without skips. An earlier parallel run passed
+  130/131: the process fixture missed readiness under load. The serial full run
+  resolves that result. Missing worktree dependencies/helpers were installed
+  and are not external blockers.
+- Four integration cases passed without skips: synthetic package builder;
+  actual native source listener with route refusals and provider/model catalog;
+  native input boundary; separate session/credential data copy between reference
+  distribution and source runtime.
+- Twelve original upstream event-stream/startup-pipeline tests passed. UI/Web
+  typechecks and server-entry syntax check passed.
+- `oxlint` on three changed upstream modules reports 60 existing errors. The
+  untouched pinned files report the same 60 errors in existing `typeof` checks
+  and conditional object spreads; the new route refusal adds neither pattern.
+  Lint is not claimed green. Dead-code analysis ran and existing backlog was
+  reviewed; the terminal parser remains required by the event-stream import.
+- Complete package `artifacts/scope-delivery-application`: 22,085 inventoried
+  files, 690,756,123 file bytes. No npm `@opencode/cli`/platform packages or Chat
+  server test files. Manifest SHA-256:
   `c33a4b3deb4f26b7a014cdb63a87a7cfcd0f496bc2828510b9e016ce3384a583`.
-- Vollständiger Paket-Smoke bestanden: geschützter Loopback-Start, echte
-  GET/POST-Anmeldung und POST-Routensperren, gespeichertes synthetisches POU über
-  den Engineering-MCP gelesen, Knowledge-Korpusstatus über den echten Knowledge-
-  MCP abgefragt, Neustart mit erhaltener synthetischer State-Datei und erneute
-  vollständige Paketintegrität. Knowledge meldet ohne Korpus korrekt
-  `not_available`; daraus folgt keine Abnahme einer produktiven Wissenssuche.
-  Der gesamte Lauf dauerte lokal etwa vier Minuten einschließlich mehrfacher
-  vollständiger Dateiverifikation. Dies ist keine installierte Host-Startmessung.
+- Complete package smoke passed protected loopback startup, actual GET/POST
+  login and POST route refusals, saved synthetic POU reading through Engineering
+  MCP, corpus-status probing through the actual Knowledge MCP, restart with a
+  preserved synthetic state file and complete integrity reverification.
+  Knowledge correctly reports `not_available` without a corpus; this does not
+  accept production knowledge search. The full local run took approximately four
+  minutes including repeated full verification, not an installed Host startup
+  measurement.
 
-Die lokalen Logs sind ignorierte Buildausgaben im Worktree:
-`local-node-serial.log`, `local-native-build.log`, `local-scope-integration.log`,
-`local-upstream-regressions.log`, `local-web-typecheck.log`,
-`local-ui-typecheck.log`, `local-overlay-lint.log`, `local-baseline-lint.log`,
-`local-dead-code.log`, `local-package-build.log` und
-`local-built-package-smoke.log`. Der Parent erzeugt die endgültigen integrierten
-Artefakte neu; dieses lokale Paket wurde weder gepusht noch installiert.
+Ignored worktree logs: `local-node-serial.log`, `local-native-build.log`,
+`local-scope-integration.log`, `local-upstream-regressions.log`,
+`local-web-typecheck.log`, `local-ui-typecheck.log`, `local-overlay-lint.log`,
+`local-baseline-lint.log`, `local-dead-code.log`, `local-package-build.log` and
+`local-built-package-smoke.log`. The parent rebuilds final integrated artifacts.
+This local package was neither pushed nor installed.

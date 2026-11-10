@@ -1,261 +1,201 @@
-# OpenCode und OpenChamber für den TwinCAT Assistant zuschneiden
+# Specializing OpenCode and OpenChamber for TwinCAT Assistant
 
-Stand: 29.10.2026. Arbeitsbranch: `feat/twincat-runtime-ui`.
-Ausgangspunkt ist Release `native-v0.1.9`, Commit `d9d62d0`.
+Recorded 2026-10-29 on `feat/twincat-runtime-ui`, starting from release
+`native-v0.1.9`, commit `d9d62d0`.
 
-Dieses Dokument beschreibt den gemeinsam besprochenen Umbau. Die ersten beiden
-Funktionsgruppen werden auf diesem Branch mit festgelegten Quellständen und
-einer gezielten TwinCAT-Anbindung umgesetzt. Den Stand beschreibt
-[Runtime integration](RUNTIME_INTEGRATION.md). Die Auswahl entfallender Module
-bleibt ein späterer gemeinsamer Schritt.
+This document records the agreed redesign. The first two feature groups use
+pinned sources and targeted TwinCAT integration on this branch; see
+[Runtime integration](RUNTIME_INTEGRATION.md). Selecting modules to remove remains
+a later joint step.
 
-Die nächste Umbauphase auf `backend` beginnt mit der
-[Bestandsaufnahme der Serveraufgaben](BACKEND_SERVER_INVENTORY.md). Sie erfasst
-den auf `main` zusammengeführten Stand `de4eef8`, trennt heutige Serveraufgaben
-von der Zielzuordnung zu Core, Chat, Host und beiden MCPs und hält offene
-Reduktionsentscheidungen fest. Diese Bestandsaufnahme ändert noch kein
-Laufzeitverhalten.
+The next phase on `backend` starts with the [server inventory](BACKEND_SERVER_INVENTORY.md).
+It records merged main revision `de4eef8`, distinguishes existing server tasks
+from intended ownership by Core, Chat, Host and both MCPs, and records open
+reduction decisions without changing runtime behavior.
 
-Nach Übernahme des fertigen Frontend-Designs hält der
-[gemeinsame Startvertrag](START_CONTRACT.md) die vorhandenen Eingänge und
-Lebenszyklen sowie die Anforderungen an die nächste Konsolidierung fest.
-Themes und Commands müssen vor dem ersten Chat-Bootstrap vorbereitet sein.
+After integrating the completed frontend design, the [shared startup contract](START_CONTRACT.md)
+records entry points, lifecycles and requirements for consolidation. Themes and
+commands must be prepared before the first Chat bootstrap.
 
-Die am 02.11.2026 vereinbarten
-[nächsten Prioritäten](ROADMAP.md#agreed-priorities-2026-11-02) führen diesen
-Umbau weiter: zuerst die Zielhosts und Unterschiede zu TwinCAT 4026, der
-64-Bit-Shell und TwinCAT in Visual Studio klären, dann das Backend für ein
-gebautes Anwendungspaket vorbereiten und den CI-Installer erstellen. Danach
-folgen Profil-Systemprompts, Editor-Profil, Deutsch und Englisch sowie
-Inline-Codevervollständigung. Die Promptprüfung kann unabhängig vom Installer
-früher beginnen. Eine vollständige Backend-Bereinigung und die Abnahme sämtlicher
-Hostvarianten sind keine Voraussetzung für einen ersten Installer des bereits
-geprüften Hosts. Die Roadmap hält Umfang und Grenzen fest. Bestehender
-Chatbestand und die übernommenen Kernfunktionen bleiben erhalten.
+The [priorities agreed on 2026-11-02](ROADMAP.md#agreed-priorities-2026-11-02)
+continue this work: establish target hosts and differences in TwinCAT 4026,
+the 64-bit shell and Visual Studio integration; prepare a built backend package;
+then create the CI installer. Profile prompts, editor profile, German/English UI
+and inline completion follow. Prompt review can start independently earlier.
+Complete backend cleanup and acceptance of every Host variant are not prerequisites
+for an initial installer for the verified Host. The roadmap defines boundaries;
+existing conversations and retained core functionality must survive.
 
-## Vereinbarte Richtung
+## Agreed direction
 
-Wir übernehmen die für den TwinCAT Assistant relevanten Funktionen aus OpenCode
-und OpenChamber mit ihrer bestehenden Implementierung und ihrem bisherigen
-Verhalten. Anschließend schneiden wir Unterbau und Chatoberfläche auf die
-Einbettung in TwinCAT zu. Anpassungen erfolgen dort, wo Projektkontext,
-IDE-Lebenszyklus oder die gewünschte Bedienung sie erfordern.
+Reuse relevant OpenCode/OpenChamber functionality with its existing implementation
+and behavior, then adapt the infrastructure and Chat UI for TwinCAT embedding.
+Changes should follow project-context, IDE-lifecycle and interaction requirements.
 
-Die bewährte Agentenlogik, Modellkommunikation und Chatdarstellung bilden die
-Basis. Unser eigener Code verbindet diese Funktionen mit TwinCAT und definiert
-verlässliche Zustände für Projekte, Gespräche und Anhänge.
+Existing agent logic, model communication and Chat rendering form the foundation.
+Our code connects these to TwinCAT and defines reliable project, conversation and
+attachment states. The result should behave as one TwinCAT Assistant. Actual
+source dependencies determine which generic features can be removed.
 
-Das Ergebnis soll sich als zusammenhängender TwinCAT Assistant bedienen lassen.
-Welche allgemeinen Funktionen dafür entfallen können, entscheiden wir anhand
-des tatsächlichen Quellcodes und seiner Abhängigkeiten.
+## Starting point
 
-## Ausgangslage
+The pinned npm distributions are OpenCode `2.0.23` and OpenChamber `2.1.1`.
+The native C# Host supplies the tool window, WebView2 and local IDE context.
+Engineering MCP reads saved project files; Knowledge MCP reads local documentation.
 
-Aktuell verwenden wir die festgelegten npm-Distributionen OpenCode `2.0.23` und
-OpenChamber `2.1.1`. Der native C#-Host stellt das Toolfenster, WebView2 und den
-lokalen IDE-Kontext bereit. Beide MCPs sind angebunden; der Engineering-MCP
-liest gespeicherte Projektdateien und der Knowledge-MCP die lokale Dokumentation.
+A version-bound adapter integrates the embedded UI with internal OpenChamber
+stores and verifies distributed JavaScript hashes. Internal export mappings are
+documented in the [integration contract](CHAT_INTEGRATION.md).
 
-Die eingebettete Oberfläche wird über einen versionsgebundenen Adapter an
-interne OpenChamber-Stores angepasst. Dabei werden ausgelieferte JavaScript-
-Dateien anhand ihrer Hashes geprüft. Die Zuordnung zu diesen internen Exporten
-ist im [Integrationsvertrag](CHAT_INTEGRATION.md) dokumentiert.
+The redesign moves both projects to traceable source builds. The current
+installation and existing data remain the comparison baseline for staged migration.
 
-Der geplante Umbau führt zu eigenen, nachvollziehbaren Quellcode-Builds beider
-Projekte. Die heutige Installation und der bestehende Datenbestand bleiben der
-Vergleichsstand für die schrittweise Umstellung.
+## Functionality to retain
 
-## Funktionen, die wir übernehmen wollen
+### OpenCode foundation
 
-### OpenCode-Unterbau
+- Existing providers, sign-in methods and model management.
+- Message processing, response streaming and cancellation.
+- Agent execution, tool selection/calls and results used in subsequent model steps.
+- Error handling, retries and long-context management present in the selected revision.
+- MCP support with appropriate protocol profiles.
+- Conversation persistence/history and required data/database mechanisms.
+- Existing permission mechanisms underlying reviewed TwinCAT tool approvals.
 
-- Bestehende Anbieteranbindungen, Anmeldeverfahren und Modellverwaltung.
-- Nachrichtenverarbeitung, Antwort-Streaming und Abbruch laufender Anfragen.
-- Agentenablauf mit Werkzeugauswahl, Werkzeugaufrufen und Verarbeitung der
-  Ergebnisse in weiteren Modellschritten.
-- Fehlerbehandlung, Wiederholungen und Verwaltung langer Gesprächskontexte,
-  soweit diese Funktionen in der ausgewählten Quellversion vorhanden sind.
-- MCP-Unterstützung mit den jeweils passenden Protokollprofilen.
-- Gesprächsspeicherung und Verlauf einschließlich der dafür benötigten
-  Datenmodelle und Datenbankmechanismen.
-- Bestehende Berechtigungsmechanismen als Grundlage unserer überprüften
-  TwinCAT-Werkzeugfreigaben.
+Migration must not silently reduce sign-in or model capabilities. Retained
+behavior must be checked practically for the providers currently used.
 
-Die Umstellung darf vorhandene Anmeldemöglichkeiten oder Modellfunktionen
-nicht stillschweigend einschränken. Die konkrete Übernahme wird für die aktuell
-verwendeten Anbieter praktisch geprüft.
+### OpenChamber UI
 
-### OpenChamber-Oberfläche
+- Existing Chat rendering/composer behavior accepted by the user.
+- Streamed responses, cancellation and understandable errors.
+- Conversation history and switching.
+- Provider/model selection and sign-in.
+- Adding, removing and submitting attachments/references.
+- Markdown, code blocks, copy actions, tool displays and source citations.
+- Appearance/settings required by retained features; review other features individually.
 
-- Chatdarstellung und Eingabefeld mit dem vom Nutzer akzeptierten Verhalten.
-- Anzeige gestreamter Antworten, Abbruch und verständliche Fehlerzustände.
-- Gesprächsverlauf und Wechsel zwischen Unterhaltungen.
-- Modell- und Anbieterauswahl sowie die zugehörige Anmeldung.
-- Anhänge und Referenzen einschließlich Hinzufügen, Entfernen und Absenden.
-- Markdown, Codeblöcke, Kopieraktionen, Werkzeuganzeigen und Quellenangaben.
-- Darstellung und Einstellungen, die für die verbleibenden Funktionen benötigt
-  werden. Weitere vorhandene Funktionen prüfen wir einzeln.
+Existing Chat components remain the functional foundation. Embedding, navigation
+and native-context integration are adapted around them.
 
-Die vorhandenen Chat-Komponenten bleiben die funktionale Grundlage. Ihre
-Einbettung, Navigation und Verbindung zum nativen Kontext werden angepasst.
+## TwinCAT-specific changes
 
-## TwinCAT-spezifische Anpassungen
+### Durable project/conversation binding
 
-### Projekt und Gespräch dauerhaft verbinden
+A conversation belongs to one unambiguously identified PLC project. Durable
+project identity is separate from transient IDE instances and runtime configuration.
+An IDE restart or model change alone must not force a new project conversation.
 
-Ein Gespräch gehört zu einem eindeutig identifizierten PLC-Projekt. Die
-dauerhafte Projektzuordnung wird von der kurzlebigen IDE-Instanz und der
-jeweiligen Laufzeitkonfiguration getrennt. Ein IDE-Neustart oder Modellwechsel
-darf allein keinen neuen Projektchat erzwingen.
+Opening a project loads its complete history and restores the appropriate chat.
+Pending loading is not an empty history. New chats retain an explicit action.
+Verify same-named projects, multiple PLCs in one solution and multiple IDE instances
+separately. Establish moved/renamed-project rules before migrating data.
 
-Beim Öffnen eines Projekts wird der vorhandene Verlauf vollständig geladen und
-der passende Chat wieder ausgewählt. Ein noch laufender Ladevorgang muss als
-solcher behandelt werden. Für neue Gespräche bleibt eine explizite Aktion.
-Gleichnamige Projekte, mehrere PLCs in einer Solution und mehrere IDE-Instanzen
-werden getrennt geprüft. Die Regeln für verschobene oder umbenannte Projekte
-legen wir vor einer Datenmigration fest.
+Navigation agreed on 2026-10-30 permits multiple chats per PLC project. The clock
+opens a compact project-only list of titles and activity; Plus starts another
+project chat. Reopening restores the last selection. Changing POU/member retains
+the current conversation. General chats remain separate through the menu. Project
+tools and Knowledge share connections; existing chats remain.
 
-Am 30.10.2026 ist die Navigation dafür festgelegt worden: Mehrere Chats pro
-PLC-Projekt sind erlaubt. Die Uhr öffnet eine kompakte Liste mit Titel und
-letzter Aktivität ausschließlich für dieses Projekt; Plus beginnt einen weiteren
-Projektchat. Beim erneuten Öffnen wird der zuletzt ausgewählte Chat
-wiederhergestellt. Ein Baustein- oder Memberwechsel bleibt im aktuellen Chat.
-Allgemeine Chats bleiben getrennt über das Menü erreichbar. Projektwerkzeuge und
-Knowledge-Verbindung werden gemeinsam genutzt, bestehende Chats bleiben erhalten.
-Am 02.11.2026 wurde die nächste Darstellung festgelegt: Die Uhr schaltet eine
-linke Chatleiste ein und aus. Breit steht sie neben dem Gespräch, schmal darüber
-und schließt nach der Auswahl. Projektname, neuer Chat, Suche, aktuelle Auswahl
-und laufende Antworten sind darin sichtbar. Der offene Zustand wird pro Projekt
-gemerkt. „Als erledigt markieren“, „Erledigte Chats“ und „Wieder öffnen“ ersetzen
-die sichtbaren Archivbegriffe bei unveränderter Speicherung und erhaltenem Verlauf.
-Diese Navigation ist seit 02.11.2026 auf `feat/project-chat-navigation`
-implementiert: Die kompakte Auswahl ersetzt die allgemeine Seitenleiste und
-ergänzt Titelsuche, Umbenennen, Archivieren und Wiederherstellen. Die letzte
-Auswahl bleibt über einen Laufzeit-Neustart erhalten. Die
-[genauen Regeln und Abnahmegrenzen](RUNTIME_INTEGRATION.md#agreed-project-chat-navigation-2026-10-30)
-sind festgehalten. Der lokale Stand `dfb50b1` wurde am 02.11.2026 installiert.
-Der Nutzer hat Projektchat-Navigation, getrennte Entwürfe/Anhänge,
-Wiederherstellung nach IDE-Neustart und den Überdeckungsfix für Properties/Toolbox
-manuell abgenommen. Ein Timeout des kombinierten Theme-Tests bleibt separat
-offen. Ältere Chats tragen noch den zuvor fest vergebenen Projektnamen; neue
-Chats lassen die ursprüngliche automatische Titelgenerierung zu.
+On 2026-11-02 the next presentation was agreed: the clock toggles a left chat bar,
+docked beside wide conversations and overlaid on narrow ones, closing after
+selection. It shows project name, new chat, search, selection and active responses,
+remembering open state per project. “Mark done”, “Done chats” and “Reopen” replace
+visible archive terminology while preserving storage/history.
 
-### Kontext und Anhänge eindeutig behandeln
+This navigation was implemented on `feat/project-chat-navigation` on 2026-11-02.
+The compact selector replaces the general sidebar and adds title search, rename,
+archive and restore. Last selection survives runtime restart. See
+[rules and acceptance boundaries](RUNTIME_INTEGRATION.md#agreed-project-chat-navigation-2026-10-30).
+Local revision `dfb50b1` was installed that day. The user manually accepted project
+navigation, separate drafts/attachments, restoration after IDE restart and the
+Properties/Toolbox overlap fix. A combined theme-test timeout remains separately
+open. Older chats retain their former fixed project titles; new chats allow
+original automatic title generation.
 
-Der lokale aktive Baustein, Projektmetadaten, ein vorgemerkter Snapshot und der
-mit einer Nachricht tatsächlich übertragene Inhalt erhalten unterscheidbare
-Zustände. Die Anzeige muss diesen tatsächlichen Zustand wiedergeben.
+### Explicit context and attachment states
 
-Wir legen gemeinsam fest, welche Metadaten eine Frage wie "dieser Baustein"
-eindeutig machen sollen. Das lokale Folgen des Editors allein erteilt keine
-Freigabe zur Übertragung von Quellcode. Gespeicherte Dateien, Automation-
-Interface-Snapshots und ein gegebenenfalls künftig verifizierter Editorpuffer
-bleiben als unterschiedliche Quellen erkennbar.
+Distinguish the locally active POU, project metadata, staged snapshot and content
+actually transmitted with a message. The UI must reflect the actual state.
 
-### Stabile Verbindung zwischen Oberfläche, Laufzeit und IDE
+Agree which metadata makes “this POU” unambiguous. Following the editor locally
+does not authorize source transmission. Saved files, Automation Interface snapshots
+and any future verified editor buffer remain identifiable source types.
 
-Wir schaffen eine kleine, ausdrücklich unterstützte Schnittstelle im übernommenen
-Quellcode. Darüber werden Projektzuordnung, Kontext, Anhangszustände und Verlauf
-angebunden. Die heutige Kopplung an minifizierte Store-Exporte kann dadurch
-schrittweise entfallen.
+### Stable UI/runtime/IDE interface
 
-OpenChamber und OpenCode werden dabei gemeinsam betrachtet. Änderungen an
-Routen, Ereignissen oder Datenmodellen müssen zu ihren jeweiligen Verbrauchern
-passen. Die native IDE-Anbindung und die bestehenden MCPs werden weiterverwendet.
+Add a small, explicitly supported source interface for project identity, context,
+attachment state and history. This gradually replaces coupling to minified store
+exports. Consider OpenChamber and OpenCode together: route, event and model changes
+must match their consumers. Reuse native IDE integration and both existing MCPs.
 
-### Werkzeuge und Prozesse gezielt bereitstellen
+### Deliberate tool/process composition
 
-Knowledge bleibt innerhalb der lokalen Laufzeit gemeinsam nutzbar. Die
-Engineering-Verbindung bleibt auf das konkrete PLC-Projekt beschränkt.
-Werkzeugergebnisse müssen Suchtreffer, IDs, Artikel und Quellen vollständig
-bis zum Modell transportieren.
+Knowledge remains shared within the local runtime. Engineering stays scoped to
+the exact PLC project. Search hits, IDs, articles and sources must reach the model
+intact through tool results.
 
-Die bestehende Prozessaufsicht und das Beenden eigener Kindprozesse beim
-Schließen oder Absturz bleiben erhalten. Der langsame erste Knowledge-Start
-wird getrennt gemessen und untersucht, da die vollständige Korpusprüfung im
-Knowledge-MCP liegt. Der Fork allein beseitigt diesen Aufwand nicht.
-Die weiterhin sehr lange Verbindung trotz vorbereitetem Index ist als
-[offene Untersuchung mit Video-Beobachtung und Abnahmekriterien](KNOWLEDGE_SETUP.md#open-investigation-slow-knowledge-connection)
-festgehalten. Sie bleibt ein eigener Arbeitspunkt neben der UI-Bereinigung.
+Preserve supervision and cleanup of owned children after closure/crash. Measure
+initial Knowledge startup separately: full corpus verification belongs to Knowledge
+MCP, and forking alone does not remove its cost. Long connection time despite a
+prepared index remains a [separate investigation with video evidence and acceptance criteria](KNOWLEDGE_SETUP.md#open-investigation-slow-knowledge-connection),
+independent of UI cleanup.
 
-## Kandidaten für die Reduktion
+## Reduction candidates
 
-Diese Auswahl ist ein Vorschlag für die gemeinsame Bestandsaufnahme:
+Candidates for joint inventory are general terminal/shell functionality;
+Git/worktree/repository management; generic file editing outside TwinCAT contracts;
+unneeded UI, background services and connection types; and extensions or other
+features whose product value is unconfirmed.
 
-- Allgemeine Terminal- und Shell-Funktionen.
-- Git-, Worktree- und allgemeine Repository-Verwaltung.
-- Generische Dateibearbeitung außerhalb der vorgesehenen TwinCAT-Verträge.
-- Oberflächen, Hintergrunddienste und Verbindungsarten, die unser eingebetteter
-  lokaler Assistant nicht benötigt.
-- Erweiterungen und weitere Funktionen, deren Nutzen für den Assistant wir
-  noch nicht bestätigt haben.
+Inspect dependencies before removing a feature. Hiding a menu item is insufficient
+if an unwanted backend route or tool remains reachable. Retain needed shared
+libraries and data structures.
 
-Vor dem Entfernen prüfen wir die Abhängigkeiten zu den übernommenen Funktionen.
-Ein ausgeblendeter Menüpunkt reicht nicht aus, wenn seine Backend-Route oder
-sein Werkzeug weiterhin unerwünscht erreichbar ist. Benötigte gemeinsame
-Bibliotheken und Datenstrukturen bleiben erhalten.
+## Sources, data and maintenance
 
-## Quellcode, Daten und Wartung
+Record package versions, source revisions and builds for both projects. First
+establish a working unchanged source reference, then keep changes in small,
+traceable commits. Decide source management after this check: fork repositories,
+submodules and vendoring are not yet chosen. Account for licenses, notices and
+existing redistribution boundaries.
 
-Für beide Projekte wird die genaue Zuordnung von Paketversion, Quellrevision
-und Build festgehalten. Zunächst muss ein unveränderter Quellcode-Build als
-Referenz funktionieren. Danach werden unsere Änderungen in kleinen,
-nachvollziehbaren Commits geführt.
+Conversations currently reside at
+`%LOCALAPPDATA%\TwinCatAssistant\operator-state\data\opencode\opencode.db`;
+native project bindings at `%LOCALAPPDATA%\TwinCatAssistant\native-chat\threads\`.
+Before changing storage/binding formats, verify adoption with a separate data copy.
+Conversations and sign-ins must survive. Credentials, project source, local
+databases and documentation corpora must not enter source repositories.
 
-Wie wir die Upstream-Quellen verwalten, entscheiden wir nach dieser Prüfung.
-Separate Fork-Repositories, Submodule oder eine Übernahme in dieses Repository
-sind noch nicht festgelegt. Lizenzen, Drittanbieterhinweise und die bestehenden
-Verteilungsgrenzen werden bei dieser Entscheidung berücksichtigt.
+## Work sequence
 
-Aktuell liegen die Gespräche in
-`%LOCALAPPDATA%\TwinCatAssistant\operator-state\data\opencode\opencode.db`.
-Die native Projektzuordnung liegt unter
-`%LOCALAPPDATA%\TwinCatAssistant\native-chat\threads\`.
-Vor Änderungen an Speicherformat oder Zuordnung wird eine Übernahme mit einer
-getrennten Datenkopie geprüft. Bestehende Gespräche und Anmeldedaten dürfen durch
-den Umbau nicht verloren gehen. Zugangsdaten, Projektcode, lokale Datenbanken
-und Dokumentationskorpora werden nicht in die Quellcode-Repositories übernommen.
+1. Inventory OpenCode functionality and actual dependencies at the selected
+   revision; agree what to retain, adapt or remove.
+2. Inventory OpenChamber components, settings, interfaces and services likewise.
+3. Pin source/tool revisions, build reproducibly and verify a functional reference.
+4. Integrate TwinCAT project/context/attachment interfaces in source, reuse
+   existing behavior and fix known restoration/attachment defects.
+5. Remove agreed feature groups individually, clean dependencies and verify
+   affected behavior after each step.
+6. Verify data adoption and installation on an isolated candidate before changing
+   the local installation.
 
-## Ablauf unserer gemeinsamen Arbeit
+Record outcomes/open decisions and review them together after each section. The
+next concrete step from this document is the OpenCode inventory.
 
-1. **OpenCode aufnehmen.** Funktionen und tatsächliche Abhängigkeiten der
-   gewählten Quellversion erfassen. Gemeinsam festlegen, welche Funktionen
-   übernommen, angepasst oder entfernt werden.
-2. **OpenChamber aufnehmen.** Die zugehörigen Chat-Komponenten, Einstellungen,
-   Schnittstellen und Dienste auf dieselbe Weise durchgehen.
-3. **Quellen reproduzierbar bauen.** Quellrevisionen und Build-Werkzeuge
-   festlegen und den funktionalen Referenzstand prüfen.
-4. **Die TwinCAT-Anbindung im Quellcode einbauen.** Projekt-, Kontext- und
-   Anhangsschnittstellen anschließen. Vorhandene Funktionen weiterverwenden
-   und die bekannten Wiederherstellungs- und Anhangsprobleme korrigieren.
-5. **Funktionsgruppen reduzieren.** Die gemeinsam ausgewählten Teile einzeln
-   entfernen, ihre Abhängigkeiten bereinigen und nach jedem Schritt die
-   betroffenen Funktionen prüfen.
-6. **Datenübernahme und Installation prüfen.** Bestehende Gespräche übernehmen,
-   den Kandidaten getrennt testen und erst danach lokal umstellen.
+## Acceptance
 
-Nach jedem Abschnitt halten wir Ergebnis und offene Entscheidungen fest und
-gehen sie gemeinsam durch. Der nächste konkrete Schritt nach diesem Dokument
-ist die OpenCode-Bestandsaufnahme.
+- Existing provider sign-in, model selection and ordinary Chat work.
+- Streaming, cancellation, tool errors and subsequent model steps remain usable.
+- Both MCPs return actual results; Knowledge hits open with usable sources.
+- The same project chat returns after a complete IDE restart.
+- Project changes, same-named POUs and multiple IDEs do not misassign messages/attachments.
+- Staged, removed and submitted attachment displays match actual content across context changes.
+- Existing data can be adopted; a verified return path precedes local migration.
+- Relevant regressions and Linux/Windows CI pass; startup and memory measurements
+  are recorded separately.
 
-## Abnahme des umgebauten Stands
-
-- Vorhandene Anbieteranmeldung, Modellauswahl und normaler Chat funktionieren.
-- Streaming, Abbruch, Werkzeugfehler und weitere Modellschritte bleiben nutzbar.
-- Beide MCPs liefern tatsächliche Ergebnisse. Ein zurückgegebener Knowledge-
-  Treffer lässt sich öffnen und mit Quelle auswerten.
-- Derselbe Projektchat ist nach einem vollständigen IDE-Neustart wieder da.
-- Projektwechsel, gleichnamige Bausteine und mehrere IDE-Instanzen ordnen
-  weder Nachrichten noch Anhänge dem falschen Kontext zu.
-- Die Anhangsanzeige stimmt beim Vormerken, Entfernen, Absenden und nach
-  Kontextwechseln mit dem tatsächlich verwendeten Inhalt überein.
-- Bestehende Daten lassen sich übernehmen; ein Rückweg zum Referenzstand ist
-  vor der lokalen Umstellung geprüft.
-- Die bisherigen relevanten Regressionstests und die Linux-/Windows-CI bleiben
-  grün. Messungen zu Startzeit und Speicherverbrauch werden getrennt erfasst.
-
-Der erste Umbau behält den bisherigen lesenden Funktionsumfang. Spätere PLC-
-Schreib-, Compiler- oder Runtime-Funktionen folgen weiterhin den eigenen
-Meilensteinen in [MVP](MVP.md), [Roadmap](ROADMAP.md) und
-[Engineering Safety](ENGINEERING_SAFETY.md). Ein erfolgreicher Build oder
-Chat-Test ist keine Prüfung von PLC- oder Maschinenverhalten.
+The first redesign retains read-only scope. Future PLC writes, compiler and runtime
+features follow [MVP](MVP.md), [Roadmap](ROADMAP.md) and
+[Engineering Safety](ENGINEERING_SAFETY.md). A passing build or Chat test does
+not establish PLC or machine behavior.

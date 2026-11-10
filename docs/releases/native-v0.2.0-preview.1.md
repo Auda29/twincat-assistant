@@ -12,7 +12,7 @@ and the development operator package version `0.1.0-dev.1` remain unchanged.
 - A native collapsible project chat sidebar with search, new conversations,
   rename and explicit title generation. Wide tool windows show the sidebar
   beside the conversation; narrow windows use a dismissible overlay.
-- **Als erledigt markieren**, **Erledigte Chats** and **Wieder öffnen** retain
+- **Mark done**, **Done chats** and **Reopen** retain
   conversations through the existing archive/restore actions. Selected chats
   and the wide sidebar preference are remembered per PLC project and profile.
   General conversations remain separate.

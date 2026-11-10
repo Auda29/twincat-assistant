@@ -19,7 +19,7 @@ profile instruction. OpenCode only adds its own environment part.
 | `<state>/config/opencode.json` | `createOpenCodeConfig` in `src/config.mjs` | General chats in `<state>/workspace` |
 | `<state>/projects/<key>/opencode.json` | `prepareNativeProject` in `src/native-mcp.mjs` | Chats bound to one PLC project; this later layer overrides `system` |
 | `<state>/config/commands/*.md` | `src/commands.mjs` (unchanged) | Slash command templates; they add task wording only |
-| Message part `TwinCAT context snapshot` | `ChatContextPolicy.AttachmentText` (`native/Shared/ChatContextBinding.cs`, unchanged) | Explicit **Anhängen** or the automatic `Aktiver Baustein` chip |
+| Message part `TwinCAT context snapshot` | `ChatContextPolicy.AttachmentText` (`native/Shared/ChatContextBinding.cs`, unchanged) | Explicit **Attach** or the automatic `Aktiver Baustein` chip |
 | Message part `TwinCAT IDE context, metadata only` | `twinCatContextTexts` (`upstream/overlays/openchamber/twincat.ts`, unchanged) | Project chats, no source code |
 
 Both prompt texts are composed in `src/agent-prompts.mjs`. On 2026-11-05, a

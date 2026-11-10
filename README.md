@@ -43,7 +43,7 @@ installed Beckhoff InfoSys help.
    select a model in the chat.
 3. Open a PLC project and select a Structured Text POU. Attach its snapshot
    when you want the assistant to examine that code, then ask your question.
-4. For documentation questions, use **Wissenssuche** to discover and prepare
+4. For documentation questions, use **Knowledge search** to discover and prepare
    your installed InfoSys help. See [documentation setup](docs/KNOWLEDGE_SETUP.md).
 
 The native host has separate x86 and amd64 builds. Live IDE testing currently

@@ -1,49 +1,46 @@
 # TwinCAT Assistant 0.2.0 Beta 1
 
-Diese Beta vereint die Produktbereinigung aus PR #16 und die gespeicherte
-Deutsch-/Englisch-Auswahl aus PR #17 mit allen Korrekturen aus Preview 6.
+This beta combines the product cleanup from PR #16 and the saved German/English
+language selection from PR #17 with all fixes from Preview 6.
 
-- Host und Chat teilen eine Sprachauswahl. Sie ist im Host-Menü unter
-  **… → Sprache / Language** und in den Chat-Einstellungen verfügbar und bleibt
-  nach einem Neustart erhalten. Quelltext, Nachrichten und Entwürfe bleiben im
-  Original. Die Antwortsprache des Modells richtet sich nach der Nutzernachricht.
-- Eigene Produkttexte, Logo und Versionsanzeige verwenden TwinCAT Assistant.
-  Ungenutzte Chat-Serverdienste, Routen und zugehörige Abhängigkeiten wurden
-  entfernt. Benötigte Datenverträge und Drittanbieterhinweise bleiben erhalten.
-  Gemeinsame Hilfen und weitere Client-Reste sind im
-  [Bereinigungsumfang](../PRODUCT_CLEANUP_20261109.md) dokumentiert.
-- Enthält den korrigierten ersten Fensteraufruf, die UTF-8-Projekteinrichtung,
-  klare Fehleranzeigen und die Chatzuordnung vor dem Mount des Eingabefelds.
-  Der Bediener hat den Chatstart mit Preview 6 in der installierten IDE bestätigt.
+- Host and Chat share a language selection. It is available under
+  **… → Language** in the Host menu and in Chat settings, and survives a restart.
+  Source code, messages and drafts retain their original content. The model's
+  response language follows the user's message.
+- Product text, the logo and version display use TwinCAT Assistant branding.
+  Unused Chat server services, routes and their dependencies have been removed.
+  Required data contracts and third-party notices are retained. Shared helpers
+  and remaining client code are documented in the
+  [cleanup scope](../PRODUCT_CLEANUP_20261109.md).
+- Includes the corrected first tool-window invocation, UTF-8 project setup,
+  explicit error reporting and chat binding before the composer mounts.
+  The operator confirmed Preview 6 chat startup in the installed IDE.
 
 ## Installation
 
-TcXaeShell regulär schließen. Setup-EXE und `SHA256.txt` von diesem Release
-herunterladen, Prüfsumme vergleichen und **Installieren / aktualisieren** im
-vorhandenen Installationsordner wählen. Die UAC-Abfrage mit demselben
-Windows-Konto bestätigen. Eine vorherige Deinstallation ist nicht erforderlich.
-Vorhandene Chats, Anmeldungen und Projektbindungen verwenden die bisherigen
-Datenpfade. Anwendungsversion ist `0.2.0-beta.1`, native Datei-/Assembly-/VSIX-
-Version ist `0.2.0.7`.
+Close TcXaeShell normally. Download the setup EXE and `SHA256.txt` from this
+release, compare the checksum and choose **Install / update** in the existing
+installation directory. Confirm UAC with the same Windows account. Uninstalling
+the previous version is unnecessary. Existing chats, sign-ins and project
+bindings use the existing data paths. The application version is `0.2.0-beta.1`;
+the native file, assembly and VSIX version is `0.2.0.7`.
 
-Ziel bleibt TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 auf Windows x64 mit .NET 8,
-.NET Framework und WebView2. Andere Hosts sind weiterhin nicht abgenommen.
-Der Installer ist nicht signiert. Bestehende Sperren werden nicht automatisch
-gelöscht. Der Editor bleibt lesend; Editor-Profil und Inline-Vervollständigung
-sind nicht Bestandteil dieser Beta.
+The target remains TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on Windows x64 with
+.NET 8, .NET Framework and WebView2. Other hosts remain unaccepted. The installer
+is unsigned. Existing locks are not deleted automatically. The editor remains
+read-only; the editor profile and inline completion are outside this beta.
 
-## Nachweise und Grenzen
+## Evidence and limits
 
-Der lokale Windows-Build erzeugt das vollständige Anwendungspaket und die
-Setup-EXE aus dem integrierten Quellstand. `BUILD_PROVENANCE.json` erfasst die
-Quellrevision, Komponenten, Prüfsummen und tatsächlich bestandenen Prüfungen.
-Die Installerprüfung liest den eingebetteten Payload, ohne Setup auszuführen.
-Der Paket-Smoke verwendet beide echten MCPs ausschließlich an synthetischen
-Dateien. WPF-/WebView-Start und Sprachprüfungen verwenden eigene Testprofile,
-keine Operatorprofile und keine Modellanfragen.
+The local Windows build produces the complete application package and setup EXE
+from the integrated source. `BUILD_PROVENANCE.json` records the source revision,
+components, checksums and checks that actually passed. Installer verification
+reads the embedded payload without executing setup. The package smoke test uses
+both real MCPs exclusively on synthetic files. WPF/WebView startup and language
+checks use private test profiles, no operator profiles and no model requests.
 
-Die sichtbare Sprachabnahme dieser Beta in der installierten IDE, echte
-Modellantworten, Member-/Paste-/First-after-logon-Abnahmen und ein vollständiger
-realer Update-/Rollback-Lauf bleiben offen. Die Beta wird auf Wunsch als GitHub
-**Latest** geführt. Dafür ist sie dort nicht als „Pre-release“ markiert;
-Produktname und Version kennzeichnen sie weiterhin ausdrücklich als Beta.
+Visible language acceptance of this beta in the installed IDE, real model
+responses, member/paste/first-after-logon acceptance and a complete real
+update/rollback sequence remain open. At the user's request, the beta is listed
+as GitHub **Latest**. It therefore does not carry GitHub's “Pre-release” flag;
+the product name and version still explicitly identify it as a beta.

@@ -1,43 +1,42 @@
 # TwinCAT Assistant 0.2.0 Preview 6
 
-Behebt den Startfehler mit der Meldung „Zuerst eine Unterhaltung öffnen.“ bei
-gleichzeitig sichtbarem Ladebildschirm. Eine neue Unterhaltung kann bereits
-bestätigt sein, bevor React ihr Eingabefeld rendert. Der native Host bewertete
-diesen gültigen Zustand bisher als nicht bereit und lehnte die Zuordnung ab.
+Fixes startup showing “Zuerst eine Unterhaltung öffnen.” (“Open a conversation
+first”) while the loading screen remains visible. A new conversation can already
+be confirmed before React renders its input field. The native Host previously
+treated this valid state as not ready and rejected the binding.
 
-Bestätigte Chatmetadaten erlauben jetzt die Zuordnung unabhängig vom DOM-Aufbau.
-Die Anzeige wartet weiterhin auf den passenden Verlauf und das gerenderte
-Eingabefeld. Das WebView2-Composition-Control rendert hinter dem undurchsichtigen
-WPF-Ladebildschirm. Maus und Tastatur bleiben bis zur Freigabe deaktiviert.
-Projekt-, Sitzungs-, Dokument- und Berechtigungsprüfungen bleiben erhalten.
+Confirmed chat metadata now allows binding independently of DOM mounting.
+Presentation still waits for the matching history and rendered input field.
+The WebView2 composition control renders behind the opaque WPF loading screen.
+Mouse and keyboard input remain disabled until presentation is permitted.
+Project, session, document and permission checks are retained.
 
-## Prüfung
+## Verification
 
-`node scripts/test-native-chat-startup.mjs` startet ausschließlich einen eigenen
-synthetischen Backendzustand und ein eigenständiges WPF-WebView2-Control. Der
-Test verwendet den tatsächlichen nativen Chatstart, die eingebettete Integration
-und den gebauten Chat. Ein absichtlich verzögertes DOM-Signal reproduziert das
-beobachtete Zeitfenster sowohl für den allgemeinen als auch den Projektchat.
-Geprüft werden Zuordnung vor dem Mount, gesperrte Eingabe während des Ladens,
-anschließende Darstellung und ein weiterer Automationsdurchlauf ohne Duplikat.
-Der MCP-Vorbereitungsschritt wird in diesem UI-Test durch synthetische Metadaten
-ersetzt. Der separate Paketsmoke prüft beide echten MCPs an synthetischen Dateien.
+`node scripts/test-native-chat-startup.mjs` starts only an owned synthetic
+backend state and a standalone WPF/WebView2 control. It uses the actual native
+chat creation path, embedded integration and built Chat. An intentionally delayed
+DOM signal reproduces the observed window for both general and project chats.
+Checks cover binding before mount, disabled loading input, subsequent
+presentation and another automation pass without a duplicate conversation.
+This UI test replaces MCP preparation with synthetic metadata. The separate
+package smoke test checks both real MCPs on synthetic files.
 
-Das gleiche Startszenario lehnt der bisherige Preview-5-Host noch vor der
-Darstellung mit „Der neue allgemeine Chat ist nicht verfügbar.“ ab. Der neue
-Host besteht alle zwölf Prüfungen. Die Prüfung startet keine IDE, öffnet kein
-Engineeringprojekt, sendet keinen Modellprompt und verändert kein Operatorprofil.
-Eine anfangs fehlerhafte Anmeldung innerhalb der Testseite wurde auf den echten
-nativen Login vor der Navigation umgestellt. Fehlgeschlagene Fixtureläufe zählen
-nicht als weitere Produktfehler oder erfolgreiche Nachweise.
+The previous Preview 5 Host rejects the same startup scenario before
+presentation with “Der neue allgemeine Chat ist nicht verfügbar.” (“The new
+general chat is unavailable”). The new Host passes all twelve checks. No IDE is
+started, no engineering project is opened, no model prompt is sent and no
+operator profile is changed. An initially incorrect test-page login was replaced
+with the actual native login before navigation. Failed fixture runs do not count
+as additional product defects or successful evidence.
 
 ## Installation
 
-TcXaeShell regulär schließen und Setup mit **Installieren / aktualisieren** im
-vorhandenen Installationsordner ausführen. Anwendungsversion ist
-`0.2.0-preview.6`, Assembly-/Datei-/VSIX-Version ist `0.2.0.6`.
+Close TcXaeShell normally and run setup using **Install / update** in the existing
+installation directory. The application version is `0.2.0-preview.6`; the native
+assembly, file and VSIX version is `0.2.0.6`.
 
-Ziel bleibt TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 auf Windows x64.
-Die Fixes aus PR #18 und #19 sind enthalten. Die separaten PRs #16 und #17
-sind nicht enthalten. Der lokale Paketbau wird im `BUILD_PROVENANCE.json`
-erfasst. Die sichtbare Abnahme in der installierten IDE bleibt ein Bedienertest.
+The target remains TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on Windows x64.
+Fixes from PR #18 and #19 are included; the separate PRs #16 and #17 are not.
+`BUILD_PROVENANCE.json` records the local package build. Visible acceptance in
+the installed IDE remains an operator test.

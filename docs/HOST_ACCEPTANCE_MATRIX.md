@@ -1,7 +1,7 @@
 # Assistant host targets, compatibility matrix and host acceptance
 
-Recorded: 2026-11-05. Roadmap item 1 ("Kompatibilität eingrenzen und Zielhosts
-festlegen"). This document defines the first installable alpha's host target,
+Recorded: 2026-11-05. Roadmap item 1 ("Define supported hosts and compatibility
+boundaries"). This document defines the first installable alpha's host target,
 the concrete compatibility matrix and the acceptance procedure per host. It
 builds on the [installation variants](HOST_COMPATIBILITY.md) research.
 

@@ -57,7 +57,7 @@ Existing model/provider settings remain reachable through the native menu.
   at a time. Separate topics do not need to share one ever-growing transcript.
 - The clock toggles a left-hand list of this PLC project's conversations,
   showing titles, last activity and observed running responses. The header has
-  the project name, **Neuer Chat** and title search.
+  the project name, **New chat** and title search.
 - In a wide tool window the list sits beside the conversation and remains open
   during selection. In a narrow window it overlays the conversation within the
   tool window and closes after selection. Escape and an outside click dismiss
@@ -71,9 +71,8 @@ Existing model/provider settings remain reachable through the native menu.
   editor independently.
 - General chats remain separate and accessible through the existing menu.
 
-The navigation provides inline rename and **Titel automatisch generieren**.
-**Als erledigt markieren** moves a chat to the initially collapsed **Erledigte
-Chats** section; **Wieder öffnen** returns it to the active list. These are UI
+The navigation provides inline rename and **Generate title automatically**.
+**Mark done** moves a chat to the initially collapsed **Done chats** section; **Reopen** returns it to the active list. These are UI
 terms for the original archive/restore session actions and stored archive flag;
 conversation IDs, contents and sent attachments are preserved without a data
 migration. Marking a chat as done describes the conversation's work state,
@@ -89,7 +88,7 @@ admitted user prompt while the chat still has the exact original fallback
 title. The earlier native host supplied the PLC name as an explicit title, so
 those existing conversations are considered named and do not automatically get
 retitled. New chats created by the installed `dfb50b1` use the original untitled
-creation path. The follow-up exposes **Titel automatisch generieren** in each
+creation path. The follow-up exposes **Generate title automatically** in each
 active conversation's row menu. It uses OpenChamber's original complete-history
 loader, completed-turn selection, small-model title request and guarded title
 save. Busy/archived chats are excluded. A missing completed exchange or failed
@@ -344,7 +343,7 @@ long-running input/scrolling scenario.
 
 ## Thread copy and Markdown export
 
-The native overflow menu exposes **Gesamten Chat kopieren** and **Chat als Markdown
+The native overflow menu exposes **Copy entire chat** and **Chat als Markdown
 speichern**. Both use the existing OpenChamber Markdown formatter and its complete
 history loader, including messages older than the rendered/virtualized viewport.
 This exports the stored conversation and attached context supported by that

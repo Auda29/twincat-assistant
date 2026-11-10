@@ -86,7 +86,7 @@ refused. MCP settings contain paths only, with this exact schema:
 
 Reconnect the Assistant after setup or configuration changes. A connected
 Knowledge process does not establish that an activated corpus is available.
-Connection states appear under **Diagnose**; the project agent checks corpus status
+Connection states appear under **Diagnostics**; the project agent checks corpus status
 before documentation research and uses the server's returned sources.
 
 For an upgrade, retain an existing `KnowledgeConfig` argument if one is
@@ -131,7 +131,7 @@ engineering tools.
 
 Submitting a project question authorizes the selected model to retrieve saved
 project files through the reviewed read tools. Opening a project does not submit
-source to a model. **Anhängen** separately stages the supported active POU's
+source to a model. **Attach** separately stages the supported active POU's
 Automation Interface snapshot; optional automatic attachment remains off by
 default. This snapshot is not verified unsaved editor-buffer text and can differ
 from the saved files returned by engineering tools. There are no PLC writes,

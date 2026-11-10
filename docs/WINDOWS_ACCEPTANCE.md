@@ -100,8 +100,7 @@ payload hash/version separately from component-test results.
 
 - Open the Assistant: the chat starts automatically, its sidebar is collapsed,
   and connection/model diagnostics remain under Details.
-- With PLC_A/FB_Motor active, create a project chat. Before clicking **POU an Chat
-  anhängen**, the composer contains no native source. After the click, inspect
+- With PLC_A/FB_Motor active, create a project chat. Before clicking **Attach POU to chat**, the composer contains no native source. After the click, inspect
   the visible reference and its snapshot/unsaved-buffer caveat before sending.
 - Switch to PLC_B/FB_Motor: source attachment and sending in the PLC_A chat are
   refused. Return to PLC_A and explicitly validate/rebind as needed.

@@ -1,125 +1,114 @@
-# Produktbereinigung vom 09.11.2026
+# Product cleanup, 2026-11-09
 
-Die hier dokumentierte Umsetzung ist seit dem 10.11.2026 in
-[Beta 1](releases/native-v0.2.0-beta.1.md) enthalten. Die folgenden Paketnummern
-und Befunde beschreiben den damaligen Prüfstand. Der Beta-Release besitzt einen
-eigenen vollständigen Paketbau und `BUILD_PROVENANCE.json`.
+This implementation has been included in [Beta 1](releases/native-v0.2.0-beta.1.md)
+since 2026-11-10. Package identities and findings below describe the original
+verification state. The beta has its own complete build and `BUILD_PROVENANCE.json`.
 
-Dieser Stand gehört zum Branch `feat/lean-product-runtime`. Er baut auf dem
-veröffentlichten Preview 3 auf, verändert aber weder dessen Release-Artefakte
-noch die lokale Installation. Die Verifikationspakete tragen noch die bestehende
-Versionsnummer; sie sind kein neuer Preview-3-Download und kein neuer Release.
-Vor einer Veröffentlichung ist eine eigene Version und Paketabnahme nötig.
+This state belongs to `feat/lean-product-runtime`, based on published Preview 3.
+It changes neither those release artifacts nor the local installation. Its
+verification packages retain the existing version number; they are neither a
+new Preview 3 download nor a new release. Publication requires a distinct version
+and package acceptance.
 
-## Tatsächlicher Rückbau
+## Removed functionality
 
-| Teil | Änderung |
+| Area | Change |
 | --- | --- |
-| Serverstart | Browser-Broker, Dev-Server-Scanner, Terminal/Diktat, Remote-/Relay-/Spaces-Komposition und ihre Start-/Stopdienste entfallen aus der Produktzusammenstellung. Der Listener verlangt Loopback. |
-| Automatik | Assist-, Goal-, Work-, Routing-, Scheduler-, Dispatch- und Auto-Accept-Dienste werden nicht mehr erzeugt oder gestartet. Neue Goal-/Worktree-Anforderungen im gemeinsamen Sitzungsdienst werden vor Nebenwirkungen verweigert. |
-| Routen | Git-/Repository-Accounts, Linear, Walkthroughs, Tracked Items, Gäste/Extensions und Control-Routen werden nicht registriert. Die bestehenden FS-Schreib-/Ausführungsrouten sind aus dem Routenmodul entfernt. Explizite Sperren verhindern den Durchfall zur Core-Proxyroute. |
-| Chat-Ereignisse | `/api/openchamber/events` bleibt als eigener authentifizierter SSE-Kanal erhalten. Metadatenübertragung benötigt dadurch keinen Scheduler. Ereignisnamen und Verbindungs-IDs bleiben kompatibel. |
-| CLI | Nur Versionsprobe, Hilfe und passwortgeschütztes `serve --foreground --host 127.0.0.1 --port …`. Keine Daemon-, Service-, Tunnel- oder Updater-Befehle. Die Versionsprobe bleibt der gepinnte Abhängigkeitsvertrag. |
-| Client-Start | Globale Push-, Browser-Provider-, Memory- und Routing-Synchronisation, Repository-/Linear-Accountabfrage und Terminal-Keepalive entfallen aus App/MainLayout. Chat-/Statusereignisse und Enterprise-Policy bleiben. |
-| Einstellungen | Produktnavigation enthält Anbieter, Darstellung, Chat, Sitzungen/Aufbewahrung, Tastenkürzel und Über. Andere persistierte Einstellungs-Slugs fallen auf die Produktnavigation zurück. Native Projekt-/MCP-Einrichtung bleibt beim Host. |
-| Eingabebereich | Datei-Anhänge, Modellwahl, Senden, Queue, Stop und Fokus bleiben. Mikrofon, Goal und automatische Berechtigungsfreigabe entfallen aus dem Footer. Der normale Editor und seine Anhänge bleiben erhalten. |
-| Anwendungspaket | Eine konservative Importprüfung entfernt nur nicht mehr erreichbare Dateien der benannten Funktionsfamilien und nicht mehr benötigte Pakete. Gemeinsame Verbraucher verhindern eine Paketlöschung. Unbekannte berechnete Imports halten ihre lokalen Module vorsorglich im Paket. |
+| Server startup | Browser broker, dev-server scanner, terminal/dictation, remote/relay/Spaces composition and their startup/shutdown services are removed from product composition. The listener requires loopback. |
+| Automation | Assist, Goal, Work, Routing, Scheduler, Dispatch and Auto-Accept services are no longer created or started. New goal/worktree requests in the shared session service are refused before side effects. |
+| Routes | Git/repository accounts, Linear, walkthroughs, tracked items, guests/extensions and control routes are not registered. Existing filesystem write/execution routes are removed from their module. Explicit refusals prevent fall-through to the Core proxy. |
+| Chat events | `/api/openchamber/events` remains an independent authenticated SSE channel. Metadata delivery therefore needs no scheduler. Event names and connection IDs remain compatible. |
+| CLI | Only version probing, help and password-protected `serve --foreground --host 127.0.0.1 --port …` remain. No daemon, service, tunnel or updater commands. Version probing retains the pinned dependency contract. |
+| Client startup | Global push/browser-provider/memory/routing synchronization, repository/Linear account queries and terminal keepalive are removed from App/MainLayout. Chat/status events and enterprise policy remain. |
+| Settings | Product navigation contains providers, appearance, chat, sessions/retention, shortcuts and About. Other persisted setting slugs fall back to product navigation. Native project/MCP setup remains with the Host. |
+| Composer | File attachments, model selection, send, queue, stop and focus remain. Microphone, Goal and automatic permission acceptance are removed from the footer. The original editor and attachments remain. |
+| Application package | Conservative import analysis removes only unreachable files in named feature families and unused packages. Shared consumers prevent package removal. Unknown computed imports conservatively retain local modules. |
 
-Der erste vollständige Paketbau entfernte 241 Server-/CLI-Dateien und 24 Pakete,
-darunter `node-pty`, `bun-pty`, `sherpa-onnx-node` samt Windows-Laufzeit,
-`web-push`, `@clack/prompts` und `qrcode-terminal` mit exklusiven transitiven
-Abhängigkeiten. Dieser erste Bau lag vor der letzten SSE-/Client-Korrektur und
-ist nur ein Größen-/Entfernungsnachweis. Der endgültige Paketstart ist separat
-nachzuweisen.
+The first complete package build removed 241 server/CLI files and 24 packages,
+including `node-pty`, `bun-pty`, `sherpa-onnx-node` and its Windows runtime,
+`web-push`, `@clack/prompts`, `qrcode-terminal` and exclusive transitive dependencies.
+That build preceded the final SSE/client correction and establishes size/removal
+only. Final package startup requires separate evidence.
 
-## Produktname und Herkunft
+## Product identity and attribution
 
-Die Sprachdateien verwenden TwinCAT Assistant Core bzw. Chat für unsere
-Produktmodule. Auch die zusätzlichen Feature-Wörterbücher sind berücksichtigt.
-Das betrifft 2.731 ursprüngliche und 686 weitere Texte; bekannte externe
-Angebotsnamen OpenCode Go, Zen und Console bleiben erhalten. Schlüssel und
-Platzhalter werden nicht umbenannt. Das Produkt erhält ein TC-Zeichen und ein
-passendes SVG-Favicon. Ladebildschirm und Fenstertitel nennen TwinCAT Assistant.
+Language files use TwinCAT Assistant Core and Chat for product modules, including
+additional feature dictionaries. This covers 2,731 original and 686 additional
+strings. External offering names OpenCode Go, Zen and Console remain. Keys and
+placeholders are unchanged. The product receives a TC mark and matching SVG
+favicon. The loading screen and window title identify TwinCAT Assistant.
 
-Die Über-Seite liest die tatsächliche Anwendungsversion über den geschützten
-Produktendpunkt. Sie zeigt keine OpenChamber-Version als Produktversion und
-bietet keine Upstream-Selbstaktualisierung an. OpenCode und OpenChamber bleiben
-als Herkunft mit ihren Projektlinks sichtbar. Lizenzen und Notices bleiben
-erhalten. Technische Paket-, API-, Ereignis-, Umgebungs- und Persistenznamen
-bleiben kompatibel; diese Namen sind weiterhin Teil der Verträge.
+About reads the actual application version through the protected product endpoint.
+It does not present the OpenChamber version as the product version or offer an
+upstream self-updater. OpenCode and OpenChamber remain visible as foundations with
+their project links. Licenses and notices are retained. Technical package, API,
+event, environment and persistence names remain compatible parts of their contracts.
 
-Ganze ersetzte Module liegen lesbar unter `upstream/overlays/openchamber/`.
-`scripts/source-overlay.mjs` prüft vor dem Ersetzen den ursprünglichen
-normalisierten SHA-256. Kleine Eingriffe bleiben exakte Einzelersetzungen.
-Build-Receipt und Paketbauer binden auch die Ersatzdateien. Unbekannte
-Quelländerungen werden weiterhin abgewiesen.
+Whole-module replacements remain readable under `upstream/overlays/openchamber/`.
+`scripts/source-overlay.mjs` checks the original normalized SHA-256 before replacing
+a module. Smaller changes remain exact substitutions. The build receipt and package
+builder bind replacement files too. Unknown source changes are still rejected.
 
-## Erhaltener Zustand und Grenzen
+## Preserved state and limits
 
-Es werden keine vorhandenen Chats, Anmeldungen, Konten, Projektbindungen oder
-historischen Feature-Verzeichnisse gelöscht oder eingelesen. Das Entfernen
-einer Laufzeitfunktion migriert oder bereinigt deren alte Benutzerdaten nicht.
-Die gesperrten npm-Lockfiles dokumentieren weiter die Installationsinputs;
-das abschließende Manifest beschreibt den tatsächlich ausgelieferten Bestand.
+No existing chats, sign-ins, accounts, project bindings or historical feature
+directories are deleted or read. Removing runtime functionality neither migrates
+nor cleans up its old user data. Locked npm files document installation inputs;
+the final manifest describes what is actually delivered.
 
-Der unveränderte Core ist weiterhin ein vollständiges gepinntes Engine-Binary.
-Seine internen Drittanbieterbezeichnungen oder eingebauten CLI-Teile lassen sich
-nicht durch Löschen von Chat-Dateien entfernen. Gemeinsame Sitzungs-, Git-,
-Memory-/Knowledge- und Konfigurationshilfen bleiben teilweise erreichbar,
-weil normale Gespräche, Metadaten und alte Zustände dieselben Module verwenden.
-Das interne Session Knowledge ist nicht der TwinCAT-Knowledge-MCP.
+The unchanged Core remains a complete pinned engine binary. Removing Chat files
+cannot remove its internal third-party names or built-in CLI parts. Shared
+session, Git, memory/knowledge and configuration helpers remain partly reachable
+because ordinary conversations, metadata and old state use them. Internal session
+knowledge is distinct from the TwinCAT Knowledge MCP.
 
-Der generische Web-Client enthält noch alte Panel-/Starter-/Statistik-Einstiege
-und einzelne Abfragen für entfernte Funktionen. Der native Adapter verbirgt
-bereits die allgemeinen Panels, Sidebar und Starter. Der Browser-Prüflauf
-ohne Adapter meldet deshalb erwartete 404 für entfernte Funktionen und ist
-keine fehlerfreie Abnahme des generischen Web-Clients. Diese Client-Reste,
-weitere gemeinsame Hilfen sowie ältere PWA-Rasterbilder benötigen einen
-weiteren begrenzten Rückbau. Electron, VS Code und Mobile sind keine
-Auslieferungsziele; ihre Quellbäume werden nicht zu TwinCAT-Produkten erklärt.
+The generic web client still contains old panel/starter/statistics entry points
+and some queries for removed features. The native adapter already hides general
+panels, the sidebar and starters. Browser verification without the adapter therefore
+reports expected 404s for removed functionality and is not clean acceptance of the
+generic client. These client remnants, shared helpers and older PWA raster images
+need further bounded cleanup. Electron, VS Code and Mobile are not delivery targets;
+their source trees are not rebranded as TwinCAT products.
 
-## Prüfungen
+## Verification
 
-- Echter gepinnter Chat/UI-Build; unveränderter Core per Hash wiederverwendet.
-- 26 gezielte Node-/Integrationsprüfungen einschließlich tatsächlichem
-  geschütztem Start, Anbieteranmeldung mit künstlichem Schlüssel, Modellkatalog,
-  Profil-Recovery und Paketbauer-Fixture ohne Skip bestanden.
-- Nach dem Herauslösen des SSE-Kanals: echter Source-Start, SSE-Eröffnungsframe,
-  Goal-/Worktree-Verweigerung und kontrolliertes Ende der Prozesskette bestanden.
-- UI-/Web-Typechecks und gezielter UI-Lint; der normale Composer bleibt erhalten.
-- Der Lint der acht betroffenen UI-/Kompositionsdateien meldet keine Fehler.
-  Die fünf bestehenden `setLinkedReferences`-Hookwarnungen im Composer bleiben;
-  die exakt rekonstruierte Ausgangsfassung meldet dieselben fünf Warnungen.
-- Der projektweite Knip-Lauf wurde ausgeführt. Er meldet im gesamten
-  Upstream-Monorepo 74 ungenutzte Dateien, 297 Exports, 214 exportierte Typen und
-  drei Konfigurationshinweise. Das ist kein bereinigter Nullbefund; Dateien
-  anderer Clients und Tests wurden deshalb nicht pauschal gelöscht.
-- Isolierter Browser: Login, Eingabebereich, Produktnavigation und Über-Seite mit
-  echter Anwendungsversion. Keine Modellanfrage und keine Anbieter-OAuth-Abnahme.
+- Actual pinned Chat/UI build; unchanged Core reused by hash.
+- 26 focused Node/integration checks passed without skips, including protected
+  startup, provider sign-in with a synthetic key, model catalog, profile recovery
+  and the package-builder fixture.
+- After separating SSE: actual source startup, opening SSE frame, goal/worktree
+  refusal and controlled process-tree shutdown passed.
+- UI/Web typechecks and focused UI lint; the original composer remains.
+- Lint on eight affected UI/composition files reports no errors. Five existing
+  `setLinkedReferences` hook warnings remain; the exact reconstructed baseline
+  reports the same five warnings.
+- Project-wide Knip ran and reported 74 unused files, 297 exports, 214 exported
+  types and three configuration notices across the upstream monorepo. This is
+  not a zero-finding cleanup result. Other clients' files and tests were not
+  indiscriminately removed.
+- Isolated browser: login, composer, product navigation and About with actual
+  application version. No model request or provider OAuth acceptance.
 
-Lokale Prüfdateien liegen ignoriert unter `artifacts/` und
-`output/playwright/lean-product/`. Das Browserprofil und alle verwendeten
-Zustandsverzeichnisse sind synthetisch. Eine installierte IDE, PLC-Aktion,
-Modellantwort, echter Update-/Rollback-Lauf oder neue CI-Auslieferung wird
-hieraus nicht abgeleitet. Die Punkte 5–7 sind unverändert offen.
+Ignored verification files are under `artifacts/` and
+`output/playwright/lean-product/`. Browser profiles and all state directories are
+synthetic. This establishes no installed IDE usage, PLC action, model response,
+real update/rollback or new CI delivery. At this dated checkpoint, roadmap items
+5–7 remain unchanged and open.
 
-## Vollständiges Verifikationspaket
+## Complete verification package
 
-`artifacts/lean-product-verified-20261109-application` enthält 21.537 Dateien mit
-630.292.500 Dateibytes. Das veröffentlichte Preview-3-Anwendungspaket enthält
-22.088 Dateien mit 690.823.921 Dateibytes. Die Reduktion beträgt 551 Dateien und
-60.531.421 Bytes. Das Anwendungsmanifest des Verifikationspakets hat SHA-256
+`artifacts/lean-product-verified-20261109-application` contains 21,537 files and
+630,292,500 file bytes. Published Preview 3 contains 22,088 files and 690,823,921
+bytes. The reduction is 551 files and 60,531,421 bytes. Verification-manifest SHA-256:
 `b0603c8f7f75984f554652db03e199370444e0796b013b9282b8cef58369f0da`.
 
-Der echte Paket-Smoke bestand geschützten Start, Produktversion, Chat-Metadaten-
-SSE, ausgeschlossene Routen, beide echten MCP-Probes mit synthetischen Dateien,
-Neustart, Zustandserhalt und abschließende unveränderte Paketintegrität. Es gab
-keine Provideranfrage oder PLC-Aktion.
+The actual package smoke passed protected startup, product version, chat metadata
+SSE, excluded routes, both real MCP probes on synthetic files, restart, state
+preservation and final unchanged-package integrity. No provider request or PLC
+action occurred.
 
-Nach diesem Paketbau wurde ausschließlich die responsive Anordnung der neuen
-Einstellungsansicht angepasst: schmale Desktop-WebViews verwenden ebenfalls die
-kompakte Navigation. Dafür wurde der Source-UI erneut gebaut und geprüft. Das
-obige Paket belegt den Stand vor dieser letzten UI-Anordnung. Vor einem Release
-muss das vollständige Paket aus dem endgültigen Stand neu gebaut werden; dieser
-Nachweis behauptet keine abweichende oder nachträglich umgeschriebene Manifest-
-Identität.
+Only the responsive settings arrangement changed after that build: narrow desktop
+WebViews also use compact navigation. The source UI was rebuilt and checked for
+that change. The package above establishes the preceding state. A release must
+rebuild the complete package from final source; no different or retroactively
+rewritten manifest identity is claimed.

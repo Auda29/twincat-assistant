@@ -1,50 +1,47 @@
 # Implementation status
 
-**Beta 1, 2026-11-10.** PR #16 und #17 sind gemergt. Produktbereinigung und
-DE/EN-Sprachauswahl sind mit den Start- und MCP-Korrekturen aus Preview 6
-als GitHub Latest veröffentlicht. Der integrierte Stand besteht 163 Node-Tests
-ohne Skip, 940 native Prüfungen, den WPF-/WebView-Start und die Sprachprüfungen
-sowie den vollständigen Paket-/Installer-Payload-Smoke. Der Bediener hat
-den Chatstart mit Preview 6 in der installierten TcXaeShell bestätigt. Dies
-schließt die Sprach-, Member-, Paste- und First-after-logon-Abnahmen nicht.
-[Beta-Umfang und Installationshinweise](releases/native-v0.2.0-beta.1.md).
+**Beta 1, 2026-11-10.** PR #16 and #17 are merged. Product cleanup and saved DE/EN
+selection are published as GitHub Latest with Preview 6 startup/MCP fixes. The
+integrated state passes 163 Node tests without skips, 940 native checks,
+WPF/WebView startup, language checks and full package/installer-payload smoke.
+The operator confirmed Preview 6 Chat startup in installed TcXaeShell. This does
+not close language/member/paste/first-after-logon acceptance.
+[Beta scope and installation](releases/native-v0.2.0-beta.1.md).
 
-**Deutsch/Englisch, 2026-11-09.** Roadmap 6 ist auf
-`feat/de-en-localization` implementiert: zentrale native Ressourcen, synchronisierte
-Sprachauswahl in Host und Chat sowie Speicherung neben den vorhandenen
-Host-Präferenzen. Der gebaute Chat wurde im Browser geprüft, das tatsächliche
-WPF-Control außerhalb der IDE mit isoliertem Profil. Quelltext, Chattitel, Entwürfe
-und Anhänge werden nicht übersetzt. [Umfang und Nachweise](LANGUAGE_SUPPORT.md)
-trennen diese Prüfungen von der noch offenen installierten IDE-Abnahme. Keine
-Installation, kein Release und keine Änderungen an Operatorprofilen.
+**German/English, 2026-11-09.** Roadmap item 6 is implemented on
+`feat/de-en-localization`: central native resources, synchronized Host/Chat
+selection and persistence alongside existing Host preferences. Built Chat was
+checked in-browser and the actual WPF control outside the IDE with private state.
+Source, chat titles, drafts and attachments are not translated.
+[Scope/evidence](LANGUAGE_SUPPORT.md) separates these checks from installed IDE
+acceptance. That change performed no installation, release or operator-profile
+modification.
 
 **Product cleanup branch, 2026-11-09.** The next source/runtime change removes
 unused server services, specializes the foreground CLI, prunes unreachable
 feature files and native dependencies, and applies TwinCAT Assistant identity
 to product text, the logo and the About page. See
 [the cleanup record](PRODUCT_CLEANUP_20261109.md) for its exact scope and checks.
-It is separate from the published Preview 3 and has not been installed on the
+It is separate from published Preview 3 and has not been installed on the
 operator workstation. Remaining shared helpers and generic client entry points
-are explicitly recorded; this does not close Roadmap 2 or installed UI gates.
+are explicitly recorded; this does not close roadmap item 2 or installed UI gates.
 
-**Preview-6-Korrektur, 2026-11-10.** Bestätigte Chats werden bereits vor dem
-Mount des Eingabefelds zugeordnet. WebView2 rendert währenddessen hinter dem
-WPF-Ladebildschirm bei gesperrter Eingabe. Zwölf Prüfungen des tatsächlichen
-nativen WPF-/WebView-Starts bestehen. Die installierte IDE-Abnahme bleibt offen.
-[Umfang und Nachweise](releases/native-v0.2.0-preview.6.md).
+**Preview 6 correction, 2026-11-10.** Confirmed chats bind before composer mount.
+WebView2 renders behind the WPF splash with input disabled. Twelve actual native
+WPF/WebView startup checks pass. Installed IDE acceptance remained open at this
+checkpoint. [Scope/evidence](releases/native-v0.2.0-preview.6.md).
 
-**Preview-5-Korrektur, 2026-11-10.** Die Antwort des nativen MCP-Prozesses wird
-nun ausdrücklich als UTF-8 gelesen. Ein gezielter Vorher-/Nachher-Test belegt
-die zuvor falsche Verarbeitung von Umlauten und `ß` in Projektpfaden bei
-Windows-Codepages 850/1252. [Umfang und Nachweise](releases/native-v0.2.0-preview.5.md).
-Die installierte IDE-Abnahme bleibt offen.
+**Preview 5 correction, 2026-11-10.** Native MCP output is explicitly decoded as
+UTF-8. Focused before/after checks establish the former corruption of umlauts/`ß`
+in project paths under Windows code pages 850/1252.
+[Scope/evidence](releases/native-v0.2.0-preview.5.md). Installed IDE acceptance
+remained open at this checkpoint.
 
-**Preview 4, 2026-11-10.** PR #18 ist gemergt. Der neue Release trennt
-Projekteinrichtungsfehler von der Chatverbindung und verwendet die eigenständige
-Version `0.2.0-preview.4` / `0.2.0.4` für Updates vorhandener Preview-3-Installationen.
-Die [Releasebeschreibung](releases/native-v0.2.0-preview.4.md) grenzt den lokalen
-Build und die noch ausstehende installierte UI-Abnahme ab. PR #16/#17 sind
-nicht enthalten.
+**Preview 4, 2026-11-10.** PR #18 is merged. Project setup errors are separated
+from Chat connection state, with distinct application `0.2.0-preview.4` / native
+`0.2.0.4` identity for updates from Preview 3. The
+[release notes](releases/native-v0.2.0-preview.4.md) distinguish local build evidence
+from pending installed UI acceptance. PR #16/#17 are not included.
 
 **Preview 3 follow-up, 2026-11-09.** The first-menu-click defect has been traced
 to the installed SDK 15 synchronous tool-window creation fallback and fixed with

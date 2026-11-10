@@ -1,45 +1,43 @@
 # TwinCAT Assistant 0.2.0 Preview 5
 
-Behebt einen weiteren Fehler bei der nativen Projekteinrichtung: Node liefert
-seine JSON-Antwort als UTF-8. Der Host verwendete beim Lesen bisher die
-Windows-/Konsolen-Zeichenkodierung. Dadurch können Umlaute und `ß` in den
-zurückgegebenen Lösungs- und Projektpfaden verändert werden. Die unverändert
-strenge Prüfung des Projektbezugs lehnt diese verfälschten Pfade anschließend ab.
+Fixes another native project-setup failure. Node emits its JSON response as UTF-8,
+but the Host previously decoded it using the Windows/console encoding. Umlauts
+and `ß` in returned solution and project paths could therefore change. The
+unchanged strict project-binding check then rejected those corrupted paths.
 
-Der MCP-Prozess legt jetzt UTF-8 ausdrücklich für seine Ausgabekanäle fest.
-Die JSON-Antwort wird strikt dekodiert. Projektprüfung, Paketprüfung, lesende
-Berechtigungen und Sperrenverhalten werden nicht gelockert.
+The native MCP process starter now explicitly selects UTF-8 for its output
+channels and decodes JSON strictly. Project validation, package verification,
+read-only permissions and lock behavior are not relaxed.
 
-## Nachweise
+## Evidence
 
-`scripts/Test-NativeMcpEncoding.ps1` ruft den tatsächlichen nativen Prozessstarter
-mit einem synthetischen Node-Protokollpartner auf. Derselbe Unicode-Pfadtest
-scheitert mit dem bisherigen Host unter Codepage 850 und besteht mit dem Fix
-unter 850, 1252 und 65001. Es werden keine echten Lösungs- oder PLC-Dateien gelesen.
-Der vierte Check bestätigt dies für die ausschließlich synthetischen Dateinamen.
+`scripts/Test-NativeMcpEncoding.ps1` invokes the actual native process starter
+against a synthetic Node protocol peer. The same Unicode-path test fails with
+the previous Host under code page 850 and passes with the fix under 850, 1252
+and 65001. No real solution or PLC files are read. A fourth check confirms that
+only synthetic filenames were used.
 
-Zusätzlich bestand der echte installierte Preview-4-Backendaufruf über den
-korrigierten nativen Prozessstarter mit einer isolierten Kopie der bekannten
-Konfigurationsmetadaten und erzwungener Codepage 850. Originalkonfigurationen,
-Chats und Zugangsdaten blieben unverändert. Eine anfängliche PowerShell-Probe
-las ihre eigene UTF-8-Fixture mit der falschen Standardkodierung; sie wurde
-korrigiert und zählt nicht als Nachweis eines Produktfehlers. Der anschließende
-gezielte Vorher-/Nachher-Test isoliert die Antwortdekodierung.
+The actual installed Preview 4 backend invocation also passed through the fixed
+native starter using an isolated copy of known configuration metadata and forced
+code page 850. Original configurations, chats and credentials were unchanged.
+An initial PowerShell probe read its own UTF-8 fixture using the wrong default
+encoding; this was corrected and is not evidence of a product defect. The
+subsequent focused before/after test isolates response decoding.
 
 ## Installation
 
-TcXaeShell regulär schließen, Setup-EXE und `SHA256.txt` herunterladen, Prüfsumme
-vergleichen und **Installieren / aktualisieren** im vorhandenen Installationsordner
-wählen. Die UAC-Abfrage mit demselben Windows-Konto bestätigen. Eine Deinstallation
-von Preview 3 oder 4 ist nicht nötig. Anwendungsversion ist `0.2.0-preview.5`,
-native Assembly-/Datei-/VSIX-Version ist `0.2.0.5`.
+Close TcXaeShell normally, download the setup EXE and `SHA256.txt`, compare the
+checksum and choose **Install / update** in the existing installation directory.
+Confirm UAC with the same Windows account. Uninstalling Preview 3 or 4 is
+unnecessary. The application version is `0.2.0-preview.5`; the native assembly,
+file and VSIX version is `0.2.0.5`.
 
-Ziel bleibt TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 auf Windows x64 mit vorhandener
-.NET-8-Runtime, .NET Framework und WebView2. Der Installer ist nicht signiert.
-Bereits vorhandene Projektsperren benötigen weiterhin eine geprüfte
-Wiederherstellung bei Prozessruhe. Die Erweiterung löscht sie nicht automatisch.
+The target remains TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on Windows x64 with an
+installed .NET 8 runtime, .NET Framework and WebView2. The installer is unsigned.
+Existing project locks still require reviewed recovery with processes quiescent;
+the extension does not delete them automatically.
 
-Der Fix aus PR #18 bleibt enthalten. Die noch separaten PRs #16 und #17 sind
-nicht enthalten. Der lokale Windows-Paketbau und seine Prüfungen werden im
-beiliegenden `BUILD_PROVENANCE.json` erfasst. Eine sichtbare Abnahme der neuen
-Version in der installierten IDE bleibt ein anschließender Bedienertest.
+The PR #18 fix remains included. Separate PRs #16 and #17 are not included.
+`BUILD_PROVENANCE.json` records the local Windows package build and its checks.
+Visible acceptance of this version in the installed IDE remains a subsequent
+operator test.

@@ -1,5 +1,9 @@
 # Documentation
 
+Repository documentation and GitHub release titles and notes are maintained in
+English. The product UI remains available in German and English. Preserve
+localized UI/error quotations when needed as evidence, with an English explanation.
+
 The MVP documents describe the target product. Start with [Status](STATUS.md) for
 what exists and has been tested, then [Roadmap](ROADMAP.md) for the work sequence
 and exit gates. The current planning branch describes the

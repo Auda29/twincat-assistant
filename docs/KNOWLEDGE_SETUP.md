@@ -1,7 +1,7 @@
 # Automatic documentation setup
 
 Native 0.1.9 discovers installed Beckhoff InfoSys help and prepares it for the
-Knowledge MCP from the native **Wissenssuche** panel. It reuses the pinned
+Knowledge MCP from the native **Knowledge search** panel. It reuses the pinned
 Knowledge CLI for import, validation and snapshot activation. No documentation
 files are bundled with the Assistant.
 
@@ -23,20 +23,20 @@ executable so the shared broker starts the selected installation.
 ## Normal use
 
 1. After native chat starts, the Assistant looks for installed help in the
-   standard Help Library catalog. The banner offers **Einrichten** and the
+   standard Help Library catalog. The banner offers **Set up** and the
    overflow menu always exposes **Wissenssuche einrichten**.
 2. Select the installed help. A unique German source is preselected, with
    English as the fallback. Multiple revisions require an explicit selection;
    the Assistant does not guess the correct revision.
-3. Click **Einrichten**. Import and validation run outside the IDE process with
-   phase feedback and an **Abbrechen** action. The project chat remains usable.
+3. Click **Set up**. Import and validation run outside the IDE process with
+   phase feedback and an **Cancel** action. The project chat remains usable.
    The final activation/connection check disables ordinary cancellation;
    closing the host still revokes owned work.
 4. The Assistant reconnects Knowledge for the selected chat directory. It shows
    **Wissenssuche bereit · Deutsch** after the connection is confirmed. A
    prepared index alone is labelled as prepared, not connected.
 
-The panel can be closed while work continues. **Neu suchen** refreshes discovery.
+The panel can be closed while work continues. **Search again** refreshes discovery.
 When no supported help is found, the panel explains how to retry after installing
 InfoSys. A changed source or a newer installed archive revision offers an index
 update. Existing validated snapshots are retained for rollback. A supplied

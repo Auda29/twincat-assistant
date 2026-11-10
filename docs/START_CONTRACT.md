@@ -1,286 +1,235 @@
-# Gemeinsamer Startvertrag für Core, Chat und Host
+# Shared startup contract for Core, Chat and Host
 
-Stand der Bestandsaufnahme: 29.10.2026, integrierter Stand `57fb2cc`.
-Der Frontend-Commit `ddc9dce6b2662090b223149e0b4d032ef47b2b83` ist darin
-konfliktfrei übernommen. Die Angaben zur vorausgehenden Designprüfung beziehen
-sich auf diesen Stand; die Startvorbereitung wurde am 30.10.2026 konsolidiert.
+Inventory dated 2026-10-29 at integrated revision `57fb2cc`, including frontend
+commit `ddc9dce6b2662090b223149e0b4d032ef47b2b83` without conflicts. Earlier design
+verification refers to this state. Startup preparation was consolidated on
+2026-10-30.
 
-Dieser Vertrag konkretisiert den nächsten Abschnitt der
-[Server-Bestandsaufnahme](BACKEND_SERVER_INVENTORY.md). Er beschreibt den
-vorhandenen Startpfad und die Anforderungen an dessen gemeinsame Verwaltung
-im Assistant Core. Die erste Konsolidierung ist seit 30.10.2026 in
-[runtime-start.mjs](../src/runtime-start.mjs) umgesetzt. Dieses Dokument führt
-weder einen neuen Dienst noch eine
-neue API, Protokollversion oder einen zusätzlichen Prozess ein.
+This contract develops the [server inventory](BACKEND_SERVER_INVENTORY.md), describing
+the existing startup path and requirements for shared management in Assistant Core.
+Initial consolidation has been implemented in [runtime-start.mjs](../src/runtime-start.mjs)
+since 2026-10-30. This document introduces no service, API, protocol version or
+additional process.
 
-## Zuständigkeiten
+## Responsibilities
 
-| Modul | Verantwortung beim Start |
+| Module | Startup responsibility |
 | --- | --- |
-| Assistant Host | Native Konfiguration, lokales Dienstpasswort, Lebensdauer des eigenen Starts, WebView, Anmeldung, Navigation und Anzeige des Ladezustands |
-| Assistant Core | Profil und freigegebene Konfiguration prüfen, Chat-Ressourcen vorbereiten, Runtime-Artefakte auswählen, Prozesse kontrolliert starten und beenden, vorhandene Serveraufgaben weiterverwenden |
-| Assistant Chat | Bestehende Oberfläche laden, Runtime-/Source-Vertrag initialisieren, Composer und Sitzungen laden, Status anzeigen |
-| Engineering MCP | Projektbezogene Werkzeuge über den vorhandenen MCP-Vertrag anbieten; aktuell gespeicherte PLC-Dateien lesen |
-| Knowledge MCP | Dokumentationskorpus und Suchwerkzeuge bereitstellen; sein gemeinsamer Broker gehört zur lokalen Laufzeitverwaltung |
+| Assistant Host | Native configuration, local service password, owned-start lifetime, WebView, login, navigation and loading presentation |
+| Assistant Core | Validate profile/approved configuration, prepare Chat resources, select artifacts, supervise processes and reuse existing server tasks |
+| Assistant Chat | Load existing UI, initialize runtime/source contract, load composer/sessions and present status |
+| Engineering MCP | Project-scoped tools through the existing MCP contract; currently reads saved PLC files |
+| Knowledge MCP | Corpus/search tools; its shared broker belongs to local runtime management |
 
-OpenCode bleibt Eigentümer von Modellanbindung, Agentenablauf, Werkzeugausführung
-und Gesprächsdatenbank. OpenChamber übernimmt im aktuellen Stand weiterhin
-seine vorhandenen Serveraufgaben. Die Namen Core, Chat und Host legen die
-Zuständigkeit fest, nicht die Zahl der laufenden Prozesse.
+OpenCode owns model integration, agent execution, tools and conversation database.
+OpenChamber still performs its existing server tasks. Core/Chat/Host describe
+ownership, not a required process count.
 
-## Eingaben und Konfigurationsbesitz
+## Inputs and configuration ownership
 
-Die native Einrichtung in `native-chat.json` enthält die bestehenden Felder
-`NodePath`, `RepositoryRoot`, `StateRoot`, `DotNetRoot` und optional
-`McpSettingsPath`. Der Host prüft absolute, normalisierte Pfade und die
-benötigten ausführbaren Dateien. Das lokale Dienstpasswort liegt getrennt per
-DPAPI geschützt im nativen Datenbereich. Anbieter-Credentials gehören zu OpenCode.
+Native `native-chat.json` uses existing `NodePath`, `RepositoryRoot`, `StateRoot`,
+`DotNetRoot` and optional `McpSettingsPath`. The Host checks absolute normalized
+paths and required executables. The local service password is separately
+DPAPI-protected in native data. Provider credentials belong to OpenCode.
+See [NativeChatConfiguration/NativeChatCredentials](../native/IdeHost/NativeChatRuntime.cs).
 
-Quelle: [NativeChatConfiguration und NativeChatCredentials](../native/IdeHost/NativeChatRuntime.cs).
+The existing `src/native-chat.mjs` request is one UTF-8 JSON line on stdin,
+currently without a `version` field.
 
-Der bestehende Startauftrag an `src/native-chat.mjs` besteht aus einer
-UTF-8-JSON-Zeile auf stdin. Der Kanal hat derzeit kein `version`-Feld.
-
-| Feld | Vorhandene Validierung / Bedeutung |
+| Field | Existing validation/meaning |
 | --- | --- |
-| `state` | Erforderlicher absoluter Pfad zum Operator-Profil, höchstens 2048 Zeichen, kein NUL |
-| `port` | Erforderliche ganze Zahl von 1024 bis 65535; Bindung ausschließlich an `127.0.0.1` |
-| `password` | Erforderlicher String mit 12 bis 1024 Zeichen, nicht ausschließlich Leerraum, kein NUL; unverändert übergeben, damit Unicode erhalten bleibt |
-| `mcpConfig` | Optionaler absoluter Pfad zur nativen MCP-Konfiguration, höchstens 2048 Zeichen, kein NUL; die Datei wird gesondert geprüft |
+| `state` | Required absolute operator-profile path, at most 2048 characters, no NUL |
+| `port` | Required integer 1024–65535; binds only to `127.0.0.1` |
+| `password` | Required non-whitespace string, 12–1024 characters, no NUL; passed unchanged to preserve Unicode |
+| `mcpConfig` | Optional absolute native MCP configuration path, at most 2048 characters, no NUL; file checked separately |
 
-Unbekannte Felder werden abgewiesen. Der Parser akzeptiert genau einen führenden
-UTF-8-BOM. Der Node-Eingang begrenzt die gesamte Eingabe auf 32768 Bytes und
-wartet höchstens zehn Sekunden auf den ersten Auftrag. Weitere Eingabezeilen
-beenden den laufenden Auftrag. Anbieter, Modell und PLC-Quelltext werden nicht
-als zusätzliche Startfelder angenommen.
+Unknown fields are refused. Exactly one leading UTF-8 BOM is accepted. Node bounds
+input to 32,768 bytes and waits at most ten seconds for the first request.
+Additional lines stop the running request. Provider, model and PLC source are
+not accepted as extra startup fields. See
+[request validation, parser and main](../src/native-chat.mjs).
 
-Quelle: [validateNativeChatRequest, parseNativeChatRequest und main](../src/native-chat.mjs).
+Operator CLI `init`, `doctor` and `start` remain. `start` uses the same profile,
+launcher and supervisor. Explicit binary paths remain operator options, not
+native browser/startup fields. The CLI expects `OPENCHAMBER_UI_PASSWORD`;
+`prepareLaunch` currently checks only that it is nonempty. Consolidation must not
+assume native length restrictions already apply to both entry points.
+See [CLI](../src/cli.mjs) and [prepareLaunch](../src/launcher.mjs).
 
-Für den Operator-CLI bleiben `init`, `doctor` und `start` erhalten.
-`start` verwendet dasselbe Profil und dieselben Launch-/Supervisor-Module.
-Explizite Binary-Pfade sind dort weiterhin Operator-Optionen; sie werden nicht
-zu Feldern des nativen Browser- oder Startkanals. Der CLI erwartet das
-Dienstpasswort über `OPENCHAMBER_UI_PASSWORD` und prüft im heutigen
-`prepareLaunch` nur, ob es nicht leer ist. Die strengere native Längenprüfung
-darf bei der Konsolidierung nicht stillschweigend als bereits gemeinsames
-Verhalten beider Eingänge vorausgesetzt werden.
+## Owned startup sequence
 
-Quelle: [cli.mjs](../src/cli.mjs), [prepareLaunch](../src/launcher.mjs).
+1. **Validate request and free port.** `startNativeChat` refuses occupied ports
+   before creating a profile. A Host may instead connect to an already reachable,
+   compatible protected service without owning it.
+2. **Validate/create profile.** Initialize a missing profile through existing
+   functions; check existing managed policy/directories. Do not replace damaged
+   or divergent settings as an empty profile.
+3. **Validate optional MCP setup.** Global native setup prepares Knowledge.
+   Engineering is configured only for an exact solution/PLC identity in its
+   managed project workspace.
+4. **Select/verify artifacts.** Source receipt binds revision, platform, contract
+   version, inputs and artifact hashes. Explicit source selection, or automatic
+   selection through an existing receipt, fails on mismatch. Explicit reference
+   distribution selection remains. Broken source builds never silently fall back.
+5. **Prepare Chat profile completely.** `prepareLaunch` invokes
+   `prepareChatWorkspace`: both required Chat directories, both TwinCAT theme
+   files, existing default selection and TwinCAT commands precede server startup.
+   Custom themes and existing projects remain. Existing defaults are updated in
+   authoritative OpenChamber `preferences.json`, including UI selection. Custom
+   colors and unrelated setting timestamps remain; unknown/damaged documents are
+   not overwritten. Repeated preparation preserves chats.
+6. **Build environment/launch plan.** Existing `command`, `args`, `cwd`, `env`
+   point HOME/XDG/OpenChamber paths at the isolated operator profile. Relay stays
+   off. Arbitrary IDE secrets/foreign configuration injection are not inherited.
+7. **Check versions and take process ownership.** Actual version outputs must
+   match OpenCode `2.0.23` and OpenChamber `2.1.1`. The supervisor acquires
+   `launcher.lock` and starts owned processes only. With Knowledge configured,
+   the existing wrapper runs one shared broker and starts OpenChamber as a child.
+   OpenChamber still starts the separate OpenCode binary itself.
+8. **Confirm protected service.** Unauthenticated GET `/auth/session` must return
+   HTTP 401 with `authenticated: false`, `locked: true` while the process is alive.
+   Only then does the native launcher report `ready`.
+9. **Native login and Chat loading.** Copy only the HttpOnly cookie into WebView2,
+   navigate to the intended origin and initialize the adapter. Source builds
+   await the source contract. Login and Chat mount, or the intended manual-login
+   fallback, end the loading screen.
+10. **Establish session/tools separately.** Load complete project-scoped history.
+    Knowledge/Engineering report actual availability independently of Chat mount.
+    Failed history loading must not create a new chat as a presumed empty history.
 
-## Reihenfolge eines eigenen Starts
+Sources: [native entry](../src/native-chat.mjs), [profile preparation](../src/state.mjs),
+[themes](../src/themes.mjs), [commands](../src/commands.mjs),
+[runtime selection](../src/runtime-paths.mjs), [launch plan](../src/launcher.mjs),
+[supervisor](../src/supervisor.mjs), [Knowledge wrapper](../src/shared-chat-runtime.mjs),
+[Host connection](../native/IdeHost/AssistantControl.cs),
+[source contract](../upstream/overlays/openchamber/twincat.ts) and
+[Chat integration](../native/IdeHost/ChatIntegration.cs).
 
-1. **Auftrag prüfen und freien Port bestätigen.** `startNativeChat` weigert sich,
-   einen belegten Port zu übernehmen. Diese Prüfung findet vor der Anlage eines
-   neuen Profils statt. Ein Host kann stattdessen einen bereits erreichbaren,
-   kompatiblen geschützten Dienst verwenden, ohne ihn zu besitzen.
-2. **Profil prüfen oder neu anlegen.** Ein fehlendes Profil wird mit den
-   bestehenden Initialisierungsfunktionen angelegt. Ein vorhandenes Profil wird
-   gegen seine verwaltete Policy und seine Verzeichnisse geprüft. Beschädigte
-   oder abweichende Einstellungen werden nicht als leeres Profil ersetzt.
-3. **Optionale MCP-Einrichtung prüfen.** Die globale native Konfiguration
-   bereitet den Knowledge-Zugang vor. Engineering wird erst über die genaue
-   Solution-/PLC-Identität im verwalteten Projekt-Workspace konfiguriert.
-4. **Runtime-Artefakte auswählen und prüfen.** Der Source-Receipt bindet
-   Quellrevision, Plattform, Vertragsversion, Eingaben und Artefakthashes.
-   Bei expliziter Source-Auswahl oder automatischer Auswahl über einen
-   vorhandenen Receipt führt eine Abweichung zum Fehler. Die ausdrückliche
-   Auswahl der Referenzdistribution bleibt erhalten. Ein defekter Quellbuild
-   wird nicht still durch die Distribution ersetzt.
-5. **Chatprofil vollständig vorbereiten.** `prepareLaunch` ruft
-   `prepareChatWorkspace` auf. Beide benötigten Chat-Verzeichnisse, die beiden
-   TwinCAT-Theme-Dateien, die bisherige Default-Auswahl und die TwinCAT-Commands
-   sind vorbereitet, bevor der Chatserver startet. Eigene Themes und vorhandene
-   Projekte bleiben erhalten. Bestehende Standardfarben werden auch im
-   maßgeblichen OpenChamber-Profil `preferences.json` einschließlich seiner
-   Oberflächen-Auswahl umgestellt. Eigene Farbauswahlen und die Zeitstempel
-   anderer Einstellungen bleiben erhalten; unbekannte oder beschädigte
-   Profildokumente werden nicht überschrieben. Wiederholte Vorbereitung erhält
-   vorhandene Chats.
-6. **Umgebung und Launchplan herstellen.** Der bestehende Plan enthält
-   `command`, `args`, `cwd` und `env`. HOME/XDG/OpenChamber-Pfade zeigen auf das
-   isolierte Operator-Profil. Relay bleibt ausgeschaltet. Beliebige IDE-Secrets
-   und fremde Konfigurationsinjektionen werden nicht weitergereicht.
-7. **Versionen prüfen und Prozessbesitz übernehmen.** Beide tatsächlichen
-   Versionsausgaben müssen zu OpenCode `2.0.23` und OpenChamber `2.1.1` passen.
-   Der Supervisor erwirbt `launcher.lock` und startet nur eigene Prozesse.
-   Bei Knowledge-Konfiguration betreibt der vorhandene Wrapper genau einen
-   gemeinsamen Broker und startet OpenChamber als Kindprozess. OpenChamber
-   startet das separate OpenCode-Binary weiterhin selbst.
-8. **Geschützten Dienst bestätigen.** Ein nicht angemeldeter GET auf
-   `/auth/session` muss HTTP 401 und die erwarteten Felder
-   `authenticated: false`, `locked: true` liefern. Erst dann meldet der native
-   Launcher `ready`. Der gestartete Prozess muss dabei noch laufen.
-9. **Nativ anmelden und Chat laden.** Der Host übernimmt nur das HttpOnly-Cookie
-   in WebView2, navigiert zum vorgesehenen Origin und initialisiert den Adapter.
-   Bei einem Source-Build wird der bestehende Source-Vertrag abgewartet.
-   Erst Anmeldung und gemounteter Chat beziehungsweise der vorgesehene manuelle
-   Login-Fallback beenden den Ladebildschirm.
-10. **Sitzung und Werkzeuge gesondert herstellen.** Der vorhandene Verlauf wird
-    vollständig und projektbezogen geladen. Knowledge und Engineering melden
-    ihre tatsächliche Verfügbarkeit unabhängig vom Chat-Mount. Ein Fehler beim
-    Laden des Verlaufs erzeugt keinen neuen Chat als vermeintlichen Leerstand.
+Preparation is not a cross-component transaction. Managed theme/command files or
+MCP settings may already have changed before a later startup failure. Preparation
+remains repeatable; startup does not promise automatic rollback of an entire
+operator profile.
 
-Quellen: [nativer Einstieg](../src/native-chat.mjs),
-[Profilvorbereitung](../src/state.mjs), [Themes](../src/themes.mjs),
-[Commands](../src/commands.mjs), [Runtime-Auswahl](../src/runtime-paths.mjs),
-[Launchplan](../src/launcher.mjs), [Supervisor](../src/supervisor.mjs),
-[Knowledge-Wrapper](../src/shared-chat-runtime.mjs),
-[Host-Verbindung](../native/IdeHost/AssistantControl.cs),
-[Source-Vertrag](../upstream/overlays/openchamber/twincat.ts) und
-[Chat-Integration](../native/IdeHost/ChatIntegration.cs).
+## Separate readiness states
 
-Die Voraussetzungen sind keine übergreifende Transaktion. Vor einem späteren
-Startfehler können verwaltete Theme-/Command-Dateien oder MCP-Einstellungen
-bereits aktualisiert sein. Diese Vorbereitung bleibt wiederholbar. Der Start
-verspricht keinen automatischen Rollback des gesamten Operator-Profils.
+These are conceptual states, not additional implemented stdin fields.
 
-## Bereitschaft ist mehrteilig
-
-Ein gemeinsamer Status muss folgende Aussagen unterscheiden. Die Namen in
-dieser Tabelle beschreiben fachliche Zustände; sie sind keine bereits
-implementierten zusätzlichen Felder des stdin-Protokolls.
-
-| Bereich | Nachweis für Bereitschaft | Was daraus noch nicht folgt |
+| Area | Evidence of readiness | Not established |
 | --- | --- | --- |
-| Vorbereitetes Profil | Policy geprüft, notwendige Verzeichnisse, Themes und Commands vorhanden | Kein Prozess und keine Anbieteranmeldung sind damit bestätigt. |
-| Lokaler Dienst | Eigener Prozess lebt; geschützter Auth-Endpunkt antwortet erwartungsgemäß | OpenCode und Knowledge können noch starten. |
-| Chat | Navigation erfolgreich, Adapter initialisiert, Anmeldung und bestehender Chat-Mount bestätigt | Ein Modell oder Dokumentationskorpus muss noch nicht eingerichtet sein. |
-| OpenCode | OpenChambers tatsächliche OpenCode-Bereitschaft beziehungsweise API-Probe erfolgreich | Ein ausgewählter Anbieter kann fehlen, unfreigegeben oder nicht erreichbar sein. |
-| Projektchat | Vollständiger Verlauf geladen und exakte Projekt-/Sitzungsbindung hergestellt | Aktiver Editorinhalt ist damit nicht automatisch angehängt. |
-| Engineering | Verwaltetes PLC-Projekt geprüft; MCP-Verbindung und benötigter Leseaufruf erfolgreich | Keine Live-IDE-, Compiler-, ADS- oder Maschinenprüfung. |
-| Knowledge | Gültiger Korpus und tatsächlicher verbundener Knowledge-MCP; Status-/Suchaufrufe liefern auswertbare Ergebnisse | Eine vorhandene Indexdatei allein bestätigt noch keine benutzbare MCP-Verbindung. |
+| Prepared profile | Verified policy; required directories/themes/commands | Process startup or provider login |
+| Local service | Owned process alive; expected protected auth response | Completed OpenCode/Knowledge startup |
+| Chat | Successful navigation, adapter, login and existing Chat mount | Configured model/corpus |
+| OpenCode | Actual OpenChamber OpenCode-readiness/API probe passed | Selected, approved, reachable provider |
+| Project chat | Complete history and exact project/session binding | Automatically attached editor source |
+| Engineering | Managed PLC project, MCP connection and required read call passed | Live IDE/compiler/ADS/machine verification |
+| Knowledge | Valid corpus, connected Knowledge MCP, usable status/search results | An index file alone does not prove a usable connection |
 
-Ein langsamer Knowledge-Kaltstart hält den normalen Chat nicht bis zum Ende der
-Korpusprüfung zurück. Ein allgemeiner Chat benötigt kein PLC-Projekt und erhält
-keinen Engineering-MCP. Fehlender Anbieter oder fehlende Dokumentation bleiben
-gezielte Einrichtungszustände. Sie sind kein Grund, Gesprächsdaten neu anzulegen.
+Slow Knowledge cold startup must not hold ordinary Chat until corpus verification
+ends. General Chat requires no PLC project and receives no Engineering MCP.
+Missing providers/documentation are setup states, not reasons to recreate data.
 
-Quellen: [Verbindungszustand](../native/Shared/ChatConnectionState.cs),
-[Ladebildschirm](../native/IdeHost/SplashIntegration.cs),
-[Knowledge-Anbindung](../native/IdeHost/KnowledgeIntegration.cs),
-[Projektvorbereitung](../src/native-mcp.mjs),
-[Broker](../src/knowledge-broker.mjs) und [Runtime-Integration](RUNTIME_INTEGRATION.md).
+Sources: [connection state](../native/Shared/ChatConnectionState.cs),
+[loading screen](../native/IdeHost/SplashIntegration.cs),
+[Knowledge integration](../native/IdeHost/KnowledgeIntegration.cs),
+[project preparation](../src/native-mcp.mjs), [broker](../src/knowledge-broker.mjs),
+[runtime integration](RUNTIME_INTEGRATION.md).
 
-## Rückmeldung und Beenden
+## Responses and shutdown
 
-Die erfolgreiche native Kontrollantwort lautet weiterhin
-`{"status":"ready","port":3123}`. Fehler an der Node-Eingangsgrenze werden
-als `{"status":"failed"}` ohne Zugangsdaten oder Upstream-Fehlertext gemeldet.
-`ready` bestätigt den geschützten Dienst, nicht den Abschluss des gesamten
-Starts bis zur Modell- oder MCP-Bereitschaft. Nach der Meldung bleibt der
-Launcher zur Überwachung am Leben.
+Successful native control output remains `{"status":"ready","port":3123}`.
+Node-boundary failures return `{"status":"failed"}` without credentials or upstream
+error text. `ready` confirms the protected service, not model/MCP readiness.
+The launcher stays alive to supervise after responding.
 
-Die native Windows-Prozesskette trennt die begrenzte Kontrollantwort von
-Upstream-Ausgaben. Der Host verwirft die abgeleiteten Serverlogs, statt sie in
-Dialoge oder Gesprächsinhalte zu übernehmen. Dieser Kanal darf bei einer
-gemeinsamen CLI-/Host-Implementierung nicht durch zusätzliche Logzeilen oder
-eine neue Ausgabeform des CLI beschädigt werden.
+The native Windows chain separates bounded control output from upstream logs.
+The Host discards server logs rather than placing them in dialogs or chats.
+Shared CLI/Host implementation must not corrupt this channel with extra log
+lines or a new CLI output shape.
 
-| Ereignis | Erforderliches Verhalten |
+| Event | Required behavior |
 | --- | --- |
-| Start ohne Besitz, vorhandener kompatibler Dienst | Host meldet sich an und verbindet sich; er bekommt dadurch kein Recht, den fremden Dienst zu beenden. |
-| Host stoppt seinen eigenen Start | Stdin wird geschlossen. Abbruch erreicht den Supervisor und dessen besessene Prozesskette. |
-| Besitzer oder Helper stirbt | Windows Job Object beziehungsweise Prozessgruppenaufsicht beendet die eigenen Nachfahren einschließlich Knowledge. Unbeteiligte Prozesse bleiben erhalten. |
-| Dienst stirbt | Host zeigt Dienstverlust und verwendet die bestehende Wiederverbindung. Ein späterer Versuch erhält eine neue Generation. |
-| Navigation oder Browser scheitert | Ladezustand endet mit Fehler und Wiederverbindung; eine erfolgreiche `Navigate()`-Ausführung allein gilt nicht als geladener Chat. |
-| Verspätete Rückmeldung | Generation, NavigationId und Dokumentgeneration verhindern die Übernahme in einen inzwischen gewechselten Zustand. |
-| Belegter Port oder Profilsperre | Start ablehnen. Keine fremden Prozesse beenden, keine Sperre aufgrund eines geratenen PID-Zustands löschen. |
+| Compatible existing service, no ownership | Authenticate/connect without gaining the right to stop it |
+| Host stops owned startup | Close stdin; cancellation reaches supervisor and owned process tree |
+| Owner/helper dies | Windows Job Object/process-group supervision stops owned descendants, including Knowledge; unrelated processes remain |
+| Service dies | Report loss and use existing reconnect; next attempt gets a new generation |
+| Navigation/browser failure | End loading with error/reconnect; successful `Navigate()` alone is not loaded Chat |
+| Late response | Generation, NavigationId and document generation prevent adoption into a changed state |
+| Occupied port/profile lock | Refuse startup; never kill foreign processes or delete locks based on guessed PID state |
 
-Quellen: [NativeChatSession](../native/IdeHost/NativeChatRuntime.cs),
-[Windows-Supervisor](../src/windows-native.mjs),
-[Job Object](../native/WindowsHost/Program.cs),
-[Supervisor](../src/supervisor.mjs), [Host](../native/IdeHost/AssistantControl.cs).
+Sources: [NativeChatSession](../native/IdeHost/NativeChatRuntime.cs),
+[Windows supervisor](../src/windows-native.mjs), [Job Object](../native/WindowsHost/Program.cs),
+[supervisor](../src/supervisor.mjs), [Host](../native/IdeHost/AssistantControl.cs).
 
-Die heutige Wiederverwendungsprobe prüft das erwartete Auth-Endpunktverhalten.
-Sie liefert keinen vollständigen Nachweis von RepositoryRoot, StateRoot oder
-Source-Revision des bereits laufenden Dienstes. Ein späterer expliziter
-Dienstidentitätsvertrag muss getrennt eingeführt und mit dem Host abgestimmt
-werden; dieses Dokument behauptet diese zusätzliche Prüfung nicht.
+Existing-service probing checks expected auth behavior. It does not fully verify
+RepositoryRoot, StateRoot or source revision of that service. An explicit service
+identity contract would need a separate, coordinated Host change.
 
-## Bestehende Zeitgrenzen
+## Existing deadlines
 
-| Grenze | Vorhandener Wert / Startpunkt |
+| Boundary | Existing value/start point |
 | --- | --- |
-| Erster stdin-Auftrag | 10 Sekunden ab Node-Einstieg |
-| Einzelne Versionsprüfung | Je höchstens 10 Sekunden |
-| Node-Bereitschaftsschleife | Standardmäßig 65 Sekunden ab gestarteter Supervision, nach Profil-/Artefaktvorbereitung und Versionsprüfungen |
-| Einzelne Auth-Bereitschaftsprobe | 1,5 Sekunden, Antwort höchstens 4096 Bytes |
-| Native Kontrollantwort | Höchstens 80 Sekunden ab Beginn des Lesens nach Auftragsübermittlung |
-| Native automatische Anmeldung | 5 Sekunden pro Anmeldung |
-| Chat-/Adapter-Ladebildschirm | 60 Sekunden ab Navigation; ein Timeout zeigt Fehler und Wiederverbindung |
-| Stoppen aus dem Host | 5 Sekunden Wartezeit, danach Beenden des eigenen Launchers und weitere 2 Sekunden Wartezeit |
+| First stdin request | 10 seconds from Node entry |
+| Each version check | At most 10 seconds |
+| Node readiness loop | Default 65 seconds from supervision start, after profile/artifact preparation and version checks |
+| Each auth readiness probe | 1.5 seconds; response at most 4096 bytes |
+| Native control response | At most 80 seconds from reading after request transmission |
+| Native automatic login | 5 seconds per login |
+| Chat/adapter splash | 60 seconds from navigation; timeout shows error/reconnect |
+| Host stop | Wait 5 seconds, terminate own launcher, then wait another 2 seconds |
 
-Diese Grenzen gehören heute verschiedenen Ebenen. Insbesondere liegen
-Profilvorbereitung und Versionsprüfungen außerhalb der 65-Sekunden-Schleife,
-aber innerhalb der nativen 80-Sekunden-Wartezeit. Die Konsolidierung muss diesen
-Unterschied berücksichtigen. Dieses Dokument ändert keine Timeout-Defaults
-und verspricht keine neue Gesamtstartzeit. Die Knowledge-Korpusprüfung hat
-ihren eigenen Lebenszyklus und darf nicht in das Chat-Ladebildschirmbudget
-eingerechnet werden.
+These belong to different layers. Profile preparation and version checks are
+outside the 65-second loop but inside the native 80-second wait. Consolidation
+must account for that distinction. No default changes or new total startup time
+are promised here. Knowledge corpus verification has its own lifecycle and must
+not consume the Chat splash budget.
 
-## Abnahme der ersten Konsolidierung
+## Initial consolidation acceptance
 
-`prepareRuntimeLaunch` führt Runtime-Auswahl, Launchplan und Versionsprüfung aus
-`cli.mjs` und `native-chat.mjs` gemeinsam aus. Die erwarteten Versionen stammen
-aus dem vorhandenen Source-Lock. Das Profil mit Themes und Commands wird wie
-bisher vor den Versionsprozessen vorbereitet. Erst nach erfolgreicher Prüfung
-geben die Eingänge den Plan an den unveränderten Supervisor weiter.
+`prepareRuntimeLaunch` shares runtime selection, launch planning and version
+checks between `cli.mjs` and `native-chat.mjs`, using expected versions from the
+existing source lock. Profile/themes/commands precede version processes as before.
+Only successful verification passes a plan to the unchanged supervisor.
 
-Die unterschiedlichen Eingänge, Rückmeldungen und Abbruchsignale bleiben an
-ihrer jeweiligen Grenze. Der CLI normalisiert seine Operator-Binary-Pfade wie
-bisher über `realpath`; der native Eingang verwendet die vom Runtime-Receipt
-gewählten regulären Dateien. Die Referenzdistribution verwendet den geprüften
-`bin.opencode`-Pfad ihres Paketmanifests, dessen `.exe`-Suffix bei der gepinnten
-Version auch unter Linux und macOS gilt. Die native Portprüfung und MCP-Einrichtung bleiben
-vor der gemeinsamen Vorbereitung, ihre 65-Sekunden-Bereitschaftsfrist beginnt
-weiterhin erst nach der Versionsprüfung. Es gibt keinen neuen Gesamt-Timeout.
+Inputs, responses and cancellation signals retain their boundaries. CLI binary
+paths still use `realpath`; native entry uses regular files selected by the
+runtime receipt. The reference distribution uses verified package-manifest
+`bin.opencode`; its pinned `.exe` suffix applies on Linux/macOS too. Native port
+verification/MCP setup precede common preparation. The 65-second readiness budget
+still starts after version checks; there is no new overall timeout.
 
-Für diese erste Konsolidierung gelten folgende Abnahmen:
+Acceptance requires identical artifact/source/distribution selection; both themes,
+effective prior defaults and all commands before bootstrap while preserving custom
+themes; preserved operator data/project bindings/source kinds/attachment state
+without moving RepositoryRoot, profile or database; protected loopback startup,
+original provider login, streaming, cancel, queue and actual history; one owned
+Knowledge broker with separate Engineering configuration per PLC; and passing
+failure/restart/owner-death tests with unchanged native/CLI output.
 
-- Gleiche Runtime-Artefakte und vorhandene Source-/Distribution-Auswahl.
-- Beide TwinCAT-Themes, effektive bisherige Default-Auswahl und alle Commands
-  vor dem ersten Chat-Bootstrap. Bewusst gewählte andere Themes bleiben erhalten.
-- Bestehende Operator-Daten, Projektbindungen, Quellarten und Anhangszustände
-  bleiben erhalten; kein Umzug von RepositoryRoot, Profil oder Datenbank.
-- Geschützter Loopback-Dienst, ursprüngliche Anbieteranmeldung, Streaming,
-  Abbruch, Queue und tatsächlicher Verlauf bleiben nutzbar.
-- Ein gemeinsamer Knowledge-Broker in der besessenen Laufzeit und getrennte
-  Engineering-Konfiguration je PLC-Projekt.
-- Fehler-, Neustart- und Owner-Death-Verhalten einschließlich unveränderter
-  nativer Kontrollantwort und CLI-Ausgabe bestehen die betroffenen Tests.
+Existing checks: [launcher](../tests/launcher.test.mjs),
+[native entry](../tests/native-chat.test.mjs), [CLI](../tests/cli.test.mjs),
+[profile](../tests/state.test.mjs), [themes](../tests/themes.test.mjs),
+[commands](../tests/commands.test.mjs), [supervisor](../tests/supervisor.test.mjs),
+[Windows lifecycle](../tests/windows-native.test.mjs),
+[shared broker](../tests/shared-runtime.test.mjs),
+[actual native runtime entry](../tests/integration/native-chat.test.mjs),
+[WPF/WebView integration](../scripts/Test-ChatIntegration.ps1).
+[Preparation checks](../tests/runtime-start.test.mjs) also cover ordering before
+version execution, retained project selection/custom themes, shared version-failure
+handling without process ownership and fixed CLI failure before server startup.
 
-Die vorhandenen Prüfungen für diese Abnahmen sind
-[Launcher](../tests/launcher.test.mjs), [nativer Eingang](../tests/native-chat.test.mjs),
-[CLI](../tests/cli.test.mjs), [Profil](../tests/state.test.mjs),
-[Themes](../tests/themes.test.mjs), [Commands](../tests/commands.test.mjs),
-[Supervisor](../tests/supervisor.test.mjs),
-[Windows-Lebenszyklus](../tests/windows-native.test.mjs),
-[gemeinsamer Broker](../tests/shared-runtime.test.mjs),
-[echter nativer Runtime-Eingang](../tests/integration/native-chat.test.mjs) und
-[WPF/WebView-Integration](../scripts/Test-ChatIntegration.ps1).
-[Startvorbereitung](../tests/runtime-start.test.mjs) prüft zusätzlich die
-Reihenfolge vor der Versionsausführung, unveränderte Projektauswahl und eigene
-Themes, den gemeinsamen Versionsfehlerpfad ohne Prozessbesitz sowie die feste
-CLI-Fehlerantwort vor einem tatsächlichen Serverstart.
+### Preceding design-integration evidence
 
-### Nachweis der vorausgehenden Designübernahme
+At combined revision `57fb2cc`, reruns passed 81 Node and eight browser tests via
+`npm run check`; both native Host builds and 80 native policy/context checks; and
+51 WPF plus 59 actual WebView checks with the pinned reference distribution,
+light/dark and widths 390/768/1100.
 
-Am kombinierten Stand `57fb2cc` wurden erneut ausgeführt:
+Existing Knowledge/diagnostics threading warnings remained visible. Unchanged
+source contract/application bytes match the integrated frontend commit. Its
+recorded evidence additionally includes 63 source-WebView checks with both MCPs;
+that source run was not repeated here. Synthetic projects, editor states and
+credentials establish no IDE/PLC/compiler or paid-model acceptance.
 
-- 81 Node-Tests und acht Browser-Tests über `npm run check`.
-- Beide nativen Host-Builds und 80 native Policy-/Kontextprüfungen.
-- 51 WPF-Prüfungen sowie 59 echte WebView-Prüfungen mit der gepinnten
-  Referenzdistribution, einschließlich Hell/Dunkel und 390/768/1100 Pixel Breite.
-
-Die vorhandenen Threading-Warnungen in Knowledge-/Diagnosecode blieben sichtbar.
-Der unveränderte Source-Vertrag und die Anwendung sind zum übernommenen
-Frontend-Commit bytegleich. Dessen protokollierter Nachweis umfasst außerdem
-63 Source-WebView-Prüfungen mit beiden MCPs. Dieser Source-Lauf wurde hier nicht
-erneut ausgeführt. Die genannten Prüfungen verwenden synthetische Projekte,
-Editorzustände und Anmeldedaten; sie sind keine IDE-/PLC-/Compiler- oder
-kostenpflichtige Modellabnahme.
-
-Die Logs liegen ausschließlich lokal unter `local-data/backend-*.log`.
-Für das Startvertragsdokument werden Verweise, konkrete Vertragsfelder und
-Zeitgrenzen am Quellcode geprüft. Es werden dadurch keine neuen
-Laufzeitgarantien als bereits implementiert ausgewiesen.
+Logs remain local at `local-data/backend-*.log`. Links, concrete contract fields
+and deadlines were checked against source; documenting them does not establish
+new implemented runtime guarantees.

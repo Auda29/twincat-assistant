@@ -25,7 +25,7 @@ not the password. An existing credential is preserved.
 
 The single context bar shows the blue POU-kind badge, object name, PLC project
 and a compact source-state chip. Click the object name for the local ST preview
-and its editor-buffer uncertainty notice. History, **+**, **Anhängen** and the
+and its editor-buffer uncertainty notice. History, **+**, **Attach** and the
 overflow menu are the remaining actions. At narrow widths the attach action
 becomes an icon and the status label collapses to its dot, with tooltips retained.
 The bar follows OpenChamber's light/dark palette. Native labels are German;
@@ -39,10 +39,10 @@ OpenChamber defaults to German unless a language preference already exists.
 2. Use history to read previous conversations, or **+** for a new project chat.
    A chat belonging to another PLC remains read-only while that PLC is inactive.
    Without an ST editor, **+** starts a general chat. The overflow menu also offers
-   **Neuer allgemeiner Chat**. A general chat stays general when an editor
-   opens; **Anhängen** can explicitly bind it to that editor's project.
-3. Sign in to a provider through **Anbieter verbinden** or the overflow menu's
-   **Anbieter und Modelle verwalten** action. A connected provider is enabled
+   **New general chat**. A general chat stays general when an editor
+   opens; **Attach** can explicitly bind it to that editor's project.
+3. Sign in to a provider through **Connect provider** or the overflow menu's
+   **Manage providers and models** action. A connected provider is enabled
    automatically, without a separate consent click. If several are connected,
    the selected model's provider is preferred, otherwise the first connected
    provider; an already enabled connected provider is retained. The overflow
@@ -50,12 +50,12 @@ OpenChamber defaults to German unless a language preference already exists.
    original composer. Provider-only enablement invents no default model and
    preserves engineering/tool deny rules. Provider credentials stay in
    OpenChamber's settings and never enter the native selector.
-4. Choose **Anhängen** to stage the current snapshot as a visible composer
+4. Choose **Attach** to stage the current snapshot as a visible composer
    reference. Its text includes identity, revision, provenance and the warning
-   that the exact unsaved editor buffer is not verified. **Wird angehängt** means
-   staging is pending, **Vorgemerkt** confirms a staged revision, and
-   **Erneut anhängen** distinguishes a submitted revision from a staged one.
-   **Aktualisieren** indicates a changed source revision.
+   that the exact unsaved editor buffer is not verified. **Attaching** means
+   staging is pending, **Queued** confirms a staged revision, and
+   **Attach again** distinguishes a submitted revision from a staged one.
+   **Update** indicates a changed source revision.
 5. Optionally enable **Aktiven Baustein automatisch anhängen** in the overflow
    menu. It defaults to off and persists as a boolean preference. While enabled,
    a matching project chat stages the active POU and changed revisions
@@ -65,7 +65,7 @@ OpenChamber defaults to German unless a language preference already exists.
 
 Both attachment modes stage source locally. Only submitting the message sends
 it to the selected provider. Connection, port, model-policy readback and manual
-inventory are available under the overflow menu's **Diagnose anzeigen** action.
+inventory are available under the overflow menu's **Show diagnostics** action.
 
 The 0.1.4 provider/model ordering was a deadlock: the default `provider.use` deny
 also removes an authenticated provider and its models from the upstream catalog.
@@ -238,7 +238,7 @@ Linux and Windows CI checks pass at `6310628`. Native window automation still
 fails with `native pipe unavailable` / `os error 2`.
 The operator confirms all three first-flow checks in that installed host:
 compact native header, PLC_B project-chat binding, and a visible FB_Motor composer
-reference after **POU an Chat anhängen**, without submitting a message. This is
+reference after **Attach POU to chat**, without submitting a message. This is
 live x86 visual evidence, separate from the synthetic component fixtures.
 For 0.1.4, the operator also confirms that switching to PLC_A with the PLC_B chat selected
 blocks source attachment and chat input, and returning to PLC_B restores its
