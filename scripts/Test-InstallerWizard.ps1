@@ -45,9 +45,17 @@ $info = Join-Path $root 'setup-info.json'
 $preview = Join-Path $root 'PreviewWizard.cs'
 [IO.File]::WriteAllText($preview, 'class PreviewWizard : InstallerWizard { public PreviewWizard(string root) : base(root) {} protected override bool ShowWithoutActivation { get { return true; } } }')
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-& $compiler /nologo /target:winexe /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/out:$exe" "/resource:$zip,payload.zip" "/resource:$info,setup-info.json" (Join-Path $PSScriptRoot 'installer/Bootstrap.cs') $preview
+& $compiler /nologo /target:winexe /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/win32icon:$PSScriptRoot/installer/assets/setup.ico" "/resource:$PSScriptRoot/installer/assets/setup.ico,setup.ico" "/out:$exe" "/resource:$zip,payload.zip" "/resource:$info,setup-info.json" (Join-Path $PSScriptRoot 'installer/Bootstrap.cs') $preview
 if ($LASTEXITCODE -ne 0) { throw 'Wizard fixture compilation failed.' }
 $assembly = [Reflection.Assembly]::LoadFile($exe)
+$iconStream = $assembly.GetManifestResourceStream('setup.ico')
+try {
+    $iconBytes = [IO.MemoryStream]::new()
+    try {
+        $iconStream.CopyTo($iconBytes)
+        if ([Convert]::ToBase64String($iconBytes.ToArray()) -cne [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $PSScriptRoot 'installer/assets/setup.ico')))) { throw 'Embedded setup icon changed.' }
+    } finally { $iconBytes.Dispose() }
+} finally { $iconStream.Dispose() }
 $run = $assembly.GetType('Bootstrap').GetMethod('Run', [Reflection.BindingFlags]'Static,NonPublic')
 $report = [WizardOutput]::Report
 function Invoke-Fixture([string[]]$Arguments) {
@@ -85,6 +93,21 @@ $form = [Activator]::CreateInstance($assembly.GetType('PreviewWizard'), [object[
 $form.ShowInTaskbar = $false; $form.Opacity = 0.01
 $form.Show(); [Windows.Forms.Application]::DoEvents()
 try {
+    if (-not $form.Icon) { throw 'Wizard product icon missing.' }
+    $shellIcon = [Drawing.Icon]::ExtractAssociatedIcon($exe)
+    $shellBitmap = $shellIcon.ToBitmap()
+    $sourceIcon = [Drawing.Icon]::new((Join-Path $PSScriptRoot 'installer/assets/setup.ico'), $shellBitmap.Size)
+    $sourceBitmap = $sourceIcon.ToBitmap()
+    $wizardBitmap = $form.Icon.ToBitmap()
+    try {
+        if ($wizardBitmap.Size -ne $sourceBitmap.Size) { throw 'Wizard icon resolution differs from shell icon.' }
+        for ($y=0; $y -lt $shellBitmap.Height; $y++) {
+            for ($x=0; $x -lt $shellBitmap.Width; $x++) {
+                if ($shellBitmap.GetPixel($x,$y).ToArgb() -ne $sourceBitmap.GetPixel($x,$y).ToArgb() -or $wizardBitmap.GetPixel($x,$y).ToArgb() -ne $sourceBitmap.GetPixel($x,$y).ToArgb()) { throw ('EXE or wizard icon differs at {0},{1}: shell={2} wizard={3} source={4}' -f $x,$y,$shellBitmap.GetPixel($x,$y),$wizardBitmap.GetPixel($x,$y),$sourceBitmap.GetPixel($x,$y)) }
+            }
+        }
+    } finally { $shellBitmap.Dispose(); $shellIcon.Dispose(); $sourceBitmap.Dispose(); $sourceIcon.Dispose(); $wizardBitmap.Dispose() }
+    Write-Host 'PASS: embedded product icon, actual Explorer EXE icon and wizard icon match.'
     $fields = [Reflection.BindingFlags]'Instance,NonPublic'
     $path = $wizardType.GetField('destination',$fields).GetValue($form)
     $actions = $wizardType.GetField('action',$fields).GetValue($form)

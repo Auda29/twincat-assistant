@@ -11,7 +11,7 @@ using Microsoft.VisualStudio.Shell.Interop;
 namespace TwinCatAssistant.Native
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
-    [ProvideMenuResource("Menus.ctmenu", 2)]
+    [ProvideMenuResource("Menus.ctmenu", 3)]
     [ProvideToolWindow(typeof(AssistantToolWindow))]
     [Guid("4dcc0b19-7b34-497f-bf44-7f1f612b7afb")]
     public sealed class AssistantPackage : AsyncPackage
