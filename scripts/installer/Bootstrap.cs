@@ -16,22 +16,28 @@ class Bootstrap {
   foreach (char c in s) { if (c == '\\') { slash++; continue; } if (c == '"') { b.Append('\\', slash * 2 + 1); b.Append(c); } else { b.Append('\\', slash); b.Append(c); } slash = 0; }
   b.Append('\\', slash * 2); b.Append('"'); return b.ToString();
  }
+ // Shared with payload verification; this helper never starts installation.
+ internal static void ExtractPayload(Stream input, string dir) {
+  Directory.CreateDirectory(dir);
+  using (var archive = new ZipArchive(input, ZipArchiveMode.Read)) {
+   foreach (var e in archive.Entries) {
+    // Framework ZIPs on Windows can use backslashes, including empty folders.
+    // Classify and resolve the same normalized name before opening any file.
+    var name = e.FullName.Replace('\\', '/');
+    var target = Path.GetFullPath(Path.Combine(dir, name.Replace('/', Path.DirectorySeparatorChar)));
+    if (!target.StartsWith(dir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new Exception("Invalid archive path");
+    if (name.EndsWith("/")) { Directory.CreateDirectory(target); continue; }
+    Directory.CreateDirectory(Path.GetDirectoryName(target));
+    using (var src = e.Open()) using (var dst = new FileStream(target, FileMode.CreateNew)) src.CopyTo(dst);
+   }
+  }
+ }
  // Wizard and command line share the existing package/host transaction.
  internal static int Run(string[] args, Action<string> report) {
   string dir = Path.Combine(Path.GetTempPath(), "twincat-installer-" + Guid.NewGuid().ToString("N"));
   try {
    report("Anwendungspaket wird entpackt. Das kann einige Minuten dauern ...");
-   Directory.CreateDirectory(dir);
-   using (var input = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip"))
-   using (var archive = new ZipArchive(input, ZipArchiveMode.Read)) {
-    foreach (var e in archive.Entries) {
-     var target = Path.GetFullPath(Path.Combine(dir, e.FullName.Replace('/', Path.DirectorySeparatorChar)));
-     if (!target.StartsWith(dir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new Exception("Invalid archive path");
-     if (e.FullName.EndsWith("/")) { Directory.CreateDirectory(target); continue; }
-     Directory.CreateDirectory(Path.GetDirectoryName(target));
-     using (var src = e.Open()) using (var dst = new FileStream(target, FileMode.CreateNew)) src.CopyTo(dst);
-    }
-   }
+   using (var input = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip")) ExtractPayload(input, dir);
    report("Voraussetzungen und Paket werden geprueft ...");
    var arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File " + Quote(Path.Combine(dir, "Invoke-Installer.ps1"));
    foreach (var arg in args) arguments += " " + Quote(arg);

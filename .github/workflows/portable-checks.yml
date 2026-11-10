@@ -84,6 +84,11 @@ jobs:
           dotnet run --project engineering/tests/Engineering.Safety.Tests/Engineering.Safety.Tests.csproj --no-restore
       - name: Verify and bundle the pinned embedded chat adapter
         run: node scripts/build-embedded-chat.mjs
+      - name: Verify installer extraction and wizard against synthetic payloads
+        shell: powershell
+        run: |
+          & powershell.exe -NoProfile -STA -File scripts/Test-InstallerWizard.ps1
+          if ($LASTEXITCODE) { throw 'Installer extraction/wizard regression failed' }
       - name: Verify Windows authenticated runtime bootstrap and owner-death cleanup
         run: node --test tests/integration/windows-runtime.test.mjs tests/integration/native-chat.test.mjs
   source-runtime:
