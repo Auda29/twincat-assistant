@@ -1,5 +1,24 @@
 # Implementation status
 
+**Beta 3, 2026-11-10.** PR #24 and release PR #25 are merged after green
+source CI. Application `0.2.0-beta.3` / native `0.2.0.9` is published as
+[GitHub Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.3). It includes PR #23's shared setup/Chat/menu icon and
+removes repeated packaged configuration work from the IDE dispatcher. Knowledge
+status is independent of chat selection, and complete inventory hashing uses
+bounded parallel reads. Configuration, policy, hash and lock checks remain.
+The fresh build passes 940 native regressions, 17 actual standalone WPF/WebView
+startup checks and wizard/icon checks. The actual packaged x86 launcher reaches
+protected readiness in 17,327 ms under its unchanged 80-second ceiling, using
+an isolated test profile. Package smoke with both real MCPs on synthetic files,
+restart/state preservation, actual setup icon inspection and actual EXE
+extraction with all 21,538 file hashes pass. Uploaded digests match local artifacts.
+This is a local Windows installer build with verified pinned runtime inputs;
+hosted portable/source CI is separate. No workstation installation or operator
+profile modification was performed. The intermittent installed initialization
+failure was not reproduced or conclusively attributed; installed editor/startup
+and real update/rollback acceptance remain open. See [release scope](releases/native-v0.2.0-beta.3.md)
+and the [performance investigation](STARTUP_PERFORMANCE_20261110.md).
+
 **Beta 2, 2026-11-10.** PR #22 is merged after all three source checks passed on
 `5525e1b`. The complete application `0.2.0-beta.2` / native `0.2.0.8` and its
 installer are published as [GitHub Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.2).

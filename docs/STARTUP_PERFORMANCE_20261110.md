@@ -2,8 +2,9 @@
 
 Recorded: 2026-11-10. Applies to the Beta 2 startup paths. The operator reported
 long loading, intermittent initialization failure and a slower TwinCAT editor.
-The changes below require a new application release; the installed application
-and operator data were not modified during this investigation.
+The corrections below are published in [Beta 3](releases/native-v0.2.0-beta.3.md).
+The installed application and operator data were not modified during this
+investigation or release build.
 
 ## Confirmed UI-thread work
 

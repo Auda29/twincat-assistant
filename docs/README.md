@@ -10,9 +10,9 @@ and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
 Native acceptance and future engineering write/build milestones remain separate.
 
-Current release candidate: [0.2.0 Beta 3](releases/native-v0.2.0-beta.3.md), with UI-thread/startup performance corrections and the shared product icon.
+Current release: [0.2.0 Beta 3](releases/native-v0.2.0-beta.3.md), with UI-thread/startup performance corrections and the shared product icon. The [published Latest release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.3) includes setup, checksums and build provenance.
 
-Published application: [0.2.0 Beta 2](releases/native-v0.2.0-beta.2.md), with the integrated extraction fix and version-aware wizard. The [Beta 2 release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.2) includes the setup EXE, checksums and build provenance.
+Previous application: [0.2.0 Beta 2](releases/native-v0.2.0-beta.2.md), with the integrated extraction fix and version-aware wizard. The [Beta 2 release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.2) includes the setup EXE, checksums and build provenance.
 
 Previous application: [0.2.0 Beta 1](releases/native-v0.2.0-beta.1.md), including product cleanup and saved DE/EN language selection. [Setup 1](releases/native-v0.2.0-beta.1-setup.1.md) corrects extraction of empty Windows ZIP directories. Installed Beta language acceptance and the remaining host gates stay open. The [2026-11-06 checkpoint](INTEGRATED_ACCEPTANCE_20261106.md) is retained as historical evidence.
 
