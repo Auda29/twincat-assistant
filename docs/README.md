@@ -10,7 +10,9 @@ and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
 Native acceptance and future engineering write/build milestones remain separate.
 
-Current application: [0.2.0 Beta 1](releases/native-v0.2.0-beta.1.md), including product cleanup and saved DE/EN language selection. [Setup 1](releases/native-v0.2.0-beta.1-setup.1.md) corrects extraction of empty Windows ZIP directories. Installed Beta language acceptance and the remaining host gates stay open. The [2026-11-06 checkpoint](INTEGRATED_ACCEPTANCE_20261106.md) is retained as historical evidence.
+Current release candidate: [0.2.0 Beta 2](releases/native-v0.2.0-beta.2.md), with the integrated extraction fix and version-aware wizard.
+
+Previous application: [0.2.0 Beta 1](releases/native-v0.2.0-beta.1.md), including product cleanup and saved DE/EN language selection. [Setup 1](releases/native-v0.2.0-beta.1-setup.1.md) corrects extraction of empty Windows ZIP directories. Installed Beta language acceptance and the remaining host gates stay open. The [2026-11-06 checkpoint](INTEGRATED_ACCEPTANCE_20261106.md) is retained as historical evidence.
 
 - [Beta 1 release and update](releases/native-v0.2.0-beta.1.md)
 - [Preview 6 native chat startup fix](releases/native-v0.2.0-preview.6.md)
