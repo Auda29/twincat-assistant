@@ -383,4 +383,8 @@
   <data name="HostVersionMismatch" xml:space="preserve"><value>Shell executable version {0} differs from the alpha target.</value></data>
   <data name="HostUnverifiedBuild" xml:space="preserve"><value>TwinCAT {0} is not a verified build of the alpha target.</value></data>
   <data name="ValueNone" xml:space="preserve"><value>none</value></data>
+  <data name="ProjectSetupLocked" xml:space="preserve"><value>Project setup is locked. Another setup is running, or a lock remained after an interruption. Close all IDEs and Assistant processes before recovery.</value></data>
+  <data name="ProjectSetupTimeout" xml:space="preserve"><value>Project configuration verification timed out. The chat connection is independent. Check Diagnostics and retry project setup.</value></data>
+  <data name="ProjectSetupFailed" xml:space="preserve"><value>Setup failed</value></data>
+  <data name="ProjectChatNotConfigured" xml:space="preserve"><value>Project chat is not configured</value></data>
 </root>

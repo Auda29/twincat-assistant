@@ -20,6 +20,7 @@ namespace TwinCatAssistant.Native
 
         private UIElement BuildSplash()
         {
+            Panel.SetZIndex(_splash, 1);
             _chatReadyTimeout.Tick += OnChatReadinessTimeout;
             _splash.SetResourceReference(Panel.BackgroundProperty, "Tc.Background");
             var mark = new TextBlock { FontFamily = new FontFamily("Bahnschrift, Segoe UI"), FontSize = 30 };
@@ -50,21 +51,23 @@ namespace TwinCatAssistant.Native
             _previewPopup.IsOpen = false;
         }
 
-        // WebView2 keeps loading and running the adapter while hidden. The
-        // native wordmark remains visible until this document is ready;
-        // OpenChamber's startup screen stays hidden during that handoff.
+        // Keep the composition surface rendering behind the opaque native splash.
+        // Hiding it can stall deferred React commits/animation frames that the
+        // readiness handshake itself needs. Input stays disabled until presented.
         private void RenderLoading()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
-            var failed = _setupMissing || _chatConnection.Phase == "failed";
+            var failed = _setupMissing || _chatConnection.Phase == "failed" || ProjectSetupFailed;
             if (failed) _chatPresented = false;
             else if (_chatConnection.PageLoaded && _chatAdapterReady && CanPresentChat())
                 _chatPresented = true;
             var loading = !_chatPresented && !failed;
             _strip.Visibility = loading ? Visibility.Collapsed : Visibility.Visible;
             _splash.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
-            _browser.Visibility = failed ? Visibility.Collapsed : loading ? Visibility.Hidden : Visibility.Visible;
+            _browser.Visibility = failed ? Visibility.Collapsed : Visibility.Visible;
+            _browser.IsHitTestVisible = !failed && !loading;
+            _browser.Focusable = !failed && !loading;
             if (!loading) _chatReadyTimeout.Stop();
             var animate = loading && SystemParameters.ClientAreaAnimation;
             if (animate != _splashRunning)
@@ -91,7 +94,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             _chatReadyTimeout.Stop();
-            if (_disposed || _chatPresented || _chatConnection.Phase == "failed") return;
+            if (_disposed || _chatPresented || _chatConnection.Phase == "failed" || _projectSetupPending || ProjectSetupFailed) return;
             _chatConnection.Fail(_chatConnection.Generation, HostText.Get("H333"));
             ShowChatStatus();
         }

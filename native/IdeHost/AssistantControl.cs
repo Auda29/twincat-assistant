@@ -563,7 +563,9 @@ namespace TwinCatAssistant.Native
                 }
                 // Hidden, not collapsed: retain layout and initialization
                 // while the loading screen stays visible.
-                _browser.Visibility = Visibility.Hidden;
+                _browser.Visibility = Visibility.Visible;
+                _browser.IsHitTestVisible = false;
+                _browser.Focusable = false;
                 if (_browser.CoreWebView2 == null)
                 {
                     var profile = _chatBrowserProfile ?? NativeChatConfiguration.WebViewUserDataFolder;

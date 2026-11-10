@@ -7,6 +7,9 @@ import { tmpdir } from 'node:os';
 import { prepareNativeProject, readNativeMcpSettings } from '../src/native-mcp.mjs';
 import { initializeState, inspectState } from '../src/state.mjs';
 import { configureNativeModel } from '../src/native-chat-model.mjs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { withProjectLock, projectKey } from '../src/project-workspace.mjs';
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'tc-native-mcp-'));
@@ -21,6 +24,31 @@ async function fixture() {
   await initializeState(state, { provider: 'openai', sourceCodeDisclosureAccepted: true, engineering:{entrypoint,config:oldEngineering} });
   return { root, state, mcpConfig, solution };
 }
+
+test('busy project setup reports a fixed code without adopting or deleting the existing lock', async () => {
+  const f = await fixture();
+  try {
+    const project = join(f.root, 'PLC.plcproj'); await writeFile(project, '<Project/>');
+    const request = { state: f.state, mcpConfig: f.mcpConfig, solution: f.solution, project };
+    const prepared = await prepareNativeProject(request);
+    const canonical = async path => process.platform === 'win32' ? (await realpath(path)).toLowerCase() : await realpath(path);
+    const key = projectKey(await canonical(f.solution), await canonical(project));
+    const parent = join(f.state, 'projects'), lock = join(parent, key + '.lock');
+    const policy = await readFile(join(prepared.workspace, 'opencode.json'));
+    await withProjectLock(parent, key, async () => {
+      await assert.rejects(prepareNativeProject(request), { code: 'PROJECT_WORKSPACE_LOCKED' });
+      const result = spawnSync(process.execPath, [fileURLToPath(new URL('../src/native-mcp.mjs', import.meta.url))], {
+        input: JSON.stringify(request), encoding: 'utf8', windowsHide: true, timeout: 60000,
+      });
+      assert.equal(result.status, 1);
+      assert.deepEqual(JSON.parse(result.stdout), { configured: false, failure: 'project_locked' });
+      assert.equal(await readFile(lock, 'utf8'), '', 'the existing lock is neither adopted nor removed');
+      assert.deepEqual(await readFile(join(prepared.workspace, 'opencode.json')), policy);
+    });
+    await assert.rejects(readFile(lock), { code: 'ENOENT' });
+    assert.equal((await prepareNativeProject(request)).workspace, prepared.workspace);
+  } finally { await rm(f.root, { recursive: true, force: true }); }
+});
 test('native MCP project locations isolate two PLCs and retain provider policy and source files', async () => {
   const f = await fixture();
   try {

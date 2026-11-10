@@ -383,4 +383,8 @@
   <data name="HostVersionMismatch" xml:space="preserve"><value>Die Shell-Version {0} weicht vom Alpha-Ziel ab.</value></data>
   <data name="HostUnverifiedBuild" xml:space="preserve"><value>TwinCAT {0} ist kein geprüfter Build des Alpha-Ziels.</value></data>
   <data name="ValueNone" xml:space="preserve"><value>keins</value></data>
+  <data name="ProjectSetupLocked" xml:space="preserve"><value>Die Projekteinrichtung ist gesperrt. Eine andere Einrichtung läuft oder eine Sperre blieb nach einem Abbruch zurück. Vor einer Wiederherstellung alle IDEs und Assistant-Prozesse schließen.</value></data>
+  <data name="ProjectSetupTimeout" xml:space="preserve"><value>Die Prüfung der Projektkonfiguration hat das Zeitlimit erreicht. Die Chatverbindung ist davon unabhängig. Diagnose prüfen und die Einrichtung erneut versuchen.</value></data>
+  <data name="ProjectSetupFailed" xml:space="preserve"><value>Einrichtung fehlgeschlagen</value></data>
+  <data name="ProjectChatNotConfigured" xml:space="preserve"><value>Projektchat nicht eingerichtet</value></data>
 </root>

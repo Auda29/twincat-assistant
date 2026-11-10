@@ -183,7 +183,9 @@ namespace TwinCatAssistant.Native
                     ShowRow(_modelRow, enabled.name + (string.IsNullOrEmpty(model) ? HostText.Get("H189") : " · " + model.Substring(model.IndexOf('/') + 1)), "Success", _modelStatus.Text);
                 // Project tools (engineering MCP): saved project files only.
                 var tools = McpState("engineering");
-                if (!ready)
+                if (ProjectSetupFailed)
+                    ShowRow(_toolsRow, HostText.Get("ProjectSetupFailed"), "Error", _mcpFailureMessage);
+                else if (!ready)
                     ShowRow(_toolsRow, "–", "Neutral", _mcpStatus.Text);
                 else if (tools != null)
                 {
@@ -203,7 +205,9 @@ namespace TwinCatAssistant.Native
                     _knowledgeConnectionKey = null;
                     BeginKnowledgeReconnect(force: true);
                 };
-                if (_knowledgeBusy)
+                if (ProjectSetupFailed)
+                    ShowRow(_knowledgeRow, HostText.Get("ProjectChatNotConfigured"), "Warning", _mcpFailureMessage);
+                else if (_knowledgeBusy)
                     ShowRow(_knowledgeRow, HostText.Get("H192"), "Neutral", _knowledgeSummary.Text, HostText.Get("H092"), ShowKnowledgeSetup);
                 else if (_knowledgeState?.ready != true)
                     ShowRow(_knowledgeRow, HostText.Get("H184"), "Warning", _knowledgeSummary.Text, HostText.Get("H097"), ShowKnowledgeSetup);

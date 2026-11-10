@@ -50,7 +50,12 @@ export async function findProjectWorkspace(parent, identity) {
 
 export async function withProjectLock(parent, key, action) {
   const file = join(parent, key + '.lock');
-  const lock = await open(file, 'wx', 0o600);
+  let lock;
+  try { lock = await open(file, 'wx', 0o600); }
+  catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    throw Object.assign(new Error('Project workspace is locked; establish owner quiescence before recovering an interrupted setup'), { code: 'PROJECT_WORKSPACE_LOCKED' });
+  }
   try { return await action(); }
   finally { await lock.close(); await unlink(file); }
 }
