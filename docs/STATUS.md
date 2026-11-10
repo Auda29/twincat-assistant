@@ -1,5 +1,11 @@
 # Implementation status
 
+**Beta 1, 2026-11-10.** Produktbereinigung und DE/EN-Sprachauswahl werden mit
+den Start- und MCP-Korrekturen aus Preview 6 zusammengeführt. Der Bediener hat
+den Chatstart mit Preview 6 in der installierten TcXaeShell bestätigt. Dies
+schließt die Sprach-, Member-, Paste- und First-after-logon-Abnahmen nicht.
+[Beta-Umfang und Installationshinweise](releases/native-v0.2.0-beta.1.md).
+
 **Deutsch/Englisch, 2026-11-09.** Roadmap 6 ist auf
 `feat/de-en-localization` implementiert: zentrale native Ressourcen, synchronisierte
 Sprachauswahl in Host und Chat sowie Speicherung neben den vorhandenen

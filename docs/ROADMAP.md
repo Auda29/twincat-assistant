@@ -10,6 +10,12 @@ The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains 
 
 ## Agreed priorities (2026-11-02)
 
+Integration vom 10.11.2026: Beta 1 vereint Produktbereinigung und die gespeicherte
+DE/EN-Sprachauswahl mit den aktuellen Startfixes. Der Start von Preview 6 wurde
+vom Bediener in der installierten TcXaeShell bestätigt. Die übrigen Host-Gates
+und die sichtbare Sprachabnahme bleiben offen; Punkte 5 und 7 sind nicht umgesetzt.
+Die folgenden datierten Einträge bleiben historische Umsetzungsnachweise.
+
 Sprachumstellung vom 09.11.2026: Punkt 6 ist auf dem separaten Produktbranch
 implementiert. Host und Chat teilen Deutsch/Englisch und speichern die Auswahl;
 der Host übernimmt sie auch bei wechselnder Backend-Adresse. Katalog-, WPF- und
