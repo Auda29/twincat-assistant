@@ -51,6 +51,13 @@ function Put([string]$name,$value){$control.GetType().GetField($name,$flags).Set
 function Call([string]$name){$control.GetType().GetMethod($name,$flags).Invoke($control,@())}Add-Type -TypeDefinition @"
 using System; using System.Threading; using System.Threading.Tasks; using System.Windows.Threading;
 public static class StartupPump {
+ public static int ConfigurationLoads, ConfigurationThread;
+ static readonly ManualResetEventSlim ConfigurationGate = new ManualResetEventSlim(false);
+ public static object LoadConfiguration(object value) {Interlocked.Increment(ref ConfigurationLoads);ConfigurationThread=Thread.CurrentThread.ManagedThreadId;ConfigurationGate.Wait();return value;}
+ public static void ReleaseConfiguration() {ConfigurationGate.Set();}
+ public static void ResetConfiguration() {ConfigurationGate.Reset();}
+ public static Delegate ConfigurationFactory(Type type,object value) {return System.Linq.Expressions.Expression.Lambda(typeof(Func<>).MakeGenericType(type),System.Linq.Expressions.Expression.Convert(System.Linq.Expressions.Expression.Call(typeof(StartupPump).GetMethod("LoadConfiguration"),System.Linq.Expressions.Expression.Constant(value)),type)).Compile();}
+ public static Delegate InvalidConfigurationFactory(Type type) {return System.Linq.Expressions.Expression.Lambda(typeof(Func<>).MakeGenericType(type),System.Linq.Expressions.Expression.Throw(System.Linq.Expressions.Expression.New(typeof(InvalidOperationException)),type)).Compile();}
  public static object Await(Task t) {var until=DateTime.UtcNow.AddSeconds(90);while(!t.IsCompleted){if(DateTime.UtcNow>until)throw new TimeoutException("Fixture await timed out"); var f=new DispatcherFrame();Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background,new Action(()=>f.Continue=false));Dispatcher.PushFrame(f);Thread.Sleep(10);}t.GetAwaiter().GetResult();return t.GetType().IsGenericType?t.GetType().GetProperty("Result").GetValue(t,null):null;}
  public static Func<string> Constant(string s){return ()=>s;}
  public static Delegate ConstantObject(Type type, object value){return System.Linq.Expressions.Expression.Lambda(typeof(Func<>).MakeGenericType(type),System.Linq.Expressions.Expression.Constant(value,type)).Compile();}
@@ -69,6 +76,36 @@ try{
  $context=[Activator]::CreateInstance($contextType)
  $thread.GetField('_joinableTaskContextCache',[Reflection.BindingFlags]'Static,NonPublic').SetValue($null,$context)
  Make-Control
+ $configuration=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeChatConfiguration'))
+ $configuration.StateRoot=$profileInfo.StateRoot
+ Put '_chatConfiguration' ([StartupPump]::ConfigurationFactory($configuration.GetType(),$configuration))
+ $first=Invoke-Private 'GetChatConfigurationAsync' ([object[]]@($false))
+ $second=Invoke-Private 'GetChatConfigurationAsync' ([object[]]@($false))
+ Check (!$first.IsCompleted -and !$second.IsCompleted) 'configuration verification yields while its worker is pending'
+ [Windows.Threading.Dispatcher]::CurrentDispatcher.BeginInvoke([Action]{[StartupPump]::ReleaseConfiguration()})|Out-Null
+ $null=Await $first;$null=Await $second
+ Check ([StartupPump]::ConfigurationLoads -eq 1 -and [StartupPump]::ConfigurationThread -ne [Threading.Thread]::CurrentThread.ManagedThreadId) 'parallel configuration requests share one background load and the dispatcher remains responsive'
+ $defaultStore=Field '_chatBindings'
+ $stateProperty=$defaultStore.GetType().GetProperty('StateRoot',$flags)
+ $hotClock=[Diagnostics.Stopwatch]::StartNew()
+ 1..100|ForEach-Object {
+  $null=Await (Invoke-Private 'GetChatConfigurationAsync' ([object[]]@($false)))
+  if($stateProperty.GetValue($defaultStore,$null) -cne $profileInfo.StateRoot){throw 'Default binding store changed state root'}
+  if((Field '_chatWorkspace').Invoke() -cne (Join-Path $profileInfo.StateRoot 'workspace')){throw 'Default workspace changed state root'}
+ }
+ $hotClock.Stop()
+ Check ([StartupPump]::ConfigurationLoads -eq 1) '100 configuration, binding-root and workspace lookups do not reload or hash the package'
+ Write-Output ('Cached native lookups (100 iterations): '+[Math]::Round($hotClock.Elapsed.TotalMilliseconds,1)+' ms')
+ $null=Await (Invoke-Private 'GetChatConfigurationAsync' ([object[]]@($true)))
+ Check ([StartupPump]::ConfigurationLoads -eq 2) 'explicit reconnect reloads and verifies configuration'
+ $configurationFactory=Field '_chatConfiguration'
+ Put '_chatConfiguration' ([StartupPump]::InvalidConfigurationFactory($configuration.GetType()))
+ $refused=$false;$oldSnapshotRefused=$false
+ try{$null=Await (Invoke-Private 'GetChatConfigurationAsync' ([object[]]@($true)))}catch{$refused=$true}
+ try{$null=Invoke-Private 'ConnectedChatConfiguration'}catch{$oldSnapshotRefused=$true}
+ Check ($refused -and $oldSnapshotRefused) 'a failed refreshed configuration cannot fall back to the previous connection snapshot'
+ Put '_chatConfiguration' $configurationFactory
+ $null=Await (Invoke-Private 'GetChatConfigurationAsync' ([object[]]@($true)))
  $workspace=Join-Path $FixtureDirectory 'state/workspace'
  Put '_chatWorkspace' ([StartupPump]::Constant($workspace))
  Put '_automating' $true

@@ -104,7 +104,7 @@ namespace TwinCatAssistant.Native
             _knowledgeChecking=true;_knowledgeChecked=DateTime.UtcNow;
             try
             {
-                var config=_chatConfiguration();
+                var config=await GetChatConfigurationAsync();
                 if(string.IsNullOrEmpty(config.McpSettingsPath))return;
                 var result=await NativeKnowledge.RunAsync(config,new {mode="status",state=config.StateRoot,mcpConfig=config.McpSettingsPath},null,CancellationToken.None);
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -128,7 +128,7 @@ namespace TwinCatAssistant.Native
             _knowledgeBusy=true;_knowledgeCancellation=new CancellationTokenSource();RenderKnowledge();
             try
             {
-                var config=_chatConfiguration();
+                var config=await GetChatConfigurationAsync();
                 var result=await NativeKnowledge.RunAsync(config,new {mode="setup",state=config.StateRoot,mcpConfig=config.McpSettingsPath,
                     source=source.path,language=source.language,acceptLocalIndexing=true},progress=>{
                         if(!_disposed){_knowledgeState=progress;RenderKnowledge();RenderChatBinding();}

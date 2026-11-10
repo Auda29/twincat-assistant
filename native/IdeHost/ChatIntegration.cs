@@ -22,7 +22,7 @@ namespace TwinCatAssistant.Native
     public sealed partial class AssistantControl
     {
         private readonly string _chatIdeInstance = Guid.NewGuid().ToString("N");
-        private ChatBindingStore _chatBindings = new ChatBindingStore();
+        private ChatBindingStore _chatBindings;
         private ActiveEditorSnapshot _chatActive;
         private NativeProjectIdentity _chatProject, _preparedProject;
         private Func<NativeProjectIdentity> _chatProjectReader;
@@ -34,8 +34,11 @@ namespace TwinCatAssistant.Native
         private string _knowledgeCorpus = "not_probed";
         private bool _mcpEnabled, _explicitGeneralRequested;
         private Func<ActiveEditorSnapshot> _chatSnapshotReader;
-        private Func<string> _chatWorkspace = () => System.IO.Path.Combine(NativeChatConfiguration.Load().StateRoot, "workspace");
+        private Func<string> _chatWorkspace;
         private Func<NativeChatConfiguration> _chatConfiguration = NativeChatConfiguration.Load;
+        private Func<NativeChatConfiguration> _configurationLoader;
+        private Task<NativeChatConfiguration> _configurationTask;
+        private NativeChatConfiguration _connectedConfiguration;
         private string _chatBrowserProfile = null;
         private ChatSelection _chatSelection;
         private ChatContextBinding _chatBinding;
@@ -57,6 +60,8 @@ namespace TwinCatAssistant.Native
         private void InitializeChatIntegration()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            _chatWorkspace = () => System.IO.Path.Combine(ConnectedChatConfiguration().StateRoot, "workspace");
+            _chatBindings = new ChatBindingStore(() => ConnectedChatConfiguration().StateRoot);
             Loaded += OnChatLoaded;
             _chatReconnect = new DispatcherTimer(DispatcherPriority.Background);
             _chatReconnect.Tick += ReconnectChat;
@@ -64,6 +69,32 @@ namespace TwinCatAssistant.Native
             _automationKick.Tick += OnAutomationKick;
             _noticeTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(8) };
             _noticeTimer.Tick += (sender, args) => { _noticeTimer.Stop(); if (_noticeTone != "error") DismissNotice(); };
+        }
+
+        // Load and verify once per connection, away from the IDE thread. Polls,
+        // rendering and binding lookups use the same state-root snapshot as the
+        // connected service. Explicit reconnect revalidates all configuration.
+        // Every launched Node operation still verifies its complete package.
+        private async Task<NativeChatConfiguration> GetChatConfigurationAsync(bool refresh = false)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (refresh || _configurationTask == null || !ReferenceEquals(_configurationLoader, _chatConfiguration))
+            {
+                _configurationLoader = _chatConfiguration;
+                _connectedConfiguration = null;
+                _configurationTask = Task.Run(_configurationLoader);
+            }
+            var pending = _configurationTask;
+            var result = await pending;
+            if (ReferenceEquals(pending, _configurationTask)) _connectedConfiguration = result;
+            return result;
+        }
+        private NativeChatConfiguration ConnectedChatConfiguration()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_connectedConfiguration == null)
+                throw new InvalidOperationException("Chat configuration has not been loaded for this connection.");
+            return _connectedConfiguration;
         }
 
         private void DisposeChatIntegration()
@@ -236,7 +267,10 @@ namespace TwinCatAssistant.Native
             _automating = true;
             try
             {
-                await RefreshKnowledgeAsync();
+                // Corpus discovery is independent of selecting the project chat.
+                // It can include package checks and must not consume the chat's
+                // presentation deadline before project preparation even starts.
+                RunAction(() => RefreshKnowledgeAsync());
                 if (_disposed || _chatSelection == null || !_chatAdapterReady) return;
                 if (_chatSelection.authenticated != true) { await SignInAgainAsync(); return; }
                 _signInAttempts = 0;
@@ -766,7 +800,7 @@ namespace TwinCatAssistant.Native
         private async Task<bool> PrepareProjectWorkspaceAsync(NativeProjectIdentity project, string workspace = null)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            var config = _chatConfiguration();
+            var config = await GetChatConfigurationAsync();
             _mcpEnabled = !string.IsNullOrEmpty(config.McpSettingsPath);
             if (_preparedProject?.Equals(project) == true && _preparedMcpSettings == config.McpSettingsPath
                 && (workspace == null || SameDirectory(workspace, _projectWorkspace))) return true;
@@ -1147,7 +1181,7 @@ namespace TwinCatAssistant.Native
                     throw new InvalidOperationException(HostText.Get("H158"));
                 var model = selection.model?.StartsWith(provider + "/", StringComparison.Ordinal) == true ? selection.model : null;
                 _modelStatus.Text = HostText.Format("H159", new object[] { provider });
-                await NativeModelConsent.ConfigureAsync(_chatConfiguration(), provider, model);
+                await NativeModelConsent.ConfigureAsync(await GetChatConfigurationAsync(), provider, model);
                 var serializer = new JavaScriptSerializer();
                 var expected = new { selection.sessionId, selection.epoch, selection.documentId };
                 await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatPolicy='pending';window.__twinCatChat.refreshPolicy(" + serializer.Serialize(expected)

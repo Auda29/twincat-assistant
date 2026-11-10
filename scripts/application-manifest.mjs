@@ -17,6 +17,18 @@ async function inventory(root) {
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error('Invalid package root');
   const files = [];
   const names = new Set();
+  // Overlap small-file stream/antivirus latency, with at most four reads. Start
+  // each digest immediately after its existing no-link metadata check rather
+  // than collecting paths and reopening the entire tree much later.
+  const pending = new Set();
+  let failed;
+  async function hashFile(path, file) {
+    const task = digest(path).then(value => { file.sha256 = value; }, error => { failed ??= error; })
+      .finally(() => pending.delete(task));
+    pending.add(task);
+    if (pending.size >= 4) await Promise.race(pending);
+    if (failed) throw failed;
+  }
   async function walk(dir, prefix = '') {
     for (const name of (await readdir(dir)).sort()) {
       const relative = prefix ? `${prefix}/${name}` : name;
@@ -30,11 +42,16 @@ async function inventory(root) {
       if (stat.isDirectory()) await walk(path, relative);
       else if (stat.isFile()) {
         if (relative === manifestName) continue;
-        files.push({ path: relative, size: stat.size, sha256: await digest(path) });
+        const file = { path: relative, size: stat.size, sha256: null };
+        files.push(file);
+        await hashFile(path, file);
       } else throw new Error(`Unsupported package entry: ${relative}`);
     }
   }
-  await walk(root);
+  // Preserve traversal order and drain all reads on traversal/hash failure too.
+  try { await walk(root); }
+  finally { await Promise.all(pending); }
+  if (failed) throw failed;
   return files;
 }
 function validateMetadata(m) {

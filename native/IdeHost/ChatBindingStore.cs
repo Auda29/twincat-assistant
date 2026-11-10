@@ -13,7 +13,9 @@ namespace TwinCatAssistant.Native
     {
         private readonly string _directory;
         private readonly string _stateRoot;
-        private string StateRoot { get { return _stateRoot ?? Path.GetFullPath(NativeChatConfiguration.Load().StateRoot).TrimEnd('\\', '/'); } }
+        private readonly Func<string> _connectedStateRoot;
+        private string StateRoot { get { return _stateRoot ?? Path.GetFullPath(_connectedStateRoot != null ? _connectedStateRoot() : NativeChatConfiguration.Load().StateRoot).TrimEnd('\\', '/'); } }
+        internal ChatBindingStore(Func<string> connectedStateRoot) : this(null, null) { _connectedStateRoot = connectedStateRoot; }
         public ChatBindingStore(string directory = null) : this(directory, null) { }
         public ChatBindingStore(string directory, string stateRoot)
         {
