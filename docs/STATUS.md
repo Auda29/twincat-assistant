@@ -1,5 +1,11 @@
 # Implementation status
 
+**Preview-6-Korrektur, 2026-11-10.** Bestätigte Chats werden bereits vor dem
+Mount des Eingabefelds zugeordnet. WebView2 rendert währenddessen hinter dem
+WPF-Ladebildschirm bei gesperrter Eingabe. Zwölf Prüfungen des tatsächlichen
+nativen WPF-/WebView-Starts bestehen. Die installierte IDE-Abnahme bleibt offen.
+[Umfang und Nachweise](releases/native-v0.2.0-preview.6.md).
+
 **Preview-5-Korrektur, 2026-11-10.** Die Antwort des nativen MCP-Prozesses wird
 nun ausdrücklich als UTF-8 gelesen. Ein gezielter Vorher-/Nachher-Test belegt
 die zuvor falsche Verarbeitung von Umlauten und `ß` in Projektpfaden bei

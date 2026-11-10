@@ -166,12 +166,12 @@ namespace TwinCatAssistant.Native
             // Operational readiness lets automation select/bind the project.
             // Presentation additionally waits for that selection's committed
             // history, not just an input field from the previous selection.
-            // Do not await animation frames while WebView2 is hidden: the
-            // original timeline settles its geometry when rendering resumes.
+            // A confirmed session can be bound before React mounts its composer.
+            // Keep that DOM/presentation gate out of operational readiness.
             var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify((()=>{const s=window.__twinCatChat?.state() ?? {version:1,ready:false};"
                 + "const mounted=!!document.querySelector('[data-testid=\"chat-input\"],.oc-draft-center');"
                 + "const loading=!!document.querySelector('#initial-loading,[data-chat-hydration-skeleton],[data-twincat-startup-overlay]');"
-                + "return {...s,ready:s.ready && (!s.authenticated || mounted),"
+                + "return {...s,ready:s.ready === true,"
                 + "presentationReady:s.presentationReady === true && mounted && !loading};})())");
             if (_disposed || documentGeneration != _chatDocumentGeneration || !ReferenceEquals(browser, _browser.CoreWebView2) || raw == null || raw.Length > 12000) return null;
             var json = serializer.Deserialize<string>(raw);
