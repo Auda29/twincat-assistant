@@ -27,6 +27,9 @@ namespace TwinCatAssistant.Native
         private NativeProjectIdentity _chatProject, _preparedProject;
         private Func<NativeProjectIdentity> _chatProjectReader;
         private string _projectWorkspace, _preparedMcpSettings, _mcpFailureKey;
+        private string _mcpFailureMessage;
+        private bool _projectSetupPending;
+        private bool ProjectSetupFailed { get { return _chatProject != null && _mcpFailureKey?.StartsWith(ProjectKey(_chatProject) + "\0", StringComparison.Ordinal) == true; } }
         private string[] _projectWorkspaces;
         private string _knowledgeCorpus = "not_probed";
         private bool _mcpEnabled, _explicitGeneralRequested;
@@ -163,12 +166,12 @@ namespace TwinCatAssistant.Native
             // Operational readiness lets automation select/bind the project.
             // Presentation additionally waits for that selection's committed
             // history, not just an input field from the previous selection.
-            // Do not await animation frames while WebView2 is hidden: the
-            // original timeline settles its geometry when rendering resumes.
+            // A confirmed session can be bound before React mounts its composer.
+            // Keep that DOM/presentation gate out of operational readiness.
             var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify((()=>{const s=window.__twinCatChat?.state() ?? {version:1,ready:false};"
                 + "const mounted=!!document.querySelector('[data-testid=\"chat-input\"],.oc-draft-center');"
                 + "const loading=!!document.querySelector('#initial-loading,[data-chat-hydration-skeleton],[data-twincat-startup-overlay]');"
-                + "return {...s,ready:s.ready && (!s.authenticated || mounted),"
+                + "return {...s,ready:s.ready === true,"
                 + "presentationReady:s.presentationReady === true && mounted && !loading};})())");
             if (_disposed || documentGeneration != _chatDocumentGeneration || !ReferenceEquals(browser, _browser.CoreWebView2) || raw == null || raw.Length > 12000) return null;
             var json = serializer.Deserialize<string>(raw);
@@ -401,6 +404,11 @@ namespace TwinCatAssistant.Native
             {
                 text = _chatReconnect?.IsEnabled == true ? "Verbindung zum lokalen Chat unterbrochen. Neuer Versuch läuft …" : "Verbindung zum lokalen Chat unterbrochen.";
                 tone = "Error"; action = "Neu verbinden"; command = Reconnect;
+            }
+            else if (ProjectSetupFailed)
+            {
+                text = _mcpFailureMessage; tone = "Error"; action = "Erneut versuchen";
+                command = () => { _mcpFailureKey = null; DismissNotice(); KickAutomation(); };
             }
             else if (_noticeText != null) { text = _noticeText; tone = _noticeTone == "error" ? "Error" : _noticeTone == "warning" ? "Warning" : "Neutral"; action = _noticeActionLabel; command = _noticeAction; dismissable = true; }
             else if (foreign)
@@ -687,7 +695,11 @@ namespace TwinCatAssistant.Native
             var key = ProjectKey(project) + "\0" + config.McpSettingsPath + "\0" + workspace;
             if (_mcpFailureKey == key) return false;
             _preparedProject = null; _projectWorkspace = null; _projectWorkspaces = null;
+            _mcpFailureKey = null; _mcpFailureMessage = null;
             var wasPending = _chatActionPending;
+            var readinessPending = _chatReadyTimeout.IsEnabled;
+            _chatReadyTimeout.Stop();
+            _projectSetupPending = true;
             _chatActionPending = true; RenderChatBinding();
             try
             {
@@ -700,17 +712,32 @@ namespace TwinCatAssistant.Native
                 _knowledgeCorpus = prepared?.corpus ?? "not_probed";
                 return true;
             }
-            catch
+            catch (Exception error)
             {
                 if (!_disposed)
                 {
                     _mcpFailureKey = key;
-                    Notify("Die Projektwerkzeuge konnten nicht eingerichtet werden. Diagnose und lokale MCP-Konfiguration prüfen.", "error", "Erneut versuchen",
+                    var failure = (error as NativeMcpSetupException)?.Failure;
+                    _mcpFailureMessage = failure == "project_locked"
+                        ? "Die Projekteinrichtung ist gesperrt. Eine andere Einrichtung läuft oder eine Sperre blieb nach einem Abbruch zurück. Vor einer Wiederherstellung alle IDEs und Assistant-Prozesse schließen."
+                        : failure == "timeout"
+                        ? "Die Prüfung der Projektkonfiguration hat das Zeitlimit erreicht. Die Chatverbindung ist davon unabhängig. Diagnose prüfen und die Einrichtung erneut versuchen."
+                        : "Die Projektwerkzeuge konnten nicht eingerichtet werden. Diagnose und lokale MCP-Konfiguration prüfen.";
+                    Notify(_mcpFailureMessage, "error", "Erneut versuchen",
                         () => { _mcpFailureKey = null; DismissNotice(); KickAutomation(); });
                 }
                 return false;
             }
-            finally { _chatActionPending = wasPending; if (!_disposed) RenderChatBinding(); }
+            finally
+            {
+                _projectSetupPending = false;
+                _chatActionPending = wasPending;
+                if (!_disposed)
+                {
+                    if (readinessPending && !_chatPresented && !ProjectSetupFailed) _chatReadyTimeout.Start();
+                    RenderChatBinding();
+                }
+            }
         }
 
         private Task NewProjectChatAsync() { return NewChatAsync(false); }

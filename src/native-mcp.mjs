@@ -130,7 +130,12 @@ async function main() {
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try { await withPackageVerificationScope(main); }
-  catch { process.stdout.write('{"configured":false}\n'); process.exitCode = 1; }
+  catch (error) {
+    // Fixed diagnostic codes only. No paths, exception text or upstream output.
+    const failure = error?.code === 'PROJECT_WORKSPACE_LOCKED' ? 'project_locked' : 'setup_failed';
+    process.stdout.write(JSON.stringify({ configured: false, failure }) + '\n');
+    process.exitCode = 1;
+  }
 }
 
 export function readNativeMcpSettings(...args) {

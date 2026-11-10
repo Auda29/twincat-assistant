@@ -9,6 +9,25 @@ It is separate from the published Preview 3 and has not been installed on the
 operator workstation. Remaining shared helpers and generic client entry points
 are explicitly recorded; this does not close Roadmap 2 or installed UI gates.
 
+**Preview-6-Korrektur, 2026-11-10.** Bestätigte Chats werden bereits vor dem
+Mount des Eingabefelds zugeordnet. WebView2 rendert währenddessen hinter dem
+WPF-Ladebildschirm bei gesperrter Eingabe. Zwölf Prüfungen des tatsächlichen
+nativen WPF-/WebView-Starts bestehen. Die installierte IDE-Abnahme bleibt offen.
+[Umfang und Nachweise](releases/native-v0.2.0-preview.6.md).
+
+**Preview-5-Korrektur, 2026-11-10.** Die Antwort des nativen MCP-Prozesses wird
+nun ausdrücklich als UTF-8 gelesen. Ein gezielter Vorher-/Nachher-Test belegt
+die zuvor falsche Verarbeitung von Umlauten und `ß` in Projektpfaden bei
+Windows-Codepages 850/1252. [Umfang und Nachweise](releases/native-v0.2.0-preview.5.md).
+Die installierte IDE-Abnahme bleibt offen.
+
+**Preview 4, 2026-11-10.** PR #18 ist gemergt. Der neue Release trennt
+Projekteinrichtungsfehler von der Chatverbindung und verwendet die eigenständige
+Version `0.2.0-preview.4` / `0.2.0.4` für Updates vorhandener Preview-3-Installationen.
+Die [Releasebeschreibung](releases/native-v0.2.0-preview.4.md) grenzt den lokalen
+Build und die noch ausstehende installierte UI-Abnahme ab. PR #16/#17 sind
+nicht enthalten.
+
 **Preview 3 follow-up, 2026-11-09.** The first-menu-click defect has been traced
 to the installed SDK 15 synchronous tool-window creation fallback and fixed with
 an explicit frame-show call. The x86 host is rebuilt as `0.2.0.3`; the complete
