@@ -1,5 +1,21 @@
 # Implementation status
 
+**Beta 2, 2026-11-10.** PR #22 is merged after all three source checks passed on
+`5525e1b`. The complete application `0.2.0-beta.2` / native `0.2.0.8` and its
+installer are published as [GitHub Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.2).
+This distinct application version combines PRs #16–#21 and can update Preview 6
+or Beta 1 through the normal managed installer. The fresh x86 build passes 940
+native regressions and 12 actual standalone WPF/WebView startup checks. Wizard
+version/operation/refusal checks, protected package startup with both real MCPs
+on synthetic files, restart/state preservation and actual EXE extraction with
+all 21,538 file hashes pass. Uploaded asset sizes and SHA-256 digests match the
+local results. Unchanged pinned runtime inputs were reused after receipt/hash
+validation; this was a local Windows installer build, not a hosted installer
+build. No workstation installation, operator-profile change or model request
+was performed. Installed Beta 2/language, member/paste/first-after-logon and real
+managed update/rollback acceptance remain open.
+[Release scope and installation](releases/native-v0.2.0-beta.2.md).
+
 **Beta 1 Setup 1, 2026-11-10.** PR #21 is merged and the corrected installer is
 published as Latest. It recognizes empty ZIP directories with either separator,
 shows bundled/current/rollback versions and identifies fresh install versus
