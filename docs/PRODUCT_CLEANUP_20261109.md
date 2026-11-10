@@ -1,5 +1,10 @@
 # Produktbereinigung vom 09.11.2026
 
+Die hier dokumentierte Umsetzung ist seit dem 10.11.2026 in
+[Beta 1](releases/native-v0.2.0-beta.1.md) enthalten. Die folgenden Paketnummern
+und Befunde beschreiben den damaligen Prüfstand. Der Beta-Release besitzt einen
+eigenen vollständigen Paketbau und `BUILD_PROVENANCE.json`.
+
 Dieser Stand gehört zum Branch `feat/lean-product-runtime`. Er baut auf dem
 veröffentlichten Preview 3 auf, verändert aber weder dessen Release-Artefakte
 noch die lokale Installation. Die Verifikationspakete tragen noch die bestehende

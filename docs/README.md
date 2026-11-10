@@ -6,8 +6,10 @@ and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
 Native acceptance and future engineering write/build milestones remain separate.
 
-Current checkpoint: [resumed integration and remaining host gates, 2026-11-06](INTEGRATED_ACCEPTANCE_20261106.md).
+Current release: [0.2.0 Beta 1](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.1), including product cleanup and saved DE/EN language selection. Installed Beta language acceptance and the remaining host gates stay open. The [2026-11-06 checkpoint](INTEGRATED_ACCEPTANCE_20261106.md) is retained as historical evidence.
 
+- [Beta 1 release and update](releases/native-v0.2.0-beta.1.md)
+- [Preview 6 native chat startup fix](releases/native-v0.2.0-preview.6.md)
 - [Preview 5 Unicode project-path fix](releases/native-v0.2.0-preview.5.md)
 - [Preview 4 project-setup fix and update](releases/native-v0.2.0-preview.4.md)
 - [Preview 3 installer and first-menu-click fix](releases/native-v0.2.0-preview.3.md)

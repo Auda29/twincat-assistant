@@ -6,7 +6,7 @@ Explain Structured Text, explore PLC project code and find relevant Beckhoff
 documentation in a docked chat window. TwinCAT Assistant connects the active
 project and POU to a conversation that you can return to later.
 
-**0.2.0 Preview · Read-only**
+**0.2.0 Beta 1 · Read-only**
 
 [Get started](#getting-started) · [Documentation](docs/README.md) · [Releases](https://github.com/Auda29/twincat-assistant/releases)
 
@@ -21,12 +21,14 @@ project and POU to a conversation that you can return to later.
 - Keep conversations associated with their PLC project, switch between
   project chats and use a general chat for questions without a project.
 
+Host and chat support German and English with a shared, saved language choice.
+
 The chat includes model selection, streamed responses, tool activity, code
 blocks and attachments. Model requests go to the provider you configure.
 
 ## Getting started
 
-Download the [Preview 3 Windows installer](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-preview.3)
+Download the [latest Windows installer](https://github.com/Auda29/twincat-assistant/releases/latest)
 for TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on Windows x64. You also need
 .NET 8 runtime, WebView2 and access to a supported model provider. Documentation search uses the
 Knowledge MCP with a prepared corpus, which can be created from locally
@@ -35,8 +37,8 @@ installed Beckhoff InfoSys help.
 1. Close TcXaeShell, verify the downloaded setup checksum and double-click the
    EXE. Confirm UAC with your normal Windows account. The setup window handles
    installation and managed updates without Git, npm or compilation. See the
-   [release notes](docs/releases/native-v0.2.0-preview.3.md), including the separate
-   migration requirement for old unpackaged prototypes.
+   [release notes](docs/releases/native-v0.2.0-beta.1.md), and the separate
+   [migration notes for old unpackaged prototypes](docs/PROTOTYPE_PROFILE_MIGRATION_20261109.md).
 2. Open the TwinCAT Assistant tool window, connect your model provider and
    select a model in the chat.
 3. Open a PLC project and select a Structured Text POU. Attach its snapshot
@@ -51,9 +53,9 @@ compatibility and acceptance boundaries.
 For development builds, use the [development setup](docs/INSTALLATION.md) and
 [pinned source runtime guide](upstream/README.md).
 
-## Alpha scope
+## Beta scope
 
-The current alpha reads and explains code and documentation. PLC code editing,
+The current beta reads and explains code and documentation. PLC code editing,
 compilation, deployment and runtime control are outside the available scope.
 A connected PLC is not required for project and documentation analysis.
 
@@ -81,7 +83,8 @@ indexes and user project files are not bundled with the application.
 
 ## Documentation
 
-- [0.2.0 Preview release notes](docs/releases/native-v0.2.0-preview.1.md)
+- [0.2.0 Beta 1 release notes](docs/releases/native-v0.2.0-beta.1.md)
+- [German/English UI and saved language selection](docs/LANGUAGE_SUPPORT.md)
 - [Installation and configuration](docs/INSTALLATION.md)
 - [Using project chats and attachments](docs/CHAT_INTEGRATION.md)
 - [Setting up Beckhoff documentation search](docs/KNOWLEDGE_SETUP.md)

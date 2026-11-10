@@ -1,7 +1,10 @@
 # Implementation status
 
-**Beta 1, 2026-11-10.** Produktbereinigung und DE/EN-Sprachauswahl werden mit
-den Start- und MCP-Korrekturen aus Preview 6 zusammengeführt. Der Bediener hat
+**Beta 1, 2026-11-10.** PR #16 und #17 sind gemergt. Produktbereinigung und
+DE/EN-Sprachauswahl sind mit den Start- und MCP-Korrekturen aus Preview 6
+als GitHub Latest veröffentlicht. Der integrierte Stand besteht 163 Node-Tests
+ohne Skip, 940 native Prüfungen, den WPF-/WebView-Start und die Sprachprüfungen
+sowie den vollständigen Paket-/Installer-Payload-Smoke. Der Bediener hat
 den Chatstart mit Preview 6 in der installierten TcXaeShell bestätigt. Dies
 schließt die Sprach-, Member-, Paste- und First-after-logon-Abnahmen nicht.
 [Beta-Umfang und Installationshinweise](releases/native-v0.2.0-beta.1.md).

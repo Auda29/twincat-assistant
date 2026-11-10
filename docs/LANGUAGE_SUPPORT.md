@@ -1,8 +1,10 @@
 # Deutsch und Englisch
 
 Implementiert am 09.11.2026 auf `feat/de-en-localization`, aufbauend auf der
-Produktbereinigung in `feat/lean-product-runtime`. Dies ist kein neuer Release
-und keine Änderung der installierten Arbeitsversion.
+Produktbereinigung in `feat/lean-product-runtime`. Die Umsetzung ist seit dem
+10.11.2026 in [Beta 1](releases/native-v0.2.0-beta.1.md) enthalten. Die ursprünglichen
+Prüfungen unten bleiben datierte Nachweise; die Integration ergänzt die jüngsten
+Projektfehlertexte in beiden Sprachen und wurde erneut geprüft.
 
 ## Bedienung und Speicherung
 
@@ -44,12 +46,12 @@ wird beim Lesen ignoriert; bloßes Lesen schreibt die Datei nicht um.
   Original. Die Antwortsprache des Modells richtet sich weiterhin nach der
   letzten Nutzernachricht gemäß Analyse-Prompt, nicht nach der Oberflächensprache.
 
-Das lokale Pr?f-Paket enth?lt 21.538 Dateien; sein Manifest hat SHA-256
+Das lokale Prüf-Paket enthält 21.538 Dateien; sein Manifest hat SHA-256
 `85d1f27549932bf4406324aa576ceb20e5860b4d1567a919c559a558a2953c41`.
 Die englische Satellite-Assembly hat SHA-256
 `7b4b4238263a121538ada6e1cff3048bc67d53ba8f254b030a3e90a6f7ae56ea`.
-Diese Pr?farbeitskopie verwendet weiterhin die bestehende Versionsnummer; sie
-wurde nicht als Release ver?ffentlicht.
+Diese Prüfarbeitskopie verwendet weiterhin die bestehende Versionsnummer; sie
+wurde nicht als Release veröffentlicht.
 
 Native WPF-Bindungen erkennen ausschließlich vom Katalog erzeugte Strings anhand
 ihrer Objektidentität. Ein vom Nutzer vergebener Titel `Gespeichert` wird deshalb
