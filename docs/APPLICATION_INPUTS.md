@@ -1,5 +1,11 @@
 # Building application inputs
 
+New inputs include the reviewed [Knowledge validation overlay](BETA_HARDENING_20261110.md).
+The pinned wheel remains the base input; original/patched module hashes, original
+source and a corrected RECORD identify the modified distribution explicitly.
+Existing input directories are not patched in place. Build a fresh output root;
+the application builder rejects old unpatched Knowledge inputs.
+
 `Build-ApplicationInputs.ps1` prepares the four input directories used by
 `Build-ApplicationPackage.ps1`. It does not change the developer source checkout,
 operator configuration, existing Python environments, TwinCAT or PLC projects.

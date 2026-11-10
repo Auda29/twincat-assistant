@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +8,7 @@ import { createManifest, verifyManifest } from './application-manifest.mjs';
 import { runVersion } from '../src/launcher.mjs';
 import { applySourceOverlay } from './source-overlay.mjs';
 import { trimChatPackage } from './trim-chat-package.mjs';
+import { patchedSha256 } from './knowledge-validation-overlay.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', windowsHide: true }).trim();
@@ -74,7 +76,7 @@ export async function reduceDeliveryFiles(stage) {
   if (reduction.removedServerFiles || reduction.removedPackages.length) console.log('Chat package reduction: ' + JSON.stringify(reduction));
 }
 
-export async function buildApplicationPackage(output) {
+export async function buildApplicationPackage(output, inputs) {
   if (!isAbsolute(output) || resolve(output) !== output) throw new Error('OutputDirectory must be absolute and normalized');
   if (process.platform !== 'win32' || !['x64', 'arm64', 'ia32'].includes(process.arch) || Number(process.versions.node.split('.')[0]) < 22) throw new Error('Build with Windows Node 22+ for the backend architecture');
   if (await lstat(output).then(() => true, e => { if (e.code === 'ENOENT') return false; throw e; })) throw new Error('OutputDirectory must not already exist');
@@ -85,13 +87,18 @@ export async function buildApplicationPackage(output) {
   const receipt = JSON.parse(await readFile(join(root, 'artifacts/source-runtime/runtime.json'), 'utf8'));
   const lock = JSON.parse(await readFile(join(root, 'upstream/source-lock.json'), 'utf8'));
   const knowledgeLock = JSON.parse(await readFile(join(root, 'upstream/knowledge-lock.json'), 'utf8'));
-  const inputRoot = join(root, 'artifacts/application-inputs');
+  const inputRoot = inputs ?? join(root, 'artifacts/application-inputs');
+  if (!isAbsolute(inputRoot) || resolve(inputRoot) !== inputRoot) throw new Error('Input directory must be absolute and normalized');
   const knowledgeInput = join(inputRoot, 'knowledge');
   const engineeringInput = join(inputRoot, 'engineering');
   const hostInput = join(root, 'native/IdeHost/X86/bin/Release/net472');
   const nodeLicense = join(inputRoot, 'node/LICENSE');
   const knowledgeManifest = await verifyManifest(knowledgeInput);
   const engineeringManifest = await verifyManifest(engineeringInput);
+  const knowledgeOverlay = JSON.parse(await readFile(join(knowledgeInput, 'assistant-validation-overlay.json')));
+  if (knowledgeOverlay.version !== 1 || knowledgeOverlay.patchedSha256 !== patchedSha256
+      || createHash('sha256').update(await readFile(join(knowledgeInput, 'site-packages/twincat_knowledge/domain/provenance.py'))).digest('hex') !== patchedSha256)
+    throw new Error('Rebuild Knowledge inputs with the reviewed startup validation overlay');
   if (knowledgeManifest.version !== knowledgeLock.version || engineeringManifest.version !== '3c303837e6d6f72bec1b9d38e778a7c32c61ae5c'
       || knowledgeManifest.architecture !== process.arch || engineeringManifest.architecture !== process.arch) throw new Error('MCP input version or backend architecture mismatch');
   for (const item of [join(knowledgeInput, 'twincat-knowledge.exe'), join(knowledgeInput, 'LICENSE'), join(engineeringInput, 'packages/mcp/dist/index.js'), join(engineeringInput, 'LICENSE'), nodeLicense,
@@ -194,6 +201,6 @@ export async function buildApplicationPackage(output) {
   } finally { await rm(stage, { recursive: true, force: true }); }
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try { if (process.argv.length !== 3) throw new Error('Expected one absolute output directory'); await buildApplicationPackage(process.argv[2]); }
+  try { if (![3,4].includes(process.argv.length)) throw new Error('Expected output directory and optional input directory'); await buildApplicationPackage(process.argv[2], process.argv[3]); }
   catch (error) { console.error('Application package build failed: ' + error.message); process.exitCode = 1; }
 }

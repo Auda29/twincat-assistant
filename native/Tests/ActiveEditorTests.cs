@@ -106,6 +106,14 @@ internal static class ActiveEditorTests
             && propertySource.Implementation.Contains("// SET implementation\nx := Speed;"), "property preserves both labelled accessor bodies and local declarations");
         var getter = ActivePouSource.Parse(MemberXml(property), new[] { "Speed", "Get" });
         Check(getter?.Kind == "Get" && getter.Name == "Get" && getter.Implementation == "Speed := x;", "selected getter excludes the setter and parent body");
+        foreach (var selectedSource in new[] { actionSource, methodSource, propertySource, getter })
+        {
+            var torn = new DirtyEvidence { PersistedDocumentDirty = false };
+            ActivePouSource.Correlate(torn, selectedSource, selectedSource, selectedSource.Name,
+                selectedSource.Declaration, selectedSource.Implementation + " // changed between reads");
+            Check(torn.EvidenceFailed && DirtyAssessment.Evaluate(torn).State == "unknown",
+                "torn " + selectedSource.Kind + " XML/text cannot be labelled saved");
+        }
         Check(ActivePouSource.Parse(MemberXml(action), new[] { "Missing" }) == null, "missing member never falls back to the parent body");
         Check(ActivePouSource.Parse(MemberXml(action + action), new[] { "Reset" }) == null, "duplicate member names are ambiguous");
         var foreignOwner = new DirtyEvidence { PersistedDocumentDirty = false };

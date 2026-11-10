@@ -49,6 +49,21 @@ test('busy project setup reports a fixed code without adopting or deleting the e
     assert.equal((await prepareNativeProject(request)).workspace, prepared.workspace);
   } finally { await rm(f.root, { recursive: true, force: true }); }
 });
+
+test('unchanged project setup does not take the provider writer lock or rewrite global policy', async () => {
+  const f = await fixture();
+  try {
+    const project = join(f.root,'PLC.plcproj'); await writeFile(project,'<Project/>');
+    const request = { state:f.state, mcpConfig:f.mcpConfig, solution:f.solution, project };
+    const first = await prepareNativeProject(request);
+    const { paths } = await inspectState(f.state);
+    const before = await Promise.all([readFile(paths.configPath),readFile(paths.settingsPath)]);
+    const lock = join(f.state,'model-consent.lock'); await writeFile(lock,'synthetic other writer');
+    assert.equal((await prepareNativeProject(request)).workspace,first.workspace);
+    assert.deepEqual(await Promise.all([readFile(paths.configPath),readFile(paths.settingsPath)]),before);
+    assert.equal(await readFile(lock,'utf8'),'synthetic other writer');
+  } finally { await rm(f.root,{recursive:true,force:true}); }
+});
 test('native MCP project locations isolate two PLCs and retain provider policy and source files', async () => {
   const f = await fixture();
   try {

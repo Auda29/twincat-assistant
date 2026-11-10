@@ -7,6 +7,7 @@ import { parseArgs } from 'node:util';
 import { createManifest, verifyManifest } from './application-manifest.mjs';
 import { probeServer } from '../src/probe.mjs';
 import { createOpenCodeConfig } from '../src/config.mjs';
+import { patchKnowledgeValidation } from './knowledge-validation-overlay.mjs';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
@@ -124,6 +125,8 @@ async function knowledge(artifacts, license, licenseSha, probeOnly=false) {
     await rm(join(site,'twincat_knowledge-0.1.1.dist-info/direct_url.json'),{force:true});
     // Console-script wrappers produced by installers may contain absolute paths.
     await rm(join(site,'Scripts'),{recursive:true,force:true});
+    const validationOverlay = await patchKnowledgeValidation(site);
+    await writeFile(join(payload,'assistant-validation-overlay.json'),JSON.stringify(validationOverlay,null,2)+'\n');
     if(!probeOnly) await file(license,join(payload,'LICENSE'));
     await writeFile(join(payload,'build-provenance.json'),JSON.stringify({schemaVersion:1,revision:lock.revision,version:lock.version,python:lock.python,pythonEmbedSha256:pyHash,artifacts:lock.artifacts,licenseSha256:probeOnly?null:licenseSha},null,2)+'\n');
     const csc=join(process.env.SystemRoot,'Microsoft.NET/Framework/v4.0.30319/csc.exe');

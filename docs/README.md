@@ -49,6 +49,7 @@ Previous application: [0.2.0 Beta 1](releases/native-v0.2.0-beta.1.md), includin
 - [Diagnostic bridge and portable safety core](BRIDGE.md)
 - [Slow solution load and PLC editor restoration investigation](SOLUTION_STARTUP_INVESTIGATION.md)
 - [Beta 2 UI-thread configuration work and startup performance correction](STARTUP_PERFORMANCE_20261110.md)
+- [Unreleased beta hardening, Knowledge overlay and automated release pipeline](BETA_HARDENING_20261110.md)
 - [Native Windows acceptance](WINDOWS_ACCEPTANCE.md)
 - [Active editor implementation and acceptance](ACTIVE_EDITOR.md)
 - [Native chat start and connection](NATIVE_CHAT.md)
