@@ -5,6 +5,20 @@ without arguments. Windows requests administrator rights automatically before
 opening setup. Confirm UAC with the same Windows account that uses the Assistant;
 signing in as another administrator selects that administrator's user profile.
 
+The overview shows the application version bundled in setup, the currently
+installed managed version in the selected directory, and the operation before
+it starts: fresh installation, update from/to, or rollback from/to. Changing the
+directory or action refreshes this display. Same-version installation and a
+target version already retained in that directory are not offered as a new
+installation. Missing rollback targets, unknown/damaged state and pending
+transactions keep the start button disabled.
+
+The bundled version is a small build-generated resource checked against the
+embedded application manifest. Existing-version discovery reads only bounded
+installation ownership/state metadata in the selected directory. It does not
+scan operator profiles, enumerate chat data or inspect other installation roots.
+The existing transaction remains authoritative and repeats all checks at start.
+
 The window offers installation/update or rollback, a default destination of
 `C:\Program Files\TwinCatAssistant`, a folder picker, progress activity, live
 transaction output and a final success/error result. Logs remain in
