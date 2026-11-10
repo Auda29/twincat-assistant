@@ -10,12 +10,18 @@ namespace TwinCatAssistant.Native
     internal sealed class NativeMcpWorkspace
     {
         public bool configured { get; set; }
+        public string failure { get; set; }
         public string workspace { get; set; }
         public string[] workspaces { get; set; }
         public string project { get; set; }
         public string solution { get; set; }
         public string source { get; set; }
         public string corpus { get; set; }
+    }
+    internal sealed class NativeMcpSetupException : IOException
+    {
+        internal string Failure { get; private set; }
+        internal NativeMcpSetupException(string failure) : base("MCP project setup failed: " + failure) { Failure = failure; }
     }
     internal static class NativeMcpProject
     {
@@ -47,9 +53,13 @@ namespace TwinCatAssistant.Native
                 await process.StandardInput.BaseStream.WriteAsync(input, 0, input.Length);
                 process.StandardInput.Close();
                 var read = NativeChatSession.ReadReadyAsync(process.StandardOutput, 160000);
-                if (await Task.WhenAny(read, Task.Delay(30000)) != read)
-                { try { process.Kill(); } catch { } throw new IOException("MCP project setup timed out."); }
+                // A version transition verifies both complete package inventories.
+                // Keep a finite ceiling with room for the measured migration I/O.
+                if (await Task.WhenAny(read, Task.Delay(120000)) != read)
+                { try { process.Kill(); } catch { } throw new NativeMcpSetupException("timeout"); }
                 var result = new JavaScriptSerializer().Deserialize<NativeMcpWorkspace>(await read);
+                if (result?.configured == false)
+                    throw new NativeMcpSetupException(result.failure == "project_locked" ? "project_locked" : "setup_failed");
                 var parent = Path.GetFullPath(Path.Combine(config.StateRoot, "projects")) + Path.DirectorySeparatorChar;
                 if (result?.configured != true || string.IsNullOrEmpty(result.workspace)
                     || !Path.GetFullPath(result.workspace).StartsWith(parent, StringComparison.OrdinalIgnoreCase)

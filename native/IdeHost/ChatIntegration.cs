@@ -27,6 +27,9 @@ namespace TwinCatAssistant.Native
         private NativeProjectIdentity _chatProject, _preparedProject;
         private Func<NativeProjectIdentity> _chatProjectReader;
         private string _projectWorkspace, _preparedMcpSettings, _mcpFailureKey;
+        private string _mcpFailureMessage;
+        private bool _projectSetupPending;
+        private bool ProjectSetupFailed { get { return _chatProject != null && _mcpFailureKey?.StartsWith(ProjectKey(_chatProject) + "\0", StringComparison.Ordinal) == true; } }
         private string[] _projectWorkspaces;
         private string _knowledgeCorpus = "not_probed";
         private bool _mcpEnabled, _explicitGeneralRequested;
@@ -402,6 +405,11 @@ namespace TwinCatAssistant.Native
                 text = _chatReconnect?.IsEnabled == true ? "Verbindung zum lokalen Chat unterbrochen. Neuer Versuch läuft …" : "Verbindung zum lokalen Chat unterbrochen.";
                 tone = "Error"; action = "Neu verbinden"; command = Reconnect;
             }
+            else if (ProjectSetupFailed)
+            {
+                text = _mcpFailureMessage; tone = "Error"; action = "Erneut versuchen";
+                command = () => { _mcpFailureKey = null; DismissNotice(); KickAutomation(); };
+            }
             else if (_noticeText != null) { text = _noticeText; tone = _noticeTone == "error" ? "Error" : _noticeTone == "warning" ? "Warning" : "Neutral"; action = _noticeActionLabel; command = _noticeAction; dismissable = true; }
             else if (foreign)
             {
@@ -687,7 +695,11 @@ namespace TwinCatAssistant.Native
             var key = ProjectKey(project) + "\0" + config.McpSettingsPath + "\0" + workspace;
             if (_mcpFailureKey == key) return false;
             _preparedProject = null; _projectWorkspace = null; _projectWorkspaces = null;
+            _mcpFailureKey = null; _mcpFailureMessage = null;
             var wasPending = _chatActionPending;
+            var readinessPending = _chatReadyTimeout.IsEnabled;
+            _chatReadyTimeout.Stop();
+            _projectSetupPending = true;
             _chatActionPending = true; RenderChatBinding();
             try
             {
@@ -700,17 +712,32 @@ namespace TwinCatAssistant.Native
                 _knowledgeCorpus = prepared?.corpus ?? "not_probed";
                 return true;
             }
-            catch
+            catch (Exception error)
             {
                 if (!_disposed)
                 {
                     _mcpFailureKey = key;
-                    Notify("Die Projektwerkzeuge konnten nicht eingerichtet werden. Diagnose und lokale MCP-Konfiguration prüfen.", "error", "Erneut versuchen",
+                    var failure = (error as NativeMcpSetupException)?.Failure;
+                    _mcpFailureMessage = failure == "project_locked"
+                        ? "Die Projekteinrichtung ist gesperrt. Eine andere Einrichtung läuft oder eine Sperre blieb nach einem Abbruch zurück. Vor einer Wiederherstellung alle IDEs und Assistant-Prozesse schließen."
+                        : failure == "timeout"
+                        ? "Die Prüfung der Projektkonfiguration hat das Zeitlimit erreicht. Die Chatverbindung ist davon unabhängig. Diagnose prüfen und die Einrichtung erneut versuchen."
+                        : "Die Projektwerkzeuge konnten nicht eingerichtet werden. Diagnose und lokale MCP-Konfiguration prüfen.";
+                    Notify(_mcpFailureMessage, "error", "Erneut versuchen",
                         () => { _mcpFailureKey = null; DismissNotice(); KickAutomation(); });
                 }
                 return false;
             }
-            finally { _chatActionPending = wasPending; if (!_disposed) RenderChatBinding(); }
+            finally
+            {
+                _projectSetupPending = false;
+                _chatActionPending = wasPending;
+                if (!_disposed)
+                {
+                    if (readinessPending && !_chatPresented && !ProjectSetupFailed) _chatReadyTimeout.Start();
+                    RenderChatBinding();
+                }
+            }
         }
 
         private Task NewProjectChatAsync() { return NewChatAsync(false); }
