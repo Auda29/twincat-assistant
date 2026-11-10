@@ -1,7 +1,7 @@
 <Project>
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.WindowsDesktop" />
   <PropertyGroup>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <ShellPackageVersion>17.14.40264</ShellPackageVersion>
     <DtePackageVersion>17.14.40260</DtePackageVersion>
     <DefineConstants>$(DefineConstants);HOST_AMD64</DefineConstants>

@@ -11,6 +11,13 @@ Assistant window. The observed toolbox wait has not been attributed to Assistant
 
 ## Agreed priorities (2026-11-02)
 
+Priority update, 2026-11-10: next focus is TwinCAT 4026 with TcXaeShell64, followed
+by explicit project builds and navigable compiler diagnostics. Full Visual Studio
+2022 follows Shell64. See the [implementation boundaries and next slice](SHELL64_AND_BUILD_PLAN.md).
+4026/Shell64 is not yet installed; no installation/migration or compatibility
+acceptance is implied. The seven original items below remain as the scope list,
+not the current execution order.
+
 Integration, 2026-11-10: Beta 1 combines product cleanup and saved DE/EN selection
 with current startup fixes. The operator confirmed Preview 6 startup in installed
 TcXaeShell. Other Host gates and visible language acceptance remain open; items 5

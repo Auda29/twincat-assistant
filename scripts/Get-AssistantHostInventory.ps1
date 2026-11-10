@@ -176,8 +176,11 @@ function Get-TwinCatFacts($Uninstall) {
     $command = Get-Command tcpkg -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($command) { $tcpkgPath = $command.Source }
     $mechanism = 'unknown'
-    if ($tcpkgPath) { $mechanism = 'package-manager' } elseif ($setups.Count -gt 0) { $mechanism = 'classic-setup' }
     if (-not $version -and $setups.Count -gt 0) { $version = $setups[0].displayVersion; $versionSource = 'uninstall entry' }
+    # Presence of the manager does not migrate an existing 4024 installation.
+    # Require a matching classic setup record, or a 4026 family plus manager.
+    if (@($setups | Where-Object { $_.displayVersion -eq $version }).Count -gt 0 -and (Get-TwinCatFamily $version) -eq '4024') { $mechanism = 'classic-setup' }
+    elseif ($tcpkgPath -and (Get-TwinCatFamily $version) -eq '4026') { $mechanism = 'package-manager' }
     return [ordered]@{
         version = $version
         versionSource = $versionSource
