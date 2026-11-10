@@ -511,6 +511,18 @@ namespace TwinCatAssistant.Native
             ShowChatStatus();
             try
             {
+                NativeChatConfiguration config;
+                try { config = await GetChatConfigurationAsync(true); }
+                catch
+                {
+                    if (_disposed || generation != _chatConnection.Generation) return;
+                    _setupMissing = true;
+                    _diagnosticStatus.Text = HostText.Format("H027", new object[] { NativeChatConfiguration.ConfigurationPath });
+                    _chatConnection.Fail(generation, HostText.Get("H028"));
+                    ShowChatStatus();
+                    return;
+                }
+                if (_disposed || generation != _chatConnection.Generation) return;
                 var origin = new Uri("http://127.0.0.1:" + port + "/");
                 if (_chatSession != null && (_chatSession.Port != port || !_chatSession.IsRunning))
                 {
@@ -527,16 +539,6 @@ namespace TwinCatAssistant.Native
                         _chatSession = null;
                     }
                     if (_disposed) return;
-                    NativeChatConfiguration config;
-                    try { config = _chatConfiguration(); }
-                    catch
-                    {
-                        _setupMissing = true;
-                        _diagnosticStatus.Text = HostText.Format("H027", new object[] { NativeChatConfiguration.ConfigurationPath });
-                        _chatConnection.Fail(generation, HostText.Get("H028"));
-                        ShowChatStatus();
-                        return;
-                    }
                     _chatCredentials.EnsureGenerated();
                     _chatStatus.Text = HostText.Get("H029");
                     var session = new NativeChatSession();

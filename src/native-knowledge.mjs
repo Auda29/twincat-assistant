@@ -13,6 +13,7 @@ import { knowledgePaths, knowledgeDirectory } from './knowledge-paths.mjs';
 import { superviseWindows, acquireKnowledgeLease } from './windows-native.mjs';
 import { probeServer } from './probe.mjs';
 import { createOpenCodeConfig } from './config.mjs';
+import { withPackageVerificationScope } from './package-verification-scope.mjs';
 
 const capture = promisify(execFile);
 const MAX_OUTPUT = 131072;
@@ -54,7 +55,7 @@ export async function discoverHelp(root = process.env.ProgramData && join(proces
 async function optionalJson(file) {
   try { return await readJsonFile(file); } catch (error) { if (!(await lstat(file).catch(e => { if (e.code==='ENOENT') return null; throw e; }))) return null; throw error; }
 }
-export async function knowledgeStatus(request, { catalogRoot } = {}) {
+async function knowledgeStatusOperation(request, { catalogRoot } = {}) {
   await inspectState(absolute(request.state));
   const settings = await readNativeMcpSettings(absolute(request.mcpConfig));
   const paths = await knowledgePaths(request.state);
@@ -78,6 +79,9 @@ export async function knowledgeStatus(request, { catalogRoot } = {}) {
   return { phase:ready ? (update ? 'update' : 'ready') : candidates.length ? 'available' : 'missing', ready,
     candidates, language:ready ? receipt.language : null, topics:ready ? receipt.topics : 0,
     revision:ready ? receipt.manifest : null, updateAvailable:update };
+}
+export function knowledgeStatus(...args) {
+  return withPackageVerificationScope(() => knowledgeStatusOperation(...args));
 }
 export async function runKnowledge(command, args, cwd, env, signal) {
   if (signal?.aborted) throw new Error('Cancelled');
@@ -176,15 +180,15 @@ export async function setupKnowledge(request, { signal = new AbortController().s
   }
 }
 async function main() {
-  await (await import('./package-integrity.mjs')).verifyPackageIfPresent();
   const input = createInterface({input:process.stdin,crlfDelay:Infinity});
   const abort = new AbortController(); let work, received=false, finished=false, size=0;
   process.stdin.on('data',chunk => { size+=chunk.length; if(size>16384){abort.abort();input.close();} });
   input.on('close',()=>{if(!finished) abort.abort();});
   input.on('line',line=>{
     if(received){abort.abort();return;} received=true;
-    work=(async()=>{
+    work=withPackageVerificationScope(async()=>{
       try {
+        await (await import('./package-integrity.mjs')).verifyPackageIfPresent();
         const request=JSON.parse(line.replace(/^\uFEFF/,''));
         if (!request || Object.keys(request).some(key=>!['mode','state','mcpConfig','source','language','acceptLocalIndexing'].includes(key))) throw new Error();
         absolute(request.state); absolute(request.mcpConfig);
@@ -193,7 +197,7 @@ async function main() {
         if(!value)throw new Error(); emit({...value,complete:true});
       } catch { process.stdout.write(JSON.stringify({phase:abort.signal.aborted?'cancelled':'error',complete:true})+'\n'); }
       finally { finished=true; input.close();process.stdin.pause(); }
-    })();
+    });
   });
   setTimeout(()=>{if(!received){abort.abort();input.close();process.stdin.destroy();}},10000).unref();
 }
