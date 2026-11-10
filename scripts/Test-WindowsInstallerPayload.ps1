@@ -21,6 +21,8 @@ try {
     $reader = [IO.StreamReader]::new($manifestEntry.Open())
     try { $manifest = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
     if ($manifest.schemaVersion -ne 1) { throw 'Unsupported embedded manifest.' }
+    $versionReader = $assembly.GetType('Bootstrap').GetMethod('ReadSetupVersion', [Reflection.BindingFlags]'Static,NonPublic')
+    if (-not $versionReader -or $versionReader.Invoke($null,@()) -cne $manifest.version) { throw 'Wizard version metadata differs from the application manifest.' }
     $expectedCount = 1
     foreach ($file in $manifest.files) {
         $name = 'package/' + $file.path

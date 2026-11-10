@@ -10,6 +10,12 @@ The extractor now normalizes both separator styles before path validation and
 directory detection. Path-traversal refusal and create-new file semantics remain.
 The same extraction helper is used by setup and artifact verification.
 
+The wizard also shows its bundled application version, the existing managed
+version in the selected directory, and whether it will perform a fresh install,
+update or rollback. Changing the folder/action refreshes the overview. Already
+installed versions and unreadable/pending installation state cannot accidentally
+be presented as a new installation.
+
 ## Download and update
 
 Use this Setup 1 EXE instead of the original Beta 1 installer. Close TcXaeShell,
