@@ -87,8 +87,8 @@ namespace TwinCatAssistant.Native
 
         public static string Describe(HostIdentity host)
         {
-            var kind = host.Kind == "unknown" ? (host.ExecutableName ?? "Unbekannter Host") : host.Kind;
-            return kind + " " + (host.ProcessArchitecture ?? "?") + " · TwinCAT " + (host.TwinCatVersion ?? "unbekannt");
+            var kind = host.Kind == "unknown" ? (host.ExecutableName ?? HostText.Get("HostUnknown")) : host.Kind;
+            return kind + " " + (host.ProcessArchitecture ?? "?") + " · TwinCAT " + (host.TwinCatVersion ?? HostText.Get("ValueUnknown"));
         }
 
         private static HostAssessment Result(string target, string classification, string reason)

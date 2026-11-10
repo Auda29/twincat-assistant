@@ -33,7 +33,7 @@ namespace TwinCatAssistant.Native
             {
                 var selection = await ReadChatSelectionAsync();
                 if (selection?.IsSelected != true || !selection.canExport)
-                    throw new InvalidOperationException("Der Chatverlauf ist noch nicht für den Export verfügbar.");
+                    throw new InvalidOperationException(HostText.Get("H334"));
                 var serializer = new JavaScriptSerializer { MaxJsonLength = ThreadExportLimit * 8 + 4096 };
                 var expected = new { selection.documentId, selection.sessionId, selection.epoch };
                 await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatThreadExport={id:'" + requestId
@@ -47,48 +47,48 @@ namespace TwinCatAssistant.Native
                 {
                     var phase = await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatThreadExport?.id==='"
                         + requestId + "'?window.__twinCatThreadExport.phase:null");
-                    if (phase == "\"failed\"") throw new InvalidOperationException("Der vollständige Chatverlauf konnte nicht geladen werden. Es wurde nichts exportiert.");
+                    if (phase == "\"failed\"") throw new InvalidOperationException(HostText.Get("H335"));
                     if (phase == "\"ready\"")
                     {
                         var current = await ReadChatSelectionAsync();
                         if (_disposed || generation != _chatDocumentGeneration || current?.IsSelected != true
                             || current.documentId != selection.documentId || current.sessionId != selection.sessionId
                             || current.epoch != selection.epoch || !SameDirectory(current.directory, selection.directory))
-                            throw new InvalidOperationException("Die Unterhaltung wurde gewechselt. Bitte den Export im gewünschten Chat erneut starten.");
+                            throw new InvalidOperationException(HostText.Get("H336"));
                         var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.__twinCatThreadExport)");
-                        if (raw == null || raw.Length > serializer.MaxJsonLength) throw new InvalidOperationException("Der Chatverlauf ist für diesen Export zu groß.");
+                        if (raw == null || raw.Length > serializer.MaxJsonLength) throw new InvalidOperationException(HostText.Get("H337"));
                         var result = serializer.Deserialize<ThreadExportResult>(serializer.Deserialize<string>(raw));
                         if (result?.id != requestId || result.markdown == null || result.markdown.Length > ThreadExportLimit
                             || string.IsNullOrEmpty(result.filename) || result.filename.Length > 200
                             || Path.GetFileName(result.filename) != result.filename || result.filename.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
                             || !result.filename.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
-                            throw new InvalidOperationException("Der Chat-Export ist ungültig. Es wurde nichts gespeichert oder kopiert.");
+                            throw new InvalidOperationException(HostText.Get("H338"));
                         if (save)
                         {
-                            var dialog = new SaveFileDialog { Title = "Chatverlauf als Markdown speichern", FileName = result.filename,
-                                DefaultExt = ".md", Filter = "Markdown (*.md)|*.md", AddExtension = true, OverwritePrompt = true };
+                            var dialog = new SaveFileDialog { Title = HostText.Get("H339"), FileName = result.filename,
+                                DefaultExt = ".md", Filter = HostText.Get("H340"), AddExtension = true, OverwritePrompt = true };
                             if (dialog.ShowDialog() != true) return;
                             var path = dialog.FileName;
                             if (!string.Equals(Path.GetExtension(path), ".md", StringComparison.OrdinalIgnoreCase))
-                                throw new InvalidOperationException("Bitte eine Markdown-Datei mit der Endung .md wählen.");
+                                throw new InvalidOperationException(HostText.Get("H341"));
                             await Task.Run(() => SaveThreadMarkdown(path, result.markdown));
-                            Notify("Chatverlauf als Markdown gespeichert.");
+                            Notify(HostText.Get("H342"));
                         }
                         else
                         {
                             Clipboard.SetText(result.markdown);
-                            Notify("Gesamten gespeicherten Chatverlauf kopiert.");
+                            Notify(HostText.Get("H343"));
                         }
                         return;
                     }
                     await Task.Delay(150);
                 }
-                if (!_disposed) throw new InvalidOperationException("Der Chat-Export wurde durch einen Seitenwechsel oder eine Zeitüberschreitung beendet.");
+                if (!_disposed) throw new InvalidOperationException(HostText.Get("H344"));
             }
             catch (Exception error)
             {
                 if (!_disposed) Notify(error is InvalidOperationException ? error.Message
-                    : "Der Chatverlauf konnte nicht kopiert oder gespeichert werden. Bitte erneut versuchen.", "error");
+                    : HostText.Get("H345"), "error");
             }
             finally
             {

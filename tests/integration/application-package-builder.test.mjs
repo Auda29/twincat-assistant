@@ -79,6 +79,7 @@ test('builder stages a bounded synthetic source build and verifies its output', 
     const host = join(root, 'native/IdeHost/X86/bin/Release/net472');
     for (const name of ['extension.vsixmanifest','TwinCatAssistant.IdeHost.dll','TwinCatAssistant.IdeHost.pkgdef','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.Wpf.dll','Microsoft.Web.WebView2.WinForms.dll']) await write(join(host, name), name === 'TwinCatAssistant.IdeHost.dll' ? 'NativeInstallationSelection fixture' : 'fixture');
     await write(join(host, 'runtimes/win-x86/fixture.dll'), 'fixture');
+    await write(join(host, 'en/TwinCatAssistant.IdeHost.resources.dll'), 'synthetic English resources');
     const knowledge = join(root, 'artifacts/application-inputs/knowledge'); await mkdir(knowledge, { recursive: true });
     const knowledgeSource = join(parent, 'knowledge.cs'); await writeFile(knowledgeSource, 'class Program { static void Main() { System.Console.WriteLine("twincat-knowledge 0.1.1"); } }');
     await run(csc, ['/nologo', '/target:exe', '/out:' + join(knowledge, 'twincat-knowledge.exe'), knowledgeSource], { env: safeEnv });
@@ -98,6 +99,7 @@ test('builder stages a bounded synthetic source build and verifies its output', 
     assert.ok(result.files.some(file => file.path === 'runtime/opencode/opencode.exe'));
     assert.ok(result.files.some(file => file.path === 'runtime/node/node.exe'));
     assert.ok(result.files.some(file => file.path === 'host/x86/TwinCatAssistant.IdeHost.dll'));
+    assert.ok(result.files.some(file => file.path === 'host/x86/en/TwinCatAssistant.IdeHost.resources.dll'));
     assert.ok(result.files.some(file => file.path === 'runtime/mcp/knowledge/twincat-knowledge.exe'));
     assert.ok(result.files.some(file => file.path === 'upstream/node_modules/@openchamber/web/dist/index.html'));
     assert.equal(await readFile(join(output, 'upstream/node_modules/@openchamber/web/dist/index.html'), 'utf8'), 'synthetic UI');

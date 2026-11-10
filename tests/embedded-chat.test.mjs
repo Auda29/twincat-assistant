@@ -30,6 +30,25 @@ function fixture(options = {}) {
 }
 const item = { providerId: 'twincat-assistant', id: 'snapshot-one', title: 'FB_Motor / PLC_A', url: 'http://127.0.0.1:3123/', text: 'synthetic ST snapshot' };
 
+test('DE/EN switching changes only locale, preserving selection, drafts, attachments and consent', () => {
+  let locale = 'de';
+  const { adapter, input, sessions } = fixture({ language: () => locale, setLanguage: next => { locale = next; } });
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'PLC_A' };
+  adapter.permit(expected);
+  adapter.attach({ ...expected, item });
+  input.set({ draft: "\tIF Sprache = 'Deutsch' THEN\r\n\tEND_IF" });
+  const before = adapter.state(), pending = input.getState().pendingGuestIssue, draft = input.getState().draft;
+  assert.equal(adapter.setLanguage('en'), 'en');
+  assert.deepEqual(adapter.state(), { ...before, language: 'en' });
+  assert.equal(sessions.getState().currentSessionId, 'session-one');
+  assert.equal(input.getState().pendingGuestIssue, pending);
+  assert.equal(input.getState().draft, draft);
+  for (const invalid of ['fr', 'en-US', '', null, {}, '<en>']) assert.throws(() => adapter.setLanguage(invalid), /Unsupported UI language/);
+  assert.equal(adapter.state().language, 'en');
+  assert.equal(adapter.setLanguage('de'), 'de');
+  assert.deepEqual(adapter.state(), before);
+});
+
 test('saved-object references stage in the same bound composer without sending or reading source', () => {
   const { adapter, input } = fixture();
   const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'PLC_A' };

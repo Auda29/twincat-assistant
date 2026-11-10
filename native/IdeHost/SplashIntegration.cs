@@ -34,7 +34,7 @@ namespace TwinCatAssistant.Native
             run.SetResourceReference(Shape.FillProperty, "Tc.Primary");
             var track = new Canvas { Width = 140, Height = 2, ClipToBounds = true, Margin = new Thickness(0, 14, 0, 12), Children = { run } };
             track.SetResourceReference(Panel.BackgroundProperty, "Tc.Border");
-            var status = new TextBlock { Text = "Chat wird geladen …", FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center };
+            var status = new TextBlock { Text = HostText.Get("H332"), FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center };
             status.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
             _splash.Children.Add(new StackPanel { Margin = new Thickness(24), HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center, Children = { wordmark, track, status } });
@@ -95,7 +95,7 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             _chatReadyTimeout.Stop();
             if (_disposed || _chatPresented || _chatConnection.Phase == "failed" || _projectSetupPending || ProjectSetupFailed) return;
-            _chatConnection.Fail(_chatConnection.Generation, "Der Chat wurde nicht rechtzeitig bereit. Verbindung und Chat-Integration unter Diagnose prüfen und neu verbinden.");
+            _chatConnection.Fail(_chatConnection.Generation, HostText.Get("H333"));
             ShowChatStatus();
         }
     }

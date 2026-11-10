@@ -166,6 +166,7 @@ export async function buildApplicationPackage(output) {
     for (const file of ['extension.vsixmanifest', 'TwinCatAssistant.IdeHost.dll', 'TwinCatAssistant.IdeHost.pkgdef', 'Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebView2.Wpf.dll', 'Microsoft.Web.WebView2.WinForms.dll'])
       await copyFile(join(hostInput, file), join(stage, 'host/x86', file));
     await copyTree(join(hostInput, 'runtimes/win-x86'), join(stage, 'host/x86/runtimes/win-x86'));
+    await copyFile(join(hostInput, 'en/TwinCatAssistant.IdeHost.resources.dll'), join(stage, 'host/x86/en/TwinCatAssistant.IdeHost.resources.dll'));
     for (const name of ['WindowsHost.exe', 'WindowsHost.dll', 'WindowsHost.deps.json', 'WindowsHost.runtimeconfig.json']) await copyFile(join(root, 'native/WindowsHost/bin/Release/net8.0-windows', name), join(stage, 'native/WindowsHost/bin/Release/net8.0-windows', name));
     for (const name of ['opencode', 'openchamber']) {
       const checkout = join(root, 'local-data/upstream', name);

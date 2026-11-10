@@ -316,13 +316,14 @@ namespace TwinCatAssistant.Native
         }
     }
 
-    // Operator preferences of the native bar. Only booleans; no source or IDs.
+    // Operator preferences of the native bar. No source, credentials or IDs.
     public sealed class NativeChatPreferences
     {
         private readonly string _directory;
         public NativeChatPreferences(string directory = null) { _directory = directory ?? NativeChatConfiguration.CredentialDirectory; }
         private string FilePath { get { return Path.Combine(_directory, "preferences.json"); } }
         public bool AutoAttach { get; set; }
+        public string Language { get; set; }
         public static NativeChatPreferences Load(string directory = null)
         {
             var result = new NativeChatPreferences(directory);
@@ -331,6 +332,7 @@ namespace TwinCatAssistant.Native
                 if (!File.Exists(result.FilePath)) return result;
                 var values = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(Encoding.UTF8.GetString(NativeChatFiles.Read(result.FilePath)));
                 result.AutoAttach = values != null && values.ContainsKey("autoAttach") && values["autoAttach"] is bool enabled && enabled;
+                if (values != null && values.TryGetValue("language", out var language) && language is string locale && (locale == "de" || locale == "en")) result.Language = locale;
             }
             catch { /* Unreadable preferences fall back to the explicit default. */ }
             return result;
@@ -343,7 +345,8 @@ namespace TwinCatAssistant.Native
             var temporary = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".tmp");
             try
             {
-                File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(new { autoAttach = AutoAttach }), new UTF8Encoding(false));
+                if (Language != null && Language != "de" && Language != "en") throw new InvalidOperationException("Unsupported UI language.");
+                File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(new { autoAttach = AutoAttach, language = Language }), new UTF8Encoding(false));
                 if (File.Exists(FilePath)) File.Replace(temporary, FilePath, null);
                 else File.Move(temporary, FilePath);
             }

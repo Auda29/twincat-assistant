@@ -44,7 +44,7 @@ namespace TwinCatAssistant.Native
         // Every label the attach button shows (see RenderChatBinding). Hidden
         // copies reserve the widest one, so a state change neither resizes the
         // button nor moves the history, new-chat and overflow buttons.
-        private static readonly string[] AttachLabels = { "Anhängen", "Wird angehängt", "Vorgemerkt", "Erneut anhängen", "Aktualisieren" };
+        private static readonly string[] AttachLabels = { HostText.Get("H000"), HostText.Get("H001"), HostText.Get("H002"), HostText.Get("H003"), HostText.Get("H004") };
         private readonly Grid _attachLabelSizers = new Grid { IsHitTestVisible = false };
         // Banner: at most one actionable message, only when something needs attention.
         private readonly Border _banner = new Border { BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(12, 7, 8, 7), Visibility = Visibility.Collapsed };
@@ -64,7 +64,7 @@ namespace TwinCatAssistant.Native
         private readonly StackPanel _menuItems = new StackPanel { Margin = new Thickness(5) };
         // Diagnostics: shown only on request from the menu.
         private readonly Border _diagnostics = new Border { BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(12, 8, 12, 10), Visibility = Visibility.Collapsed };
-        private readonly TextBlock _chatStatus = new TextBlock { Text = "Der lokale Chat startet beim Öffnen automatisch.", TextWrapping = TextWrapping.Wrap };
+        private readonly TextBlock _chatStatus = new TextBlock { Text = HostText.Get("H005"), TextWrapping = TextWrapping.Wrap };
         private readonly ChatConnectionState _chatConnection = new ChatConnectionState();
         private NativeChatCredentials _chatCredentials = new NativeChatCredentials();
         private NativeChatPreferences _chatPreferences = NativeChatPreferences.Load();
@@ -73,7 +73,7 @@ namespace TwinCatAssistant.Native
         private bool _checkingChatHealth, _setupMissing;
         private long _navigationGeneration;
         private readonly TextBlock _diagnosticStatus = new TextBlock { TextWrapping = TextWrapping.Wrap };
-        private readonly TextBlock _inventoryStatus = new TextBlock { Text = "Inventar nicht geladen. Die Editor-Verfolgung nutzt diesen Katalog nicht.", TextWrapping = TextWrapping.Wrap };
+        private readonly TextBlock _inventoryStatus = new TextBlock { Text = HostText.Get("H006"), TextWrapping = TextWrapping.Wrap };
         private readonly TextBox _port = new TextBox { Text = "3123", Width = 70, Margin = new Thickness(4), VerticalContentAlignment = VerticalAlignment.Center };
         private readonly ComboBox _targets = new ComboBox { MinWidth = 180, Margin = new Thickness(4), DisplayMemberPath = "Name" };
         // Participate in WPF composition so IDE auto-hide panes can cover chat.
@@ -109,6 +109,7 @@ namespace TwinCatAssistant.Native
         public AssistantControl()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            InitializeLanguage();
             Resources = _theme;
             ApplyTheme(AssistantTheme.IsDark(TryFindResource(EnvironmentColors.ToolWindowBackgroundBrushKey) as Brush) ? AssistantTheme.Dark : AssistantTheme.Light);
             SetResourceReference(BackgroundProperty, "Tc.Background");
@@ -144,6 +145,7 @@ namespace TwinCatAssistant.Native
             _viewHold.Tick += (sender, args) => { _viewHold.Stop(); if (_holdingView) { _holdingView = false; RenderContext(_chatActive, _heldReason); } };
             InitializeChatIntegration();
             RenderContext(null, null);
+            ApplyLanguageBindings();
         }
 
         private void BuildStrip()
@@ -170,8 +172,8 @@ namespace TwinCatAssistant.Native
             _previewPopup.Closed += (sender, args) => _previewClosedAt = DateTime.UtcNow;
             _menuPopup.Closed += (sender, args) => _menuClosedAt = DateTime.UtcNow;
             _statusChip.Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { _statusDot, _statusText } };
-            _historyButton = IconButton("history", "Chats dieses Projekts anzeigen", OpenHistoryAsync);
-            _newChatButton = IconButton("plus", "Neuer Chat", NewProjectChatAsync);
+            _historyButton = IconButton("history", HostText.Get("H008"), OpenHistoryAsync);
+            _newChatButton = IconButton("plus", HostText.Get("H009"), NewProjectChatAsync);
             _attachPouButton = AsyncButton(null, AttachClickAsync);
             _attachPouButton.SetResourceReference(StyleProperty, "Tc.PrimaryButton");
             foreach (var label in AttachLabels)
@@ -183,7 +185,7 @@ namespace TwinCatAssistant.Native
             _attachIcon.SetBinding(Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = _attachPouButton });
             _attachLabel.SetBinding(TextBlock.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { Source = _attachPouButton });
             _attachPouButton.Margin = new Thickness(6, 0, 2, 0);
-            _moreButton = IconButton("more", "Weitere Aktionen", async () => {
+            _moreButton = IconButton("more", HostText.Get("H012"), async () => {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 ToggleMenu();
             });
@@ -238,7 +240,7 @@ namespace TwinCatAssistant.Native
             _bannerText.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Foreground");
             _bannerAction.SetResourceReference(StyleProperty, "Tc.SecondaryButton");
             _bannerAction.Click += (sender, args) => _bannerCommand?.Invoke();
-            _bannerDismiss = IconButton("close", "Ausblenden", async () => {
+            _bannerDismiss = IconButton("close", HostText.Get("H013"), async () => {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 DismissNotice();
             });
@@ -353,7 +355,7 @@ namespace TwinCatAssistant.Native
                 _chatSnapshotReader = null;
                 _chatProjectReader = null;
                 RenderProjectContext(null, null);
-                RenderContext(null, "Die IDE-Editorbindung fehlt. TwinCAT Assistant erneut über das Menü öffnen.");
+                RenderContext(null, HostText.Get("H014"));
                 return;
             }
             if (_boundDte == dte && _tracker != null) return;
@@ -367,7 +369,7 @@ namespace TwinCatAssistant.Native
             _solutionEvents.AfterClosing += Invalidate;
             _reader = new NativeProjectReader(dte, Process.GetCurrentProcess().Id, dirty);
             try { _tracker = new ActiveEditorTracker(dte, selection, rdt, dirty, RenderContext, RenderProjectContext); }
-            catch { RenderContext(null, "Die Editor-Dienste der IDE sind nicht verfügbar. Toolfenster erneut öffnen."); }
+            catch { RenderContext(null, HostText.Get("H015")); }
             _chatSnapshotReader = () => _tracker?.ReadForChat();
             _chatProjectReader = () => _tracker?.ReadProjectForChat();
         }
@@ -375,38 +377,60 @@ namespace TwinCatAssistant.Native
         private void RenderContext(ActiveEditorSnapshot snapshot, string reason)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            _chatActive = snapshot;
-            if (snapshot?.Identity != null) { CloseProjectChatsOnChange(snapshot.Identity.ProjectIdentity); _chatProject = snapshot.Identity.ProjectIdentity; }
-            if (_disposed) return;
-            if (snapshot == null && _showingPou && ActiveEditorTracker.IsTransient(reason))
+            try
             {
-                _heldReason = reason;
-                if (!_holdingView) { _holdingView = true; _viewHold.Start(); }
-                return;
+                _chatActive = snapshot;
+                if (snapshot?.Identity != null)
+                {
+                    CloseProjectChatsOnChange(snapshot.Identity.ProjectIdentity);
+                    _chatProject = snapshot.Identity.ProjectIdentity;
+                }
+
+                if (_disposed)
+                    return;
+                if (snapshot == null && _showingPou && ActiveEditorTracker.IsTransient(reason))
+                {
+                    _heldReason = reason;
+                    if (!_holdingView)
+                    {
+                        _holdingView = true;
+                        _viewHold.Start();
+                    }
+
+                    return;
+                }
+
+                _holdingView = false;
+                _viewHold.Stop();
+                _showingPou = snapshot != null;
+                var view = ActiveEditorPresentation.From(snapshot, reason);
+                var title = snapshot == null ? (_chatProject == null ? HostText.Get("H016") : Path.GetFileNameWithoutExtension(_chatProject.ProjectFile)) : view.Title;
+                if (_objectName.Text != title)
+                    _objectName.Text = title;
+                var scope = snapshot == null || _chatProject == null ? "" : Path.GetFileNameWithoutExtension(_chatProject.ProjectFile);
+                if (_scope.Text != scope)
+                    _scope.Text = scope;
+                _kindText.Text = snapshot == null ? "" : ActiveEditorPresentation.BadgeKind(snapshot);
+                _kindBadge.Visibility = snapshot == null ? Visibility.Collapsed : Visibility.Visible;
+                _chevron.Visibility = snapshot == null ? Visibility.Collapsed : Visibility.Visible;
+                _previewTitle.Text = snapshot == null ? "" : view.Title + " · " + scope;
+                var notice = snapshot == null ? HostText.DisplayStatus(view.Detail) : HostText.Get("H017");
+                if (_sourceNotice.Text != notice)
+                    _sourceNotice.Text = notice;
+                _sourceNotice.ToolTip = HostText.DisplayStatus(view.Detail);
+                if (_source.Text != view.Source)
+                    _source.Text = view.Source;
+                _source.Visibility = snapshot == null ? Visibility.Collapsed : Visibility.Visible;
+                if (snapshot == null)
+                    _previewPopup.IsOpen = false;
+                _pouButton.ToolTip = snapshot == null ? (object)(HostText.DisplayStatus(reason) ?? HostText.Get("H018")) : HostText.Format("H019", new object[] { Environment.NewLine, snapshot.Identity.IdeProcessId, Environment.NewLine, snapshot.Identity.SolutionFile, Environment.NewLine, snapshot.Identity.ProjectFile, Environment.NewLine, snapshot.Identity.TreePath });
+                RenderChatBinding();
+                KickAutomation();
             }
-            _holdingView = false; _viewHold.Stop();
-            _showingPou = snapshot != null;
-            var view = ActiveEditorPresentation.From(snapshot, reason);
-            var title = snapshot == null ? (_chatProject == null ? "Kein PLC-Projekt aktiv" : Path.GetFileNameWithoutExtension(_chatProject.ProjectFile)) : view.Title;
-            if (_objectName.Text != title) _objectName.Text = title;
-            var scope = snapshot == null || _chatProject == null ? "" : Path.GetFileNameWithoutExtension(_chatProject.ProjectFile);
-            if (_scope.Text != scope) _scope.Text = scope;
-            _kindText.Text = snapshot == null ? "" : ActiveEditorPresentation.BadgeKind(snapshot);
-            _kindBadge.Visibility = snapshot == null ? Visibility.Collapsed : Visibility.Visible;
-            _chevron.Visibility = snapshot == null ? Visibility.Collapsed : Visibility.Visible;
-            _previewTitle.Text = snapshot == null ? "" : view.Title + " · " + scope;
-            var notice = snapshot == null ? view.Detail : "Snapshot aus TwinCAT. Ungespeicherter Editorinhalt ist nicht verifiziert.";
-            if (_sourceNotice.Text != notice) _sourceNotice.Text = notice;
-            _sourceNotice.ToolTip = view.Detail;
-            if (_source.Text != view.Source) _source.Text = view.Source;
-            _source.Visibility = snapshot == null ? Visibility.Collapsed : Visibility.Visible;
-            if (snapshot == null) _previewPopup.IsOpen = false;
-            _pouButton.ToolTip = snapshot == null ? (object)(reason ?? "Öffne einen Structured-Text-Baustein in dieser IDE.")
-                : "Klicken für die ST-Vorschau" + Environment.NewLine + "IDE PID " + snapshot.Identity.IdeProcessId
-                    + Environment.NewLine + snapshot.Identity.SolutionFile + Environment.NewLine + snapshot.Identity.ProjectFile
-                    + Environment.NewLine + snapshot.Identity.TreePath;
-            RenderChatBinding();
-            KickAutomation();
+            finally
+            {
+                ApplyLanguageBindings();
+            }
         }
 
         private void RenderProjectContext(NativeProjectIdentity project, string reason)
@@ -419,7 +443,7 @@ namespace TwinCatAssistant.Native
             { RenderContext(null, reason); return; }
             var scope = project == null || _chatActive == null ? "" : Path.GetFileNameWithoutExtension(project.ProjectFile);
             if (_scope.Text != scope) _scope.Text = scope;
-            if (_chatActive == null) _objectName.Text = project == null ? "Kein PLC-Projekt aktiv" : Path.GetFileNameWithoutExtension(project.ProjectFile);
+            if (_chatActive == null) _objectName.Text = project == null ? HostText.Get("H016") : Path.GetFileNameWithoutExtension(project.ProjectFile);
             RenderChatBinding();
             KickAutomation();
         }
@@ -431,7 +455,7 @@ namespace TwinCatAssistant.Native
             _targets.ItemsSource = null;
             _diagnosticSource.Clear();
             _diagnosticSource.Visibility = Visibility.Collapsed;
-            _inventoryStatus.Text = "Inventar nicht geladen. Die Editor-Verfolgung nutzt diesen Katalog nicht.";
+            _inventoryStatus.Text = HostText.Get("H006");
             _diagnosticStatus.Text = "";
         }
 
@@ -444,13 +468,11 @@ namespace TwinCatAssistant.Native
                 if (_reader == null) return;
                 var context = _reader.GetContext();
                 _targets.ItemsSource = context.Targets;
-                _inventoryStatus.Text = "IDE PID " + context.IdeProcessId + ": " + context.Targets.Count
-                    + " Katalogziele. " + string.Join(" ", context.Warnings);
-                _diagnosticStatus.Text = _tracker == null ? "Editor-Verfolgung nicht verfügbar."
-                    : "Aktiver Lesevorgang: " + _tracker.LastReadMilliseconds.ToString("F1") + " ms; Maximum: "
-                        + _tracker.MaxReadMilliseconds.ToString("F1") + " ms. Kein Quelltext an den Chat übergeben.";
+                _inventoryStatus.Text = HostText.Format("H020", new object[] { context.IdeProcessId, context.Targets.Count, string.Join(" ", context.Warnings) });
+                _diagnosticStatus.Text = _tracker == null ? HostText.Get("H021")
+                    : HostText.Format("H022", new object[] { _tracker.LastReadMilliseconds.ToString("F1"), _tracker.MaxReadMilliseconds.ToString("F1") });
             }
-            catch { _diagnosticStatus.Text = "Diagnose-Inventar nicht verfügbar; erneut lesen, wenn die IDE bereit ist."; }
+            catch { _diagnosticStatus.Text = HostText.Get("H023"); }
         }
 
         private void Read()
@@ -462,11 +484,11 @@ namespace TwinCatAssistant.Native
                 var target = _targets.SelectedItem as NativeTarget;
                 if (target == null || _reader == null) return;
                 var read = _reader.ReadTarget(target.Id);
-                _diagnosticStatus.Text = "Manueller Diagnose-Lesevorgang. Änderungsstand: " + read.Dirty.State + ". " + read.Dirty.Reason;
+                _diagnosticStatus.Text = HostText.Format("H024", new object[] { read.Dirty.State, read.Dirty.Reason });
                 _diagnosticSource.Text = read.Declaration + Environment.NewLine + read.Implementation;
                 _diagnosticSource.Visibility = Visibility.Visible;
             }
-            catch { _diagnosticStatus.Text = "Diagnose-Lesevorgang abgelehnt; den genauen Solution-Kontext neu lesen."; }
+            catch { _diagnosticStatus.Text = HostText.Get("H025"); }
         }
 
         private async System.Threading.Tasks.Task ConnectAsync()
@@ -475,7 +497,7 @@ namespace TwinCatAssistant.Native
             int port;
             if (!int.TryParse(_port.Text, out port) || port < 1024 || port > 65535)
             {
-                _chatStatus.Text = "Unter Diagnose einen Loopback-Port zwischen 1024 und 65535 eintragen.";
+                _chatStatus.Text = HostText.Get("H026");
                 _diagnostics.Visibility = Visibility.Visible;
                 ShowAdvancedDiagnostics(true);
                 RenderDiagnostics();
@@ -510,13 +532,13 @@ namespace TwinCatAssistant.Native
                     catch
                     {
                         _setupMissing = true;
-                        _diagnosticStatus.Text = "Lokalen Chat einrichten: scripts/Configure-NativeChat.ps1 mit Repository-, Node- und .NET-SDK-Pfad ausführen. Konfiguration: " + NativeChatConfiguration.ConfigurationPath;
-                        _chatConnection.Fail(generation, "Die Einrichtung des lokalen Chats fehlt oder ist ungültig.");
+                        _diagnosticStatus.Text = HostText.Format("H027", new object[] { NativeChatConfiguration.ConfigurationPath });
+                        _chatConnection.Fail(generation, HostText.Get("H028"));
                         ShowChatStatus();
                         return;
                     }
                     _chatCredentials.EnsureGenerated();
-                    _chatStatus.Text = "Geschützter lokaler Chat-Dienst wird gestartet …";
+                    _chatStatus.Text = HostText.Get("H029");
                     var session = new NativeChatSession();
                     _chatSession = session;
                     session.Stopped += () => OnChatServiceStopped(session);
@@ -564,7 +586,7 @@ namespace TwinCatAssistant.Native
                         ThreadHelper.ThrowIfNotOnUIThread();
                         if (_disposed || !ReferenceEquals(sender, _browser.CoreWebView2)) return;
                         _browserNeedsReset = true;
-                        _chatConnection.Fail(_chatConnection.Generation, "Der Chat-Browser wurde beendet. Neu verbinden erstellt ihn neu.");
+                        _chatConnection.Fail(_chatConnection.Generation, HostText.Get("H031"));
                         ShowChatStatus();
                     };
                     _browser.CoreWebView2.FrameNavigationStarting += (sender, args) => { if (!Allowed(args.Uri)) args.Cancel = true; };
@@ -576,13 +598,13 @@ namespace TwinCatAssistant.Native
                         if (!AllowedResource(args.Request.Uri)) args.Response = environment.CreateWebResourceResponse(null, 403, "Blocked external request", "");
                         else if (ChatContextPolicy.BlocksMutatingFeature(args.Request.Method, new Uri(args.Request.Uri)))
                         {
-                            var bytes = System.Text.Encoding.UTF8.GetBytes("{\"code\":\"TWINCAT_READ_ONLY\",\"error\":\"Datei-, Git-, Terminal- und Update-Aktionen sind im eingebetteten TwinCAT-Chat gesperrt.\"}");
+                            var bytes = System.Text.Encoding.UTF8.GetBytes(HostText.Get("H033"));
                             args.Response = environment.CreateWebResourceResponse(new MemoryStream(bytes), 403, "TwinCAT read-only chat", "Content-Type: application/json; charset=utf-8");
                         }
                         else if (ChatContextPolicy.IsPromptRequest(args.Request.Method, new Uri(args.Request.Uri), out var session)
                             && (!CanPromptCurrentChat() || session != _chatSelection.sessionId))
                         {
-                            var bytes = System.Text.Encoding.UTF8.GetBytes("{\"code\":\"TWINCAT_CONTEXT_UNBOUND\",\"error\":\"Diese Unterhaltung gehört nicht zum aktiven TwinCAT-Projekt. Einen Projektchat öffnen.\"}");
+                            var bytes = System.Text.Encoding.UTF8.GetBytes(HostText.Get("H035"));
                             args.Response = environment.CreateWebResourceResponse(new MemoryStream(bytes), 403, "TwinCAT chat binding required", "Content-Type: application/json; charset=utf-8");
                         }
                     };
@@ -600,7 +622,7 @@ namespace TwinCatAssistant.Native
             {
                 if (!_disposed)
                 {
-                    _chatConnection.Fail(generation, "Chat-Verbindung fehlgeschlagen. Laufzeit-Einrichtung, Port und eine bestehende Profilsperre unter Diagnose prüfen.");
+                    _chatConnection.Fail(generation, HostText.Get("H037"));
                     ShowChatStatus();
                 }
             }
@@ -661,8 +683,8 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
             _chatStatus.Text = !_chatAdapterReady ? _chatConnection.Message
-                : _chatSelection?.authenticated == true ? "Lokaler Chat verbunden und angemeldet."
-                : "Lokaler Chat verbunden. Anmeldung läuft …";
+                : _chatSelection?.authenticated == true ? HostText.Get("H038")
+                : HostText.Get("H039");
             if (_chatConnection.Phase == "failed")
             {
                 _browser.Visibility = Visibility.Collapsed;
@@ -677,7 +699,7 @@ namespace TwinCatAssistant.Native
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 if (_disposed || _chatSession != session) return;
-                _chatConnection.Fail(_chatConnection.Generation, "Der lokale Chat-Dienst wurde beendet. Er wird automatisch neu gestartet.");
+                _chatConnection.Fail(_chatConnection.Generation, HostText.Get("H040"));
                 ShowChatStatus();
                 ScheduleChatReconnect();
             }
@@ -695,7 +717,7 @@ namespace TwinCatAssistant.Native
                 {
                     if (!await NativeChatSession.IsProtectedServiceReadyAsync(_origin.Port) && !_disposed && generation == _chatConnection.Generation)
                     {
-                        _chatConnection.Fail(generation, "Der lokale Chat-Dienst ist nicht mehr erreichbar.");
+                        _chatConnection.Fail(generation, HostText.Get("H041"));
                         ShowChatStatus();
                         _chatHealth.Stop();
                         ScheduleChatReconnect();
@@ -733,6 +755,7 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
             _disposed = true;
+            HostText.Changed -= OnLanguageChanged;
             SizeChanged -= OnSidebarSizeChanged;
             PreviewMouseDown -= OnSidebarOutsideMouseDown;
             _projectChatPicker?.Dispose();

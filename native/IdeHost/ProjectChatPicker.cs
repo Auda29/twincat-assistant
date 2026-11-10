@@ -54,7 +54,8 @@ namespace TwinCatAssistant.Native
     // the host refreshes the list through Show once the title is stored.
     internal sealed class ProjectChatPicker : IDisposable
     {
-        private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
+        private static CultureInfo German { get { return HostText.Culture; } }
+        internal void RefreshLanguage() { _anchor.Dispatcher.VerifyAccess(); if (!_disposed) { Render(); HostTextBindings.Apply(View); } }
         private const string Selecting = "select", Renaming = "rename", Archiving = "archive", Restoring = "restore", Generating = "generate";
         // Keyboard target of the "Erledigte Chats" section toggle; never a session id.
         private const string DoneToggleId = "\0done";
@@ -91,14 +92,14 @@ namespace TwinCatAssistant.Native
         private readonly ShapePath _titleIcon = Glyph("chat");
         private Button _backButton, _collapseButton, _pinButton, _newButton;
         private bool _pinned;
-        private readonly TextBlock _newLabel = new TextBlock { Text = "Neuer Chat", FontSize = 12.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        private readonly TextBlock _newLabel = new TextBlock { Text = HostText.Get("H009"), FontSize = 12.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         private readonly ShapePath _newIcon = Glyph("plus");
         private readonly FrameworkElement _newSpinner = Spinner(14);
         // Search
         private readonly Border _searchFrame = new Border { CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1), Margin = new Thickness(8, 0, 8, 8), Height = 28 };
         private readonly TextBox _search = new TextBox { BorderThickness = new Thickness(0), Background = Brushes.Transparent, Padding = new Thickness(2, 0, 2, 0),
             VerticalContentAlignment = VerticalAlignment.Center, FontSize = 12.5, MaxLength = 200 };
-        private readonly TextBlock _searchPlaceholder = new TextBlock { Text = "Chats durchsuchen", FontSize = 12.5, IsHitTestVisible = false,
+        private readonly TextBlock _searchPlaceholder = new TextBlock { Text = HostText.Get("H260"), FontSize = 12.5, IsHitTestVisible = false,
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 0, 0) };
         private Button _searchClear;
         // Action feedback
@@ -143,7 +144,7 @@ namespace TwinCatAssistant.Native
             _frame.SnapsToDevicePixels = true;
             TextOptions.SetTextFormattingMode(_frame, TextFormattingMode.Display);
             KeyboardNavigation.SetDirectionalNavigation(_frame, KeyboardNavigationMode.None);
-            AutomationProperties.SetName(_frame, "Chatleiste");
+            AutomationProperties.SetName(_frame, HostText.Get("H261"));
             _tint.SetResourceReference(Border.BackgroundProperty, "Tc.HoverOverlay");
 
             var layout = new DockPanel { LastChildFill = true };
@@ -355,14 +356,14 @@ namespace TwinCatAssistant.Native
         private void ApplyMode()
         {
             KeyboardNavigation.SetTabNavigation(_frame, _pinned ? KeyboardNavigationMode.Continue : KeyboardNavigationMode.Cycle);
-            _pinButton.ToolTip = _pinned ? "Chatleiste lösen" : "Chatleiste anheften";
+            _pinButton.ToolTip = _pinned ? HostText.Get("H262") : HostText.Get("H263");
             AutomationProperties.SetName(_pinButton, (string)_pinButton.ToolTip);
             var pinGlyph = Glyph(_pinned ? "unpin" : "pin");
             pinGlyph.SetBinding(Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = _pinButton });
             _pinButton.Content = pinGlyph;
             if (_pinned) _pinButton.SetResourceReference(Control.ForegroundProperty, "Tc.Primary");
             else _pinButton.SetResourceReference(Control.ForegroundProperty, "Tc.Muted");
-            _collapseButton.ToolTip = _pinned ? "Chatleiste schließen" : "Chatleiste schließen (Esc)";
+            _collapseButton.ToolTip = _pinned ? HostText.Get("H237") : HostText.Get("H264");
         }
 
         private void OnAnchorVisibleChanged(object sender, DependencyPropertyChangedEventArgs args) { if (!_anchor.IsVisible) CloseCore(false); }
@@ -371,14 +372,14 @@ namespace TwinCatAssistant.Native
 
         private UIElement BuildHeader()
         {
-            _backButton = IconButton("back", "Zurück zu den Projektchats", () => BackAsync?.Invoke() ?? Task.CompletedTask);
+            _backButton = IconButton("back", HostText.Get("H265"), () => BackAsync?.Invoke() ?? Task.CompletedTask);
             _backButton.Width = 24; _backButton.Height = 24;
             _backButton.Margin = new Thickness(0, 0, 4, 0);
-            _pinButton = IconButton("pin", "Chatleiste anheften", () => { Pinned = !Pinned; PinnedChanged?.Invoke(Pinned); return Task.CompletedTask; });
+            _pinButton = IconButton("pin", HostText.Get("H263"), () => { Pinned = !Pinned; PinnedChanged?.Invoke(Pinned); return Task.CompletedTask; });
             _pinButton.Width = 26; _pinButton.Height = 26;
-            _collapseButton = IconButton("sidebar", "Chatleiste schließen", () => { CloseCore(true); return Task.CompletedTask; });
+            _collapseButton = IconButton("sidebar", HostText.Get("H237"), () => { CloseCore(true); return Task.CompletedTask; });
             _collapseButton.Width = 26; _collapseButton.Height = 26;
-            AutomationProperties.SetName(_collapseButton, "Chatleiste schließen");
+            AutomationProperties.SetName(_collapseButton, HostText.Get("H237"));
             _titleIcon.SetResourceReference(Shape.StrokeProperty, "Tc.Muted");
             _titleIcon.Margin = new Thickness(0, 0, 8, 0);
             var header = new DockPanel { LastChildFill = true, Margin = new Thickness(10, 8, 6, 6), MinHeight = 26 };
@@ -398,7 +399,7 @@ namespace TwinCatAssistant.Native
             _newIcon.SetBinding(Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground") { Source = _newButton });
             _newSpinner.Visibility = Visibility.Collapsed;
             _newButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { new Grid { Children = { _newIcon, _newSpinner } }, _newLabel } };
-            AutomationProperties.SetName(_newButton, "Neuer Chat");
+            AutomationProperties.SetName(_newButton, HostText.Get("H009"));
             _newButton.Click += (sender, args) => Run(CreateChatAsync);
             return _newButton;
         }
@@ -411,11 +412,11 @@ namespace TwinCatAssistant.Native
                 _searchFrame.SetResourceReference(Border.BorderBrushProperty, _searchFrame.IsKeyboardFocusWithin ? "Tc.Primary" : "Tc.Border");
             StyleInput(_search);
             _searchPlaceholder.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
-            AutomationProperties.SetName(_search, "Chats durchsuchen");
+            AutomationProperties.SetName(_search, HostText.Get("H260"));
             var icon = Glyph("search");
             icon.SetResourceReference(Shape.StrokeProperty, "Tc.Muted");
             icon.Margin = new Thickness(7, 0, 2, 0);
-            _searchClear = IconButton("close", "Suche zurücksetzen", () => { ClearSearch(); return Task.CompletedTask; });
+            _searchClear = IconButton("close", HostText.Get("H266"), () => { ClearSearch(); return Task.CompletedTask; });
             _searchClear.Width = 22; _searchClear.Height = 22; _searchClear.Margin = new Thickness(0, 0, 2, 0);
             _searchClear.Visibility = Visibility.Collapsed;
             var grid = new Grid();
@@ -445,7 +446,7 @@ namespace TwinCatAssistant.Native
             icon.SetResourceReference(Shape.StrokeProperty, "Tc.Error");
             icon.VerticalAlignment = VerticalAlignment.Top;
             icon.Margin = new Thickness(0, 0, 6, 0);
-            var dismiss = IconButton("close", "Meldung ausblenden", () => { _actionError = null; Render(); return Task.CompletedTask; });
+            var dismiss = IconButton("close", HostText.Get("H267"), () => { _actionError = null; Render(); return Task.CompletedTask; });
             dismiss.Width = 22; dismiss.Height = 22; dismiss.VerticalAlignment = VerticalAlignment.Top; dismiss.Margin = new Thickness(4, -2, 0, -2);
             var row = new DockPanel { LastChildFill = true };
             row.Children.Add(DockTo(dismiss, Dock.Right));
@@ -460,7 +461,7 @@ namespace TwinCatAssistant.Native
             _renameFrame.SetResourceReference(Border.BackgroundProperty, "Tc.Surface");
             _renameFrame.SetResourceReference(Border.BorderBrushProperty, "Tc.Primary");
             StyleInput(_renameBox);
-            AutomationProperties.SetName(_renameBox, "Neuer Chattitel");
+            AutomationProperties.SetName(_renameBox, HostText.Get("H268"));
             _renameFrame.Child = _renameBox;
             _renameErrorText.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Error");
             _renameBox.TextChanged += (sender, args) => {
@@ -473,9 +474,9 @@ namespace TwinCatAssistant.Native
                 args.Handled = true;
                 Run(CommitRenameAsync);
             };
-            _renameCancel = SmallButton("Abbrechen", "Tc.SecondaryButton");
+            _renameCancel = SmallButton(HostText.Get("H220"), "Tc.SecondaryButton");
             _renameCancel.Click += (sender, args) => CancelRename();
-            _renameSave = SmallButton("Speichern", "Tc.PrimaryButton");
+            _renameSave = SmallButton(HostText.Get("H269"), "Tc.PrimaryButton");
             _renameSave.Margin = new Thickness(6, 0, 0, 0);
             _renameSave.Click += (sender, args) => Run(CommitRenameAsync);
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 6, 0, 0),
@@ -509,86 +510,114 @@ namespace TwinCatAssistant.Native
 
         private void Render()
         {
-            if (_disposed) return;
-            var focusId = FocusedRowId(out var focusMore);
-            var renameFocused = _renameEditor.IsKeyboardFocusWithin;
-            var searchFocused = _search.IsKeyboardFocusWithin;
-            var offset = _scroll.VerticalOffset;
-            if (_renameHost != null) _renameHost.Child = null;
-            _renameHost = null;
-            _list.Children.Clear();
-            _targets.Clear();
-
-            var active = _entries.Where(entry => !entry.Archived).ToList();
-            var archived = _entries.Where(entry => entry.Archived).ToList();
-            if (_showArchived && _view == PickerView.Ready && archived.Count == 0 && !_pending.ContainsValue(Restoring)) _showArchived = false;
-            RenderHeader();
-
-            var ready = _view == PickerView.Ready;
-            _searchFrame.IsEnabled = _view != PickerView.Error;
-            _banner.Visibility = _actionError == null ? Visibility.Collapsed : Visibility.Visible;
-            _bannerText.Text = _actionError ?? "";
-
-            UIElement state = null;
-            if (_view == PickerView.Loading) state = LoadingState();
-            else if (_view == PickerView.Error) state = ErrorState();
-            else
+            try
             {
-                var terms = Terms(_search.Text);
-                var openMatches = active.Where(entry => Matches(entry, terms)).ToList();
-                var doneMatches = archived.Where(entry => Matches(entry, terms)).ToList();
-                if (_entries.Count == 0) state = EmptyState();
-                else if (openMatches.Count == 0 && doneMatches.Count == 0) state = NoMatchState();
+                if (_disposed)
+                    return;
+                var focusId = FocusedRowId(out var focusMore);
+                var renameFocused = _renameEditor.IsKeyboardFocusWithin;
+                var searchFocused = _search.IsKeyboardFocusWithin;
+                var offset = _scroll.VerticalOffset;
+                if (_renameHost != null)
+                    _renameHost.Child = null;
+                _renameHost = null;
+                _list.Children.Clear();
+                _targets.Clear();
+                var active = _entries.Where(entry => !entry.Archived).ToList();
+                var archived = _entries.Where(entry => entry.Archived).ToList();
+                if (_showArchived && _view == PickerView.Ready && archived.Count == 0 && !_pending.ContainsValue(Restoring))
+                    _showArchived = false;
+                RenderHeader();
+                var ready = _view == PickerView.Ready;
+                _searchFrame.IsEnabled = _view != PickerView.Error;
+                _banner.Visibility = _actionError == null ? Visibility.Collapsed : Visibility.Visible;
+                _bannerText.Text = _actionError ?? "";
+                UIElement state = null;
+                if (_view == PickerView.Loading)
+                    state = LoadingState();
+                else if (_view == PickerView.Error)
+                    state = ErrorState();
                 else
                 {
-                    if (openMatches.Count == 0) _list.Children.Add(InlineNote(terms.Length > 0 ? "Keine offenen Chats mit diesem Suchbegriff." : "Keine offenen Chats. Neuer Chat beginnt einen."));
-                    foreach (var entry in openMatches) _list.Children.Add(BuildRow(entry));
-                    if (doneMatches.Count > 0)
+                    var terms = Terms(_search.Text);
+                    var openMatches = active.Where(entry => Matches(entry, terms)).ToList();
+                    var doneMatches = archived.Where(entry => Matches(entry, terms)).ToList();
+                    if (_entries.Count == 0)
+                        state = EmptyState();
+                    else if (openMatches.Count == 0 && doneMatches.Count == 0)
+                        state = NoMatchState();
+                    else
                     {
-                        _list.Children.Add(BuildDoneToggle(doneMatches.Count, terms.Length > 0));
-                        if (_showArchived) foreach (var entry in doneMatches) _list.Children.Add(BuildRow(entry));
+                        if (openMatches.Count == 0)
+                            _list.Children.Add(InlineNote(terms.Length > 0 ? HostText.Get("H270") : HostText.Get("H271")));
+                        foreach (var entry in openMatches)
+                            _list.Children.Add(BuildRow(entry));
+                        if (doneMatches.Count > 0)
+                        {
+                            _list.Children.Add(BuildDoneToggle(doneMatches.Count, terms.Length > 0));
+                            if (_showArchived)
+                                foreach (var entry in doneMatches)
+                                    _list.Children.Add(BuildRow(entry));
+                        }
                     }
                 }
-            }
-            _state.Child = state;
-            _state.Visibility = state == null ? Visibility.Collapsed : Visibility.Visible;
-            _scroll.Visibility = state == null ? Visibility.Visible : Visibility.Collapsed;
-            RenderRenameEditor();
-            _signature = ready ? Signature() : null;
-            // The rebuilt rows keep the reading position of the list.
-            if (state == null && offset > 0) { _scroll.UpdateLayout(); _scroll.ScrollToVerticalOffset(offset); }
 
-            if (ready && _revealSelected && _selectedId != null)
-            {
-                _revealSelected = false;
-                var target = _targets.FirstOrDefault(row => row.Id == _selectedId);
-                if (target != null) Defer(() => target.Primary.BringIntoView());
+                _state.Child = state;
+                _state.Visibility = state == null ? Visibility.Collapsed : Visibility.Visible;
+                _scroll.Visibility = state == null ? Visibility.Visible : Visibility.Collapsed;
+                RenderRenameEditor();
+                _signature = ready ? Signature() : null;
+                // The rebuilt rows keep the reading position of the list.
+                if (state == null && offset > 0)
+                {
+                    _scroll.UpdateLayout();
+                    _scroll.ScrollToVerticalOffset(offset);
+                }
+
+                if (ready && _revealSelected && _selectedId != null)
+                {
+                    _revealSelected = false;
+                    var target = _targets.FirstOrDefault(row => row.Id == _selectedId);
+                    if (target != null)
+                        Defer(() => target.Primary.BringIntoView());
+                }
+
+                if (renameFocused && _renameId != null)
+                    Defer(() => FocusElement(_renameBox));
+                else if (focusId != null)
+                {
+                    var target = _targets.FirstOrDefault(row => row.Id == focusId);
+                    Defer(() =>
+                    {
+                        if (target == null)
+                            FocusElement(_search);
+                        else if (!(focusMore && target.More != null && FocusElement(target.More)))
+                            FocusElement(target.Primary);
+                    });
+                }
+                else if (searchFocused && !_search.IsKeyboardFocusWithin)
+                    Defer(() => FocusElement(_search));
             }
-            if (renameFocused && _renameId != null) Defer(() => FocusElement(_renameBox));
-            else if (focusId != null)
+            finally
             {
-                var target = _targets.FirstOrDefault(row => row.Id == focusId);
-                Defer(() => {
-                    if (target == null) FocusElement(_search);
-                    else if (!(focusMore && target.More != null && FocusElement(target.More))) FocusElement(target.Primary);
-                });
+                if (!_disposed)
+                    HostTextBindings.Apply(View);
             }
-            else if (searchFocused && !_search.IsKeyboardFocusWithin) Defer(() => FocusElement(_search));
         }
 
         private void RenderHeader()
         {
-            var name = string.IsNullOrWhiteSpace(_projectName) ? (_general ? "Allgemeine Chats" : "Aktives Projekt") : _projectName;
+            var name = string.IsNullOrWhiteSpace(_projectName) ? (_general ? HostText.Get("H240") : HostText.Get("H272")) : _projectName;
             _title.Text = name;
-            _title.ToolTip = _general ? "Allgemeine Chats ohne Projekt- und Bausteinkontext" : "Chats im Projekt " + name;
+            _title.ToolTip = _general ? HostText.Get("H273") : HostText.Format("H274", new object[] { name });
             _titleIcon.Data = _general ? Geometry.Parse("M4,2.5 L12,2.5 A1.5,1.5 0 0 1 13.5,4 L13.5,9.5 A1.5,1.5 0 0 1 12,11 L7,11 L4.5,13.5 L4.5,11 L4,11 A1.5,1.5 0 0 1 2.5,9.5 L2.5,4 A1.5,1.5 0 0 1 4,2.5 Z")
                 : AssistantTheme.Icon("chat");
             _backButton.Visibility = BackAsync == null ? Visibility.Collapsed : Visibility.Visible;
             _titleIcon.Visibility = BackAsync == null ? Visibility.Visible : Visibility.Collapsed;
             _newButton.Visibility = NewAsync == null ? Visibility.Collapsed : Visibility.Visible;
             _newButton.IsEnabled = !_newPending && _view != PickerView.Loading;
-            _newButton.ToolTip = _general ? "Neuer allgemeiner Chat ohne Projektkontext" : "Neuer Chat in diesem Projekt";
-            _newLabel.Text = _newPending ? "Wird erstellt …" : "Neuer Chat";
+            _newButton.ToolTip = _general ? HostText.Get("H275") : HostText.Get("H276");
+            _newLabel.Text = _newPending ? HostText.Get("H277") : HostText.Get("H009");
             _newIcon.Visibility = _newPending ? Visibility.Collapsed : Visibility.Visible;
             _newSpinner.Visibility = _newPending ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -599,7 +628,7 @@ namespace TwinCatAssistant.Native
             chevron.SetResourceReference(Shape.StrokeProperty, "Tc.Muted");
             chevron.RenderTransformOrigin = new Point(0.5, 0.5);
             chevron.RenderTransform = new RotateTransform(_showArchived ? 0 : -90);
-            var label = new TextBlock { Text = "Erledigte Chats", FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            var label = new TextBlock { Text = HostText.Get("H278"), FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             label.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
             var number = new TextBlock { Text = count.ToString(German), FontSize = 11.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             number.SetResourceReference(TextBlock.ForegroundProperty, "Tc.Muted");
@@ -609,8 +638,8 @@ namespace TwinCatAssistant.Native
             content.Children.Add(DockTo(number, Dock.Right));
             var toggle = new Button { Content = content, Padding = new Thickness(8, 5, 10, 5) };
             toggle.SetResourceReference(FrameworkElement.StyleProperty, "Tc.MenuRow");
-            toggle.ToolTip = _showArchived ? "Erledigte Chats einklappen" : "Als erledigt markierte Chats anzeigen und wieder öffnen";
-            AutomationProperties.SetName(toggle, "Erledigte Chats, " + count + (searching ? " Treffer" : "") + (_showArchived ? ", ausgeklappt" : ", eingeklappt"));
+            toggle.ToolTip = _showArchived ? HostText.Get("H279") : HostText.Get("H280");
+            AutomationProperties.SetName(toggle, HostText.Format("H281", new object[] { count, (searching ? HostText.Get("H282") : ""), (_showArchived ? HostText.Get("H283") : HostText.Get("H284")) }));
             toggle.Click += (sender, args) => SetArchived(!_showArchived);
             _targets.Add(new RowTarget { Id = DoneToggleId, Primary = toggle });
             var line = new Border { Height = 1, Margin = new Thickness(10, 6, 10, 4) };
@@ -662,8 +691,8 @@ namespace TwinCatAssistant.Native
                 Grid.SetColumnSpan(select, 2);
                 select.Click += (sender, args) => Run(() => SelectEntryAsync(id));
                 select.MouseRightButtonUp += (sender, args) => { args.Handled = true; OpenMenu(id); };
-                AutomationProperties.SetName(select, DisplayTitle(entry) + (selected ? ", geöffnet" : "") + (entry.Busy ? ", Antwort läuft" : ""));
-                AutomationProperties.SetHelpText(select, "Eingabe öffnet den Chat. F2 benennt um, Kontextmenütaste zeigt weitere Aktionen.");
+                AutomationProperties.SetName(select, DisplayTitle(entry) + (selected ? HostText.Get("H285") : "") + (entry.Busy ? HostText.Get("H286") : ""));
+                AutomationProperties.SetHelpText(select, HostText.Get("H287"));
                 row.Children.Add(select);
                 target.Primary = select;
                 if (selected)
@@ -675,7 +704,7 @@ namespace TwinCatAssistant.Native
                 if (pending != null) row.Children.Add(Trailing(Spinner(14), new Thickness(0, 0, 11, 0)));
                 else if (CanRename(entry) || CanGenerate(entry) || ArchiveAsync != null)
                 {
-                    var more = IconButton("more", "Aktionen für „" + DisplayTitle(entry) + "“", () => { OpenMenu(id); return Task.CompletedTask; });
+                    var more = IconButton("more", HostText.Format("H288", new object[] { DisplayTitle(entry) }), () => { OpenMenu(id); return Task.CompletedTask; });
                     more.Width = 24; more.Height = 24;
                     target.More = more;
                     row.Children.Add(Trailing(more, new Thickness(0, 0, 6, 0)));
@@ -691,12 +720,12 @@ namespace TwinCatAssistant.Native
                 row.Children.Add(new Border { Padding = new Thickness(12, 6, 8, 6), Child = text });
                 if (RestoreAsync != null)
                 {
-                    var restore = SmallButton(pending == Restoring ? "Wird geöffnet …" : "Wieder öffnen", "Tc.SecondaryButton");
+                    var restore = SmallButton(pending == Restoring ? HostText.Get("H289") : HostText.Get("H290"), "Tc.SecondaryButton");
                     restore.FontSize = 11.5;
                     restore.IsEnabled = pending == null;
                     restore.Tag = id;
-                    restore.ToolTip = "Zurück zu den offenen Chats; Verlauf und Anhänge bleiben erhalten";
-                    AutomationProperties.SetName(restore, "„" + DisplayTitle(entry) + "“ wieder öffnen");
+                    restore.ToolTip = HostText.Get("H291");
+                    AutomationProperties.SetName(restore, HostText.Format("H292", new object[] { DisplayTitle(entry) }));
                     restore.Click += (sender, args) => Run(() => RestoreEntryAsync(id));
                     row.Children.Add(Trailing(restore, new Thickness(4, 0, 6, 0)));
                     target.Primary = restore;
@@ -734,8 +763,8 @@ namespace TwinCatAssistant.Native
             if (pending != null)
             {
                 Separator();
-                meta.Inlines.Add(new Run(pending == Selecting ? "Wird geöffnet …" : pending == Renaming ? "Wird umbenannt …"
-                    : pending == Generating ? "Titel wird generiert …" : pending == Archiving ? "Wird als erledigt markiert …" : "Wird wieder geöffnet …"));
+                meta.Inlines.Add(new Run(pending == Selecting ? HostText.Get("H289") : pending == Renaming ? HostText.Get("H293")
+                    : pending == Generating ? HostText.Get("H294") : pending == Archiving ? HostText.Get("H295") : HostText.Get("H296")));
             }
             if (entry.Busy && !entry.Archived)
             {
@@ -744,10 +773,10 @@ namespace TwinCatAssistant.Native
                 dot.SetResourceReference(Shape.FillProperty, "Tc.Primary");
                 Pulse(dot);
                 meta.Inlines.Add(new InlineUIContainer(dot) { BaselineAlignment = BaselineAlignment.Center });
-                var busy = new Run("Antwort läuft");
+                var busy = new Run(HostText.Get("H297"));
                 busy.SetResourceReference(TextElement.ForegroundProperty, "Tc.Primary");
                 meta.Inlines.Add(busy);
-                meta.ToolTip = "Die Antwort läuft weiter, auch wenn ein anderer Chat geöffnet wird.";
+                meta.ToolTip = HostText.Get("H298");
             }
             var when = FormatUpdated(entry.Updated, DateTime.Now);
             if (when.Length > 0)
@@ -756,7 +785,7 @@ namespace TwinCatAssistant.Native
                 meta.Inlines.Add(new Run(when));
                 if (meta.ToolTip == null) meta.ToolTip = FormatUpdatedFull(entry.Updated);
             }
-            if (parts == 0) meta.Inlines.Add(new Run(entry.Archived ? "Erledigt" : "Keine Aktivität bekannt"));
+            if (parts == 0) meta.Inlines.Add(new Run(entry.Archived ? HostText.Get("H299") : HostText.Get("H300")));
             return meta;
         }
 
@@ -767,7 +796,7 @@ namespace TwinCatAssistant.Native
             _renameBox.IsReadOnly = saving;
             _renameSave.IsEnabled = !saving;
             _renameCancel.IsEnabled = !saving;
-            _renameSave.Content = saving ? "Speichert …" : "Speichern";
+            _renameSave.Content = saving ? HostText.Get("H301") : HostText.Get("H269");
             _renameErrorText.Text = _renameError ?? "";
             _renameErrorText.Visibility = _renameError == null ? Visibility.Collapsed : Visibility.Visible;
             _renameHost.Child = _renameEditor;
@@ -784,7 +813,7 @@ namespace TwinCatAssistant.Native
         {
             var spinner = Spinner(18);
             spinner.Margin = new Thickness(0, 0, 0, 8);
-            return Centered(spinner, Line("Chats werden geladen …", "Tc.Muted"));
+            return Centered(spinner, Line(HostText.Get("H302"), "Tc.Muted"));
         }
 
         private UIElement ErrorState()
@@ -792,7 +821,7 @@ namespace TwinCatAssistant.Native
             var icon = Glyph("alert", 1.4);
             icon.SetResourceReference(Shape.StrokeProperty, "Tc.Error");
             icon.Margin = new Thickness(0, 0, 0, 8);
-            var heading = Line("Chats konnten nicht geladen werden.", "Tc.Foreground");
+            var heading = Line(HostText.Get("H303"), "Tc.Foreground");
             heading.FontWeight = FontWeights.SemiBold;
             var panel = Centered(icon, heading);
             if (_errorMessage != null)
@@ -803,7 +832,7 @@ namespace TwinCatAssistant.Native
             }
             if (RetryAsync != null)
             {
-                var retry = SmallButton(_retryPending ? "Wird geladen …" : "Erneut versuchen", "Tc.SecondaryButton");
+                var retry = SmallButton(_retryPending ? HostText.Get("H304") : HostText.Get("H046"), "Tc.SecondaryButton");
                 retry.Margin = new Thickness(0, 12, 0, 0);
                 retry.HorizontalAlignment = HorizontalAlignment.Center;
                 retry.IsEnabled = !_retryPending;
@@ -819,10 +848,10 @@ namespace TwinCatAssistant.Native
             var icon = Glyph("chat", 1.4);
             icon.SetResourceReference(Shape.StrokeProperty, "Tc.Muted");
             icon.Margin = new Thickness(0, 0, 0, 8);
-            var panel = Centered(icon, Line(_general ? "Noch keine allgemeinen Chats." : "In diesem Projekt gibt es noch keine Chats.", "Tc.Muted"));
+            var panel = Centered(icon, Line(_general ? HostText.Get("H305") : HostText.Get("H306"), "Tc.Muted"));
             if (NewAsync != null)
             {
-                var start = SmallButton(_newPending ? "Wird erstellt …" : "Neuen Chat beginnen", "Tc.SecondaryButton");
+                var start = SmallButton(_newPending ? HostText.Get("H277") : HostText.Get("H307"), "Tc.SecondaryButton");
                 start.Margin = new Thickness(0, 12, 0, 0);
                 start.HorizontalAlignment = HorizontalAlignment.Center;
                 start.IsEnabled = !_newPending;
@@ -834,8 +863,8 @@ namespace TwinCatAssistant.Native
 
         private UIElement NoMatchState()
         {
-            var panel = Centered(Line("Keine Treffer für „" + _search.Text.Trim() + "“.", "Tc.Muted"));
-            var reset = SmallButton("Suche zurücksetzen", "Tc.Button");
+            var panel = Centered(Line(HostText.Format("H308", new object[] { _search.Text.Trim() }), "Tc.Muted"));
+            var reset = SmallButton(HostText.Get("H266"), "Tc.Button");
             reset.SetResourceReference(Control.ForegroundProperty, "Tc.Primary");
             reset.Margin = new Thickness(0, 6, 0, 0);
             reset.HorizontalAlignment = HorizontalAlignment.Center;
@@ -870,13 +899,13 @@ namespace TwinCatAssistant.Native
             var target = _targets.FirstOrDefault(row => row.Id == id);
             if (entry == null || entry.Archived || target == null || _pending.ContainsKey(id) || _view != PickerView.Ready) return;
             _menuItems.Children.Clear();
-            if (CanRename(entry)) MenuItem("pencil", "Umbenennen", "F2", true, null, () => BeginRename(id));
+            if (CanRename(entry)) MenuItem("pencil", HostText.Get("H309"), "F2", true, null, () => BeginRename(id));
             if (CanGenerate(entry))
-                MenuItem("refresh", "Titel automatisch generieren", null, !entry.Busy, entry.Busy ? "Erst nach Abschluss der laufenden Antwort möglich." : "Titel aus dem Chatverlauf erzeugen und speichern.",
+                MenuItem("refresh", HostText.Get("H310"), null, !entry.Busy, entry.Busy ? HostText.Get("H311") : HostText.Get("H312"),
                     () => Run(() => GenerateTitleEntryAsync(id)));
             if (ArchiveAsync != null)
-                MenuItem("check", "Als erledigt markieren", null, !entry.Busy, entry.Busy ? "Erst nach Abschluss der laufenden Antwort möglich."
-                    : "Unter „Erledigte Chats“ ablegen. Verlauf und Anhänge bleiben erhalten; jederzeit wieder zu öffnen.",
+                MenuItem("check", HostText.Get("H313"), null, !entry.Busy, entry.Busy ? HostText.Get("H311")
+                    : HostText.Get("H314"),
                     () => Run(() => ArchiveEntryAsync(id)));
             if (_menuItems.Children.Count == 0) return;
             _menuId = id;
@@ -957,7 +986,7 @@ namespace TwinCatAssistant.Native
             {
                 if (session != _session) return;
                 _pending.Remove(id);
-                Fail("Der Chat konnte nicht geöffnet werden.", error);
+                Fail(HostText.Get("H315"), error);
                 return;
             }
             if (session != _session) return;
@@ -1005,7 +1034,7 @@ namespace TwinCatAssistant.Native
             var title = (_renameBox.Text ?? "").Trim();
             if (title.Length == 0)
             {
-                _renameError = "Bitte einen Titel eingeben.";
+                _renameError = HostText.Get("H316");
                 Render();
                 return;
             }
@@ -1020,7 +1049,7 @@ namespace TwinCatAssistant.Native
             {
                 if (session != _session) return;
                 _pending.Remove(id);
-                var message = Describe("Umbenennen fehlgeschlagen.", error);
+                var message = Describe(HostText.Get("H317"), error);
                 if (message != null && _renameId == id) _renameError = message;
                 else if (message != null) _actionError = message;
                 Render();
@@ -1056,7 +1085,7 @@ namespace TwinCatAssistant.Native
             {
                 if (session != _session) return;
                 _pending.Remove(id);
-                Fail("Der Titel konnte nicht generiert werden.", error);
+                Fail(HostText.Get("H318"), error);
                 KeepFocusOnRow(id);
                 return;
             }
@@ -1097,7 +1126,7 @@ namespace TwinCatAssistant.Native
             {
                 if (session != _session) return;
                 _pending.Remove(id);
-                Fail("Als erledigt markieren fehlgeschlagen.", error);
+                Fail(HostText.Get("H319"), error);
                 return;
             }
             if (session != _session) return;
@@ -1123,7 +1152,7 @@ namespace TwinCatAssistant.Native
             {
                 if (session != _session) return;
                 _pending.Remove(id);
-                Fail("Wieder öffnen fehlgeschlagen.", error);
+                Fail(HostText.Get("H320"), error);
                 return;
             }
             if (session != _session) return;
@@ -1146,7 +1175,7 @@ namespace TwinCatAssistant.Native
             {
                 if (session != _session) return;
                 _newPending = false;
-                Fail("Neuer Chat konnte nicht erstellt werden.", error);
+                Fail(HostText.Get("H321"), error);
                 return;
             }
             if (session != _session) return;
@@ -1171,7 +1200,7 @@ namespace TwinCatAssistant.Native
                 _retryPending = false;
                 if (content != _content) return;
                 _view = PickerView.Error;
-                _errorMessage = Describe("Erneuter Versuch fehlgeschlagen.", error) ?? _errorMessage;
+                _errorMessage = Describe(HostText.Get("H322"), error) ?? _errorMessage;
                 Render();
                 return;
             }
@@ -1365,7 +1394,7 @@ namespace TwinCatAssistant.Native
             return index > 0 ? rows[index - 1].Id : null;
         }
 
-        private static string DisplayTitle(Entry entry) { return string.IsNullOrWhiteSpace(entry.Title) ? "Unbenannter Chat" : entry.Title.Trim(); }
+        private static string DisplayTitle(Entry entry) { return string.IsNullOrWhiteSpace(entry.Title) ? HostText.Get("H323") : entry.Title.Trim(); }
 
         private static string[] Terms(string query)
         {
@@ -1385,18 +1414,18 @@ namespace TwinCatAssistant.Native
         {
             if (!TryLocal(millis, out var local)) return "";
             var age = now - local;
-            if (age < TimeSpan.FromMinutes(-5)) return local.ToString("dd.MM.yyyy", German);
-            if (age.TotalSeconds < 60) return "gerade eben";
-            if (age.TotalMinutes < 60) return "vor " + (int)age.TotalMinutes + " Min.";
-            if (local.Date == now.Date) return "heute, " + local.ToString("HH:mm", German);
-            if (local.Date == now.Date.AddDays(-1)) return "gestern, " + local.ToString("HH:mm", German);
+            if (age < TimeSpan.FromMinutes(-5)) return local.ToString(HostText.Language == "en" ? "dd MMM yyyy" : "dd.MM.yyyy", German);
+            if (age.TotalSeconds < 60) return HostText.Get("H324");
+            if (age.TotalMinutes < 60) return HostText.Format("H325", new object[] { (int)age.TotalMinutes });
+            if (local.Date == now.Date) return HostText.Format("H326", new object[] { local.ToString("HH:mm", German) });
+            if (local.Date == now.Date.AddDays(-1)) return HostText.Format("H327", new object[] { local.ToString("HH:mm", German) });
             if (local.Date > now.Date.AddDays(-7)) return local.ToString("ddd, HH:mm", German);
-            return local.ToString(local.Year == now.Year ? "dd.MM." : "dd.MM.yyyy", German);
+            return local.ToString(HostText.Language == "en" ? (local.Year == now.Year ? "dd MMM" : "dd MMM yyyy") : (local.Year == now.Year ? "dd.MM." : "dd.MM.yyyy"), German);
         }
 
         private static string FormatUpdatedFull(long millis)
         {
-            return TryLocal(millis, out var local) ? "Letzte Aktivität: " + local.ToString("dddd, dd.MM.yyyy, HH:mm", German) : null;
+            return TryLocal(millis, out var local) ? HostText.Format("H328", new object[] { local.ToString(HostText.Language == "en" ? "dddd, dd MMMM yyyy, HH:mm" : "dddd, dd.MM.yyyy, HH:mm", German) }) : null;
         }
 
         private static bool TryLocal(long millis, out DateTime local)
@@ -1465,7 +1494,7 @@ namespace TwinCatAssistant.Native
             var rotation = new RotateTransform();
             arc.RenderTransform = rotation;
             var box = new Viewbox { Width = size, Height = size, Child = arc, VerticalAlignment = VerticalAlignment.Center };
-            AutomationProperties.SetName(box, "Wird geladen");
+            AutomationProperties.SetName(box, HostText.Get("H329"));
             box.IsVisibleChanged += (sender, args) => rotation.BeginAnimation(RotateTransform.AngleProperty,
                 box.IsVisible && SystemParameters.ClientAreaAnimation ? new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(900)) { RepeatBehavior = RepeatBehavior.Forever } : null);
             return box;

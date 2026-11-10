@@ -571,6 +571,21 @@ namespace TwinCatAssistant.Native
             Check(ProjectChatPicker.FormatUpdated(Millis(now.AddDays(-1).Date.AddHours(9)), now) == "gestern, 09:00", "yesterday");
             Check(ProjectChatPicker.FormatUpdated(Millis(new DateTime(2025, 3, 4, 8, 0, 0, DateTimeKind.Local)), now) == "04.03.2025", "older date");
 
+            HostText.SetLanguage("en");
+            _picker.ShowLoading("PLC_SYNTHETIC", false, true);
+            _picker.Show("PLC_SYNTHETIC", "s1", new[] { Item("s1", "Gespeichert", 12, false, false) });
+            _picker.RefreshLanguage(); Pump();
+            Check((string)Field<Button>("_newButton").ToolTip == "New chat in this project", "English tooltips update in the existing picker");
+            Check(Descendants<TextBlock>(_picker.View).Any(text => text.Text == "Gespeichert"), "a user title equal to a German UI label is not translated");
+            Check(ProjectChatPicker.FormatUpdated(Millis(now.AddMinutes(-12)), now) == "12 min ago", "English relative time");
+            Shot("english", 390);
+            Call("OpenMenu", "s1"); Pump();
+            Check(MenuButton("Rename") != null, "English row menu");
+            Call("CloseMenu", false);
+            HostText.SetLanguage("de"); _picker.RefreshLanguage(); Pump();
+            Check((string)Field<Button>("_newButton").ToolTip == "Neuer Chat in diesem Projekt", "German round trip preserves the picker");
+            Check(Descendants<TextBlock>(_picker.View).Any(text => text.Text == "Gespeichert"), "German round trip preserves the user title");
+
             _picker.Dispose();
             _picker.ShowLoading("Anlage_Linie3");
             Check(!_picker.IsOpen && _slot.Child == null, "disposed bar stays closed and leaves the layout");
@@ -813,11 +828,31 @@ Set-Content -LiteralPath $harness -Encoding UTF8 -Value $harnessSource
 $sources = @(
     (Join-Path $root 'native/IdeHost/ProjectChatPicker.cs'),
     (Join-Path $root 'native/IdeHost/AssistantTheme.cs'),
+    (Join-Path $root 'native/IdeHost/HostTextBindings.cs'),
+    (Join-Path $root 'native/Shared/HostText.cs'),
+    (Join-Path $root 'native/Shared/HostStatusText.cs'),
     $harness)
+$resourceArguments = @{}
+Add-Type -AssemblyName System.Windows.Forms
+foreach ($language in @('de','en')) {
+    $resx = Join-Path $root ('native/Shared/Localization/Strings' + $(if ($language -eq 'en') {'.en'} else {''}) + '.resx')
+    $resource = Join-Path $buildDirectory ("Strings.$language.resources")
+    $reader = New-Object System.Resources.ResXResourceReader($resx)
+    $writer = New-Object System.Resources.ResourceWriter($resource)
+    try { foreach ($entry in $reader.GetEnumerator()) { $writer.AddResource([string]$entry.Key,[string]$entry.Value) }; $writer.Generate() }
+    finally { $writer.Dispose(); $reader.Dispose() }
+    $resourceArguments[$language] = $resource
+}
 $references = @('mscorlib.dll', 'System.dll', 'System.Core.dll', 'System.Xaml.dll', 'WindowsBase.dll', 'PresentationCore.dll', 'PresentationFramework.dll') |
     ForEach-Object { '/reference:' + (Join-Path $refs $_) }
-& $csc /nologo /utf8output /noconfig /nostdlib+ /target:exe /platform:anycpu /langversion:latest /warnaserror+ /nowarn:1701,1702 "/out:$exe" @references @sources
+& $csc /nologo /utf8output /noconfig /nostdlib+ /target:exe /platform:anycpu /langversion:latest /warnaserror+ /nowarn:1701,1702 "/out:$exe" "/resource:$($resourceArguments.de),TwinCatAssistant.Native.Localization.Strings.resources" @references @sources
 if ($LASTEXITCODE -ne 0) { throw 'Chat bar fixture compilation failed.' }
+$satelliteDirectory = Join-Path $buildDirectory 'en'
+[IO.Directory]::CreateDirectory($satelliteDirectory) | Out-Null
+$satelliteSource = Join-Path $buildDirectory 'EnglishSatellite.cs'
+[IO.File]::WriteAllText($satelliteSource, '[assembly: System.Reflection.AssemblyCulture("en")]')
+& $csc /nologo /target:library /platform:anycpu "/out:$(Join-Path $satelliteDirectory 'SidebarHarness.resources.dll')" "/resource:$($resourceArguments.en),TwinCatAssistant.Native.Localization.Strings.en.resources" $satelliteSource
+if ($LASTEXITCODE -ne 0) { throw 'English chat bar resources failed to compile.' }
 & $exe $OutputDirectory
 if ($LASTEXITCODE -ne 0) { throw 'Chat bar fixture checks failed.' }
 Write-Output "Screenshots: $OutputDirectory"

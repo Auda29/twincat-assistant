@@ -166,6 +166,7 @@ export function twinCatContextTexts(sessionId: string | null): string[] {
 
 export const twinCatSource = {
   version: 1,
+  nativeIntro() { return useI18nStore.getState().dictionary['twincat.chat.empty.intro']; },
   stores: { ui: useUIStore, sessions: useSessionUIStore, input: useInputStore, config: useConfigStore, locale: useI18nStore },
   activate() {
     if (active) return;

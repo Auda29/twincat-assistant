@@ -106,7 +106,7 @@ export function composerChips(scope) {
   };
 }
 
-export function createChatAdapter({ ui, sessions, input, config, source = null, loadSessions, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], mcpObservation = () => null, theme = () => null, permissionChanged = () => {}, authenticated = () => true, composer = null, documentId = crypto.randomUUID() }) {
+export function createChatAdapter({ ui, sessions, input, config, source = null, loadSessions, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], mcpObservation = () => null, theme = () => null, language = () => 'de', setLanguage = null, permissionChanged = () => {}, authenticated = () => true, composer = null, documentId = crypto.randomUUID() }) {
   for (const store of [ui, sessions, input]) {
     if (typeof store?.getState !== 'function' || typeof store?.subscribe !== 'function') throw new Error('Incompatible chat store');
   }
@@ -195,11 +195,16 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
       attachmentState: attached ? (pending?.id === attached.id ? 'staging' : 'staged') : submitted ? 'submitted' : 'none',
       attachedObject: attached?.title ?? null, attachedRevision: attached?.revision ?? null,
       submittedObject: submitted?.title ?? null, submittedRevision: submitted?.revision ?? null,
-      attachments, submittedAttachments, theme: theme() };
+      attachments, submittedAttachments, theme: theme(), language: language() };
   };
   const matches = expected => expected && expected.documentId === documentId && expected.sessionId && expected.sessionId === selected && expected.epoch === epoch;
   return Object.freeze({
     state,
+    setLanguage(locale) {
+      if (!['de', 'en'].includes(locale) || typeof setLanguage !== 'function') throw new Error('Unsupported UI language');
+      setLanguage(locale);
+      return language();
+    },
     async exportThread(expected) {
       if (!authenticated() || !matches(expected) || typeof source?.exportThread !== 'function') throw new Error('Thread export is not available');
       const directory = sessions.getState().currentSessionDirectory;
@@ -332,7 +337,8 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
   });
 }
 
-export async function installEmbeddedChat(scope = window) {
+export async function installEmbeddedChat(scope = window, preferredLanguage = null) {
+  if (preferredLanguage !== null && !['de', 'en'].includes(preferredLanguage)) throw new Error('Unsupported UI language');
   if (scope.__twinCatChat?.state) return;
   if (scope.location.protocol !== 'http:' || scope.location.hostname !== '127.0.0.1') throw new Error('Loopback chat required');
   if (scope.__twinCatSourceReady) {
@@ -358,9 +364,13 @@ export async function installEmbeddedChat(scope = window) {
     : await import(/* @vite-ignore */ new URL(EMBEDDED_ASSETS[1].path, scope.location.origin).href);
   source?.activate();
   if (typeof chat.l?.getState().loadProviders !== 'function') throw new Error('Incompatible provider config store');
-  // OpenChamber ships a German dictionary. Use it unless the operator already
-  // chose a language in OpenChamber's own settings.
-  try { if (!scope.localStorage.getItem('openchamber.i18n.v1')) chat.df?.getState().setLocale?.('de'); } catch { /* storage unavailable */ }
+  // The native preference survives port changes. With no native preference,
+  // retain a supported existing Chat choice, otherwise start in German.
+  let hasStoredLanguage = false;
+  try { hasStoredLanguage = !!scope.localStorage.getItem('openchamber.i18n.v1'); } catch { /* storage unavailable */ }
+  const existingLanguage = chat.df?.getState().locale;
+  const initialLanguage = preferredLanguage ?? (hasStoredLanguage && ['de', 'en'].includes(existingLanguage) ? existingLanguage : 'de');
+  chat.df?.getState().setLocale?.(initialLanguage);
   let signedIn = false;
   let connectedProviders = [];
   let enabledProviders = [];
@@ -442,6 +452,8 @@ export async function installEmbeddedChat(scope = window) {
     mcpObservation: () => ({ directory: currentDirectory() ?? null, observed: mcpDirectory === currentDirectory() && mcpObserved,
       stale: !signedIn || mcpDirectory !== currentDirectory() || mcpStale }),
     theme: () => readTheme(scope), composer: source ? null : composerChips(scope),
+    language: () => chat.df.getState().locale,
+    setLanguage: locale => chat.df.getState().setLocale(locale),
     permissionChanged: allowed => { composerAllowed = allowed; markComposer(); }, authenticated: () => signedIn });
   Object.defineProperty(scope, '__twinCatChat', { value: adapter, configurable: false, writable: false });
   scope.document.documentElement.dataset.twincatEmbedded = 'true';
@@ -464,13 +476,20 @@ export async function installEmbeddedChat(scope = window) {
     if (empty && !empty.querySelector('.tc-chat-intro')) {
       const intro = scope.document.createElement('p');
       intro.className = 'tc-chat-intro';
-      intro.textContent = 'Ã–ffne einen ST-Baustein, dann startet der passende Projektchat automatisch. Mit + oben beginnt ein allgemeiner Chat.';
       empty.append(intro);
+    }
+    const intro = empty?.querySelector('.tc-chat-intro');
+    if (intro) {
+      const text = typeof source?.nativeIntro === 'function' ? source.nativeIntro() : chat.df.getState().locale === 'en'
+        ? 'Open an ST object to start its project chat automatically. Use + above to start a general chat.'
+        : 'Öffne einen ST-Baustein, dann startet der passende Projektchat automatisch. Mit + oben beginnt ein allgemeiner Chat.';
+      if (intro.textContent !== text) intro.textContent = text;
     }
   };
   const observer = new MutationObserver(markSelection);
   observer.observe(scope.document.body, { childList: true, subtree: true });
   const stopSelection = chat.z.subscribe(markSelection);
+  const stopLanguage = chat.df.subscribe(markSelection);
   markSelection();
-  scope.addEventListener('pagehide', () => { observer.disconnect(); stopSelection(); }, { once: true });
+  scope.addEventListener('pagehide', () => { observer.disconnect(); stopSelection(); stopLanguage(); }, { once: true });
 }

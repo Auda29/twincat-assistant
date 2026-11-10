@@ -90,7 +90,7 @@ namespace TwinCatAssistant.Native
             _sidebarHost.Width = docked ? double.NaN : Math.Max(220, Math.Min(SidebarOverlayMax, area - SidebarOverlayGap));
             _sidebarHost.Effect = docked ? null : _sidebarShadow;
             var shown = picker?.IsOpen == true;
-            _historyButton.ToolTip = shown ? "Chatleiste schließen" : _chatProject == null ? "Chats anzeigen" : "Chats dieses Projekts anzeigen";
+            _historyButton.ToolTip = shown ? HostText.Get("H237") : _chatProject == null ? HostText.Get("H238") : HostText.Get("H008");
             System.Windows.Automation.AutomationProperties.SetName(_historyButton, (string)_historyButton.ToolTip);
             if (shown) _historyButton.SetResourceReference(ForegroundProperty, "Tc.Primary");
             else _historyButton.ClearValue(ForegroundProperty);
@@ -296,7 +296,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (!PickerCurrent(scope)) throw new OperationCanceledException();
-            if (!_chatAdapterReady || _chatActionPending) throw new InvalidOperationException("Der Chat wird gerade vorbereitet. Bitte kurz warten.");
+            if (!_chatAdapterReady || _chatActionPending) throw new InvalidOperationException(HostText.Get("H239"));
         }
 
         // The clock (general: false) and the "Allgemeine Chats" menu entry
@@ -335,7 +335,7 @@ namespace TwinCatAssistant.Native
             if (!restore) { _menuPopup.IsOpen = false; _previewPopup.IsOpen = false; }
             var scope = new PickerScope { Project = project, General = general, Document = _chatDocumentGeneration, Focus = !restore,
                 Request = ++_pickerRequest, Directories = general ? new[] { _chatWorkspace() } : (_projectWorkspaces ?? new[] { _projectWorkspace ?? _chatWorkspace() }),
-                Name = general ? "Allgemeine Chats" : ProjectName(project.ProjectFile) };
+                Name = general ? HostText.Get("H240") : ProjectName(project.ProjectFile) };
             _pickerScope = scope;
             var canManage = _chatSelection?.canManage == true;
             var picker = EnsureProjectChatPicker();
@@ -346,7 +346,7 @@ namespace TwinCatAssistant.Native
                 await NewChatAsync(scope.General);
                 if (!PickerCurrent(scope)) throw new OperationCanceledException();
                 if (_chatSelection?.IsSelected != true || _chatSelection.sessionId == before || !CanPromptCurrentChat())
-                    throw new InvalidOperationException("Der neue Chat wurde nicht bestätigt. Bitte zuerst den Verlauf neu laden.");
+                    throw new InvalidOperationException(HostText.Get("H241"));
                 // The docked bar stays open and lists the new chat at once.
                 if (SidebarPinned()) await LoadPickerAsync(scope, false);
             };
@@ -387,7 +387,7 @@ namespace TwinCatAssistant.Native
                     Id = entry.id, Title = entry.title, Updated = (long)Math.Max(0, Math.Min(entry.updated, 253402300799999d)), Busy = entry.busy, Archived = entry.archived }).ToArray());
             }
             catch (OperationCanceledException) { }
-            catch { if (!quiet && PickerCurrent(scope)) picker.ShowError("Der Verlauf konnte nicht geladen werden. Deine Chats bleiben erhalten."); }
+            catch { if (!quiet && PickerCurrent(scope)) picker.ShowError(HostText.Get("H242")); }
             finally { _pickerRefreshing--; }
         }
         private async Task<ChatSessionEntry[]> PickerEntriesAsync(PickerScope scope)
@@ -410,7 +410,7 @@ namespace TwinCatAssistant.Native
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var entries = await PickerEntriesAsync(scope);
             var target = entries.SingleOrDefault(entry => entry.id == id && !entry.archived);
-            if (target == null) throw new InvalidOperationException("Dieser Chat ist nicht mehr unter den offenen Chats verfügbar.");
+            if (target == null) throw new InvalidOperationException(HostText.Get("H243"));
             CheckPicker(scope);
             // Bind first: another live IDE's conversation cannot be selected
             // and accidentally receive this window's context or prompt.
@@ -420,9 +420,9 @@ namespace TwinCatAssistant.Native
             _chatActionPending = true; RenderChatBinding();
             try
             {
-                if (!scope.General && _mcpEnabled && !await PrepareProjectWorkspaceAsync(scope.Project, target.directory)) throw new InvalidOperationException("Projektwerkzeuge noch nicht verfügbar.");
+                if (!scope.General && _mcpEnabled && !await PrepareProjectWorkspaceAsync(scope.Project, target.directory)) throw new InvalidOperationException(HostText.Get("H244"));
                 if (!PickerCurrent(scope)) throw new OperationCanceledException();
-                if (!await SelectSessionAsync(id, target.directory)) throw new InvalidOperationException("Dieser Chat konnte noch nicht geöffnet werden.");
+                if (!await SelectSessionAsync(id, target.directory)) throw new InvalidOperationException(HostText.Get("H245"));
                 if (!PickerCurrent(scope)) throw new OperationCanceledException();
                 _explicitGeneralRequested = scope.General;
                 if (scope.General) await BindGeneralCoreAsync(); else await BindSelectionAsync(scope.Project);
@@ -435,16 +435,16 @@ namespace TwinCatAssistant.Native
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var target = (await PickerEntriesAsync(scope)).SingleOrDefault(entry => entry.id == id);
-            if (target == null) throw new InvalidOperationException("Dieser Chat gehört nicht zum ausgewählten Verlauf.");
-            if ((action == "archive" || action == "generate-title") && target.busy) throw new InvalidOperationException("In diesem Chat läuft noch eine Antwort.");
-            if (action == "generate-title" && target.archived) throw new InvalidOperationException("Zuerst den erledigten Chat wieder öffnen.");
+            if (target == null) throw new InvalidOperationException(HostText.Get("H246"));
+            if ((action == "archive" || action == "generate-title") && target.busy) throw new InvalidOperationException(HostText.Get("H247"));
+            if (action == "generate-title" && target.archived) throw new InvalidOperationException(HostText.Get("H248"));
             // Retain the existing live-IDE ownership check for management too.
             BindPickerChat(scope.General ? ChatContextBinding.CreateGeneral(_chatIdeInstance, System.Diagnostics.Process.GetCurrentProcess().Id, _origin.AbsoluteUri, id)
                 : ChatContextBinding.CreateProject(scope.Project, _chatIdeInstance, _origin.AbsoluteUri, id));
             CheckPicker(scope);
             var selection = await ReadChatSelectionAsync();
             if (!PickerCurrent(scope)) throw new OperationCanceledException();
-            if (selection?.IsSelected != true) throw new InvalidOperationException("Zuerst einen Chat öffnen.");
+            if (selection?.IsSelected != true) throw new InvalidOperationException(HostText.Get("H249"));
             var context = _chatBinding?.IsGeneral == true ? "general" : ProjectKey(_chatProject);
             var serializer = new JavaScriptSerializer();
             var expected = new { sessionId = selection.sessionId, selection.epoch, selection.documentId, contextKey = context };
@@ -467,13 +467,13 @@ namespace TwinCatAssistant.Native
                         var codeRaw = await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatManage?.id==='" + slot + "'?window.__twinCatManage.code:null");
                         var code = codeRaw != null && codeRaw.Length < 100 ? serializer.Deserialize<string>(codeRaw) : null;
                         throw new InvalidOperationException(action == "generate-title" ? TitleFailureMessage(code)
-                            : "Die Änderung wurde nicht bestätigt. Bitte den Verlauf erneut laden.");
+                            : HostText.Get("H250"));
                     }
                     await Task.Delay(100);
                 }
                 if (!PickerCurrent(scope)) throw new OperationCanceledException();
                 var confirmed = await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatManage?.id==='" + slot + "'&&window.__twinCatManage.phase==='ready'");
-                if (confirmed != "true") throw new InvalidOperationException("Änderung nicht bestätigt. Bitte vor einem erneuten Versuch den Verlauf laden.");
+                if (confirmed != "true") throw new InvalidOperationException(HostText.Get("H251"));
             }
             finally { _chatActionPending = false; if (!_disposed) await PollChatSelectionStateAsync(); }
             // The open chat was marked done: show another open chat of this
@@ -492,19 +492,19 @@ namespace TwinCatAssistant.Native
         private void BindPickerChat(ChatContextBinding binding)
         {
             try { _chatBindings.Bind(binding); }
-            catch (InvalidOperationException) { throw new InvalidOperationException("Dieser Chat gehört zu einem anderen Projekt oder wird in einer anderen IDE verwendet."); }
+            catch (InvalidOperationException) { throw new InvalidOperationException(HostText.Get("H252")); }
         }
         private static string TitleFailureMessage(string code)
         {
             switch (code)
             {
-                case "empty_history": return "Dieser Chat enthält noch keinen abgeschlossenen Austausch. Der bisherige Titel bleibt erhalten.";
-                case "history_unavailable": return "Der gespeicherte Chatverlauf konnte nicht vollständig geladen werden. Bitte erneut versuchen.";
-                case "chat_busy": return "In diesem Chat läuft noch eine Antwort oder sein Status ist noch nicht bestätigt. Bitte kurz warten.";
-                case "archived": return "Bitte zuerst den erledigten Chat wieder öffnen.";
-                case "invalid_title": return "Der Modellanbieter hat einen fehlerhaften Titel geliefert. Der bisherige Titel bleibt erhalten. Bitte erneut versuchen.";
-                case "provider_failed": return "Der Modellanbieter konnte die Titelanfrage nicht abschließen. Bitte Anbieter und Modell prüfen. Der bisherige Titel bleibt erhalten.";
-                default: return "Die Titelanfrage wurde nicht bestätigt. Bitte den Verlauf neu laden und erneut versuchen. Der bisherige Titel bleibt erhalten.";
+                case "empty_history": return HostText.Get("H253");
+                case "history_unavailable": return HostText.Get("H254");
+                case "chat_busy": return HostText.Get("H255");
+                case "archived": return HostText.Get("H256");
+                case "invalid_title": return HostText.Get("H257");
+                case "provider_failed": return HostText.Get("H258");
+                default: return HostText.Get("H259");
             }
         }
     }
