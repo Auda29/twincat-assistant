@@ -5,10 +5,12 @@
   <Commands package="guidPackage">
     <!-- Other Windows already supplies a group. Place the button directly in it;
          nesting another group here compiles but leaves the command invisible. -->
-    <Buttons><Button guid="guidCommands" id="OpenAssistant" priority="0x0100" type="Button"><Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" /><Strings><ButtonText>TwinCAT Assistant</ButtonText></Strings></Button></Buttons>
+    <Buttons><Button guid="guidCommands" id="OpenAssistant" priority="0x0100" type="Button"><Parent guid="guidSHLMainMenu" id="IDG_VS_WNDO_OTRWNDWS1" /><Icon guid="guidAssistantImages" id="AssistantIcon" /><Strings><ButtonText>TwinCAT Assistant</ButtonText></Strings></Button></Buttons>
+    <Bitmaps><Bitmap guid="guidAssistantImages" href="../../scripts/installer/assets/menu.png" usedList="AssistantIcon" /></Bitmaps>
   </Commands>
   <Symbols>
     <GuidSymbol name="guidPackage" value="{4dcc0b19-7b34-497f-bf44-7f1f612b7afb}" />
     <GuidSymbol name="guidCommands" value="{bd34d6a6-75aa-4df3-9b1a-f3b341fc4544}"><IDSymbol name="OpenAssistant" value="0x0100" /></GuidSymbol>
+    <GuidSymbol name="guidAssistantImages" value="{30b53dbc-7699-42c4-a3a1-491ee749249b}"><IDSymbol name="AssistantIcon" value="1" /></GuidSymbol>
   </Symbols>
 </CommandTable>

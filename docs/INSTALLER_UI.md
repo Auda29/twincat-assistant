@@ -5,9 +5,10 @@ without arguments. Windows requests administrator rights automatically before
 opening setup. Confirm UAC with the same Windows account that uses the Assistant;
 signing in as another administrator selects that administrator's user profile.
 
-New builds embed the existing TwinCAT Assistant TC mark as their Explorer icon
-and setup-window icon. The transparent blue tile includes 16–256 pixel sizes
-for Windows scaling. Sources and generated files live under
+New builds embed the TwinCAT Assistant code/conversation symbol as their Explorer
+icon and setup-window icon. The same mark appears in Chat and in the IDE's
+Other Windows menu. The transparent blue speech bubble with code brackets
+includes 16–256 pixel sizes for Windows scaling. Sources and generated files live under
 `scripts/installer/assets`; `scripts/New-SetupIcon.ps1` regenerates them using
 Windows System.Drawing. Published EXEs keep their existing icon until rebuilt.
 

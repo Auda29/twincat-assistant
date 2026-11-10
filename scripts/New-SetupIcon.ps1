@@ -1,14 +1,16 @@
 param()
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
-# Reuse the rounded TC mark from product-logo.tsx as a Windows application tile.
+# Shared code/conversation mark, matching product-logo.tsx.
 # Regenerates the checked-in SVG, PNG and multi-resolution ICO without extra tools.
 $directory = Join-Path $PSScriptRoot 'installer/assets'
 [IO.Directory]::CreateDirectory($directory) | Out-Null
 $svg = @'
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 64 64">
-  <rect x="5" y="5" width="54" height="54" rx="12" fill="#1d5fc2"/>
-  <path d="M14 21h18M23 21v22M49 23a11 11 0 1 0 0 18" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="5" y="6" width="54" height="44" rx="12" fill="#1d5fc2"/>
+  <path d="M14 46v13l20-12" fill="#1d5fc2"/>
+  <path d="m23 21-8 8 8 8m18-16 8 8-8 8" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m35 20-6 18" fill="none" stroke="#66e3d3" stroke-width="3.5" stroke-linecap="round"/>
 </svg>
 '@
 [IO.File]::WriteAllText((Join-Path $directory 'setup.svg'), $svg + "`n", [Text.UTF8Encoding]::new($false))
@@ -17,21 +19,25 @@ foreach ($size in @(16,20,24,32,48,64,128,256)) {
     $large = [Drawing.Bitmap]::new($size * 4, $size * 4)
     $graphics = [Drawing.Graphics]::FromImage($large)
     $tile = [Drawing.Drawing2D.GraphicsPath]::new()
+    $tail = [Drawing.Drawing2D.GraphicsPath]::new()
     $brush = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#1d5fc2'))
-    $pen = [Drawing.Pen]::new([Drawing.Color]::White, 3)
+    $pen = [Drawing.Pen]::new([Drawing.Color]::White, 3.5)
+    $accent = [Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml('#66e3d3'), 3.5)
     try {
         $graphics.SmoothingMode = [Drawing.Drawing2D.SmoothingMode]::AntiAlias
         $graphics.ScaleTransform($size / 16.0, $size / 16.0)
-        $tile.AddArc(5,5,24,24,180,90); $tile.AddArc(35,5,24,24,270,90)
-        $tile.AddArc(35,35,24,24,0,90); $tile.AddArc(5,35,24,24,90,90); $tile.CloseFigure()
+        $tile.AddArc(5,6,24,24,180,90); $tile.AddArc(35,6,24,24,270,90)
+        $tile.AddArc(35,26,24,24,0,90); $tile.AddArc(5,26,24,24,90,90); $tile.CloseFigure()
         $graphics.FillPath($brush, $tile)
+        $tail.AddPolygon([Drawing.PointF[]]@([Drawing.PointF]::new(14,46),[Drawing.PointF]::new(14,59),[Drawing.PointF]::new(34,47)))
+        $graphics.FillPath($brush, $tail)
         $pen.StartCap = $pen.EndCap = [Drawing.Drawing2D.LineCap]::Round
-        $graphics.DrawLine($pen,14,21,32,21); $graphics.DrawLine($pen,23,21,23,43)
-        # Circle center and arc angles reproduce the SVG's large counterclockwise arc.
-        $offset = [Math]::Sqrt(40)
-        $angle = [Math]::Atan2(9,$offset) * 180 / [Math]::PI
-        $graphics.DrawArc($pen, [single](49-$offset-11), [single]21, [single]22, [single]22, [single]$angle, [single](360-2*$angle))
-    } finally { $graphics.Dispose(); $tile.Dispose(); $brush.Dispose(); $pen.Dispose() }
+        $pen.LineJoin = [Drawing.Drawing2D.LineJoin]::Round
+        $graphics.DrawLines($pen,[Drawing.PointF[]]@([Drawing.PointF]::new(23,21),[Drawing.PointF]::new(15,29),[Drawing.PointF]::new(23,37)))
+        $graphics.DrawLines($pen,[Drawing.PointF[]]@([Drawing.PointF]::new(41,21),[Drawing.PointF]::new(49,29),[Drawing.PointF]::new(41,37)))
+        $accent.StartCap = $accent.EndCap = [Drawing.Drawing2D.LineCap]::Round
+        $graphics.DrawLine($accent,35,20,29,38)
+    } finally { $graphics.Dispose(); $tile.Dispose(); $tail.Dispose(); $brush.Dispose(); $pen.Dispose(); $accent.Dispose() }
     $bitmap = [Drawing.Bitmap]::new($size, $size)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $stream = [IO.MemoryStream]::new()
@@ -40,6 +46,7 @@ foreach ($size in @(16,20,24,32,48,64,128,256)) {
         $graphics.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
         $graphics.DrawImage($large, [Drawing.Rectangle]::new(0,0,$size,$size))
         $bitmap.Save($stream, [Drawing.Imaging.ImageFormat]::Png)
+        if ($size -eq 16) { [IO.File]::WriteAllBytes((Join-Path $directory 'menu.png'), $stream.ToArray()) }
         if ($size -eq 256) {
             [IO.File]::WriteAllBytes((Join-Path $directory 'setup.png'), $stream.ToArray())
             $frames += @{size=$size; bytes=$stream.ToArray()}
@@ -87,4 +94,4 @@ try {
     }
     foreach ($frame in $frames) { $writer.Write([byte[]]$frame.bytes) }
 } finally { $writer.Dispose() }
-Write-Host 'Generated setup.svg, setup.png and setup.ico (16/20/24/32/48/64/128/256 px).'
+Write-Host 'Generated setup.svg, setup.png, menu.png and setup.ico (16/20/24/32/48/64/128/256 px).'
