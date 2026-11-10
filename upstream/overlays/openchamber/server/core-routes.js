@@ -1,0 +1,606 @@
+import { buildExternalManualRestartResponse } from './config-mutation-response.js';
+import { ThemeImportStorageError } from './theme-runtime.js';
+import { registerThemeCatalogRoutes } from './theme-catalog.js';
+
+const parseLoopbackUrl = (rawUrl) => {
+  if (typeof rawUrl !== 'string') {
+    return null;
+  }
+
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return null;
+  }
+
+  const host = url.hostname;
+  if (host !== 'localhost' && host !== '127.0.0.1' && host !== '::1' && host !== '0.0.0.0') {
+    return null;
+  }
+
+  return url;
+};
+
+/**
+ * Whether a request carries credentials /api would accept, without refusing
+ * it: routes open before login use this to leave private details out.
+ */
+export const isRequestAuthorized = async (req, res, { tunnelAuthController, uiAuthController }) => {
+  const scope = tunnelAuthController?.classifyRequestScope?.(req);
+  if (scope === 'tunnel' || scope === 'unknown-public') {
+    return Boolean(tunnelAuthController.getTunnelSessionFromRequest(req));
+  }
+  if (!uiAuthController) return false;
+  return Boolean(await uiAuthController.resolveAuthContext(req, res, { allowUrlToken: false }));
+};
+
+export const registerServerStatusRoutes = (app, dependencies) => {
+  const {
+    express,
+    process,
+    openchamberVersion,
+    runtimeName,
+    serverStartedAt,
+    gracefulShutdown,
+    getHealthSnapshot,
+    // Port this OpenChamber instance serves on and the tunnel public URL (if
+    // a tunnel is active). Exposed on /api/system/info so the UI can surface
+    // the active instance's service URLs. Optional: older wiring omits them
+    // and the endpoint reports null.
+    getServerPort = () => null,
+    getTunnelUrl = () => null,
+    // Stable server identity (hash of the public signing key — not a secret).
+    // Exposed on /health and /api/version so a client can verify that a
+    // learned/probed address belongs to the expected server BEFORE sending its
+    // bearer token there. Optional: older wiring omits it.
+    getServerId = async () => null,
+    tunnelAuthController = null,
+    uiAuthController = null,
+  } = dependencies;
+
+  // The identity is immutable for the process lifetime; resolve once, and never
+  // let an identity failure break health reporting.
+  let cachedServerId = null;
+  const resolveServerId = async () => {
+    if (cachedServerId) return cachedServerId;
+    try {
+      const value = await getServerId();
+      cachedServerId = typeof value === 'string' && value.trim() ? value.trim() : null;
+    } catch {
+      cachedServerId = null;
+    }
+    return cachedServerId;
+  };
+
+  const allocateLoopbackPort = async () => {
+    const net = await import('node:net');
+    return await new Promise((resolve, reject) => {
+      const server = net.createServer();
+      server.on('error', reject);
+      server.listen(0, '127.0.0.1', () => {
+        try {
+          const address = server.address();
+          const port = address && typeof address === 'object' ? address.port : 0;
+          server.close(() => {
+            resolve(port);
+          });
+        } catch (error) {
+          try {
+            server.close();
+          } catch {
+          }
+          reject(error);
+        }
+      });
+    });
+  };
+
+  const compatibility = {
+    apiVersion: 1,
+    minClientApiVersion: 1,
+    capabilities: [
+      'api.health.v1',
+      'api.runtime-url.v1',
+      'api.raw-file.v1',
+      'api.notifications.emit.v1',
+      'realtime.sse.v1',
+      'realtime.websocket.global-events.v1',
+      'terminal.websocket.v1',
+    ],
+  };
+
+  const isDevShutdownAllowed = () => {
+    // Dev-only escape hatch: allow terminating the whole dev process group.
+    // This should never be enabled in production runtimes.
+    return process.env.OPENCHAMBER_DEV_SHUTDOWN === 'true';
+  };
+
+  const isSameOriginRequest = (req) => {
+    const rawOrigin = typeof req.get === 'function' ? req.get('origin') : '';
+    const rawHost = typeof req.get === 'function' ? req.get('host') : '';
+    if (!rawOrigin || !rawHost) {
+      return false;
+    }
+    try {
+      const origin = new URL(rawOrigin);
+      return origin.host === rawHost;
+    } catch {
+      return false;
+    }
+  };
+
+  const resolveProcessGroupId = async (pid) => {
+    if (!pid || typeof pid !== 'number' || !Number.isFinite(pid) || pid <= 0) {
+      return null;
+    }
+    if (process.platform === 'win32') {
+      return null;
+    }
+
+    try {
+      const { execFile } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const execFileAsync = promisify(execFile);
+      const result = await execFileAsync('ps', ['-o', 'pgid=', '-p', String(pid)]);
+      const raw = String(result.stdout || '').trim();
+      const pgid = Number.parseInt(raw, 10);
+      return Number.isFinite(pgid) && pgid > 0 ? pgid : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const parseLoopbackPort = (rawUrl) => {
+    if (typeof rawUrl !== 'string') {
+      return null;
+    }
+    let url;
+    try {
+      url = new URL(rawUrl);
+    } catch {
+      return null;
+    }
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return null;
+    }
+    const host = url.hostname;
+    if (host !== 'localhost' && host !== '127.0.0.1' && host !== '::1' && host !== '0.0.0.0') {
+      return null;
+    }
+    const port = url.port ? Number.parseInt(url.port, 10) : (url.protocol === 'https:' ? 443 : 80);
+    if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+      return null;
+    }
+    return port;
+  };
+
+  const killListenPort = async (port) => {
+    if (!Number.isFinite(port) || port <= 0) {
+      return;
+    }
+    if (process.platform === 'win32') {
+      return;
+    }
+
+    try {
+      const { execFile } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const execFileAsync = promisify(execFile);
+      const result = await execFileAsync('lsof', ['-nP', '-t', `-iTCP:${Math.trunc(port)}`, '-sTCP:LISTEN'], {
+        timeout: 2500,
+      });
+      const pids = String(result.stdout || '')
+        .split(/\s+/)
+        .map((value) => Number.parseInt(value, 10))
+        .filter((pid) => Number.isFinite(pid) && pid > 0 && pid !== process.pid);
+
+      for (const pid of pids) {
+        try {
+          process.kill(pid, 'SIGTERM');
+        } catch {
+        }
+      }
+      if (pids.length > 0) {
+        setTimeout(() => {
+          for (const pid of pids) {
+            try {
+              process.kill(pid, 'SIGKILL');
+            } catch {
+            }
+          }
+        }, 1200).unref?.();
+      }
+    } catch {
+      // ignore (no lsof, no permission, etc.)
+    }
+  };
+
+  app.get('/health', async (_req, res) => {
+    const serverId = await resolveServerId();
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      openchamberVersion,
+      runtime: runtimeName,
+      compatibility,
+      ...(serverId ? { serverId } : {}),
+      ...getHealthSnapshot(),
+    });
+  });
+
+  app.get('/api/version', async (_req, res) => {
+    const serverId = await resolveServerId();
+    res.json({
+      status: 'ok',
+      openchamberVersion,
+      runtime: runtimeName,
+      startedAt: serverStartedAt,
+      compatibility,
+      ...(serverId ? { serverId } : {}),
+    });
+  });
+
+  const requireShutdownAuth = async (req, res, next) => {
+    if (!uiAuthController || typeof uiAuthController.requireAuth !== 'function') {
+      return next();
+    }
+    const requestScope = typeof tunnelAuthController?.classifyRequestScope === 'function'
+      ? tunnelAuthController.classifyRequestScope(req)
+      : 'local';
+    if (
+      (requestScope === 'tunnel' || requestScope === 'unknown-public')
+      && typeof tunnelAuthController?.requireTunnelSession === 'function'
+    ) {
+      return tunnelAuthController.requireTunnelSession(req, res, next);
+    }
+    return uiAuthController.requireAuth(req, res, next);
+  };
+
+  app.post('/api/system/shutdown', async (req, res, next) => {
+    try {
+      await requireShutdownAuth(req, res, () => {
+        res.json({ ok: true });
+        gracefulShutdown({ exitProcess: true }).catch((error) => {
+          console.error('Shutdown request failed:', error?.message || error);
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/system/dev-shutdown', express.json({ limit: '64kb' }), async (req, res) => {
+    if (!isDevShutdownAllowed()) {
+      return res.status(403).json({ ok: false, error: 'Dev shutdown is disabled' });
+    }
+    if (!isSameOriginRequest(req)) {
+      return res.status(403).json({ ok: false, error: 'Invalid origin' });
+    }
+
+    res.json({ ok: true });
+
+    // Terminate the entire dev process group so `bun run dev` leaves no orphans.
+    // We still run graceful shutdown to clean up OpenCode, terminals, websockets.
+    try {
+      const rawPreviewUrls = Array.isArray(req.body?.previewUrls) ? req.body.previewUrls : [];
+      const previewPorts = Array.from(new Set(
+        rawPreviewUrls
+          .map((value) => parseLoopbackPort(value))
+          .filter((port) => typeof port === 'number')
+      ));
+      // Attempt to stop preview servers that may have daemonized away from the PTY.
+      // This is dev-only and limited to loopback ports supplied by the UI.
+      await Promise.all(previewPorts.map((port) => killListenPort(port)));
+
+      const pgid = await resolveProcessGroupId(process.pid);
+      const ppid = typeof process.ppid === 'number' ? process.ppid : null;
+      const parentPgid = ppid ? await resolveProcessGroupId(ppid) : null;
+
+      // Kick off shutdown cleanup first.
+      void gracefulShutdown({ exitProcess: false });
+
+      const pgidsToKill = Array.from(new Set([pgid, parentPgid].filter(Boolean)));
+      for (const id of pgidsToKill) {
+        try {
+          process.kill(-id, 'SIGTERM');
+        } catch {
+        }
+      }
+
+      setTimeout(() => {
+        for (const id of pgidsToKill) {
+          try {
+            process.kill(-id, 'SIGKILL');
+          } catch {
+          }
+        }
+      }, 1500).unref?.();
+
+      // Ensure the server process itself exits even if the group kill fails.
+      setTimeout(() => {
+        try {
+          process.exit(0);
+        } catch {
+        }
+      }, 2500).unref?.();
+    } catch (error) {
+      console.error('Dev shutdown request failed:', error?.message || error);
+      // As a last resort, exit.
+      try {
+        process.exit(0);
+      } catch {
+      }
+    }
+  });
+
+  app.get('/api/system/info', async (req, res) => {
+    // Open before login: the CLI matches `pid` against its pid file to tell
+    // its own server from whatever else holds the port. Where this server is
+    // reachable (port, tunnel address) is for signed-in callers only.
+    const info = {
+      openchamberVersion,
+      runtime: runtimeName,
+      pid: process.pid,
+      startedAt: serverStartedAt,
+    };
+    if (await isRequestAuthorized(req, res, { tunnelAuthController, uiAuthController }).catch(() => false)) {
+      info.port = getServerPort();
+      info.tunnelUrl = getTunnelUrl();
+    }
+    res.json(info);
+  });
+
+  // Allocates a best-effort free TCP port hint on 127.0.0.1.
+  // Another process can still claim it before the preview server binds.
+  app.get('/api/system/free-port', async (_req, res) => {
+    try {
+      const port = await allocateLoopbackPort();
+      if (!Number.isFinite(port) || port <= 0) {
+        return res.status(500).json({ error: 'Failed to allocate port' });
+      }
+      return res.json({ port });
+    } catch (error) {
+      return res.status(500).json({ error: (error && error.message) || 'Failed to allocate port' });
+    }
+  });
+
+};
+
+export const registerAuthAndAccessRoutes = (app, { uiAuthController }) => {
+app.get('/auth/session', async (req, res) => {
+    try {
+        await uiAuthController.handleSessionStatus(req, res);
+    }
+    catch {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+app.post('/auth/session', (req, res) => {
+    return uiAuthController.handleSessionCreate(req, res);
+});
+app.post('/auth/url-token', async (req, res, next) => {
+    try {
+        await uiAuthController.handleUrlAuthToken(req, res);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+app.get('/auth/passkey/status', (req, res) => {
+    return uiAuthController.handlePasskeyStatus(req, res);
+});
+app.post('/auth/passkey/authenticate/options', (req, res) => {
+    return uiAuthController.handlePasskeyAuthenticationOptions(req, res);
+});
+app.post('/auth/passkey/authenticate/verify', (req, res) => {
+    return uiAuthController.handlePasskeyAuthenticationVerify(req, res);
+});
+app.post('/auth/passkey/register/options', async (req, res, next) => {
+    try {
+        await uiAuthController.requireSessionAuth(req, res, async () => {
+            await uiAuthController.handlePasskeyRegistrationOptions(req, res);
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+app.post('/auth/passkey/register/verify', async (req, res, next) => {
+    try {
+        await uiAuthController.requireSessionAuth(req, res, async () => {
+            await uiAuthController.handlePasskeyRegistrationVerify(req, res);
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+app.get('/api/passkeys', async (req, res, next) => {
+    try {
+        await uiAuthController.requireSessionAuth(req, res, async () => {
+            await uiAuthController.handlePasskeyList(req, res);
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+app.delete('/api/passkeys/:id', async (req, res, next) => {
+    try {
+        await uiAuthController.requireSessionAuth(req, res, async () => {
+            await uiAuthController.handlePasskeyRevoke(req, res);
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+app.post('/api/auth/reset', async (req, res, next) => {
+    try {
+        await uiAuthController.requireSessionAuth(req, res, async () => {
+            await uiAuthController.handleResetAuth(req, res);
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+
+ app.use('/api', (req, res, next) => {
+  if (req.method === 'GET' && /^\/fs\/preview\/[^/]+\/./.test(req.path || '')) return next();
+  return uiAuthController.requireAuth(req, res, next);
+ });
+};
+
+export const registerSettingsUtilityRoutes = (app, dependencies) => {
+  const {
+    readCustomThemesFromDisk,
+    saveImportedTheme,
+    deleteImportedTheme,
+    refreshOpenCodeAfterConfigChange,
+    clientReloadDelayMs,
+  } = dependencies;
+
+  app.get('/api/config/themes', async (_req, res) => {
+    try {
+      const customThemes = await readCustomThemesFromDisk();
+      res.json({ themes: customThemes });
+    } catch (error) {
+      console.error('Failed to load custom themes:', error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to load custom themes' });
+    }
+  });
+
+  app.post('/api/config/themes', async (req, res) => {
+    try {
+      const theme = await saveImportedTheme(req.body?.theme);
+      res.status(201).json({ theme });
+    } catch (error) {
+      if (error instanceof ThemeImportStorageError) {
+        res.status(error.status).json({ error: error.code });
+        return;
+      }
+      console.error('[themes] Failed to save imported theme');
+      res.status(500).json({ error: 'save' });
+    }
+  });
+
+  registerThemeCatalogRoutes(app);
+  app.delete('/api/config/themes/:id', async (req, res) => {
+    try {
+      await deleteImportedTheme(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(error instanceof ThemeImportStorageError ? error.status : 500).json({ error: 'delete' });
+    }
+  });
+
+  app.post('/api/config/reload', async (_req, res) => {
+    try {
+      console.log('[Server] Manual configuration reload requested');
+
+      const refreshResult = await refreshOpenCodeAfterConfigChange('manual configuration reload');
+
+      if (refreshResult?.external) {
+        return res.json(buildExternalManualRestartResponse(
+          'Configuration is saved on disk. Restart your connected OpenCode server to apply the changes.',
+        ));
+      }
+
+      res.json({
+        success: true,
+        requiresReload: true,
+        message: 'Configuration reloaded successfully. Refreshing interface…',
+        reloadDelayMs: clientReloadDelayMs,
+      });
+    } catch (error) {
+      console.error('[Server] Failed to reload configuration:', error);
+      res.status(500).json({
+        error: error.message || 'Failed to reload configuration',
+        success: false,
+      });
+    }
+  });
+};
+
+export const registerCommonRequestMiddleware = (app, dependencies) => {
+  // `skipBodyParsing(req)` names a request whose body must reach its route untouched: a
+  // request the isolated-spaces dispatcher streams into a space, where a parsed body would
+  // otherwise be consumed here and lost.
+  const { express, verboseRequestLogs = false, skipBodyParsing = () => false } = dependencies;
+
+  app.use((req, res, next) => {
+    if (skipBodyParsing(req)) {
+      next();
+    } else if (req.path === '/api/config/themes' || req.path.startsWith('/api/config/themes/')) {
+      express.json({ limit: '1mb' })(req, res, next);
+    } else if (req.path.startsWith('/api/behavior')) {
+      const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+      if (contentLength > 1024 * 1024) {
+        return res.status(413).json({ error: 'Content exceeds maximum size of 1048576 bytes' });
+      }
+      express.json({ limit: '1mb' })(req, res, next);
+    } else if (req.path.startsWith('/api/source-control')) {
+      express.json({ limit: '256kb' })(req, res, next);
+    } else if (
+      req.path.startsWith('/api/config/agents') ||
+      req.path.startsWith('/api/config/commands') ||
+      req.path.startsWith('/api/config/mcp') ||
+      req.path.startsWith('/api/config/snippets') ||
+      req.path.startsWith('/api/config/settings') ||
+      req.path.startsWith('/api/config/skills') ||
+      req.path.startsWith('/api/config/plugins') ||
+      req.path.startsWith('/api/config/websearch') ||
+      req.path.startsWith('/api/config/warming') ||
+      req.path.startsWith('/api/projects') ||
+      req.path.startsWith('/api/fs') ||
+      req.path.startsWith('/api/git') ||
+      req.path.startsWith('/api/magic-prompts') ||
+      req.path.startsWith('/api/prompts') ||
+      req.path.startsWith('/api/terminal') ||
+      req.path.startsWith('/api/opencode') ||
+      req.path === '/api/openchamber/directory' ||
+      req.path.startsWith('/api/push') ||
+      req.path.startsWith('/api/notifications') ||
+      req.path.startsWith('/api/permission-auto-accept') ||
+      req.path.startsWith('/api/message-queue') ||
+      req.path.startsWith('/api/provider') ||
+      req.path.startsWith('/api/session-folders') ||
+      req.path.startsWith('/api/small-model') ||
+      req.path.startsWith('/api/walkthrough') ||
+      req.path.startsWith('/api/goals') ||
+      req.path.startsWith('/api/text') ||
+      req.path.startsWith('/api/voice') ||
+      req.path.startsWith('/api/tts') ||
+      req.path.startsWith('/api/openchamber/tunnel') ||
+      req.path.startsWith('/api/openchamber/spaces')
+    ) {
+      express.json({ limit: '50mb' })(req, res, next);
+    } else if (req.path.startsWith('/api')) {
+      next();
+    } else {
+      express.json({ limit: '50mb' })(req, res, next);
+    }
+  });
+
+  const urlencoded = express.urlencoded({ extended: true, limit: '50mb' });
+  app.use((req, res, next) => {
+    if (skipBodyParsing(req)) {
+      next();
+      return;
+    }
+    urlencoded(req, res, next);
+  });
+
+  app.use((req, _res, next) => {
+    if (verboseRequestLogs) {
+      console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    }
+    next();
+  });
+};

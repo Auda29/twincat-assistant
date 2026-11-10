@@ -52,7 +52,20 @@ async function start() {
   const login = await fetch(origin + '/auth/session', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ password }) });
   assert.equal(login.status, 200);
   const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
-  for (const path of ['/api/terminal/create', '/api/browser-control/claim', '/api/dev-servers', '/api/fs/write', '/api/opencode/upgrade', '/api/openchamber/update-install']) {
+  assert.equal((await fetch(origin + '/api/twincat/product')).status, 401);
+  const product = await fetch(origin + '/api/twincat/product', { headers: { cookie } });
+  assert.equal(product.status, 200);
+  assert.deepEqual(await product.json(), { name: 'TwinCAT Assistant', version: JSON.parse(await readFile(join(application, 'package.json'), 'utf8')).version });
+  const eventsAbort = new AbortController();
+  const events = await fetch(origin + '/api/openchamber/events', { headers: { cookie }, signal: eventsAbort.signal });
+  assert.equal(events.status, 200, 'chat metadata stream must survive scheduler removal');
+  const eventReader = events.body.getReader();
+  try { assert.match(new TextDecoder().decode((await eventReader.read()).value), /openchamber:event-stream-ready/); }
+  finally { eventsAbort.abort(); await eventReader.cancel().catch(() => {}); }
+  for (const path of ['/api/terminal/create', '/api/browser-control/claim', '/api/dev-servers', '/api/fs/write', '/api/opencode/upgrade', '/api/openchamber/update-install',
+    '/api/github/accounts', '/api/git/worktree', '/api/linear/issues', '/api/scheduled-tasks', '/api/routing',
+    '/api/guests', '/api/extensions', '/api/spaces', '/api/tunnels', '/api/pairing', '/auth/pairing',
+    '/api/dictation', '/api/tts', '/api/notifications/push']) {
     const excluded = await fetch(origin + path, { method: 'POST', headers: { origin, cookie }, signal: AbortSignal.timeout(5000) });
     assert.equal(excluded.status, 404, path);
     assert.match((await excluded.json()).error, /outside TwinCAT Assistant delivery scope/);

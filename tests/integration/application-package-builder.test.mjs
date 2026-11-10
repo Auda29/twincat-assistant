@@ -31,7 +31,7 @@ test('builder stages a bounded synthetic source build and verifies its output', 
     await cp(join(repo, 'src'), join(root, 'src'), { recursive: true });
     await cp(join(repo, 'node_modules'), join(root, 'node_modules'), { recursive: true });
     await git(root, 'init', '-q'); await git(root, 'add', 'src');
-    for (const file of ['scripts/build-application-package.mjs','scripts/application-manifest.mjs','scripts/Build-ApplicationPackage.ps1']) {
+    for (const file of ['scripts/build-application-package.mjs','scripts/application-manifest.mjs','scripts/source-overlay.mjs','scripts/trim-chat-package.mjs','scripts/Build-ApplicationPackage.ps1']) {
       await mkdir(dirname(join(root, file)), { recursive: true }); await cp(join(repo, file), join(root, file));
     }
     const webPackage = join(parent, 'web-package');
@@ -65,9 +65,12 @@ test('builder stages a bounded synthetic source build and verifies its output', 
     const lock = { version: 1, opencode: { version: '2.0.23', revision: codeRevision }, openchamber: { version: '2.1.1', revision: webRevision } };
     await write(join(root, 'upstream/source-lock.json'), JSON.stringify(lock));
     await cp(join(repo, 'upstream/knowledge-lock.json'), join(root, 'upstream/knowledge-lock.json'));
-    const inputs = ['upstream/source-lock.json','upstream/overlays/openchamber/changes.json','upstream/overlays/openchamber/twincat.ts','upstream/overlays/openchamber/install.ts','tools/package-lock.json','scripts/build-source-runtime.mjs'];
+    const inputs = ['upstream/source-lock.json','upstream/overlays/openchamber/changes.json','upstream/overlays/openchamber/twincat.ts','upstream/overlays/openchamber/install.ts','tools/package-lock.json','scripts/build-source-runtime.mjs','scripts/source-overlay.mjs'];
     const overlay = [{ file: 'packages/web/server/index.js', changes: [['// fixture server', '// reviewed fixture server']] }];
-    for (const file of inputs.slice(1)) await write(join(root, file), file.endsWith('changes.json') ? JSON.stringify(overlay) : 'synthetic input');
+    for (const file of inputs.slice(1)) {
+      if (file === 'scripts/source-overlay.mjs') continue;
+      await write(join(root, file), file.endsWith('changes.json') ? JSON.stringify(overlay) : 'synthetic input');
+    }
     const hashes = Object.fromEntries(await Promise.all([codeRelative, cliRelative, htmlRelative].map(async path => [path, digest(await readFile(join(root, path)))])));
     const inputHashes = Object.fromEntries(await Promise.all(inputs.map(async path => [path, digest(await readFile(join(root, path)))])));
     await write(join(root, 'artifacts/source-runtime/runtime.json'), JSON.stringify({ version: 1, sourceContract: 1, platform: process.platform, arch: process.arch, opencode: { path: codeRelative, ...lock.opencode }, openchamber: { path: cliRelative, ...lock.openchamber }, hashes, inputs: inputHashes }));

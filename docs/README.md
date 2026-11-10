@@ -20,6 +20,7 @@ Current checkpoint: [resumed integration and remaining host gates, 2026-11-06](I
 - [Source runtime, persistent project chats and context states](RUNTIME_INTEGRATION.md)
 - [Backend server inventory and Core/Chat/Host ownership](BACKEND_SERVER_INVENTORY.md)
 - [Implemented delivery scope and remaining upstream cleanup](DELIVERY_SCOPE.md)
+- [Server/package reduction and product identity, 2026-11-09](PRODUCT_CLEANUP_20261109.md)
 - [Common startup contract for Core, Chat and Host](START_CONTRACT.md)
 - [First alpha host target and remaining real-host acceptance](HOST_ACCEPTANCE_MATRIX.md)
 - [Isolated real-host acceptance evidence from 2026-11-05](HOST_ACCEPTANCE_20261105.md)

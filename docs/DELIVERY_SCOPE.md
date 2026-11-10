@@ -1,5 +1,11 @@
 # Begrenzter Auslieferungsumfang für Core, Chat und Host
 
+**Folgeschritt vom 09.11.2026:** Der tatsächliche Rückbau von Servermodulen,
+CLI, nativen Abhängigkeiten und Produkttexten steht in
+[Produktbereinigung](PRODUCT_CLEANUP_20261109.md). Dessen Umfang ersetzt die
+entsprechenden „später“-Entscheidungen der folgenden ursprünglichen Matrix.
+Die datierten Nachweise vom 05.11. bleiben historische Nachweise.
+
 Dieser Schritt konkretisiert Punkt 2 anhand von BACKEND_SERVER_INVENTORY.md.
 Er beansprucht keine vollständige Entfernung aller Upstream-Zusatzfunktionen.
 Maßgeblich ist der source-gebaute Anwendungspfad. Die ausdrückliche Referenz-
