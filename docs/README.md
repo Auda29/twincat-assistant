@@ -8,6 +8,7 @@ Native acceptance and future engineering write/build milestones remain separate.
 
 Current checkpoint: [resumed integration and remaining host gates, 2026-11-06](INTEGRATED_ACCEPTANCE_20261106.md).
 
+- [Preview 4 project-setup fix and update](releases/native-v0.2.0-preview.4.md)
 - [Preview 3 installer and first-menu-click fix](releases/native-v0.2.0-preview.3.md)
 - [Graphical Windows setup](INSTALLER_UI.md)
 
