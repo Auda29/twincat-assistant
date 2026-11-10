@@ -31,7 +31,11 @@ namespace TwinCatAssistant.Native
             if (project == null || string.IsNullOrEmpty(config.McpSettingsPath)) throw new InvalidOperationException("Native MCP setup is missing.");
             var start = new ProcessStartInfo(config.NodePath, NativeChatSession.Quote(Path.Combine(config.RepositoryRoot, "src", "native-mcp.mjs"))) {
                 WorkingDirectory = config.RepositoryRoot, UseShellExecute = false, CreateNoWindow = true,
-                RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true
+                RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
+                // Node writes UTF-8 JSON. The IDE's console/OEM code page is not
+                // a wire encoding; using it corrupts non-ASCII project paths.
+                StandardOutputEncoding = new UTF8Encoding(false, true),
+                StandardErrorEncoding = new UTF8Encoding(false, true)
             };
             start.EnvironmentVariables.Clear();
             foreach (var key in new[] { "PATH", "Path", "SystemRoot", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP", "LANG", "LC_ALL" })
