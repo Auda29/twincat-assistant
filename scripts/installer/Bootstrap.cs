@@ -138,6 +138,8 @@ class InstallerWizard : Form {
  public int ExitCode = 0;
  public InstallerWizard() : this(Bootstrap.DefaultInstallRoot()) { }
  public InstallerWizard(string initialRoot) {
+  using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("setup.ico"))
+  using (var icon = new Icon(stream)) { Icon = (Icon)icon.Clone(); }
   Text = "TwinCAT Assistant installieren"; Font = new Font("Segoe UI", 9F);
   AutoScaleMode = AutoScaleMode.Dpi; ClientSize = new Size(650, 620);
   FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; StartPosition = FormStartPosition.CenterScreen;
