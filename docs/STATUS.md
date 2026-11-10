@@ -1,5 +1,11 @@
 # Implementation status
 
+**Preview-5-Korrektur, 2026-11-10.** Die Antwort des nativen MCP-Prozesses wird
+nun ausdrücklich als UTF-8 gelesen. Ein gezielter Vorher-/Nachher-Test belegt
+die zuvor falsche Verarbeitung von Umlauten und `ß` in Projektpfaden bei
+Windows-Codepages 850/1252. [Umfang und Nachweise](releases/native-v0.2.0-preview.5.md).
+Die installierte IDE-Abnahme bleibt offen.
+
 **Preview 4, 2026-11-10.** PR #18 ist gemergt. Der neue Release trennt
 Projekteinrichtungsfehler von der Chatverbindung und verwendet die eigenständige
 Version `0.2.0-preview.4` / `0.2.0.4` für Updates vorhandener Preview-3-Installationen.
