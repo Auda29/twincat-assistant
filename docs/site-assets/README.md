@@ -8,9 +8,16 @@ Update both language files when changing release links or product scope.
 `scripts/installer/assets/setup.svg` and `setup.png`.
 
 `twincat-assistant-tcxaeshell.png` is the original product screenshot supplied
-by the repository owner on 2026-11-11. Both language versions display the full,
+by the repository owner on 2026-11-11. Below the feature overview, both language
+versions display the full,
 uncropped image and link to the original PNG for a full-size view. The captured
 interface retains its original German and English text.
+
+The hero is an authored HTML/CSS illustration inspired by the screenshot's
+IDE frame, yellow docked-window title, project attachment toolbar, chat and
+composer. It uses synthetic `FB_StartDelay` code and an example timer explanation.
+Both languages label it as an illustration and link to the real screenshot
+section. It is independent of the unchanged original PNG.
 
 Release links and compatibility text on the initial site refer to the published
 `native-v0.2.0-beta.4` release. The package version is `0.2.0-beta.4`, and the
