@@ -10,7 +10,9 @@ and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
 Native acceptance and future engineering write/build milestones remain separate.
 
-Current release: [0.2.0 Beta 3](releases/native-v0.2.0-beta.3.md), with UI-thread/startup performance corrections and the shared product icon. The [published Latest release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.3) includes setup, checksums and build provenance.
+Current release: [0.2.0 Beta 4](releases/native-v0.2.0-beta.4.md), including startup/member-context hardening and the Knowledge validation overlay. [Published Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.4) contains setup, checksums and build provenance. Shell64 support remains preparation only.
+
+Previous release: [0.2.0 Beta 3](releases/native-v0.2.0-beta.3.md), with UI-thread/startup performance corrections and the shared product icon. The [Beta 3 release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.3) includes setup, checksums and build provenance.
 
 Previous application: [0.2.0 Beta 2](releases/native-v0.2.0-beta.2.md), with the integrated extraction fix and version-aware wizard. The [Beta 2 release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.2) includes the setup EXE, checksums and build provenance.
 
