@@ -40,9 +40,13 @@ async function readNativeMcpSettingsOperation(file) {
 }
 async function configureNativeMcpOperation(root, settingsFile) {
   const settings = await readNativeMcpSettings(settingsFile);
-  await inspectState(path(root));
+  const inspected = await inspectState(path(root));
   settings.knowledge = await effectiveKnowledge(root, settings.knowledge);
   settings.knowledge.bridge = join(root, 'knowledge', 'broker.json');
+  // Current project startups should not compete with provider/model writers
+  // for a global write lock when no global configuration change is necessary.
+  if (inspected.configurationCurrent && !inspected.settings.engineering
+      && JSON.stringify(inspected.settings.knowledge) === JSON.stringify(settings.knowledge)) return settings;
   await updateProfile(path(root), current => {
     const { engineering, ...general } = current;
     return { ...general, knowledge: settings.knowledge };

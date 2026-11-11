@@ -1,0 +1,63 @@
+name: Build and publish Windows release
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish as Latest after all candidate checks
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: windows-product-release
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main' && github.repository == 'Auda29/twincat-assistant' && github.actor == 'Auda29'
+    # Dedicated trusted runner, preferably ephemeral. No PR code runs here.
+    # Its local vendor reference is read only and never leaves this machine.
+    runs-on: [self-hosted, Windows, X64, twincat-build]
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+        with:
+          dotnet-version: '8.0.425'
+      - name: Build, verify and package exact source
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          Remove-Item Env:PSModulePath -ErrorAction SilentlyContinue
+          $sdk = (Get-Command dotnet).Source | Split-Path -Parent
+          & powershell.exe -NoProfile -File scripts/Build-Release.ps1 -DotNetRoot $sdk
+          if ($LASTEXITCODE) { throw 'Release candidate failed' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: verified-windows-release
+          path: artifacts/release/*/*
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    needs: build
+    if: inputs.publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: verified-windows-release
+          path: release-artifacts
+      - name: Verify provenance, publish and verify uploaded digests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/publish-release.mjs release-artifacts

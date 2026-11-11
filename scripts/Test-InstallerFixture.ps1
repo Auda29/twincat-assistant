@@ -32,6 +32,13 @@ try {
  if ((Get-Content (Join-Path $payload 'payload.txt')).Trim() -ne '1.0.0') { throw 'Install failed.' }
  New-Item -ItemType Directory (Join-Path $install 'operator-data') | Out-Null
  Set-Content (Join-Path $install 'operator-data/chat') 'preserved'
+ Add-Type -AssemblyName System.Security
+ $login=[Text.Encoding]::UTF8.GetBytes('synthetic-login-sentinel-not-provider-credentials')
+ $protected=[Security.Cryptography.ProtectedData]::Protect($login,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)
+ [IO.File]::WriteAllBytes((Join-Path $install 'operator-data/login.bin'),$protected)
+ [IO.File]::WriteAllText((Join-Path $install 'operator-data/binding.json'),'{"session":"synthetic","project":"PLC_A"}')
+ $dataHashes=@{}
+ foreach($file in Get-ChildItem (Join-Path $install 'operator-data') -File){$dataHashes[$file.Name]=(Get-FileHash $file.FullName).Hash}
  $state=Invoke-HostTransaction @args -Action Install -Package $p2
  if ($state.previous -ne '1.0.0') { throw 'Update failed.' }
  $failed=$false; try { Invoke-HostTransaction @args -Action Install -Package $p3 -InjectFailure after-stage | Out-Null } catch { $failed=$true }
@@ -47,6 +54,9 @@ try {
  $state=Invoke-HostTransaction @args -Action Rollback
  if ($state.current -ne '1.0.0' -or (Get-Content (Join-Path $payload 'payload.txt')).Trim() -ne '1.0.0') { throw 'Rollback failed.' }
  if ((Get-Content (Join-Path $install 'operator-data/chat')).Trim() -ne 'preserved' -or (Get-Content $marker).Trim() -ne 'keep') { throw 'Operator data or marker content changed.' }
+ foreach($name in $dataHashes.Keys){if((Get-FileHash (Join-Path $install ('operator-data/'+$name))).Hash -cne $dataHashes[$name]){throw 'Rollback changed chat/login/binding bytes'}}
+ $restored=[Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes((Join-Path $install 'operator-data/login.bin')),$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)
+ if([Convert]::ToBase64String($restored) -cne [Convert]::ToBase64String($login)){throw 'Rollback credentials no longer decrypt for the original user'}
  Set-Content (Join-Path $payload 'payload.txt') 'changed'
  $failed=$false; try { Invoke-HostTransaction @args -Action Rollback | Out-Null } catch { $failed=$true }; if (-not $failed) { throw 'Changed extension accepted.' }
  $badInterop=Join-Path $root 'wrong.dll'; '[assembly:System.Reflection.AssemblyVersion("2.0.0.0")] public class Wrong {}' | Set-Content $src

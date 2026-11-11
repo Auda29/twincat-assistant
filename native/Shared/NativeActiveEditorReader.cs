@@ -258,12 +258,15 @@ namespace TwinCatAssistant.Native
 
         private static string ReadBounded(TextReader reader)
         {
-            var buffer = new char[1048577];
-            var used = 0;
+            var buffer = new char[4096];
+            var text = new System.Text.StringBuilder();
             int count;
-            while (used < buffer.Length && (count = reader.Read(buffer, used, buffer.Length - used)) > 0) used += count;
-            if (used > 1048576) throw new IOException("Source XML exceeds the local limit.");
-            return new string(buffer, 0, used);
+            while ((count = reader.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                if (text.Length + count > 1048576) throw new IOException("Source XML exceeds the local limit.");
+                text.Append(buffer, 0, count);
+            }
+            return text.ToString();
         }
 
     }

@@ -100,8 +100,15 @@ namespace TwinCatAssistant.Native
         public static void Correlate(DirtyEvidence evidence, ActivePouSource live, ActivePouSource saved,
             string objectName, string declaration, string implementation)
         {
+            evidence.SavedSourceAvailable = false;
+            evidence.LiveMatchesSaved = false;
             if (live == null || saved == null || live.Id != saved.Id || live.OwnerId != saved.OwnerId
                 || live.OwnerName != saved.OwnerName || live.Kind != saved.Kind || live.Name != objectName || saved.Name != objectName) return;
+            // IDs alone do not prove that XML and the independently captured AI
+            // text came from one stable read. Never label a torn snapshot clean.
+            if (Normalize(declaration) != Normalize(live.Declaration)
+                || Normalize(implementation) != Normalize(live.Implementation))
+            { evidence.EvidenceFailed = true; return; }
             evidence.SavedSourceAvailable = true;
             evidence.LiveMatchesSaved = Normalize(declaration) == Normalize(saved.Declaration)
                 && Normalize(implementation) == Normalize(saved.Implementation);
