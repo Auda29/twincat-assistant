@@ -7,10 +7,10 @@ Update both language files when changing release links or product scope.
 `logo.svg` and `logo.png` are unchanged copies of the existing product icon in
 `scripts/installer/assets/setup.svg` and `setup.png`.
 
-The code/chat illustration is authored HTML with a synthetic `FB_StartDelay`
-and an example answer. It is labelled as an illustration in both languages.
-It does not claim an IDE screenshot, a real model call or a compiled PLC sample.
-No upstream renderer-test screenshots are presented as product screenshots.
+`twincat-assistant-tcxaeshell.png` is the original product screenshot supplied
+by the repository owner on 2026-11-11. Both language versions display the full,
+uncropped image and link to the original PNG for a full-size view. The captured
+interface retains its original German and English text.
 
 Release links and compatibility text on the initial site refer to the published
 `native-v0.2.0-beta.4` release. The package version is `0.2.0-beta.4`, and the
