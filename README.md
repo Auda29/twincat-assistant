@@ -1,12 +1,14 @@
 # TwinCAT Assistant
 
+[Website (DE)](https://auda29.github.io/twincat-assistant/) · [Website (EN)](https://auda29.github.io/twincat-assistant/en.html)
+
 AI assistance for TwinCAT projects, inside your IDE.
 
 Explain Structured Text, explore PLC project code and find relevant Beckhoff
 documentation in a docked chat window. TwinCAT Assistant connects the active
 project and POU to a conversation that you can return to later.
 
-**0.2.0 Beta 3 · Read-only**
+**0.2.0 Beta 4 · Read-only**
 
 [Get started](#getting-started) · [Documentation](docs/README.md) · [Releases](https://github.com/Auda29/twincat-assistant/releases)
 
@@ -37,7 +39,7 @@ installed Beckhoff InfoSys help.
 1. Close TcXaeShell, verify the downloaded setup checksum and double-click the
    EXE. Confirm UAC with your normal Windows account. The setup window handles
    installation and managed updates without Git, npm or compilation. See the
-   [release notes](docs/releases/native-v0.2.0-beta.3.md), and the separate
+   [release notes](docs/releases/native-v0.2.0-beta.4.md), and the separate
    [migration notes for old unpackaged prototypes](docs/PROTOTYPE_PROFILE_MIGRATION_20261109.md).
 2. Open the TwinCAT Assistant tool window, connect your model provider and
    select a model in the chat.
@@ -83,6 +85,7 @@ indexes and user project files are not bundled with the application.
 
 ## Documentation
 
+- [0.2.0 Beta 4: startup, context and Knowledge improvements](docs/releases/native-v0.2.0-beta.4.md)
 - [0.2.0 Beta 3: startup performance and shared product icon](docs/releases/native-v0.2.0-beta.3.md)
 - [0.2.0 Beta 2: integrated fixes and version-aware setup](docs/releases/native-v0.2.0-beta.2.md)
 - [Beta 1 Setup 1: extraction fix and version overview](docs/releases/native-v0.2.0-beta.1-setup.1.md)
