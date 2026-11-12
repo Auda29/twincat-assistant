@@ -399,9 +399,12 @@
 
 Projektmappe: {0}
 PLC-Projekt: {1}
+Konfiguration: {2}
+Plattform: {3}
 
 Es wird nichts gespeichert. Bei ungespeicherten Änderungen oder unklarer Zuordnung wird der Build abgelehnt. Keine Aktivierung und kein Download.</value></data>
   <data name="EngineeringStarting" xml:space="preserve"><value>Build wird angefordert …</value></data>
+  <data name="EngineeringRefresh" xml:space="preserve"><value>Build-Verfügbarkeit prüfen</value></data>
   <data name="EngineeringRunning" xml:space="preserve"><value>Build läuft …</value></data>
   <data name="EngineeringSucceeded" xml:space="preserve"><value>Build erfolgreich.</value></data>
   <data name="EngineeringFailed" xml:space="preserve"><value>Build fehlgeschlagen.</value></data>
@@ -418,4 +421,30 @@ Es wird nichts gespeichert. Bei ungespeicherten Änderungen oder unklarer Zuordn
   <data name="EngineeringWarning" xml:space="preserve"><value>Warnung</value></data>
   <data name="EngineeringTruncated" xml:space="preserve"><value>Ausgabe oder Meldungsliste wurde gekürzt.</value></data>
   <data name="EngineeringPlcBuildUnavailable" xml:space="preserve"><value>PLC-spezifischer Build nicht verfügbar. Ein umfassenderer TwinCAT-Projekt-Build ist nicht freigegeben.</value></data>
+  <data name="EngineeringSourceTitle" xml:space="preserve"><value>Quelltext im Editor (manuell)</value></data>
+  <data name="EngineeringSourceScope" xml:space="preserve"><value>Nur bereits geöffnete gewöhnliche TcPOU-XML-Editoren. Keine automatische Speicherung. Vorschau und Journal bestehen nur während dieser Sitzung; keine Wiederherstellung nach Absturz.</value></data>
+  <data name="EngineeringSourceDiscover" xml:space="preserve"><value>Aktives Dokument prüfen</value></data>
+  <data name="EngineeringSourceRead" xml:space="preserve"><value>Lesen</value></data>
+  <data name="EngineeringSourcePreview" xml:space="preserve"><value>Vorschau</value></data>
+  <data name="EngineeringSourceApply" xml:space="preserve"><value>Übernehmen</value></data>
+  <data name="EngineeringSourceRollback" xml:space="preserve"><value>Zurücksetzen</value></data>
+  <data name="EngineeringSourceReconcile" xml:space="preserve"><value>Journal prüfen</value></data>
+  <data name="EngineeringSourceBefore" xml:space="preserve"><value>Aktueller Abschnitt</value></data>
+  <data name="EngineeringSourceProposed" xml:space="preserve"><value>Vorgeschlagener Abschnitt</value></data>
+  <data name="EngineeringSourceContext" xml:space="preserve"><value>Projektkontext wird erneut geprüft; Freigabe aufgehoben.</value></data>
+  <data name="EngineeringSourceUnknown" xml:space="preserve"><value>Ausgang unbekannt. Keine erneute Änderung möglich. Vorgang {0}, Journal {1}.</value></data>
+  <data name="EngineeringSourceSessionOnly" xml:space="preserve"><value>Journal und Vorschau gelten nur für diese Sitzung.</value></data>
+  <data name="EngineeringSourceChoose" xml:space="preserve"><value>Abschnitt wählen und lesen oder Vorschau erstellen.</value></data>
+  <data name="EngineeringSourceUnavailable" xml:space="preserve"><value>Quelle oder Vorgang nicht verfügbar; aktives Dokument und Projekt prüfen.</value></data>
+  <data name="EngineeringSourceReadReady" xml:space="preserve"><value>Abschnitt gelesen. Änderung eingeben und Vorschau erstellen.</value></data>
+  <data name="EngineeringSourcePreviewReady" xml:space="preserve"><value>Vorschau bereit. Vorher und nachher vor der Freigabe prüfen.</value></data>
+  <data name="EngineeringSourceDone" xml:space="preserve"><value>Abgeschlossen. Vorgang {0}, Journal {1}. Nicht automatisch gespeichert.</value></data>
+  <data name="EngineeringSourceRefused" xml:space="preserve"><value>Änderung abgelehnt oder Kontext geändert; erneut prüfen.</value></data>
+  <data name="EngineeringSourceReconciled" xml:space="preserve"><value>Journalstatus: {0}. Journal {1}.</value></data>
+  <data name="EngineeringSourceConfirm" xml:space="preserve"><value>Ziel: {0}
+Abschnitt: {1}
+Projektrevision: {2}
+Links vorher, rechts nachher. Nur diese Änderung freigeben?</value></data>
+  <data name="EngineeringSourceCancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="EngineeringSourceConfirmButton" xml:space="preserve"><value>Freigeben</value></data>
 </root>

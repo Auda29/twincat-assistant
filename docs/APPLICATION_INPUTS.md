@@ -22,7 +22,7 @@ name must be absent. Use a fresh `-OutputRoot` for a separate run.
 .\scripts\Build-ApplicationInputs.ps1 -Component KnowledgeProbe `
   -KnowledgeArtifacts 'C:\absolute\release\packages'
 # Owner permission for bundling the pinned Knowledge release with Assistant:
-$license = (Resolve-Path 'upstream/permissions/knowledge-0.1.1.txt').Path
+$license = (Resolve-Path 'upstream/permissions/knowledge-development.txt').Path
 $licenseHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $license).Hash.ToLowerInvariant()
 .\scripts\Build-ApplicationInputs.ps1 -Component Knowledge `
   -KnowledgeArtifacts 'C:\absolute\release\packages' `
@@ -35,8 +35,9 @@ components remain and can be retained while the missing component is retried
 individually. An explicitly supplied license and digest are a reviewed input,
 not a machine determination of copyright or redistribution permission.
 
-The Engineering input is built from detached Git revision
-`3c303837e6d6f72bec1b9d38e778a7c32c61ae5c`; the checked-out HEAD must match.
+The Engineering input is built from the detached revision in
+`upstream/engineering-lock.json`; the checked-out HEAD must match. The current
+private candidate is `98f34dd76dc5903c2020ba037cec632ac3cd2004`.
 The script builds in a separate clone with `npm ci`, then performs a second
 locked production install restricted to the MCP and core workspaces. It copies
 compiled MCP and core files, production dependencies and license, materializes
@@ -45,10 +46,13 @@ untracked local config, sample project or credentials are copied. It moves the
 output inside its temporary build root and calls `plc_read_pou` against a new
 synthetic saved-file project. Only after this succeeds does it create and verify
 the schema-1 manifest. The output version is the pinned revision. The test does
-not access an IDE, ADS, compiler, PLC or model.
+not access an IDE, ADS, PLC or model. The builder also compiles the upstream
+net472 native provider and records its revision, assembly version and SHA-256
+under `native/host/receipt.json`. The application builder verifies the receipt
+and assembly identity before copying the module into `host/x86`.
 
-Knowledge uses the hashes in `upstream/knowledge-lock.json` for the three release
-artifacts, the official Python 3.12.10 x64 embeddable ZIP and locked wheel-only
+Knowledge uses the hashes in `upstream/knowledge-lock.json` for its artifacts,
+the official Python 3.12.10 x64 embeddable ZIP and locked wheel-only
 requirements installed by `uv --require-hashes`. The Python ZIP SHA-256 is
 `4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3`,
 recorded from the official release's Sigstore bundle digest. This pins the
@@ -73,6 +77,15 @@ explicitly with its SHA-256, and retained in the Knowledge input's `LICENSE`
 file. It is a permission record, not a newly chosen public open-source license.
 Python and dependency licenses remain in the runtime; this permission does not
 replace their terms. The technical probe alone is not a permission record.
+
+The current branch adopts private development candidate `0.1.2.dev20261112`,
+not a published Knowledge release. Its canonical wheel preserves the reviewed
+provenance module with LF line endings; the overlay accepts the exact reviewed
+LF hash pair as well as the earlier CRLF pair and updates the version-specific
+RECORD. `knowledge-development.txt` permits private integration only. Public
+release and standalone installation commands refuse this development pin.
+Use the reviewed canonical artifact directory and a fresh output root for
+development input builds. See [the integration record](MCP_P1_INTEGRATION_20261112.md).
 
 The Licenses component downloads the exact running Node version's official
 Windows x64 ZIP, checks its SHA-256 against the official HTTPS `SHASUMS256.txt`,

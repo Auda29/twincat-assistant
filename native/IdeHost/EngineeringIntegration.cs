@@ -11,14 +11,19 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 
 namespace TwinCatAssistant.Native
 {
     public sealed partial class AssistantControl
     {
         private EngineeringProviderSession _engineering;
+        private EngineeringMcpChild _engineeringMcp;
         private NativeProjectIdentity _engineeringProject;
         private Func<string, bool?> _engineeringDirty;
+        private IVsRunningDocumentTable _engineeringRdt;
+        private IVsMonitorSelection _engineeringSelection;
+        private Func<Type, object> _engineeringGetService;
         private long _engineeringEpoch;
         private CancellationTokenSource _engineeringLifetime;
         private Task<Assembly> _engineeringAssembly;
@@ -26,9 +31,10 @@ namespace TwinCatAssistant.Native
         private Task _engineeringInitialization;
         private bool _engineeringBusy, _engineeringUncertain, _engineeringPlcBuildVerified;
         private bool _engineeringProjectSuspended;
+        private string _engineeringConfiguration, _engineeringPlatform;
         private static readonly EngineeringOperationGuard EngineeringBuildGuard = new EngineeringOperationGuard();
         private Guid _engineeringBuildId;
-        private Button _engineeringBuildButton, _engineeringCancelButton;
+        private Button _engineeringBuildButton, _engineeringCancelButton, _engineeringRefreshButton;
         private readonly TextBlock _engineeringStatus = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 3, 0, 3), VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBox _engineeringOutput = new TextBox { IsReadOnly = true, AcceptsReturn = true, MaxHeight = 160, TextWrapping = TextWrapping.NoWrap,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -43,10 +49,11 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             _engineeringBuildButton = Secondary(AsyncButton(HostText.Get("EngineeringBuild"), StartEngineeringBuildAsync));
             _engineeringCancelButton = Secondary(AsyncButton(HostText.Get("EngineeringCancel"), CancelEngineeringBuildAsync));
+            _engineeringRefreshButton = Secondary(AsyncButton(HostText.Get("EngineeringRefresh"), RefreshEngineeringCapabilitiesAsync));
             _engineeringBuildButton.IsEnabled = false;
             _engineeringCancelButton.Visibility = Visibility.Collapsed;
             var actions = new WrapPanel();
-            actions.Children.Add(_engineeringBuildButton); actions.Children.Add(_engineeringCancelButton); actions.Children.Add(_engineeringStatus);
+            actions.Children.Add(_engineeringBuildButton); actions.Children.Add(_engineeringCancelButton); actions.Children.Add(_engineeringRefreshButton); actions.Children.Add(_engineeringStatus);
             var details = new StackPanel();
             details.Children.Add(new TextBlock { Text = HostText.Get("EngineeringNavigationUnavailable"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) });
             details.Children.Add(new ScrollViewer { Content = _engineeringRows, MaxHeight = 160, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
@@ -57,13 +64,15 @@ namespace TwinCatAssistant.Native
             panel.Children.Add(actions); panel.Children.Add(_engineeringDetails);
             _toolbar.Children.Add(panel);
             SetEngineeringStatus("EngineeringNoProject");
+            BuildEngineeringSourcePanel();
         }
 
-        private void BindEngineering(Func<string, bool?> dirty)
+        private void BindEngineering(Func<string, bool?> dirty, IVsRunningDocumentTable rdt, IVsMonitorSelection selection, Func<Type, object> getService)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             DisposeEngineering();
-            _engineeringDirty = dirty;
+            _engineeringDirty = path => EngineeringDirtyState.GetDirty(rdt, _boundDte, getService, path);
+            _engineeringRdt = rdt; _engineeringSelection = selection; _engineeringGetService = getService;
         }
 
         private void RenderEngineeringProject(NativeProjectIdentity project, bool transient)
@@ -77,14 +86,17 @@ namespace TwinCatAssistant.Native
                 _engineeringProjectSuspended = true;
                 _engineering?.SuspendApprovals();
                 _engineeringBuildButton.IsEnabled = false;
+                EngineeringSourceContextChanged();
                 return;
             }
             if (_engineeringProject != null && _engineeringProject.Equals(project))
             {
+                var wasSuspended = _engineeringProjectSuspended;
                 _engineeringProjectSuspended = false;
                 _engineering?.ResumeApprovals();
                 _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringBusy
                     && !_engineeringUncertain && !EngineeringBuildGuard.HasUnresolved;
+                if (wasSuspended) EngineeringSourceContextChanged();
                 return;
             }
             DisposeEngineering();
@@ -116,14 +128,25 @@ namespace TwinCatAssistant.Native
                     if (process.Id != project.IdeProcessId) throw new InvalidOperationException();
                     var binding = new EngineeringBinding(Guid.NewGuid(), process.Id, process.StartTime.ToUniversalTime(),
                         Path.GetFullPath(project.SolutionFile), Path.GetFullPath(project.ProjectFile), epoch.ToString(CultureInfo.InvariantCulture));
-                    _engineering = new EngineeringProviderSession(assembly, _boundDte, _engineeringDirty, binding, new DispatcherSynchronizationContext(Dispatcher));
+                    var editor = new EngineeringEditorAccess(_engineeringRdt, _engineeringSelection, _boundDte, binding,
+                        () => !_disposed && epoch == _engineeringEpoch
+                            && _engineering != null && binding.Same(_engineering.Binding), _engineeringGetService);
+                    _engineering = new EngineeringProviderSession(assembly, _boundDte, _engineeringDirty, binding,
+                        new DispatcherSynchronizationContext(Dispatcher), editor.GetTextBuffer);
                 }
                 EngineeringSessionChanged?.Invoke(_engineering);
+                EngineeringSourceSessionChanged();
                 var session = _engineering;
-                var describeId = Guid.NewGuid();
-                var description = await EngineeringDispatchBoundedAsync(session, session.CreateRequest("session.describe", describeId, new { }), cancellation);
+                var child = await EngineeringMcpChild.StartAsync(root, session, cancellation);
+                if (_disposed || cancellation.IsCancellationRequested || epoch != _engineeringEpoch || session != _engineering)
+                { child.Dispose(); return; }
+                _engineeringMcp = child;
+                var description = await DescribeEngineeringMcpAsync(child, session, cancellation);
+                Guid describeId;
+                if (!Guid.TryParseExact(EngineeringProviderSession.Text(EngineeringProviderSession.Json().DeserializeObject(description) as Dictionary<string, object>, "operationId"), "D", out describeId)) throw new InvalidOperationException();
                 if (_disposed || cancellation.IsCancellationRequested || epoch != _engineeringEpoch || session != _engineering) return;
-                _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(description, session.Binding, describeId);
+                _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(description, session.Binding, describeId,
+                    out _engineeringConfiguration, out _engineeringPlatform);
                 _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringProjectSuspended
                     && !_engineeringUncertain && !EngineeringBuildGuard.HasUnresolved;
                 SetEngineeringStatus(EngineeringBuildGuard.HasUnresolved ? "EngineeringUnknown"
@@ -142,8 +165,11 @@ namespace TwinCatAssistant.Native
             _engineeringLifetime?.Cancel();
             _engineeringLifetime?.Dispose();
             _engineeringLifetime = null;
+            _engineeringMcp?.Dispose();
+            _engineeringMcp = null;
             var previous = _engineering;
             _engineering = null;
+            EngineeringSourceSessionChanged();
             try { previous?.Dispose(); }
             finally
             {
@@ -157,6 +183,7 @@ namespace TwinCatAssistant.Native
             _engineeringUncertain = interrupted;
             _engineeringProjectSuspended = false;
             _engineeringPlcBuildVerified = false;
+            _engineeringConfiguration = _engineeringPlatform = null;
             _engineeringBuildId = EngineeringBuildGuard.OperationId;
             if (_engineeringBuildButton != null) _engineeringBuildButton.IsEnabled = false;
             if (_engineeringCancelButton != null) _engineeringCancelButton.Visibility = Visibility.Collapsed;
@@ -169,15 +196,20 @@ namespace TwinCatAssistant.Native
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var session = _engineering;
             if (_disposed || session == null || !_engineeringPlcBuildVerified || _engineeringBusy || _engineeringUncertain
-                || _engineeringProjectSuspended || EngineeringBuildGuard.HasUnresolved) return;
+                || _engineeringProjectSuspended || EngineeringBuildGuard.HasUnresolved || EngineeringSourceGuard.HasUnresolved || _sourceBusy) return;
             var binding = session.Binding;
             if (binding == null) return;
-            var confirmation = HostText.Format("EngineeringConfirm", new object[] { binding.SolutionFile, binding.ProjectFile });
+            var configuration = _engineeringConfiguration;
+            var platform = _engineeringPlatform;
+            if (string.IsNullOrWhiteSpace(configuration) || string.IsNullOrWhiteSpace(platform)) return;
+            var confirmation = HostText.Format("EngineeringConfirm", new object[] { binding.SolutionFile, binding.ProjectFile, configuration, platform });
             if (MessageBox.Show(confirmation, HostText.Get("EngineeringBuild"), MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
             // A modal dialog can pump IDE events. Never use a context from before it.
-            if (_disposed || session != _engineering || !binding.Same(session.Binding) || _engineeringProjectSuspended) return;
+            if (_disposed || session != _engineering || !binding.Same(session.Binding) || _engineeringProjectSuspended
+                || configuration != _engineeringConfiguration || platform != _engineeringPlatform) return;
             var lifetime = _engineeringLifetime.Token;
             _engineeringBusy = true;
+            UpdateSourceButtons();
             _engineeringBuildButton.IsEnabled = false;
             _engineeringOutput.Clear(); _engineeringRows.Children.Clear(); _engineeringDetails.Visibility = Visibility.Collapsed;
             _engineeringBuildId = Guid.NewGuid();
@@ -186,7 +218,7 @@ namespace TwinCatAssistant.Native
             try
             {
                 var expires = DateTime.UtcNow.AddSeconds(90);
-                var request = session.CreateRequest("build.start", build, new { approvalExpiresUtc = expires.ToString("o") });
+                var request = session.CreateRequest("build.start", build, new { approvalExpiresUtc = expires.ToString("o"), configuration, platform });
                 session.ApproveBuild(build, request, expires);
                 SetEngineeringStatus("EngineeringStarting");
                 var response = await EngineeringDispatchBoundedAsync(session, request, lifetime);
@@ -214,11 +246,48 @@ namespace TwinCatAssistant.Native
                 if (EngineeringCurrent(session, build))
                 {
                     _engineeringBusy = false;
+                    UpdateSourceButtons();
                     _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringUncertain
                         && !_engineeringProjectSuspended && !EngineeringBuildGuard.HasUnresolved;
                     _engineeringCancelButton.Visibility = Visibility.Collapsed;
                 }
             }
+        }
+
+        private async Task RefreshEngineeringCapabilitiesAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            var session = _engineering;
+            if (_disposed || session == null || _engineeringBusy || _engineeringProjectSuspended) return;
+            _engineeringRefreshButton.IsEnabled = false;
+            _engineeringPlcBuildVerified = false;
+            _engineeringBuildButton.IsEnabled = false;
+            try
+            {
+                var response = await DescribeEngineeringMcpAsync(_engineeringMcp, session, _engineeringLifetime.Token);
+                Guid id;
+                if (!Guid.TryParseExact(EngineeringProviderSession.Text(EngineeringProviderSession.Json().DeserializeObject(response) as Dictionary<string, object>, "operationId"), "D", out id)) throw new InvalidOperationException();
+                if (_disposed || session != _engineering || _engineeringProjectSuspended) return;
+                _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(response, session.Binding, id,
+                    out _engineeringConfiguration, out _engineeringPlatform);
+                _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringUncertain && !EngineeringBuildGuard.HasUnresolved;
+                SetEngineeringStatus(EngineeringBuildGuard.HasUnresolved ? "EngineeringUnknown"
+                    : _engineeringPlcBuildVerified ? "EngineeringReady" : "EngineeringPlcBuildUnavailable");
+            }
+            catch { if (session == _engineering) SetEngineeringStatus("EngineeringUnavailable"); }
+            finally { _engineeringRefreshButton.IsEnabled = true; }
+        }
+
+        private static async Task<string> DescribeEngineeringMcpAsync(EngineeringMcpChild child, EngineeringProviderSession session, CancellationToken cancellation)
+        {
+            if (child == null || session.Binding == null) throw new InvalidOperationException();
+            var response = await child.CallToolAsync("tc_session_describe", "{}", cancellation);
+            var result = EngineeringProviderSession.Json().DeserializeObject(response) as Dictionary<string, object>;
+            object error, structured;
+            if (result == null || (result.TryGetValue("isError", out error) && !Equals(error, false))
+                || !result.TryGetValue("structuredContent", out structured) || !(structured is Dictionary<string, object> envelope)
+                || EngineeringProviderSession.Text(envelope, "sessionId") != session.Binding?.SessionId.ToString("D")) throw new InvalidOperationException();
+            return EngineeringProviderSession.Json().Serialize(envelope);
         }
 
         private async Task CancelEngineeringBuildAsync()
@@ -249,8 +318,10 @@ namespace TwinCatAssistant.Native
         private bool EngineeringCurrent(EngineeringProviderSession session, Guid build)
         { return !_disposed && session == _engineering && session.Binding != null && build == _engineeringBuildId; }
 
-        private static bool EngineeringSupportsPlcOnlyBuild(string response, EngineeringBinding binding, Guid request)
+        private static bool EngineeringSupportsPlcOnlyBuild(string response, EngineeringBinding binding, Guid request,
+            out string configuration, out string platform)
         {
+            configuration = platform = null;
             if (response == null || response.Length > 512 * 1024 || binding == null) return false;
             var envelope = EngineeringProviderSession.Json().DeserializeObject(response) as Dictionary<string, object>;
             object version, resultObject, capabilitiesObject, validated;
@@ -263,7 +334,13 @@ namespace TwinCatAssistant.Native
             var capabilities = result.TryGetValue("capabilities", out capabilitiesObject) ? capabilitiesObject as Dictionary<string, object> : null;
             // Generic build:"conditional" cannot authorize a PLC-only button:
             // DTE may build its containing TwinCAT project and other PLCs.
-            return EngineeringProviderSession.Text(capabilities, "plcBuild") == "supported";
+            if (EngineeringProviderSession.Text(capabilities, "plcBuild") != "supported"
+                || EngineeringProviderSession.Text(result, "buildScope") != "plcProject"
+                || !string.Equals(EngineeringProviderSession.Text(result, "targetProjectFile"), binding.ProjectFile, StringComparison.OrdinalIgnoreCase)) return false;
+            configuration = EngineeringProviderSession.Text(result, "configuration");
+            platform = EngineeringProviderSession.Text(result, "platform");
+            return !string.IsNullOrWhiteSpace(configuration) && configuration.Length <= 256
+                && !string.IsNullOrWhiteSpace(platform) && platform.Length <= 256;
         }
 
         private static async Task<string> EngineeringDispatchBoundedAsync(EngineeringProviderSession session, string request, CancellationToken cancellation)
@@ -356,11 +433,16 @@ namespace TwinCatAssistant.Native
                 { EngineeringBuildGuard.Reconcile(build); _engineeringUncertain = false; }
             }
             else if (status == "succeeded" || status == "running" || status == "accepted" || status == "failed") throw new InvalidOperationException();
-            else if (request == build && (status == "refused" || status == "unsupported"))
-                EngineeringBuildGuard.Reconcile(build); // Start was explicitly rejected before submission.
+            // The pinned provider returns these start statuses only before
+            // calling BuildProject. A later observation conflict is different.
+            if (request == build && (status == "refused" || status == "unsupported" || status == "conflict"))
+            { EngineeringBuildGuard.Reconcile(build); _engineeringUncertain = false; }
             if (EngineeringBuildGuard.HasUnresolved && status != "accepted" && status != "running") _engineeringUncertain = true;
             ApplyLanguageBindings();
-            return status == "accepted" || status == "running";
+            // A cancellation acknowledgement does not stop the IDE build.
+            // Keep observing its correlated snapshot until terminal evidence
+            // or the existing bounded polling deadline.
+            return status == "accepted" || status == "running" || (status == "unknown" && result != null);
         }
         private static string EngineeringBounded(string value, int length) { return value == null ? "" : value.Substring(0, Math.Min(value.Length, length)); }
         private void SetEngineeringStatus(string key) { ThreadHelper.ThrowIfNotOnUIThread(); _engineeringStatus.Text = HostText.Get(key); }

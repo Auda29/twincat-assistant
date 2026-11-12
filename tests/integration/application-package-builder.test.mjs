@@ -8,6 +8,8 @@ import { cp, lstat, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/prom
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { createManifest, verifyManifest } from '../../scripts/application-manifest.mjs';
+import { optimizeKnowledgeValidation, lfOriginalSha256, lfPatchedSha256 } from '../../scripts/knowledge-validation-overlay.mjs';
+import { verifyEngineeringModule } from '../../scripts/build-application-package.mjs';
 const run = promisify(execFile);
 const repo = resolve('.');
 const npm = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
@@ -31,7 +33,7 @@ test('builder stages a bounded synthetic source build and verifies its output', 
     await cp(join(repo, 'src'), join(root, 'src'), { recursive: true });
     await cp(join(repo, 'node_modules'), join(root, 'node_modules'), { recursive: true });
     await git(root, 'init', '-q'); await git(root, 'add', 'src');
-    for (const file of ['scripts/build-application-package.mjs','scripts/application-manifest.mjs','scripts/source-overlay.mjs','scripts/trim-chat-package.mjs','scripts/Build-ApplicationPackage.ps1']) {
+    for (const file of ['scripts/build-application-package.mjs','scripts/application-manifest.mjs','scripts/source-overlay.mjs','scripts/trim-chat-package.mjs','scripts/Build-ApplicationPackage.ps1','scripts/knowledge-validation-overlay.mjs']) {
       await mkdir(dirname(join(root, file)), { recursive: true }); await cp(join(repo, file), join(root, file));
     }
     const webPackage = join(parent, 'web-package');
@@ -65,6 +67,9 @@ test('builder stages a bounded synthetic source build and verifies its output', 
     const lock = { version: 1, opencode: { version: '2.0.23', revision: codeRevision }, openchamber: { version: '2.1.1', revision: webRevision } };
     await write(join(root, 'upstream/source-lock.json'), JSON.stringify(lock));
     await cp(join(repo, 'upstream/knowledge-lock.json'), join(root, 'upstream/knowledge-lock.json'));
+    await cp(join(repo, 'upstream/engineering-lock.json'), join(root, 'upstream/engineering-lock.json'));
+    const knowledgeLock = JSON.parse(await readFile(join(root, 'upstream/knowledge-lock.json'), 'utf8'));
+    const engineeringLock = JSON.parse(await readFile(join(root, 'upstream/engineering-lock.json'), 'utf8'));
     const inputs = ['upstream/source-lock.json','upstream/overlays/openchamber/changes.json','upstream/overlays/openchamber/twincat.ts','upstream/overlays/openchamber/install.ts','tools/package-lock.json','scripts/build-source-runtime.mjs','scripts/source-overlay.mjs'];
     const overlay = [{ file: 'packages/web/server/index.js', changes: [['// fixture server', '// reviewed fixture server']] }];
     for (const file of inputs.slice(1)) {
@@ -81,14 +86,34 @@ test('builder stages a bounded synthetic source build and verifies its output', 
     await write(join(host, 'runtimes/win-x86/fixture.dll'), 'fixture');
     await write(join(host, 'en/TwinCatAssistant.IdeHost.resources.dll'), 'synthetic English resources');
     const knowledge = join(root, 'artifacts/application-inputs/knowledge'); await mkdir(knowledge, { recursive: true });
-    const knowledgeSource = join(parent, 'knowledge.cs'); await writeFile(knowledgeSource, 'class Program { static void Main() { System.Console.WriteLine("twincat-knowledge 0.1.1"); } }');
+    const knowledgeSource = join(parent, 'knowledge.cs'); await writeFile(knowledgeSource, `class Program { static void Main() { System.Console.WriteLine("twincat-knowledge ${knowledgeLock.version}"); } }`);
     await run(csc, ['/nologo', '/target:exe', '/out:' + join(knowledge, 'twincat-knowledge.exe'), knowledgeSource], { env: safeEnv });
     await write(join(knowledge, 'LICENSE'), 'synthetic license');
-    await createManifest(knowledge, { version: '0.1.1', architecture: process.arch });
+    const reviewed = await readFile(join(repo, 'tests/fixtures/knowledge-reviewed-provenance.py'));
+    assert.equal(digest(reviewed), lfOriginalSha256);
+    await write(join(knowledge, 'site-packages/twincat_knowledge/domain/provenance.py'), optimizeKnowledgeValidation(reviewed));
+    await write(join(knowledge, 'assistant-validation-overlay.json'), JSON.stringify({version:1, originalSha256:lfOriginalSha256, patchedSha256:lfPatchedSha256}));
+    await createManifest(knowledge, { version: knowledgeLock.version, architecture: process.arch });
     const engineering = join(root, 'artifacts/application-inputs/engineering');
     await write(join(engineering, 'packages/mcp/dist/index.js'), '// fixture');
     await write(join(engineering, 'LICENSE'), 'synthetic license');
-    await createManifest(engineering, { version: '3c303837e6d6f72bec1b9d38e778a7c32c61ae5c', architecture: process.arch });
+    const providerSource = join(parent, 'provider.cs');
+    await writeFile(providerSource, '[assembly:System.Reflection.AssemblyVersion("1.0.0.0")] public class FixtureProvider {}');
+    const provider = join(engineering, 'native/host/TwinCatMcp.Engineering.Host.dll');
+    await mkdir(dirname(provider), {recursive:true});
+    await run(csc, ['/nologo', '/target:library', '/out:' + provider, providerSource], {env:safeEnv});
+    const receiptFile = join(engineering, 'native/host/receipt.json');
+    const providerBytes = await readFile(provider);
+    const providerReceipt = {schemaVersion:1,revision:engineeringLock.revision,moduleVersion:engineeringLock.moduleVersion,sha256:digest(providerBytes)};
+    await write(receiptFile, JSON.stringify(providerReceipt));
+    assert.equal(await verifyEngineeringModule(engineering, engineeringLock), provider);
+    await writeFile(receiptFile, JSON.stringify({...providerReceipt,revision:'a'.repeat(40)}));
+    await assert.rejects(verifyEngineeringModule(engineering, engineeringLock), /receipt mismatch/);
+    await writeFile(receiptFile, JSON.stringify(providerReceipt));
+    await writeFile(provider, Buffer.from('tampered'));
+    await assert.rejects(verifyEngineeringModule(engineering, engineeringLock), /receipt mismatch/);
+    await writeFile(provider, providerBytes);
+    await createManifest(engineering, { version: engineeringLock.revision, architecture: process.arch });
     await write(join(root, 'artifacts/application-inputs/node/LICENSE'), 'synthetic license');
     await write(join(root, 'artifacts/application-inputs/webview2/LICENSE.txt'), 'synthetic license');
     await write(join(root, 'artifacts/application-inputs/webview2/NOTICE.txt'), 'synthetic notice');
@@ -99,6 +124,7 @@ test('builder stages a bounded synthetic source build and verifies its output', 
     assert.ok(result.files.some(file => file.path === 'runtime/opencode/opencode.exe'));
     assert.ok(result.files.some(file => file.path === 'runtime/node/node.exe'));
     assert.ok(result.files.some(file => file.path === 'host/x86/TwinCatAssistant.IdeHost.dll'));
+    assert.equal(digest(await readFile(join(output, 'host/x86/TwinCatMcp.Engineering.Host.dll'))), digest(await readFile(provider)));
     assert.ok(result.files.some(file => file.path === 'host/x86/en/TwinCatAssistant.IdeHost.resources.dll'));
     assert.ok(result.files.some(file => file.path === 'runtime/mcp/knowledge/twincat-knowledge.exe'));
     assert.ok(result.files.some(file => file.path === 'upstream/node_modules/@openchamber/web/dist/index.html'));

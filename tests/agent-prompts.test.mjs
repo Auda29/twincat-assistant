@@ -1,4 +1,6 @@
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { C1_ANALYSIS_PROMPTS } from '../src/analysis-prompts-c1.mjs';
 import { C0_ANALYSIS_PROMPTS } from '../src/analysis-prompts-c0.mjs';
 import { previousAnalysisPrompts } from '../src/agent-prompts.mjs';
 import assert from 'node:assert/strict';
@@ -125,8 +127,8 @@ test('earlier prompts are recorded exactly and are never the current prompt', ()
   const [previous] = previousOpenCodeConfigs({ knowledge });
   const current = createOpenCodeConfig({ knowledge });
   assert.equal(previous.agents[ANALYSIS_PROFILE].system, PREVIOUS_ANALYSIS_PROMPTS.profile[0]);
-  previous.agents[ANALYSIS_PROFILE].system = current.agents[ANALYSIS_PROFILE].system;
-  assert.deepEqual(previous, current, 'an earlier configuration differs only by its prompt');
+  assert.notDeepEqual(previous.permissions, current.permissions, 'earlier policy retains its original tool list');
+  assert.equal(previous.permissions.length, 15);
 });
 
 test('evaluation cases are composable, use only tools of their scope and reference real sources', async () => {
@@ -192,4 +194,43 @@ test('C0 migration matches exact scope without changing policy or permitting oth
     const old=previousAnalysisPrompts({knowledge,engineering:true,project:true}).at(-1);
     assert.equal(old,C0_ANALYSIS_PROMPTS.project[Number(knowledge)]);
   }
+});
+
+// Captured independently from git 88b11e0 before changing either generator.
+test('C1 scope snapshots and complete policies match the released bytes', () => {
+  const digest = value => createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex');
+  assert.deepEqual(C1_ANALYSIS_PROMPTS.profile.map(digest), [
+    '1a75e0f1a994caa06f7c6b5e50558ed29a8aa13031a0581db3e29e5ea529fff2',
+    '1ca19abb0d47f9ccf971da2dea8b9920b5eb30261a8fea5f5617723ffa1ceffb',
+    '41ac4a39c683c94771cf0ad9f9bde554ebc0bebebf552e5d944d5ab3d6217009',
+    'e5326c3cf9547e0ace7951c094637b9ca944434aa6712fe0d1d0233e4b77ad9f',
+  ]);
+  assert.deepEqual(C1_ANALYSIS_PROMPTS.project.map(digest), [
+    '41556c64068d8660a26fbd0a6dfd7135ef32d106d067aca3da49c9d8e35a74ed',
+    'f4253be782a658b25960fda94f8a962be2b141317e2a52514d7ba970573ba70f',
+  ]);
+  const base = resolve('tests/fixtures');
+  const normalize = (key, value) => typeof value === 'string' && value.startsWith(base)
+    ? value.replace(base, '<FIXTURES>').replaceAll('\\', '/') : value;
+  const expected = [
+    'b3194e58e33b340d192c70dae70e9b3c844ac8e39d9c9e3a8c2a8e36f7f1a493',
+    'd72811df8bfbf56fde4bb237250209dc38ceb4d91579a1ef0aea3561f92018ee',
+    '65a838d868669c48c8de48864718ddb4459f91ed7699d4d1dbca026dfdcdd7d4',
+    '8ed0feb9ab828eb75b4f02e191c15d8b30d8eff412ac10b4e6de180fc3d35b6f',
+  ];
+  let i = 0;
+  for (const k of [false, true]) for (const e of [false, true]) {
+    const settings = { ...(k && { knowledge }), ...(e && { engineering }) };
+    const old = previousOpenCodeConfigs(settings, { node: 'legacy-node', knowledgeClient: 'legacy-client' })[1];
+    assert.equal(createHash('sha256').update(JSON.stringify(old, normalize)).digest('hex'), expected[i++]);
+  }
+});
+
+test('typed Knowledge guidance preserves evidence and ambiguity limits', () => {
+  const prompt = analysisSystemPrompt({ knowledge: true });
+  for (const tool of ['knowledge_tc_find_symbols', 'knowledge_tc_get_symbol', 'knowledge_tc_find_libraries', 'knowledge_tc_get_library', 'knowledge_tc_lookup_error']) assert.ok(mentionedTools(prompt).has(tool));
+  assert.match(prompt, /get_corpus_status before documentation research/);
+  assert.match(prompt, /Multiple matches remain ambiguous even when paginated/);
+  assert.match(prompt, /documented version is not an installed version/);
+  assert.match(prompt, /nullable metadata/);
 });

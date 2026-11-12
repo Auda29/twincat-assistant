@@ -2,8 +2,13 @@ param([Parameter(Mandatory)][string]$DotNetRoot)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 Push-Location $root
+$previousDotNetRoot=$env:DOTNET_ROOT
 try {
  if($env:TWINCAT_ASSISTANT_TEST_CONFIG){throw 'Release builds refuse inherited host-test overrides'}
+ $lock=Get-Content upstream/knowledge-lock.json -Raw|ConvertFrom-Json
+ if($lock.developmentOnly){throw 'Knowledge pin is a private development candidate. Public release requires a reviewed upstream release/artifact pin; use the explicit candidate input builder for development.'}
+ $engineeringLock=Get-Content upstream/engineering-lock.json -Raw|ConvertFrom-Json
+ if($engineeringLock.schemaVersion -ne 1 -or $engineeringLock.revision -cnotmatch '^[a-f0-9]{40}$' -or $engineeringLock.moduleVersion -ne '1.0.0.0'){throw 'Invalid reviewed Engineering lock'}
  if((& git status --porcelain --untracked-files=no)){throw 'Release source must be clean'}
  $version=(Get-Content package.json -Raw|ConvertFrom-Json).version
  if($version -cnotmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$'){throw 'Invalid release version'}
@@ -25,12 +30,12 @@ try {
  Step 'installer wizard' { & powershell.exe -NoProfile -STA -File scripts/Test-InstallerWizard.ps1 }
  $engineering=Join-Path $root 'local-data/release-engineering'
  Step 'Engineering source' { git clone https://github.com/Auda29/twincat-mcp-mono.git $engineering }
- Step 'Engineering pin' { git -C $engineering checkout --detach 3c303837e6d6f72bec1b9d38e778a7c32c61ae5c }
+ Step 'Engineering pin' { git -C $engineering checkout --detach $engineeringLock.revision }
  $knowledge=Join-Path $root 'local-data/release-knowledge';[IO.Directory]::CreateDirectory($knowledge)|Out-Null
- $lock=Get-Content upstream/knowledge-lock.json -Raw|ConvertFrom-Json
  Step 'Knowledge release inputs' { gh release download $lock.tag --repo $lock.repository --dir $knowledge --pattern '*.whl' --pattern 'runtime-requirements.txt' --pattern 'SHA256SUMS.txt' }
  $license=(Resolve-Path upstream/permissions/knowledge-0.1.1.txt).Path
  $licenseSha=(Get-FileHash -LiteralPath $license -Algorithm SHA256).Hash.ToLowerInvariant()
+ $env:DOTNET_ROOT=[IO.Path]::GetFullPath($DotNetRoot)
  Step 'reproducible MCP and license inputs' { & scripts/Build-ApplicationInputs.ps1 -Component All -EngineeringCheckout $engineering -KnowledgeArtifacts $knowledge -KnowledgeLicense $license -KnowledgeLicenseSha256 $licenseSha }
  $env:TC_KNOWLEDGE_INPUT=(Resolve-Path artifacts/application-inputs/knowledge).Path
  Step 'Knowledge validator equivalence' { node --test tests/integration/knowledge-validation-overlay.test.mjs }
@@ -46,4 +51,4 @@ try {
  @{version=$version;sourceCommit=$source;runId=$env:GITHUB_RUN_ID;buildKind='trusted-windows-source-build';manifestSha256=(Get-FileHash (Join-Path $app 'application-manifest.json')).Hash.ToLowerInvariant();realHostInstallation=$false;realProviderLogin=$false}|ConvertTo-Json|Set-Content -LiteralPath $provenance -Encoding UTF8
  @($exe.FullName,$provenance)|ForEach-Object{(Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant()+'  '+[IO.Path]::GetFileName($_)}|Set-Content (Join-Path $output 'SHA256.txt') -Encoding ASCII
  Write-Host "Release candidate: $output"
-}finally{Pop-Location}
+}finally{$env:DOTNET_ROOT=$previousDotNetRoot;Pop-Location}

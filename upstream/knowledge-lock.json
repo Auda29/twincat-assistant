@@ -1,23 +1,26 @@
 {
   "schemaVersion": 1,
   "repository": "Auda29/twincat-knowledge-mcp",
-  "tag": "v0.1.1",
-  "revision": "fff24f410efa687bf39fe6829f5d068b1e80cf8f",
-  "version": "0.1.1",
+  "tag": null,
+  "developmentOnly": true,
+  "revision": "d5b774941600f746b092b0672216471f35dca73b",
+  "reviewedFunctionalRevision": "486be3cef2a29e7163d362bd5cb3a89ef01f421a",
+  "version": "0.1.2.dev20261112",
+  "runtimeRequirements": "requirements-runtime.txt",
   "protocol": "2026-07-28",
   "python": "3.12.10",
   "artifacts": [
     {
-      "name": "twincat_knowledge-0.1.1-py3-none-any.whl",
-      "sha256": "1c8c2d8d6c214208a917bf77f77d70e791d926ceb76cdad2d8478ad95e46cbc6"
+      "name": "twincat_knowledge-0.1.2.dev20261112-py3-none-any.whl",
+      "sha256": "ae4b7a20c006439560bacf73ac2f7d2f68915c56932684ec0453c1976be367cb"
     },
     {
-      "name": "runtime-requirements.txt",
-      "sha256": "c0d58178f80c552ba652ea2317a6bd213d3acfa41ae347f49900cac83eacfaff"
+      "name": "requirements-runtime.txt",
+      "sha256": "198a14ce273b1a9b6f70a2b9f09efa2c949654f1c0a7be4692ed19efdd6ee14d"
     },
     {
-      "name": "SHA256SUMS.txt",
-      "sha256": "43952bd42b555853d1d38280c696887b8736f8ffdcb33ddc8b85177afa8f2501"
+      "name": "nine-tools.json",
+      "sha256": "6a2231f57a81c3ca2820bbae78c2f590fd5f6d259a37b19ae996fd8085f3c3ab"
     }
   ]
 }

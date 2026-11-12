@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'This installer targets the Windows Assistant host. Use the source installation guide on other platforms.' }
 $taskRepository = Split-Path $PSScriptRoot -Parent
 $taskPin = Get-Content (Join-Path $taskRepository 'upstream\knowledge-lock.json') -Raw | ConvertFrom-Json
+if ($taskPin.developmentOnly -eq $true) { throw 'Development-only Knowledge pins cannot be installed by the public release installer.' }
 if ($taskPin.schemaVersion -ne 1 -or $taskPin.version -notmatch '^\d+\.\d+\.\d+$') { throw 'Unsupported Knowledge release pin.' }
 if (-not $InstallRoot) { $InstallRoot = Join-Path $env:LOCALAPPDATA ('TwinCatAssistant\knowledge-runtime\' + $taskPin.version) }
 if (-not [IO.Path]::IsPathRooted($InstallRoot)) { throw 'Choose an absolute Knowledge installation directory.' }

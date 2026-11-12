@@ -399,9 +399,12 @@
 
 Solution: {0}
 PLC project: {1}
+Configuration: {2}
+Platform: {3}
 
 Nothing is saved. Unsaved changes or uncertain project identity refuse the build. No activation or download.</value></data>
   <data name="EngineeringStarting" xml:space="preserve"><value>Submitting build…</value></data>
+  <data name="EngineeringRefresh" xml:space="preserve"><value>Check build availability</value></data>
   <data name="EngineeringRunning" xml:space="preserve"><value>Build running…</value></data>
   <data name="EngineeringSucceeded" xml:space="preserve"><value>Build succeeded.</value></data>
   <data name="EngineeringFailed" xml:space="preserve"><value>Build failed.</value></data>
@@ -418,4 +421,30 @@ Nothing is saved. Unsaved changes or uncertain project identity refuse the build
   <data name="EngineeringWarning" xml:space="preserve"><value>Warning</value></data>
   <data name="EngineeringTruncated" xml:space="preserve"><value>Output or diagnostics were truncated.</value></data>
   <data name="EngineeringPlcBuildUnavailable" xml:space="preserve"><value>PLC-only build unavailable. A broader TwinCAT project build is not approved.</value></data>
+  <data name="EngineeringSourceTitle" xml:space="preserve"><value>Editor source (manual)</value></data>
+  <data name="EngineeringSourceScope" xml:space="preserve"><value>Only already-open ordinary TcPOU XML editors are supported. Changes are not saved automatically. Previews and the journal exist only for this session; they do not provide crash recovery.</value></data>
+  <data name="EngineeringSourceDiscover" xml:space="preserve"><value>Inspect active document</value></data>
+  <data name="EngineeringSourceRead" xml:space="preserve"><value>Read</value></data>
+  <data name="EngineeringSourcePreview" xml:space="preserve"><value>Preview</value></data>
+  <data name="EngineeringSourceApply" xml:space="preserve"><value>Apply</value></data>
+  <data name="EngineeringSourceRollback" xml:space="preserve"><value>Rollback</value></data>
+  <data name="EngineeringSourceReconcile" xml:space="preserve"><value>Check journal</value></data>
+  <data name="EngineeringSourceBefore" xml:space="preserve"><value>Current section</value></data>
+  <data name="EngineeringSourceProposed" xml:space="preserve"><value>Proposed section</value></data>
+  <data name="EngineeringSourceContext" xml:space="preserve"><value>Project context is being revalidated; approval revoked.</value></data>
+  <data name="EngineeringSourceUnknown" xml:space="preserve"><value>Outcome unknown. Further changes are blocked. Operation {0}, journal {1}.</value></data>
+  <data name="EngineeringSourceSessionOnly" xml:space="preserve"><value>Journal and preview exist only for this session.</value></data>
+  <data name="EngineeringSourceChoose" xml:space="preserve"><value>Choose a section and read it or prepare a preview.</value></data>
+  <data name="EngineeringSourceUnavailable" xml:space="preserve"><value>Source or operation unavailable; check the active document and project.</value></data>
+  <data name="EngineeringSourceReadReady" xml:space="preserve"><value>Section read. Edit the proposed text and prepare a preview.</value></data>
+  <data name="EngineeringSourcePreviewReady" xml:space="preserve"><value>Preview ready. Review before and after before approving.</value></data>
+  <data name="EngineeringSourceDone" xml:space="preserve"><value>Completed. Operation {0}, journal {1}. The document was not saved automatically.</value></data>
+  <data name="EngineeringSourceRefused" xml:space="preserve"><value>Change refused or context changed; inspect again.</value></data>
+  <data name="EngineeringSourceReconciled" xml:space="preserve"><value>Journal outcome: {0}. Journal {1}.</value></data>
+  <data name="EngineeringSourceConfirm" xml:space="preserve"><value>Target: {0}
+Section: {1}
+Project revision: {2}
+Before is on the left, after is on the right. Approve this change?</value></data>
+  <data name="EngineeringSourceCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="EngineeringSourceConfirmButton" xml:space="preserve"><value>Approve</value></data>
 </root>

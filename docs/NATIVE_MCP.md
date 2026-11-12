@@ -1,5 +1,12 @@
 # Native read-only MCP integration
 
+This page retains the released saved-file setup history below. The current P1
+branch uses private reviewed dependency candidates, nine read-only Knowledge
+tools, and a separate native Engineering provider. Standalone Knowledge release
+installation is disabled while its lock is marked `developmentOnly`. See
+[the current integration record](MCP_P1_INTEGRATION_20261112.md) for pins,
+supported editor scope and remaining acceptance gates.
+
 Native 0.1.9 adds [automatic documentation setup](KNOWLEDGE_SETUP.md). Users can
 prepare installed Beckhoff help from **Wissenssuche einrichten**; a manual TOML
 is an optional advanced configuration. The 0.1.8 installation record below is

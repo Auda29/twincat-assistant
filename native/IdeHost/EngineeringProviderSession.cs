@@ -62,18 +62,28 @@ namespace TwinCatAssistant.Native
         }
 
         internal EngineeringProviderSession(Assembly assembly, object dte, Func<string, bool?> dirty,
-            EngineeringBinding initial, SynchronizationContext ui)
+            EngineeringBinding initial, SynchronizationContext ui, Func<string, object> getTextBuffer = null)
         {
             binding = initial ?? throw new ArgumentNullException(nameof(initial));
             contextType = assembly.GetType("TwinCatMcp.Engineering.Host.HostContext", true);
             var approvalType = assembly.GetType("TwinCatMcp.Engineering.Host.ApprovalRequest", true);
-            var factory = assembly.GetType("TwinCatMcp.Engineering.Host.EngineeringProviderFactory", true).GetMethod("Create");
+            var factoryType = assembly.GetType("TwinCatMcp.Engineering.Host.EngineeringProviderFactory", true);
+            var factory = factoryType.GetMethod("CreateWithEditorAccess", BindingFlags.Public | BindingFlags.Static, null,
+                new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
+                    typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>) }, null);
+            var withEditorAccess = factory != null;
+            if (factory == null) factory = factoryType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static, null,
+                new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
+                    typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext) }, null);
+            if (factory == null) throw new MissingMethodException("Engineering provider factory is unavailable.");
             var current = Expression.Lambda(typeof(Func<>).MakeGenericType(contextType),
                 Expression.Convert(Expression.Call(Expression.Constant(this), GetType().GetMethod(nameof(CurrentContext), BindingFlags.NonPublic | BindingFlags.Instance)), contextType)).Compile();
             var argument = Expression.Parameter(approvalType, "request");
             var consume = Expression.Lambda(typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)),
                 Expression.Call(Expression.Constant(this), GetType().GetMethod(nameof(ConsumeApproval), BindingFlags.NonPublic | BindingFlags.Instance), Expression.Convert(argument, typeof(object))), argument).Compile();
-            provider = factory.Invoke(null, new object[] { dte, dirty, current, consume, ui });
+            provider = factory.Invoke(null, withEditorAccess
+                ? new object[] { dte, dirty, current, consume, ui, getTextBuffer }
+                : new object[] { dte, dirty, current, consume, ui });
             dispatch = assembly.GetType("TwinCatMcp.Engineering.Host.IEngineeringProvider", true).GetMethod("DispatchAsync");
         }
 
@@ -89,13 +99,14 @@ namespace TwinCatAssistant.Native
             try
             {
                 if (approvalsSuspended) { authorization.Revoke(); return false; }
-                if ((string)Property(request, "Operation") != "build.start") return false;
+                var operation = (string)Property(request, "Operation");
+                if (operation != "build.start" && operation != "source.apply" && operation != "source.rollback") return false;
                 var expected = Property(request, "Expected");
                 var exact = new EngineeringBinding((Guid)Property(expected, "SessionId"), (int)Property(expected, "IdePid"),
                     (DateTime)Property(expected, "IdeStartedUtc"), (string)Property(expected, "SolutionFile"),
                     (string)Property(expected, "ProjectFile"), (string)Property(expected, "ContextEpoch"));
                 if ((Guid)Property(request, "SessionId") != exact.SessionId) return false;
-                var action = new EngineeringAction(exact, (Guid)Property(request, "OperationId"), "build.start",
+                var action = new EngineeringAction(exact, (Guid)Property(request, "OperationId"), operation,
                     (string)Property(request, "TargetObjectId"), (string)Property(request, "Section"),
                     (string)Property(request, "PreviewId"), (string)Property(request, "JournalId"), (DateTime)Property(request, "ExpiresUtc"),
                     (string)Property(request, "CanonicalRequestDigest"), (string)Property(request, "BaselineDigest"), (string)Property(request, "ProposedDigest"));
@@ -121,6 +132,16 @@ namespace TwinCatAssistant.Native
                 expires, EngineeringAction.HashRequest(exactRequest), null, null), DateTime.UtcNow);
         }
 
+        // A source grant is created only after the native exact-diff confirmation.
+        internal void ApproveSource(string operation, Guid id, string exactRequest, DateTime expires,
+            string target, string section, string preview, string journal, string baseline, string proposed)
+        {
+            if (approvalsSuspended || (operation != "source.apply" && operation != "source.rollback")) throw new InvalidOperationException();
+            var current = Binding ?? throw new ObjectDisposedException(nameof(EngineeringProviderSession));
+            authorization.Grant(new EngineeringAction(current, id, operation, target, section, preview, journal,
+                expires, EngineeringAction.HashRequest(exactRequest), baseline, proposed), DateTime.UtcNow);
+        }
+        internal void RevokeApproval() { authorization.Revoke(); }
         internal void SuspendApprovals() { approvalsSuspended = true; authorization.Revoke(); }
         internal void ResumeApprovals() { approvalsSuspended = false; }
 

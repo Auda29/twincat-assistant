@@ -13,7 +13,11 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 let inputRoot = join(root, 'artifacts/application-inputs');
-const engineeringRevision = '3c303837e6d6f72bec1b9d38e778a7c32c61ae5c';
+async function engineeringLock() {
+  const lock=JSON.parse(await readFile(join(root,'upstream/engineering-lock.json'),'utf8'));
+  if(lock.schemaVersion!==1 || !/^[a-f0-9]{40}$/.test(lock.revision ?? '') || lock.moduleVersion!=='1.0.0.0') throw new Error('Invalid reviewed Engineering lock');
+  return lock;
+}
 const pyHash = '4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3';
 const sha = b => createHash('sha256').update(b).digest('hex');
 const exists = p => lstat(p).then(() => true, e => { if (e.code === 'ENOENT') return false; throw e; });
@@ -41,13 +45,28 @@ function isolated(scratch) {
   return {...e, HOME:scratch,USERPROFILE:scratch,APPDATA:scratch,LOCALAPPDATA:scratch,TEMP:scratch,TMP:scratch,npm_config_cache:join(scratch,'npm-cache'),npm_config_userconfig:join(scratch,'npmrc'),UV_CACHE_DIR:join(scratch,'uv-cache'),UV_NO_CONFIG:'1',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'NUL',GIT_TERMINAL_PROMPT:'0'};
 }
 async function engineering(checkout) {
-  if(!isAbsolute(checkout)) throw new Error('Engineering checkout must be absolute');
+  if(!checkout || !isAbsolute(checkout)) throw new Error('Engineering checkout must be absolute');
+  const lock=await engineeringLock(), engineeringRevision=lock.revision;
   const revision=run('git',['rev-parse','HEAD'],checkout,isolated(root),true).trim();
   if(revision!==engineeringRevision) throw new Error('Engineering checkout revision mismatch');
   await publish('engineering',engineeringRevision,async(payload,scratch)=>{
     const env=isolated(scratch), source=join(scratch,'source');
     run('git',['clone','--no-hardlinks','--no-checkout',checkout,source],scratch,env);
     run('git',['-C',source,'checkout','--detach',engineeringRevision],scratch,env);
+    // Use the pinned SDK and installed net472 targeting pack. Build only the
+    // provider from the clean clone; no vendor or SDK assemblies are copied.
+    const localDotnet=join(root,'local-data/dotnet8/dotnet.exe');
+    const dotnet=process.env.DOTNET_ROOT ? join(process.env.DOTNET_ROOT,'dotnet.exe') : (await exists(localDotnet) ? localDotnet : 'dotnet');
+    const dotnetEnv={...env, ...(isAbsolute(dotnet)?{DOTNET_ROOT:dirname(dotnet)}:{}), DOTNET_CLI_HOME:scratch,
+      DOTNET_CLI_TELEMETRY_OPTOUT:'1', DOTNET_SKIP_FIRST_TIME_EXPERIENCE:'1', DOTNET_GENERATE_ASPNET_CERTIFICATE:'false'};
+    if(run(dotnet,['--version'],source,dotnetEnv,true).trim()!=='8.0.425') throw new Error('Engineering provider requires .NET SDK 8.0.425');
+    run(dotnet,['build','native/Engineering.Host/TwinCatMcp.Engineering.Host.csproj','--configuration','Release','--nologo','-p:RestoreIgnoreFailedSources=true'],source,dotnetEnv);
+    const dll=join(source,'native/Engineering.Host/bin/Release/net472/TwinCatMcp.Engineering.Host.dll');
+    const moduleIdentity=run('powershell.exe',['-NoProfile','-NonInteractive','-Command',
+      '$a=[Reflection.AssemblyName]::GetAssemblyName($env:TC_ENGINEERING_MODULE); $a.Name + "|" + $a.Version.ToString()'],source,{...env,TC_ENGINEERING_MODULE:dll},true).trim();
+    if(moduleIdentity!=='TwinCatMcp.Engineering.Host|'+lock.moduleVersion) throw new Error('Engineering provider module identity mismatch');
+    await file(dll,join(payload,'native/host/TwinCatMcp.Engineering.Host.dll'));
+    await writeFile(join(payload,'native/host/receipt.json'),JSON.stringify({schemaVersion:1,revision:engineeringRevision,moduleVersion:lock.moduleVersion,sha256:sha(await readFile(dll))},null,2)+'\n');
     const npm=join(dirname(process.execPath),'node_modules/npm/bin/npm-cli.js');
     run(process.execPath,[npm,'ci','--no-audit','--no-fund'],source,env);
     run(process.execPath,[npm,'run','build'],source,env);
@@ -119,16 +138,16 @@ async function knowledge(artifacts, license, licenseSha, probeOnly=false) {
     const uv=run('where.exe',['uv.exe'],scratch,env,true).trim().split(/\r?\n/)[0];
     if(!uv) throw new Error('uv is required to install pinned wheels');
     const site=join(payload,'site-packages'); await mkdir(site);
-    run(uv,['pip','install','--target',site,'--python',join(python,'python.exe'),'--require-hashes','--no-deps','--only-binary',':all:','-r',join(artifacts,'runtime-requirements.txt')],scratch,env);
+    run(uv,['pip','install','--target',site,'--python',join(python,'python.exe'),'--require-hashes','--no-deps','--only-binary',':all:','-r',join(artifacts,lock.runtimeRequirements ?? 'runtime-requirements.txt')],scratch,env);
     const wheel=lock.artifacts.find(a=>a.name.endsWith('.whl'));
     run(uv,['pip','install','--target',site,'--python',join(python,'python.exe'),'--no-deps',join(artifacts,wheel.name)],scratch,env);
-    await rm(join(site,'twincat_knowledge-0.1.1.dist-info/direct_url.json'),{force:true});
+    await rm(join(site,`twincat_knowledge-${lock.version}.dist-info/direct_url.json`),{force:true});
     // Console-script wrappers produced by installers may contain absolute paths.
     await rm(join(site,'Scripts'),{recursive:true,force:true});
-    const validationOverlay = await patchKnowledgeValidation(site);
+    const validationOverlay = await patchKnowledgeValidation(site, lock.version);
     await writeFile(join(payload,'assistant-validation-overlay.json'),JSON.stringify(validationOverlay,null,2)+'\n');
     if(!probeOnly) await file(license,join(payload,'LICENSE'));
-    await writeFile(join(payload,'build-provenance.json'),JSON.stringify({schemaVersion:1,revision:lock.revision,version:lock.version,python:lock.python,pythonEmbedSha256:pyHash,artifacts:lock.artifacts,licenseSha256:probeOnly?null:licenseSha},null,2)+'\n');
+    await writeFile(join(payload,'build-provenance.json'),JSON.stringify({schemaVersion:1,revision:lock.revision,version:lock.version,developmentOnly:lock.developmentOnly===true,python:lock.python,pythonEmbedSha256:pyHash,artifacts:lock.artifacts,licenseSha256:probeOnly?null:licenseSha},null,2)+'\n');
     const csc=join(process.env.SystemRoot,'Microsoft.NET/Framework/v4.0.30319/csc.exe');
     run(csc,['/nologo','/target:exe','/out:'+join(payload,'twincat-knowledge.exe'),join(root,'scripts/KnowledgeLauncher.cs')],scratch,env);
     const moved=join(scratch,'relocated'); await rename(payload,moved);

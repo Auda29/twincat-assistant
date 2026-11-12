@@ -1,104 +1,162 @@
-# MCP-first integration window, 2026-11-12
+# MCP-first integration, 2026-11-12
 
-The first coordinated development window ends at 14:30 Europe/Berlin. All three
-repository leads use GPT-6.1 Sol high. Bounded implementation tasks use GPT-6.1
-Terra; demanding architecture and independent reviews use GPT-6 Astra.
-Changes remain pull requests, without automatic merges, releases or installation.
+This development window ends at 14:30 Europe/Berlin. Changes remain pull
+requests. No merge, public release, installation, IDE operation or PLC action is
+authorized by this implementation record.
 
-## Ownership and current limits
+## Reviewed dependencies
 
-- Engineering MCP owns reusable native engineering code, project association,
-  source evidence, build/diagnostics and controlled source-change policy.
-- Knowledge MCP owns documentation ingestion and typed symbol/library/error
-  tools. Documentation versions are not installed library versions.
-- Assistant owns the native UI, exact IDE/chat binding, one-shot native approval,
-  authenticated transport, provider loading and eventual package adoption.
+| Component | Candidate |
+| --- | --- |
+| Engineering MCP | `98f34dd76dc5903c2020ba037cec632ac3cd2004`, [PR #2](https://github.com/Auda29/twincat-mcp-mono/pull/2) |
+| Knowledge MCP | `0.1.2.dev20261112`, `d5b774941600f746b092b0672216471f35dca73b`, [PR #27](https://github.com/Auda29/twincat-knowledge-mcp/pull/27) |
 
-[Engineering PR #2](https://github.com/Auda29/twincat-mcp-mono/pull/2) and
-[Knowledge PR #27](https://github.com/Auda29/twincat-knowledge-mcp/pull/27) are
-development dependencies, not accepted releases. The existing packaged dependency
-pins, Analysis permissions and read-only saved-file MCP configuration remain.
-Assistant PR #29 is not the source of a second independent compiler implementation.
+The Knowledge functional baseline is `486be3c`; the candidate changes its
+version and adds reviewed artifact-building support. Its private wheel is
+`ae4b7a20c006439560bacf73ac2f7d2f68915c56932684ec0453c1976be367cb`.
+Its nine-tool schema digest is
+`6a2231f57a81c3ca2820bbae78c2f590fd5f6d259a37b19ae996fd8085f3c3ab`.
+The development lock deliberately blocks public release and standalone
+installation. A reviewed upstream release and redistribution decision must
+replace it before shipping.
 
-This Assistant slice is a foundation. It does not deliver a verified PLC build,
-clickable compiler navigation or source writes. The documented DTE build addresses
-a TwinCAT `.tsproj`; a bound `.plcproj` must not silently widen that scope. The
-button stays disabled unless an exact provider reports `plcBuild: "supported"`.
-Generic `build: "conditional"` and authenticated connectivity do not satisfy it.
-Current source mutation and navigation support remain unavailable.
+Engineering owns compiler, association and source policy. Assistant owns the
+native UI, host lifecycle, exact binding, approval and authenticated child.
+Assistant PR #29 is not adopted as a second compiler implementation.
+All repository leads use GPT-6.1 Sol high; bounded implementation uses Terra,
+and independent architecture/review uses Astra.
 
-## Implemented Assistant boundary
+## Knowledge adoption
 
-The optional provider is loaded only from the installer-selected application's
-`host/x86/TwinCatMcp.Engineering.Host.dll`. The selector must agree with the
-connection's package root. The manifest must contain one exact entry; actual bytes
-are size/hash checked before loading. Assembly identity is
-`TwinCatMcp.Engineering.Host`, version `1.0.0.0`. No developer-configured folder is
-an executable-code authority. Existing packages without the provider keep Chat
-working and report the optional engineering feature unavailable.
+The five new tools are `tc_find_symbols`, `tc_get_symbol`, `tc_find_libraries`,
+`tc_get_library` and `tc_lookup_error`. The existing four topic/status tools
+remain. Analysis grants exactly these additional read-only tools. Engineering
+write, build, cancellation, runtime and ADS permissions are not added to Analysis.
 
-Host eligibility remains exactly TcXaeShell x86, executable 15.0.0.0, shell base
-major 15 and TwinCAT 3.1.4024.78. This does not enable 4026, Shell64 or Visual Studio.
+Typed results carry explicit topic/source citations, nullable documented
+namespace/library/version fields, missing fields and ambiguity. A documented
+version does not establish an installed library version. Unsupported source
+formats return absent coverage. The typed index is lazy; no operator corpus was
+read during development. Exact previous C1 policies migrate once; modified or
+mixed policies remain refused. Chat, login, preference and binding files remain
+outside this migration.
 
-Engineering sessions use a host-generated UUID, current PID/start time, exact
-solution/PLC paths and a lifecycle epoch, separate from chat IDs. Rebinding,
-project invalidation, solution close/reopen and disposal revoke the session and
-pending approval. Source operations are not approved by this UI. Build approval
-is one-shot, short-lived and binds the complete UTF-8 request digest, operation,
-context and target. The generic authorization policy additionally binds section,
-preview/journal IDs and before/after digests for future reviewed source actions.
+The Python validation overlay accepts two exact reviewed original/patched hash
+pairs. The new LF original is byte-identical to the committed upstream guard;
+the earlier CRLF variant differs only in line endings. Hash verification does
+not normalize input. The distribution-specific RECORD is updated and verified.
+A private relocated runtime passed actual stdio catalog checks and all five
+populated typed queries after a synthetic archive import and activation.
+Real-corpus extraction acceptance remains open.
 
-Ordinary transient editor/text/save/frame invalidation suspends new approvals
-without replacing the engineering session. Only a verified same-project result
-resumes approval. An unresolved submitted build is retained in a process-wide
-guard across actual provider/view revocation; a new session cannot clear it.
-Only correlated terminal evidence reconciles it. There is no manual reset or
-guess based on a timeout; if observation has been lost, restarting the IDE is the
-remaining recovery boundary in this foundation.
+## Native engineering boundary
 
-The UI confirms manual actions, observes only correlated bounded results and
-never claims a timed-out/cancelled operation has stopped. No compiler logic is
-duplicated in Assistant. Navigation and automatic diagnostic disclosure are absent.
+The provider loads only from the installer-selected application's
+`host/x86/TwinCatMcp.Engineering.Host.dll`. Selector and connected package root
+must agree. The exact manifest entry, length, hash, assembly name and version
+`1.0.0.0` are checked before loading those bytes. The input builder compiles a
+clean pinned upstream clone; the application builder verifies its receipt and
+assembly identity. No vendor interop or Visual Studio SDK assembly is bundled.
+The actual private input DLL hash is
+`135c8e94db1ff632846c94e375d2958e5a5aa6a1686f34348a7cfe0ba9807781`.
+Rebuilders must hash their own output.
 
-## Transport contract
+Eligibility remains TcXaeShell x86, executable 15.0.0.0, shell base 15 and
+TwinCAT 3.1.4024.78. This change does not enable 4026, Shell64 or full Visual
+Studio. A session binds a fresh UUID, current IDE PID/start time, exact solution
+and PLC paths and lifecycle epoch, separately from chat IDs.
 
-`EngineeringHostTransport` is an independently tested local transport component;
-it is not a deployed child-process bootstrap. It uses a random pipe name,
-protected current-user SID-only DACL, remote-client refusal, a fresh 256-bit
-capability and mutual HMAC-SHA256 authentication. Each connection performs one
-request with domain-separated client/server/request/response proofs and fresh
-nonces. The capability itself never appears in a wire frame. UTF-8 decoding,
-duplicate keys, exact frame schemas and byte limits are checked. Handshake frames
-are bounded to 4 KiB, encoded requests to 256 KiB and responses to 512 KiB.
-The deadline is 30 seconds, with at most four connections/outstanding handlers.
+Transient text/save/frame invalidation suspends new approvals without discarding
+the provider or observation state. Only a verified same-project result resumes
+approval. Unchanged timer polls do not invalidate source previews. Actual
+solution/project/view revocation invalidates the session and owned child.
+Unresolved build/source guards survive view/session loss for the IDE process.
+Timeout, cancellation request or lost observation never prove an action stopped.
 
-A handler ignoring cancellation can outlive a connection and retain its slot;
-there is no automatic replay. The transport does not verify client PID: knowledge
-of the session capability authorizes a local same-user client. That capability
-must only enter a trusted owned child through stdin, never model arguments,
-durable configuration, environment variables, command-line arguments or logs.
-Wiring that owned-child bootstrap and the complete package is a separate open
-integration gate. The transport does not by itself authorize engineering actions.
+## Manual build
 
-## Validation and remaining gates
+The provider preflights the exact PLC association, current configuration and
+platform, known-clean buffers, project policy and provably empty build
+dependencies. It invokes the documented selective
+[`BuildProject(configuration, full .plcproj path, false)`](https://infosys.beckhoff.com/content/1033/tc3_automationinterface/21842451979.html).
+It does not substitute a `.tsproj`, switch configurations, save, activate or
+download. The earlier assumption that `.plcproj` could never be passed to
+`BuildProject` was incorrect.
 
-- Fresh pinned SDK 8.0.425 x86 build: 1,014 native/localization/authorization
-  regressions passed; helper/probe/host/VSIX compile succeeded. Existing threading
-  warnings remain. Twenty-one standalone WPF/WebView startup checks passed with
-  private synthetic state and no installed IDE.
-- The standalone transport probe exercises valid and invalid authentication,
-  malformed/duplicate frames, exact payloads and MACs, byte limits, idle timeout,
-  normal disposal and recovery after a refused client.
-- Native approval regressions cover no approval, replay, changed epoch/session,
-  expiry, revocation, identical-text object substitution and altered request bytes.
-- Independent review at `bd40d9e` found transient editor invalidation discarded
-  provider observation and unresolved state. The correction preserves the session
-  during transient callbacks, revokes approval until exact-project resolution and
-  retains unresolved work in an IDE-process guard. Real WPF callback regressions
-  cover suspension, same-project resolution and actual lifecycle revocation.
+The native confirmation binds the exact configuration/platform and request
+bytes. The provider rechecks them immediately around one-shot approval. Build
+results are bounded and owned by captured build events. Output and diagnostics
+are unavailable if their provenance cannot be established. Compiler navigation
+is not enabled without exact source-item/baseline evidence.
+
+Cancellation records a request and keeps observing. It does not invoke the
+IDE-wide Build.Cancel command. Correlated terminal evidence reconciles the
+guard; pre-submission refusals/conflicts allow a new attempt. A later observation
+conflict retains the guard.
+
+## Manual source workflow
+
+The supported candidate is an already-open ordinary `.TcPOU` XML text editor
+with one exact physical RDT moniker. A fresh read-only RDT/MEF accessor verifies
+cookie, docdata, buffer identity, active document and exact containing project.
+It returns only a normal document/data `ITextBuffer`, never a projection buffer.
+No document is opened or saved. Dirty state uses RDT persistence or exact
+solution/project hierarchy persistence; unknown is refused, never treated clean.
+
+Engineering verifies clean locked `.plcproj` membership and exact XML GUID/name
+and section. `source.targets` discovers bounded existing POU, Method and Action
+IDs. The UI reads, previews and confirms the exact before/after text. Approval
+binds target, section, preview/journal, whole-buffer digests, project revision,
+request bytes and expiry. Apply uses one `ITextEdit` transaction against the
+exact whole-buffer baseline. Rollback requires the exact retained post-image.
+
+Properties, specialized TwinCAT ST editors, FBD, LineIds and other unsupported
+XML metadata remain refused. The narrow raw XML path is implemented; general
+Editor-profile support is not complete. The journal exists only inside the
+original provider session. It is not durable crash recovery. Lost/unknown
+outcomes remain blocked and are not automatically retried.
+
+## Owned MCP child and transport
+
+Assistant starts its dedicated Engineering-only Node child suspended and assigns
+it to a kill-on-close job before execution. It verifies the full selected package
+inventory first. The child receives one bounded bootstrap line through stdin,
+then authenticates a read-only ping over the private pipe, acknowledges readiness
+and starts normal MCP. Native capability preflight calls the actual child's
+`tc_session_describe`. This child has no ADS configuration or runtime tools.
+Native manual approvals dispatch to the same Engineering provider implementation.
+The saved-file MCP and model-visible Engineering permissions remain separate.
+
+The pipe uses a random name, protected current-user SID DACL, remote-client
+refusal, fresh 256-bit secret, mutual HMAC-SHA256 proofs and independent nonces.
+One request is allowed per connection, without automatic retry. Limits are
+4 KiB handshake, 256 KiB request, 512 KiB response, 30 seconds and four
+connections/handlers. The secret never enters arguments, environment,
+configuration, model tools or logs. Local capability possession authorizes
+transport only; it grants no mutation approval. The installation ownership
+boundary must prevent foreign package replacement after verification.
+
+## Validation and open acceptance
+
+The full portable/Windows Node suite passed 171 tests. Independent adoption
+review verified actual input manifests, overlay/RECORD, source snapshot migration
+and provider receipt. Independent native review found timer-preview invalidation
+and two build observation/rejection defects; all were corrected with actual
+standalone native callback/renderer regressions. The x86 host and VSIX build
+with the installed SDK; this is not a claim that the pinned release build ran.
+Synthetic child tests cover stdin bootstrap, framing, job cleanup, cancellation
+and tampered packages.
+
+The final x86 host/VSIX build succeeded with 14 existing threading warnings.
+There were 1,062 native policy/context/localization checks and 28 actual
+standalone WPF/WebView callback checks. The real packaged Node MCP passed
+cross-language HMAC bootstrap, protocol initialization, correlated describe
+and owned-process disposal against a synthetic C# provider. The full private
+application passed protected startup, both real saved-file/Knowledge MCP probes,
+restart, state preservation and unchanged-package checks.
 
 No IDE was started or attached, no operator source/state was inspected, no PLC
-was compiled and no installation was performed. Synthetic checks do not establish
-actual editor buffer atomicity, build scope, navigation or installed acceptance.
-Provider package receipt/adoption, owned-child bootstrap, cross-repository
-integration and independent final review remain open. P1 is not complete.
+was compiled and no installation was performed. Actual host build events,
+diagnostic navigation, TwinCAT dirty-state reporting, live editor transactions,
+real-corpus extraction and installed acceptance remain open. The private
+candidate is not a public release and the broader P1 Editor scope is incomplete.

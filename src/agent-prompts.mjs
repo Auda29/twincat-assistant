@@ -1,3 +1,4 @@
+import { C1_ANALYSIS_PROMPTS } from './analysis-prompts-c1.mjs';
 import { C0_ANALYSIS_PROMPTS } from './analysis-prompts-c0.mjs';
 // System prompt composition for the TwinCAT agent profiles.
 //
@@ -66,7 +67,8 @@ export const SHARED_RULES = Object.freeze({
   ]),
 });
 
-const KNOWLEDGE_TOOLS = ['knowledge_tc_get_corpus_status', 'knowledge_tc_search', 'knowledge_tc_get_topic', 'knowledge_tc_browse_topics'];
+const KNOWLEDGE_TOOLS = ['knowledge_tc_get_corpus_status', 'knowledge_tc_search', 'knowledge_tc_get_topic', 'knowledge_tc_browse_topics',
+  'knowledge_tc_find_symbols', 'knowledge_tc_get_symbol', 'knowledge_tc_find_libraries', 'knowledge_tc_get_library', 'knowledge_tc_lookup_error'];
 const ENGINEERING_TOOLS = ['engineering_plc_list_pous', 'engineering_plc_read_pou', 'engineering_plc_search_code',
   'engineering_plc_describe_pou', 'engineering_plc_list_libraries', 'engineering_plc_describe_library',
   'engineering_tc_list_projects', 'engineering_tc_project_state', 'engineering_tc_list_workbenches'];
@@ -86,6 +88,7 @@ function analysisRules({ knowledge, engineering, project }) {
   tools.push(knowledge
     ? 'Call knowledge_tc_get_corpus_status before documentation research. If the corpus is unavailable, empty or not configured, say so plainly and mark any answer from general knowledge as not verified against the Beckhoff documentation.'
     : 'Beckhoff documentation search is not configured. Do not cite documentation; mark answers from general knowledge as not verified.');
+  if (knowledge) tools.push('Use the typed symbol, library and error tools to find exact documented matches and inspect their returned sources, warnings, missing fields and ambiguity. Search matches names case-insensitively; version and error-code spelling are exact. Multiple matches remain ambiguous even when paginated. A missing typed match or limited coverage does not prove the documentation has no answer; use topic search where appropriate. knowledge_tc_get_symbol returns preserved declaration text and nullable metadata, not an installed library version or live editor content. A documented version is not an installed version; never infer unknown metadata or convert an error code to another spelling.');
   tools.push('No tool in this profile reads or verifies the current editor buffer.');
   tools.push('Use question only when a missing object name, project or goal blocks the answer.');
   return {
@@ -120,5 +123,5 @@ export const ANALYSIS_TOOL_NAMES = Object.freeze({ knowledge: Object.freeze([...
 export function previousAnalysisPrompts({knowledge=false,engineering=false,project=false}={}) {
   const kind=project?'project':'profile';
   const index=project?Number(Boolean(knowledge)):2*Number(Boolean(knowledge))+Number(Boolean(engineering));
-  return [...PREVIOUS_ANALYSIS_PROMPTS[kind], C0_ANALYSIS_PROMPTS[kind][index]];
+  return [...PREVIOUS_ANALYSIS_PROMPTS[kind], C1_ANALYSIS_PROMPTS[kind][index], C0_ANALYSIS_PROMPTS[kind][index]];
 }

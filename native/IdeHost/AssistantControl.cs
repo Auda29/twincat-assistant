@@ -342,13 +342,13 @@ namespace TwinCatAssistant.Native
             if (AssistantTheme.Apply(_theme, theme)) _themeKey = key;
         }
 
-        public void Bind(DTE dte, IVsMonitorSelection selection, IVsRunningDocumentTable rdt, Func<string, bool?> dirty)
+        public void Bind(DTE dte, IVsMonitorSelection selection, IVsRunningDocumentTable rdt, Func<string, bool?> dirty, Func<Type, object> getService = null)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
             if (dte == null)
             {
-                BindEngineering(null);
+                BindEngineering(null, null, null, null);
                 _tracker?.Dispose();
                 _tracker = null;
                 _reader?.Invalidate();
@@ -361,7 +361,7 @@ namespace TwinCatAssistant.Native
                 return;
             }
             if (_boundDte == dte && _tracker != null) return;
-            BindEngineering(dirty);
+            BindEngineering(dirty, rdt, selection, getService);
             _tracker?.Dispose();
             _tracker = null;
             _boundDte = dte;

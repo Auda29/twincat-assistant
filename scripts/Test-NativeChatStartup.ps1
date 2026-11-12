@@ -1,4 +1,4 @@
-﻿param(
+param(
  [Parameter(Mandatory=$true)][string]$FixtureDirectory,
  [string]$HostAssembly,
  [string]$OutputDirectory
@@ -177,12 +177,49 @@ try{
  try {
   Put '_engineeringProject' $project;Put '_engineeringBusy' $true;Put '_engineeringUncertain' $true;Put '_engineeringBuildId' $buildId
   $epoch=Field '_engineeringEpoch'
+  $previewType=$control.GetType().GetNestedType('SourcePreview',[Reflection.BindingFlags]'NonPublic')
+  $preview=[Activator]::CreateInstance($previewType,$true)
+  Put '_sourcePreview' $preview
+  1..3|ForEach-Object{Invoke-Private 'RenderEngineeringProject' @($project,$false)|Out-Null}
+  Check ([object]::ReferenceEquals((Field '_sourcePreview'),$preview)) 'unchanged project polling preserves an existing source preview'
   Invoke-Private 'RenderEngineeringProject' @($null,$true)|Out-Null
+  Check ($null -eq (Field '_sourcePreview')) 'a real transient editor invalidation revokes the source preview'
   Check ((Field '_engineeringEpoch') -eq $epoch -and (Field '_engineeringProject').Equals($project) -and (Field '_engineeringBusy') -and (Field '_engineeringBuildId') -eq $buildId) 'transient editor invalidation preserves engineering observation and epoch'
   Invoke-Private 'RenderEngineeringProject' @($project,$false)|Out-Null
   Check ((Field '_engineeringEpoch') -eq $epoch -and (Field '_engineeringUncertain') -and (Field '_engineeringBuildId') -eq $buildId) 'same-project resolution retains unresolved operation state'
   Call 'DisposeEngineering'|Out-Null
   Check ((Field '_engineeringUncertain') -and (Field '_engineeringBuildId') -eq $buildId -and $guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'actual lifecycle revocation cannot erase an unresolved engineering operation'
  } finally { $guardType.GetMethod('Reconcile',$flags).Invoke($operationGuard,@($buildId))|Out-Null }
+ # Test only the real response renderer with a synthetic binding; no provider is constructed or invoked.
+ $bindingType=$assembly.GetType('TwinCatAssistant.Native.EngineeringBinding')
+ $sessionId=[Guid]::NewGuid();$started=[DateTime]::UtcNow
+ $binding=$bindingType.GetConstructors($flags)[0].Invoke([object[]]@($sessionId,[int]$PID,$started,'C:\Synthetic\Build.sln','C:\Synthetic\Build.plcproj','fixture'))
+ $sessionType=$assembly.GetType('TwinCatAssistant.Native.EngineeringProviderSession')
+ $renderSession=[Runtime.Serialization.FormatterServices]::GetUninitializedObject($sessionType)
+ $sessionType.GetField('binding',$flags).SetValue($renderSession,$binding)
+ $context=@{sessionId=$sessionId.ToString('D');idePid=[int]$PID;ideStartedUtc=$started.ToString('o');solutionFile='C:\Synthetic\Build.sln';projectFile='C:\Synthetic\Build.plcproj';contextEpoch='fixture'}
+ function Build-Response([Guid]$build,[Guid]$request,[string]$status,[bool]$hasResult){
+  $reply=@{protocolVersion=1;sessionId=$sessionId.ToString('D');operationId=$request.ToString('D');status=$status;provenance=@{context=$context;buildOperationId=$build.ToString('D')}}
+  if($hasResult){$reply.result=@{buildOperationId=$build.ToString('D');cancellationRequested=$true};$reply.output=$null;$reply.diagnostics=@()}
+  return $reply|ConvertTo-Json -Depth 8 -Compress
+ }
+ $buildId=[Guid]::NewGuid();$null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))
+ try{
+  $request=[Guid]::NewGuid()
+  $observing=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'unknown' $true)))
+  Check ($observing -and $guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'cancellation acknowledgement retains the guard and continues bounded build observation'
+  $request=[Guid]::NewGuid()
+  $observing=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'succeeded' $true)))
+  Check (!$observing -and !$guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'later correlated completion reconciles a cancellation request'
+  foreach($case in @(@{status='conflict';hasResult=$false},@{status='refused';hasResult=$true})){
+   $null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))
+   $null=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$buildId,([string](Build-Response $buildId $buildId $case.status $case.hasResult)))
+   Check (!$guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) ('validated pre-submission '+$case.status+' does not leave an unresolved build')
+  }
+  $null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))
+  $request=[Guid]::NewGuid()
+  $null=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'conflict' $false)))
+  Check ($guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'a later observation conflict cannot clear a submitted build'
+ }finally{$guardType.GetMethod('Reconcile',$flags).Invoke($operationGuard,@($buildId))|Out-Null}
  [pscustomobject]@{passed=$checks.Count;checks=@($checks);hostSha256=(Get-FileHash -LiteralPath $HostAssembly -Algorithm SHA256).Hash.ToLowerInvariant();installedIdeAcceptance=$false}|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $OutputDirectory 'result.json') -Encoding UTF8
 }finally{if($control){$control.Dispose()};if($window){$window.Close()};[AppDomain]::CurrentDomain.remove_AssemblyResolve($resolver);$env:TWINCAT_ASSISTANT_TEST_CONFIG=$oldOverride}

@@ -35,8 +35,8 @@ chat after one-time [native chat configuration](NATIVE_CHAT.md#development-setup
 | --- | --- |
 | OpenChamber web / SDK | `2.1.1` |
 | OpenCode CLI / schema | `2.0.23` |
-| Knowledge MCP | `0.1.1`, `fff24f410efa687bf39fe6829f5d068b1e80cf8f` |
-| Engineering monorepo MCP | `3c303837e6d6f72bec1b9d38e778a7c32c61ae5c` |
+| Knowledge MCP | private `0.1.2.dev20261112`, `d5b774941600f746b092b0672216471f35dca73b` |
+| Engineering monorepo MCP | `98f34dd76dc5903c2020ba037cec632ac3cd2004` |
 
 Root and `upstream/` npm lockfiles pin their own dependencies. MCP source trees
 are deliberately not vendored. Review upstream licenses before redistribution.
@@ -61,6 +61,14 @@ not establish native Windows/TwinCAT compatibility.
 [the extension guide](EXTENSION.md). Build output is ignored by Git.
 
 ## Install real upstreams
+
+The current development branch uses reviewed private candidates from
+`upstream/knowledge-lock.json` and `upstream/engineering-lock.json`.
+`Install-Knowledge.ps1` and public release builds deliberately refuse the
+development-only Knowledge pin. Build private relocatable inputs using
+[the input guide](APPLICATION_INPUTS.md); this is not a public installation
+or redistribution approval. The following standalone commands document the
+earlier released 0.1.1 setup and must be used from its release checkout.
 
 For the Windows Assistant, install the pinned Knowledge release in its own
 environment with [Install-Knowledge.ps1](../scripts/Install-Knowledge.ps1):

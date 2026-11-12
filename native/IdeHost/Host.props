@@ -21,6 +21,9 @@
   <ItemGroup>
     <Compile Include="../EngineeringHostTransport.cs;../../Shared/EngineeringAuthorization.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../EngineeringProviderSession.cs;../EngineeringIntegration.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../EngineeringEditorAccess.cs" Link="Shared/EngineeringEditorAccess.cs" />
+    <Compile Include="../EngineeringSourceIntegration.cs" Link="Shared/EngineeringSourceIntegration.cs" />
+    <Compile Include="../EngineeringDirtyState.cs;../EngineeringMcpChild.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../Shared/NativeProjectIdentity.cs" Link="Shared/NativeProjectIdentity.cs" />
     <Compile Include="../NativeMcpProject.cs" Link="Shared/NativeMcpProject.cs" />
     <Compile Include="../NativeKnowledge.cs;../KnowledgeIntegration.cs" Link="Shared/%(Filename)%(Extension)" />

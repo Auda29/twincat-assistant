@@ -49,6 +49,8 @@ export function validateSettings(settings) {
 export const READ_TOOLS = Object.freeze([
   'knowledge_tc_browse_topics', 'knowledge_tc_get_corpus_status',
   'knowledge_tc_get_topic', 'knowledge_tc_search',
+  'knowledge_tc_find_symbols', 'knowledge_tc_get_symbol', 'knowledge_tc_find_libraries',
+  'knowledge_tc_get_library', 'knowledge_tc_lookup_error',
   'engineering_tc_list_workbenches', 'engineering_tc_list_projects',
   'engineering_tc_project_state', 'engineering_plc_list_pous',
   'engineering_plc_read_pou', 'engineering_plc_search_code',
@@ -112,13 +114,26 @@ export function createOpenCodeConfig(settings = {}, runtime = {}) {
   return config;
 }
 
-// Exact configurations written by earlier releases for the same settings. They
-// differ only by a reviewed earlier Analysis prompt and may be upgraded in place.
+// Construct a previously generated policy, including its exact permissions. The
+// five typed tools did not exist in any of the recognized earlier releases.
+const TYPED_KNOWLEDGE_TOOLS = new Set([
+  'knowledge_tc_find_symbols', 'knowledge_tc_get_symbol', 'knowledge_tc_find_libraries',
+  'knowledge_tc_get_library', 'knowledge_tc_lookup_error',
+]);
+export function previousPolicyConfig(settings = {}, runtime = {}, system) {
+  const config = createOpenCodeConfig(settings, runtime);
+  const oldPermissions = config.permissions.filter(rule => !TYPED_KNOWLEDGE_TOOLS.has(rule.action));
+  config.permissions = oldPermissions;
+  config.agents[ANALYSIS_PROFILE].permissions = oldPermissions;
+  config.agents[ANALYSIS_PROFILE].system = system;
+  config.experimental.policies = config.experimental.policies.filter(rule =>
+    ![...TYPED_KNOWLEDGE_TOOLS].some(name => rule.action === 'permission' && rule.resource === `${name}:*`));
+  return config;
+}
+
+// Match complete earlier configurations only, including the old policy and the
+// historical prompt for this exact settings scope.
 export function previousOpenCodeConfigs(settings = {}, runtime = {}) {
-  const current = createOpenCodeConfig(settings, runtime);
-  return previousAnalysisPrompts({ knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) }).map(system => {
-    const config = structuredClone(current);
-    config.agents[ANALYSIS_PROFILE].system = system;
-    return config;
-  });
+  return previousAnalysisPrompts({ knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) })
+    .map(system => previousPolicyConfig(settings, runtime, system));
 }
