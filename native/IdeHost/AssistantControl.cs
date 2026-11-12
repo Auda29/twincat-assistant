@@ -119,6 +119,7 @@ namespace TwinCatAssistant.Native
             BuildBanner();
             BuildKnowledge();
             BuildDiagnostics();
+            BuildCompilerPanel();
             _toolbar.Children.Add(_strip);
             _toolbar.Children.Add(_banner);
             _toolbar.Children.Add(_knowledgePanel);
@@ -345,6 +346,7 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
+            if (_boundDte != dte) { _manualBuild?.Dispose(); _manualBuild = null; }
             if (dte == null)
             {
                 _tracker?.Dispose();
@@ -362,6 +364,9 @@ namespace TwinCatAssistant.Native
             _tracker?.Dispose();
             _tracker = null;
             _boundDte = dte;
+            _manualBuild?.Dispose();
+            try { _manualBuild = new ManualProjectBuild(dte, FreshProjectIdentity, dirty, RenderCompilerBuild); }
+            catch { _manualBuild = null; RenderCompilerBuild("BuildRefused", "", null); }
             if (_solutionEvents != null) { _solutionEvents.Opened -= Invalidate; _solutionEvents.AfterClosing -= Invalidate; }
             _events = dte.Events; // retain event source COM wrappers
             _solutionEvents = _events.SolutionEvents;
@@ -436,6 +441,7 @@ namespace TwinCatAssistant.Native
         private void RenderProjectContext(NativeProjectIdentity project, string reason)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            _manualBuild?.ObserveProject(project);
             CloseProjectChatsOnChange(project);
             _chatProject = project;
             if (_disposed || _holdingView) return;
@@ -769,6 +775,7 @@ namespace TwinCatAssistant.Native
             _chatReadyTimeout.Stop();
             _chatReadyTimeout.Tick -= OnChatReadinessTimeout;
             _splashRun.BeginAnimation(TranslateTransform.XProperty, null);
+            _manualBuild?.Dispose();
             DisposeChatIntegration();
             _knowledgeCancellation?.Cancel();
             _chatSession?.Dispose();
