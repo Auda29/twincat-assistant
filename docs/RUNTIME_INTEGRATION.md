@@ -1,16 +1,17 @@
 # TwinCAT runtime integration
 
-This branch implements the first two agreed groups from
-[the specialization plan](TWINCAT_RUNTIME_UI_PLAN.md). OpenCode 2.0.23 is built
-from its unchanged source at `0fd7e2829449b052abf0078666669302923d77af`.
+The source integration implements the first two agreed groups from
+[the specialization plan](TWINCAT_RUNTIME_UI_PLAN.md). OpenCode 2.0.23 is built from source pinned at `0fd7e2829449b052abf0078666669302923d77af` with the reviewed runtime overlays.
 OpenChamber 2.1.1 at `e302062e3be0686986594fddabdafd8a97c129e5` receives a small
 source overlay connecting its existing composer and stores to the native host.
 The later [delivery scope](DELIVERY_SCOPE.md) disables terminal, browser-control,
 dev-server discovery, general FS mutation/execution and independent upstream
 updaters in the source application. Git and shared services remain for later
-separation. The Assistant's existing read-only permissions remain in force.
+separation. Analysis remains read-only; Beta 5 also allows explicitly enabled, per-chat native Build tools with separate approval for each build. Source-editor operations remain inactive. See [Beta 5 release scope](releases/native-v0.2.0-beta.5.md).
 
 Build inputs and commands are described in [upstream](../upstream/README.md).
+
+Pinned history remains visible during transient build, save or frame invalidation, with actions disabled until project identity is confirmed again. Confirmed project loss still closes it.
 
 ## Existing data and project identity
 

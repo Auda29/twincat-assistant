@@ -1,9 +1,6 @@
 # Profile system prompts
 
-Roadmap item 4 (2026-11-05). This document covers the review and revision of the
-read-only **Analysis** profile prompt and the shared rules that later profiles
-must keep. No new profile is implemented. The Editor profile, UI localization
-and inline completion (items 5–7) are out of scope.
+The default **Analysis** profile is read-only. Beta 5 also supports explicit per-project-chat **Build tools**, using the internal `twincat-editor` agent and C4 policy. Each selective build requires its own native approval. Source-editor tools remain inactive; see [Editor profile](EDITOR_PROFILE.md). The prompt review and evidence below began on 2026-11-05; dated results describe that checkpoint.
 
 ## Where prompts come from
 
@@ -30,14 +27,13 @@ earlier prompt text was present. That earlier configuration-only probe made no m
 
 ## Actual tools and rights
 
-The configuration denies `*` and allows only `READ_TOOLS` plus `question`. The
-prompt lists exactly the tools of the configured servers. A test checks this
-against `READ_TOOLS`.
+The Analysis configuration denies `*` and allows only `READ_TOOLS` plus `question`. Its prompt lists the tools of the configured servers; a test checks this against `READ_TOOLS`. Build tools use the separate C4 permissions described below.
 
 | Scope | Tools named in the prompt |
 | --- | --- |
-| General chat (native) | 4 `knowledge_tc_*` tools, `question`; "No PLC project is connected" |
+| General chat (native) | 9 `knowledge_tc_*` tools, `question`; "No PLC project is connected" |
 | Project chat | Knowledge tools, 9 `engineering_*` tools for the saved files of one `.plcproj`, `question` |
+| Build tools enabled in a project chat | Knowledge and saved-project tools plus nine native build, session and diagnostic tools; each build requires native approval |
 | Operator CLI with global engineering | As the project chat, described as operator-configured saved files |
 | Without knowledge | No documentation citations; answers marked as not verified |
 
@@ -106,7 +102,7 @@ composes these rules unchanged and adds only its own tools and boundary.
    claims that it did.
 
 Profile-specific parts are the tool list, the read-only or write boundary, and
-any project-binding statement. A future Editor profile must:
+any project-binding statement. Any future source-editing profile must:
 
 - List only tools that its generated configuration actually allows.
 - Keep the Analysis profile unchanged and read-only.

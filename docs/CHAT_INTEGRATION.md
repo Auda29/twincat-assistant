@@ -1,10 +1,11 @@
-# Native project chat, candidate 0.1.6
+# Native project chat integration
 
-The `feat/twincat-runtime-ui` source integration is documented in
+Beta 5 supports explicit per-chat Build tools while Analysis remains read-only. Source-editor operations are inactive; existing context and attachments remain. See [Beta 5 release scope](releases/native-v0.2.0-beta.5.md). Pinned history survives transient project-context invalidation, with actions paused until the binding is confirmed again.
+
+The source integration is documented in
 [Runtime integration](RUNTIME_INTEGRATION.md). It replaces bootstrap-cache
 restoration and source-build asset-export guessing, and adds authoritative
-composer attachment observations. The historical candidate evidence below
-continues to describe the released distribution integration.
+composer attachment observations. The candidate evidence below describes the earlier distribution integration.
 
 Candidate 0.1.8 extends this flow with both read-only MCPs and project identity
 independent of supported POU attachments. See [Native MCP integration](NATIVE_MCP.md)

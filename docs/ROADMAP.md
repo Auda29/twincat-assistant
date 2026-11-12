@@ -11,13 +11,14 @@ Assistant window. The observed toolbox wait has not been attributed to Assistant
 
 ## Agreed priorities (2026-11-02)
 
-Release decision, 2026-11-12: Beta 5 keeps the ST source-development code but
+Published release, 2026-11-12: [Beta 5](releases/native-v0.2.0-beta.5.md) keeps the ST source-development code but
 disables its release tools, UI and accessors. Selective builds, diagnostics,
 navigation, typed Knowledge tools and the pinned-history fix form the usable
-release scope. Real-host acceptance follows publication; normal-ST transactions
+release scope. Engineering 0.5.3 and Knowledge 0.1.2 are published and integrated.
+Real-host acceptance remains open after publication; normal-ST transactions
 and durable source rollback remain separate open work.
 
-Development update, 2026-11-12: MCP-first P1 work is in three separate PRs.
+Earlier development checkpoint, 2026-11-12: MCP-first P1 work was in three separate PRs.
 Typed Knowledge tools, selective PLC builds, exact native diagnostic navigation,
 normal-ST live read/preview and the session-bound Editor profile are implemented
 as private candidates. Normal-ST apply/rollback remains blocked by the lack of
@@ -30,8 +31,9 @@ gap. No merge, public release, installation or live acceptance is implied. See
 Priority update, 2026-11-10: next focus is TwinCAT 4026 with TcXaeShell64, followed
 by explicit project builds and navigable compiler diagnostics. Full Visual Studio
 2022 follows Shell64. See the [implementation boundaries and next slice](SHELL64_AND_BUILD_PLAN.md).
-4026/Shell64 is not yet installed; no installation/migration or compatibility
-acceptance is implied. The seven original items below remain as the scope list,
+At that 2026-11-10 checkpoint, 4026/Shell64 was not installed locally. A later
+operator-provided IPC reports 4026.26, but no extension compatibility acceptance
+or enabled installer target follows from that inventory. The seven original items below remain as the scope list,
 not the current execution order.
 
 Integration, 2026-11-10: Beta 1 combines product cleanup and saved DE/EN selection

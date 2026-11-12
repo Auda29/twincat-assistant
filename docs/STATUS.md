@@ -1,15 +1,26 @@
 # Implementation status
 
-**Beta 5 release scope, 2026-11-12.** The next release integrates versioned
+**Beta 5 published, 2026-11-12.** [GitHub Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.5)
+is application `0.2.0-beta.5` / native `0.2.0.11`, built from reviewed source
+`f73b8e474ffb7e5981ecb95990f3ae0a09b68648`, merged by PR #30 into main
+`87b1d51c0bb8fdbba64125c8f18bd32ec132799d` with an identical source tree.
+It integrates versioned
 Engineering 0.5.3 and Knowledge 0.1.2 with selective PLC builds, build-owned
 diagnostics, native navigation and the pinned-chat-list fix. The full ST source
 development is retained but inactive: no source tools, source panel or editor
 accessor are supplied, and native source dispatch is refused. The original
 read-only editor attachment remains available. C4 migrates exact historical
 policies to the nine-tool build profile. The owner performs live host acceptance
-after publication. [Release scope](releases/native-v0.2.0-beta.5.md).
+after publication. All 191 Node tests, 1,086 native checks and 38 standalone
+WPF/WebView checks passed. The complete local Windows source-to-installer
+pipeline includes published MCP input verification, owned-child authentication,
+package startup/restart/state preservation, synthetic update/rollback and actual
+EXE extraction with all 21,617 file hashes checked. Uploaded asset sizes and
+SHA-256 digests match the local outputs. Hosted source CI is green; this does
+not claim a hosted installer build or real provider-login rollback.
+[Release scope](releases/native-v0.2.0-beta.5.md).
 
-**Private MCP-first candidate, 2026-11-12.** Assistant [PR #30](https://github.com/Auda29/twincat-assistant/pull/30)
+**Earlier private MCP-first checkpoint, 2026-11-12.** Assistant [PR #30](https://github.com/Auda29/twincat-assistant/pull/30)
 integrates Engineering [PR #2](https://github.com/Auda29/twincat-mcp-mono/pull/2)
 and Knowledge [PR #27](https://github.com/Auda29/twincat-knowledge-mcp/pull/27).
 The candidate adds explicit per-chat Editor activation, native approvals,

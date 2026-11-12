@@ -7,18 +7,14 @@ files are bundled with the Assistant.
 
 ## Knowledge software version
 
-The Assistant pins Knowledge MCP **0.1.1** separately in
+The Assistant pins Knowledge MCP **0.1.2** separately in
 [knowledge-lock.json](../upstream/knowledge-lock.json). On Windows,
 [Install-Knowledge.ps1](../scripts/Install-Knowledge.ps1) installs the verified
 release wheel and hashed dependencies in a versioned environment. Native setup
 selects that executable; the existing TOML, active snapshot and documentation
 package remain in place. See [native MCP configuration](NATIVE_MCP.md).
 
-This release adds conservative cleanup of marked loader caches left behind by
-terminated processes. It preserves active readers and unmarked legacy caches.
-It does not change the four-tool protocol, convert the corpus or reduce the
-first full-corpus load. Restart the Assistant runtime after switching its MCP
-executable so the shared broker starts the selected installation.
+The release retains the existing corpus packages and adds five typed symbol, library and error lookup tools to the four topic/status tools. The typed index is built lazily from the existing packages. Results carry documented metadata and sources, report ambiguity and missing fields, and do not establish installed library versions. Restart the Assistant runtime after switching its MCP executable so the shared broker starts the selected installation.
 
 ## Normal use
 
@@ -76,7 +72,7 @@ The protected native runtime owns one Knowledge backend shared by its general
 and project chat contexts. Each context uses a small stdio relay over a private
 authenticated named pipe, or a Unix socket. The endpoint and random token live
 in `knowledge/broker.json` under the protected operator profile. Relays cannot
-select an executable, another corpus or additional tools. Only the four reviewed
+select an executable, another corpus or additional tools. All nine reviewed
 Knowledge read tools are forwarded; engineering remains scoped to each PLC.
 
 The broker starts the backend on demand and retains it when a chat context
@@ -99,22 +95,21 @@ original structured result and also supplies its complete bounded JSON as text,
 including search IDs, article sections and citations. Error state and source
 fields are preserved. No model or provider setting is changed by this adapter.
 
-With the installed German 49,970-article package, the local adapter test measured
+In an earlier local test with a German 49,970-article package, the adapter measured
 108 seconds for the first full load, 617 milliseconds for three subsequent
 searches across separate clients, and 452 milliseconds to open a returned topic.
 Exactly one backend started. Full validation on a fresh runtime start remains
 an upstream cost; this change removes repeated loads within that runtime rather
-than bypassing package validation. Existing running IDE sessions need one restart
-to load this updated Node runtime. No new VSIX installation is needed for these
-JavaScript changes.
+than bypassing package validation. These historical measurements do not establish Beta 5 typed extraction quality or performance on an operator corpus.
 
 ## Open investigation: slow Knowledge connection
 
 Status: still open. The [2026-11-02 investigation](KNOWLEDGE_STARTUP_INVESTIGATION.md)
 attributes most startup time to full-corpus validation, documents a tested local
 Knowledge optimization and explains the earlier fixture's two backend starts.
-The candidate still needs about a minute and is not installed; the historical
-operator-profile write attribution also remains open.
+At that historical checkpoint, the candidate still needed about a minute and
+was not installed. That is not the installation status of published Beta 5.
+The historical operator-profile write attribution also remains open.
 
 Originally recorded on 2026-10-30. The recording
 `30.10.2026_12.37.24_REC.mp4` shows the Knowledge panel open at approximately

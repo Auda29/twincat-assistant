@@ -1,5 +1,7 @@
 # Bounded delivery scope for Core, Chat and Host
 
+Beta 5 adds explicitly enabled per-chat Build tools, subject to individual native approval; Analysis remains read-only and the new source-editor workflows remain inactive. See [Beta 5 release scope](releases/native-v0.2.0-beta.5.md). The dated delivery decisions and checks below are historical.
+
 **Follow-up, 2026-11-09:** actual removal of server modules, CLI functionality,
 native dependencies and product text is documented in
 [Product cleanup](PRODUCT_CLEANUP_20261109.md). Its scope supersedes corresponding
