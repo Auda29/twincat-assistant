@@ -123,9 +123,9 @@ Pending generations and fresh chat epochs prevent late activation after a switch
 
 - Pinned SDK 8.0.425 x86 host/helper/probe/VSIX build passed; 1,076 native
   policy/context/localization checks passed. Fourteen existing threading warnings.
-- Full Node suite: 190 passed, no skipped tests. The source Core/Chat runtime was
+- Full Node suite: 191 passed, no skipped tests. The source Core/Chat runtime was
   rebuilt for the Editor overlay.
-- Twenty-eight actual standalone WPF/WebView callback/renderer checks passed.
+- Thirty-one actual standalone WPF/WebView callback/renderer checks passed.
   Actual packaged Node HMAC bootstrap, MCP initialization, correlated describe,
   owned-process disposal and tamper refusals passed against a synthetic provider.
 - Real pinned Core integration established Editor-allow, Analysis-deny and shell-

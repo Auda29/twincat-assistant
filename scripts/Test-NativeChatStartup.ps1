@@ -221,5 +221,16 @@ try{
   $null=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'conflict' $false)))
   Check ($guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'a later observation conflict cannot clear a submitted build'
  }finally{$guardType.GetMethod('Reconcile',$flags).Invoke($operationGuard,@($buildId))|Out-Null}
+ $capabilityId=[Guid]::NewGuid()
+ $capability=@{protocolVersion=1;sessionId=$sessionId.ToString('D');operationId=$capabilityId.ToString('D');status='succeeded';result=@{contextValidated=$true;capabilities=@{plcBuild='supported'};buildScope='plcProject';targetProjectFile='C:\Synthetic\Build.plcproj';configuration='Release';platform='TwinCAT RT (x64)'}}
+ $capabilityMethod=$control.GetType().GetMethod('EngineeringSupportsPlcOnlyBuild',[Reflection.BindingFlags]'Static,NonPublic')
+ $capabilityArgs=[object[]]@([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId,$null,$null)
+ Check ($capabilityMethod.Invoke($null,$capabilityArgs) -and $capabilityArgs[3] -ceq 'Release' -and $capabilityArgs[4] -ceq 'TwinCAT RT (x64)') 'fresh model capability results supply the exact current build configuration and platform'
+ $capability.result.buildScope='twinCatProject'
+ $capabilityArgs=[object[]]@([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId,$null,$null)
+ Check (!$capabilityMethod.Invoke($null,$capabilityArgs)) 'a broader TwinCAT build scope cannot enable PLC approval'
+ $capability.result.buildScope='plcProject';$capability.result.configuration=$null
+ $capabilityArgs=[object[]]@([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId,$null,$null)
+ Check (!$capabilityMethod.Invoke($null,$capabilityArgs)) 'missing configuration cannot enable PLC approval'
  [pscustomobject]@{passed=$checks.Count;checks=@($checks);hostSha256=(Get-FileHash -LiteralPath $HostAssembly -Algorithm SHA256).Hash.ToLowerInvariant();installedIdeAcceptance=$false}|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $OutputDirectory 'result.json') -Encoding UTF8
 }finally{if($control){$control.Dispose()};if($window){$window.Close()};[AppDomain]::CurrentDomain.remove_AssemblyResolve($resolver);$env:TWINCAT_ASSISTANT_TEST_CONFIG=$oldOverride}

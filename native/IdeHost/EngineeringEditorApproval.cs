@@ -151,6 +151,13 @@ namespace TwinCatAssistant.Native
                 attempt.Token.ThrowIfCancellationRequested();
                 if (_disposed || session != _engineering || !binding.Same(session.Binding)) throw new InvalidOperationException("Engineering context changed.");
                 if (parsed.Approved) HandleEditorMutationResponse(parsed, envelope, response);
+                else if (parsed.Operation == "session.describe")
+                {
+                    _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(response, binding, parsed.Id,
+                        out _engineeringConfiguration, out _engineeringPlatform);
+                    _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringBusy && !_engineeringUncertain
+                        && !_engineeringProjectSuspended && !EngineeringBuildGuard.HasUnresolved && !EngineeringSourceGuard.HasUnresolved;
+                }
                 else if (parsed.Operation == "operation.get" || parsed.Operation == "operation.cancel" || parsed.Operation == "diagnostics.read" || parsed.Operation == "output.read")
                 {
                     Guid build;

@@ -121,6 +121,12 @@ namespace TwinCatAssistant.Native
         private object ConvertBuffer(object doc)
         {
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            // TwinCAT's synthetic searchable-block MEF adapter is not the XML
+            // document. Never ask that docdata for an ordinary text-buffer
+            // bridge; the separate scoped section accessor handles live reads.
+            var customDocData = assemblies.Where(a => a.GetName().Name == "TwinCATPlcControl")
+                .Select(a => a.GetType("Beckhoff.TwinCAT.VS.TextImage.PlcDocDataObject", false)).FirstOrDefault(t => t != null);
+            if (customDocData != null && customDocData.IsInstanceOfType(doc)) return null;
             var component = Find(assemblies, "Microsoft.VisualStudio.ComponentModelHost", "Microsoft.VisualStudio.ComponentModelHost.SComponentModel");
             var componentModel = Find(assemblies, "Microsoft.VisualStudio.ComponentModelHost", "Microsoft.VisualStudio.ComponentModelHost.IComponentModel");
             var adapter = Find(assemblies, "Microsoft.VisualStudio.Editor", "Microsoft.VisualStudio.Editor.IVsEditorAdaptersFactoryService");

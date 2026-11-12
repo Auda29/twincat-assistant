@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { transform } from 'esbuild';
+import { z } from 'zod';
 
 async function makeBridge() {
   const source = await readFile(new URL('../upstream/overlays/openchamber/twincat.ts', import.meta.url), 'utf8');
   const stripped = source.replace(/^import .*;\r?\n/gm, '');
   const prelude = `
     const stub = new Proxy(function () { return stub }, { get() { return stub }, apply() { return stub } });
-    const React = stub, z = stub;
+    const React = stub, z = globalThis.__z;
     const useSessionUIStore = globalThis.__sessionStore;
     const useUIStore = stub, useConfigStore = stub, useInputStore = stub, useI18nStore = stub;
     const opencodeClient = stub, buildExportFilename = stub, formatSessionAsMarkdown = stub;
@@ -22,7 +23,7 @@ async function makeBridge() {
   let state = { currentSessionId: 'a', currentSessionDirectory: 'C:/project' };
   const subscribers = new Set();
   const store = { getState: () => state, subscribe: fn => { subscribers.add(fn); return () => subscribers.delete(fn); } };
-  const sandbox = { module: { exports: {} }, exports: {}, __sessionStore: store };
+  const sandbox = { module: { exports: {} }, exports: {}, __sessionStore: store, __z: z };
   sandbox.exports = sandbox.module.exports;
   vm.runInNewContext(compiled.code, sandbox);
   return { api: sandbox.module.exports, select(next) { state = next; for (const fn of subscribers) fn(state); } };
@@ -43,7 +44,7 @@ test('Editor requires native enable on the exact committed chat and revokes on i
   assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'other', enabled: true }), false);
   assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true }), true);
   assert.equal(api.twinCatActiveProfile(), 'twincat-editor');
-  assert.deepEqual(names(api.twinCatSelectableAgents(agents)), ['twincat-readonly', 'twincat-editor']);
+  assert.deepEqual(names(api.twinCatSelectableAgents(agents)), ['twincat-editor']);
   api.twinCatSource.setContext('a', { ...context, object: 'B', treePath: 'B', reference: 'new-revision' });
   assert.equal(api.twinCatActiveProfile(), 'twincat-editor');
   select({ currentSessionId: 'b', currentSessionDirectory: 'C:/project' });
@@ -76,6 +77,19 @@ test('view readiness masks Editor temporarily; project change and explicit revoc
   assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true }), true);
   api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: false });
   assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
+});
+
+test('malformed native profile requests refuse and revoke an existing grant', async () => {
+  const { api } = await makeBridge();
+  api.twinCatSource.activate();
+  api.publishTwinCatView('a', 'C:/project', true);
+  api.twinCatSource.setContext('a', context);
+  for (const malformed of [null, {}, { sessionId: 7, enabled: true }, { sessionId: 'a', enabled: 'true' },
+    { sessionId: 'a', enabled: true, extra: 'ignored?' }, { sessionId: 'x'.repeat(257), enabled: true }]) {
+    assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true }), true);
+    assert.equal(api.twinCatSource.setEditorProfile(malformed), false);
+    assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
+  }
 });
 
 test('overlay routes composer, controls, live submission and mobile display through the active profile', async () => {

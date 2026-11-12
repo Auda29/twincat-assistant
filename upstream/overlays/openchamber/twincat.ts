@@ -68,6 +68,7 @@ export function useTwinCatComposerReferences(identity: ChatDraftIdentity | null)
 }
 export const TWINCAT_ANALYSIS_PROFILE = 'twincat-readonly';
 export const TWINCAT_EDITOR_PROFILE = 'twincat-editor';
+const editorProfileRequest = z.object({ sessionId: z.string().min(1).max(256), enabled: z.boolean() }).strict();
 let editorProfile: { sessionId: string; directory: string; project: string } | null = null;
 function notifyTwinCatProfile() { for (const listener of embeddingListeners) listener(); }
 function revokeTwinCatEditor() {
@@ -87,8 +88,7 @@ export function twinCatActiveProfile() {
 // One native profile policy for menus, keyboard cycling and @ mentions.
 // Keep the original catalog and stored profile IDs intact.
 export function twinCatSelectableAgents<T extends { name: string }>(agents: T[]): T[] {
-  return active ? agents.filter(agent => agent.name === TWINCAT_ANALYSIS_PROFILE
-    || (agent.name === TWINCAT_EDITOR_PROFILE && twinCatActiveProfile() === TWINCAT_EDITOR_PROFILE)) : agents;
+  return active ? agents.filter(agent => agent.name === twinCatActiveProfile()) : agents;
 }
 export function twinCatSelectablePanels<T extends { mode: string }>(panels: T[]): T[] {
   return active ? panels.filter(panel => panel.mode === 'context') : panels;
@@ -206,9 +206,12 @@ export const twinCatSource = {
       && view.directory === (selection.currentSessionDirectory ?? null);
   },
   setEditorProfile(request: { sessionId: string; enabled: boolean }) {
-    if (!request || request.enabled !== true) { revokeTwinCatEditor(); return request?.enabled === false; }
+    const parsed = editorProfileRequest.safeParse(request);
+    if (!parsed.success) { revokeTwinCatEditor(); return false; }
+    request = parsed.data;
+    if (!request.enabled) { revokeTwinCatEditor(); return true; }
     const selected = useSessionUIStore.getState();
-    if (!active || typeof request.sessionId !== 'string' || !request.sessionId || request.sessionId.length > 256
+    if (!active
       || view?.ready !== true || !view.directory || view.sessionId !== request.sessionId
       || context?.sessionId !== request.sessionId || !context.value.project
       || selected.currentSessionId !== request.sessionId || selected.currentSessionDirectory !== view.directory) {
