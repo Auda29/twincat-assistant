@@ -23,6 +23,7 @@ namespace TwinCatAssistant.Native
         private readonly MethodInfo dispatch;
         private readonly Type contextType;
         private EngineeringBinding binding;
+        private bool approvalsSuspended;
         internal EngineeringBinding Binding { get { return Volatile.Read(ref binding); } }
 
         internal static bool SupportedHost(HostIdentity host)
@@ -87,6 +88,7 @@ namespace TwinCatAssistant.Native
         {
             try
             {
+                if (approvalsSuspended) { authorization.Revoke(); return false; }
                 if ((string)Property(request, "Operation") != "build.start") return false;
                 var expected = Property(request, "Expected");
                 var exact = new EngineeringBinding((Guid)Property(expected, "SessionId"), (int)Property(expected, "IdePid"),
@@ -113,10 +115,14 @@ namespace TwinCatAssistant.Native
         // Only the explicit native button handler calls this after confirmation.
         internal void ApproveBuild(Guid operation, string exactRequest, DateTime expires)
         {
+            if (approvalsSuspended) throw new InvalidOperationException("Project context is being revalidated.");
             var current = Binding ?? throw new ObjectDisposedException(nameof(EngineeringProviderSession));
             authorization.Grant(new EngineeringAction(current, operation, "build.start", current.ProjectFile, null, null, null,
                 expires, EngineeringAction.HashRequest(exactRequest), null, null), DateTime.UtcNow);
         }
+
+        internal void SuspendApprovals() { approvalsSuspended = true; authorization.Revoke(); }
+        internal void ResumeApprovals() { approvalsSuspended = false; }
 
         internal Task<string> DispatchAsync(string request, CancellationToken cancellation)
         {

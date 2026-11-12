@@ -48,6 +48,14 @@ is one-shot, short-lived and binds the complete UTF-8 request digest, operation,
 context and target. The generic authorization policy additionally binds section,
 preview/journal IDs and before/after digests for future reviewed source actions.
 
+Ordinary transient editor/text/save/frame invalidation suspends new approvals
+without replacing the engineering session. Only a verified same-project result
+resumes approval. An unresolved submitted build is retained in a process-wide
+guard across actual provider/view revocation; a new session cannot clear it.
+Only correlated terminal evidence reconciles it. There is no manual reset or
+guess based on a timeout; if observation has been lost, restarting the IDE is the
+remaining recovery boundary in this foundation.
+
 The UI confirms manual actions, observes only correlated bounded results and
 never claims a timed-out/cancelled operation has stopped. No compiler logic is
 duplicated in Assistant. Navigation and automatic diagnostic disclosure are absent.
@@ -74,15 +82,20 @@ integration gate. The transport does not by itself authorize engineering actions
 
 ## Validation and remaining gates
 
-- Fresh pinned SDK 8.0.425 x86 build: 1,008 native/localization/authorization
+- Fresh pinned SDK 8.0.425 x86 build: 1,014 native/localization/authorization
   regressions passed; helper/probe/host/VSIX compile succeeded. Existing threading
-  warnings remain. Seventeen standalone WPF/WebView startup checks passed with
+  warnings remain. Twenty-one standalone WPF/WebView startup checks passed with
   private synthetic state and no installed IDE.
 - The standalone transport probe exercises valid and invalid authentication,
   malformed/duplicate frames, exact payloads and MACs, byte limits, idle timeout,
   normal disposal and recovery after a refused client.
 - Native approval regressions cover no approval, replay, changed epoch/session,
   expiry, revocation, identical-text object substitution and altered request bytes.
+- Independent review at `bd40d9e` found transient editor invalidation discarded
+  provider observation and unresolved state. The correction preserves the session
+  during transient callbacks, revokes approval until exact-project resolution and
+  retains unresolved work in an IDE-process guard. Real WPF callback regressions
+  cover suspension, same-project resolution and actual lifecycle revocation.
 
 No IDE was started or attached, no operator source/state was inspected, no PLC
 was compiled and no installation was performed. Synthetic checks do not establish

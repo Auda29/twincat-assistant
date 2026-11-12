@@ -439,7 +439,7 @@ namespace TwinCatAssistant.Native
         private void RenderProjectContext(NativeProjectIdentity project, string reason)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            RenderEngineeringProject(project);
+            RenderEngineeringProject(project, project == null && ActiveEditorTracker.IsTransient(reason));
             CloseProjectChatsOnChange(project);
             _chatProject = project;
             if (_disposed || _holdingView) return;

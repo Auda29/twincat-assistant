@@ -168,5 +168,21 @@ try{
  Put '_automating' $false;Await(Invoke-Private 'RunAutomationAsync')|Out-Null;Put '_automating' $true
  Check ((Field '_chatSelection').sessionId -ceq $selected) 'a later automation pass does not create another chat'
  Check ($null -eq (Field '_reader') -and $null -eq (Field '_chatSession')) 'no IDE or operator backend was used'
+ # Exercise the real project callback boundary without a provider or IDE.
+ # Ordinary tracker invalidation must retain observation state and session epoch.
+ $operationGuard=$control.GetType().GetField('EngineeringBuildGuard',$flags -bor [Reflection.BindingFlags]::Static).GetValue($null)
+ $guardType=$operationGuard.GetType()
+ $buildId=[Guid]::NewGuid()
+ Check ($guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))) 'synthetic operation reserves the process-wide engineering guard'
+ try {
+  Put '_engineeringProject' $project;Put '_engineeringBusy' $true;Put '_engineeringUncertain' $true;Put '_engineeringBuildId' $buildId
+  $epoch=Field '_engineeringEpoch'
+  Invoke-Private 'RenderEngineeringProject' @($null,$true)|Out-Null
+  Check ((Field '_engineeringEpoch') -eq $epoch -and (Field '_engineeringProject').Equals($project) -and (Field '_engineeringBusy') -and (Field '_engineeringBuildId') -eq $buildId) 'transient editor invalidation preserves engineering observation and epoch'
+  Invoke-Private 'RenderEngineeringProject' @($project,$false)|Out-Null
+  Check ((Field '_engineeringEpoch') -eq $epoch -and (Field '_engineeringUncertain') -and (Field '_engineeringBuildId') -eq $buildId) 'same-project resolution retains unresolved operation state'
+  Call 'DisposeEngineering'|Out-Null
+  Check ((Field '_engineeringUncertain') -and (Field '_engineeringBuildId') -eq $buildId -and $guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'actual lifecycle revocation cannot erase an unresolved engineering operation'
+ } finally { $guardType.GetMethod('Reconcile',$flags).Invoke($operationGuard,@($buildId))|Out-Null }
  [pscustomobject]@{passed=$checks.Count;checks=@($checks);hostSha256=(Get-FileHash -LiteralPath $HostAssembly -Algorithm SHA256).Hash.ToLowerInvariant();installedIdeAcceptance=$false}|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $OutputDirectory 'result.json') -Encoding UTF8
 }finally{if($control){$control.Dispose()};if($window){$window.Close()};[AppDomain]::CurrentDomain.remove_AssemblyResolve($resolver);$env:TWINCAT_ASSISTANT_TEST_CONFIG=$oldOverride}

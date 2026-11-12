@@ -4,6 +4,25 @@ using System.Text;
 
 namespace TwinCatAssistant.Native
 {
+    // Kept for the IDE process lifetime by AssistantControl. Losing a view or
+    // provider is not evidence that an already submitted build has finished.
+    internal sealed class EngineeringOperationGuard
+    {
+        private readonly object gate = new object();
+        private Guid operation;
+        internal Guid OperationId { get { lock (gate) return operation; } }
+        internal bool HasUnresolved { get { return OperationId != Guid.Empty; } }
+        internal bool TryBegin(Guid id)
+        {
+            if (id == Guid.Empty) throw new ArgumentException("An operation identity is required.");
+            lock (gate) { if (operation != Guid.Empty) return false; operation = id; return true; }
+        }
+        internal bool Reconcile(Guid id)
+        {
+            lock (gate) { if (id == Guid.Empty || operation != id) return false; operation = Guid.Empty; return true; }
+        }
+    }
+
     // Host-owned one-shot authorization. Neither a tool argument nor possession
     // of a transport capability grants permission to compile or mutate source.
     internal sealed class EngineeringBinding

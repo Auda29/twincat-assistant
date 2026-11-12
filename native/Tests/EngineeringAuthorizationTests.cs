@@ -36,6 +36,14 @@ internal static class EngineeringAuthorizationTests
         Check(EngineeringAction.HashRequest("é") != EngineeringAction.HashRequest("e"), "Digest binds exact UTF8 bytes");
         try { store.Grant(new EngineeringAction(binding, Guid.NewGuid(), "build.start", null, null, null, null, now.AddMinutes(3), digest, null, null), now); throw new Exception("Overlong approval accepted"); }
         catch (ArgumentException) { count++; }
+        var unresolved = new EngineeringOperationGuard();
+        var build = Guid.NewGuid();
+        Check(unresolved.TryBegin(build), "First native operation reserves the guard");
+        Check(unresolved.HasUnresolved && unresolved.OperationId == build, "Operation remains unresolved until terminal evidence");
+        Check(!unresolved.TryBegin(Guid.NewGuid()), "A new session cannot bypass unresolved work");
+        Check(!unresolved.Reconcile(Guid.NewGuid()) && unresolved.OperationId == build, "Unrelated terminal evidence cannot clear the guard");
+        Check(unresolved.Reconcile(build) && !unresolved.HasUnresolved, "Exact terminal evidence clears the guard");
+        Check(unresolved.TryBegin(Guid.NewGuid()), "A later operation can start after reconciliation");
         return count;
     }
 }
