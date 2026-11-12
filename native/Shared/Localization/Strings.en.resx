@@ -387,4 +387,17 @@
   <data name="ProjectSetupTimeout" xml:space="preserve"><value>Project configuration verification timed out. The chat connection is independent. Check Diagnostics and retry project setup.</value></data>
   <data name="ProjectSetupFailed" xml:space="preserve"><value>Setup failed</value></data>
   <data name="ProjectChatNotConfigured" xml:space="preserve"><value>Project chat is not configured</value></data>
+  <data name="BuildProject" xml:space="preserve"><value>Build PLC project</value></data>
+  <data name="BuildDisclose" xml:space="preserve"><value>Attach build output to chat</value></data>
+  <data name="BuildRunning" xml:space="preserve"><value>Build running. No download.</value></data>
+  <data name="BuildUnknown" xml:space="preserve"><value>Build outcome unknown. Wait for IDE completion before retrying.</value></data>
+  <data name="BuildStale" xml:space="preserve"><value>Build context changed. Results discarded.</value></data>
+  <data name="BuildSucceeded" xml:space="preserve"><value>Build succeeded.</value></data>
+  <data name="BuildFailed" xml:space="preserve"><value>Build failed.</value></data>
+  <data name="BuildRefused" xml:space="preserve"><value>Build refused. Requires the exact chat project, supported host, saved files and known Debug/Release configuration without custom build hooks.</value></data>
+  <data name="BuildNavigationUnavailable" xml:space="preserve"><value>Exact line navigation is unavailable for this editor.</value></data>
+  <data name="BuildDisclosureFailed" xml:space="preserve"><value>Build output could not be attached. Check the chat binding.</value></data>
+  <data name="BuildError" xml:space="preserve"><value>Error</value></data>
+  <data name="BuildWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="BuildCaptureUnavailable" xml:space="preserve"><value>Fresh output capture unavailable. No diagnostic freshness is claimed.</value></data>
 </root>

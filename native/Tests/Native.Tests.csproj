@@ -7,6 +7,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Shared/BuildCompletionEvidence.cs" Link="BuildCompletionEvidence.cs" />
+    <Compile Include="../Shared/BuildProjectPolicy.cs" Link="BuildProjectPolicy.cs" />
+    <Compile Include="../Shared/BuildDiagnostic.cs" Link="BuildDiagnostic.cs" />
     <Compile Include="../Shared/NativeProjectIdentity.cs" Link="NativeProjectIdentity.cs" />
     <Compile Include="../Shared/ChatContextBinding.cs" Link="ChatContextBinding.cs" />
     <Compile Include="../Shared/DirtyEvidence.cs" Link="DirtyEvidence.cs" />

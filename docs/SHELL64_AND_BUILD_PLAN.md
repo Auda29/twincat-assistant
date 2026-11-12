@@ -62,5 +62,6 @@ line/column. Navigation stays within the exact bound project's validated files.
 Sending diagnostic text to Chat is an explicit disclosure action.
 
 Use synthetic success/failure/cancellation cases first, then confirm the actual
-4026/Shell64 API and menu navigation on an installed host. These build/diagnostic
-features are a plan, not implemented compiler functionality in this preparation.
+4026/Shell64 API and menu navigation on an installed host. The native manual build implementation is now documented in
+[Manual PLC project build](MANUAL_PROJECT_BUILD.md). Real-host acceptance remains
+open; no operator project was built during implementation.

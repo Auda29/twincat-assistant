@@ -5,7 +5,9 @@
 The current launcher is read-only with default-deny tool and provider policies.
 The portable C# core implements proposal/apply/rollback validation against an
 injected adapter, but the diagnostic [pipe bridge](BRIDGE.md) exposes none of
-those mutations. No native adapter, real build or runtime action is connected.
+those mutations. The native [manual PLC project build](MANUAL_PROJECT_BUILD.md) is a separate
+user action on the exact bound project. It grants no compiler tool to Analysis
+and exposes no runtime action.
 The rest of this document specifies the requirements for that future integration.
 
 ## MVP Safety Boundary

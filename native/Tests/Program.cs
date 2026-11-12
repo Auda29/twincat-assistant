@@ -28,3 +28,4 @@ var viewStateCases = ProjectChatViewStateTests.Run();
 var hostCases = HostIdentityTests.Run();
 var languageCases = HostTextTests.Run();
 Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases + viewStateCases + hostCases + languageCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");
+BuildDiagnosticTests.Run();

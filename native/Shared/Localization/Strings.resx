@@ -387,4 +387,17 @@
   <data name="ProjectSetupTimeout" xml:space="preserve"><value>Die Prüfung der Projektkonfiguration hat das Zeitlimit erreicht. Die Chatverbindung ist davon unabhängig. Diagnose prüfen und die Einrichtung erneut versuchen.</value></data>
   <data name="ProjectSetupFailed" xml:space="preserve"><value>Einrichtung fehlgeschlagen</value></data>
   <data name="ProjectChatNotConfigured" xml:space="preserve"><value>Projektchat nicht eingerichtet</value></data>
+  <data name="BuildProject" xml:space="preserve"><value>PLC-Projekt bauen</value></data>
+  <data name="BuildDisclose" xml:space="preserve"><value>Build-Ausgabe an Chat anhängen</value></data>
+  <data name="BuildRunning" xml:space="preserve"><value>Build läuft. Kein Download.</value></data>
+  <data name="BuildUnknown" xml:space="preserve"><value>Build-Ergebnis unbekannt. Auf IDE-Abschluss warten.</value></data>
+  <data name="BuildStale" xml:space="preserve"><value>Build-Kontext geändert. Ergebnisse verworfen.</value></data>
+  <data name="BuildSucceeded" xml:space="preserve"><value>Build erfolgreich.</value></data>
+  <data name="BuildFailed" xml:space="preserve"><value>Build fehlgeschlagen.</value></data>
+  <data name="BuildRefused" xml:space="preserve"><value>Build abgelehnt. Exaktes Chat-Projekt, unterstützter Host, gespeicherte Dateien und bekannte Debug/Release-Konfiguration ohne eigene Build-Hooks erforderlich.</value></data>
+  <data name="BuildNavigationUnavailable" xml:space="preserve"><value>Exakte Zeilennavigation ist für diesen Editor nicht verfügbar.</value></data>
+  <data name="BuildDisclosureFailed" xml:space="preserve"><value>Build-Ausgabe konnte nicht angehängt werden. Chat-Bindung prüfen.</value></data>
+  <data name="BuildError" xml:space="preserve"><value>Fehler</value></data>
+  <data name="BuildWarning" xml:space="preserve"><value>Warnung</value></data>
+  <data name="BuildCaptureUnavailable" xml:space="preserve"><value>Neue Ausgabe nicht sicher erfasst. Keine aktuellen Diagnosen bestätigt.</value></data>
 </root>
