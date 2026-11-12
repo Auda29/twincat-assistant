@@ -2,7 +2,9 @@ import { isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Config } from '@opencode/schema';
 import { Schema } from 'effect';
-import { ANALYSIS_PROFILE, previousAnalysisPrompts, analysisSystemPrompt } from './agent-prompts.mjs';
+import { ANALYSIS_PROFILE, EDITOR_PROFILE, previousAnalysisPrompts, analysisSystemPrompt, editorSystemPrompt, previousC3EditorSystemPrompt } from './agent-prompts.mjs';
+import { C2_ANALYSIS_PROMPTS } from './analysis-prompts-c2.mjs';
+import { EDITOR_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
 
 function object(value, keys) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -49,6 +51,8 @@ export function validateSettings(settings) {
 export const READ_TOOLS = Object.freeze([
   'knowledge_tc_browse_topics', 'knowledge_tc_get_corpus_status',
   'knowledge_tc_get_topic', 'knowledge_tc_search',
+  'knowledge_tc_find_symbols', 'knowledge_tc_get_symbol', 'knowledge_tc_find_libraries',
+  'knowledge_tc_get_library', 'knowledge_tc_lookup_error',
   'engineering_tc_list_workbenches', 'engineering_tc_list_projects',
   'engineering_tc_project_state', 'engineering_plc_list_pous',
   'engineering_plc_read_pou', 'engineering_plc_search_code',
@@ -94,11 +98,18 @@ export function createOpenCodeConfig(settings = {}, runtime = {}) {
         mode: 'primary', permissions,
         system: analysisSystemPrompt({ knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) }),
       },
+      [EDITOR_PROFILE]: {
+        description: 'Native-approved project builds and diagnostics',
+        mode: 'primary',
+        permissions: [...permissions, ...EDITOR_ACTIONS.map(action => ({ action, resource: '*', effect: 'allow' }))],
+        system: editorSystemPrompt(),
+      },
     },
     experimental: {
       policies: [
         { action: 'permission', resource: '*', effect: 'deny' },
         ...[...READ_TOOLS, 'question'].map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })),
+        ...EDITOR_ACTIONS.map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })),
         { action: 'provider.use', resource: '*', effect: 'deny' },
       ],
     },
@@ -112,13 +123,38 @@ export function createOpenCodeConfig(settings = {}, runtime = {}) {
   return config;
 }
 
-// Exact configurations written by earlier releases for the same settings. They
-// differ only by a reviewed earlier Analysis prompt and may be upgraded in place.
+// Construct a previously generated policy, including its exact permissions. The
+// five typed tools did not exist in any of the recognized earlier releases.
+const TYPED_KNOWLEDGE_TOOLS = new Set([
+  'knowledge_tc_find_symbols', 'knowledge_tc_get_symbol', 'knowledge_tc_find_libraries',
+  'knowledge_tc_get_library', 'knowledge_tc_lookup_error',
+]);
+export function previousPolicyConfig(settings = {}, runtime = {}, system, { typedKnowledge = false } = {}) {
+  const config = createOpenCodeConfig(settings, runtime);
+  delete config.agents[EDITOR_PROFILE];
+  config.experimental.policies = config.experimental.policies.filter(rule =>
+    !EDITOR_ACTIONS.some(name => rule.action === 'permission' && rule.resource === `${name}:*`));
+  const oldPermissions = config.permissions.filter(rule => typedKnowledge || !TYPED_KNOWLEDGE_TOOLS.has(rule.action));
+  config.permissions = oldPermissions;
+  config.agents[ANALYSIS_PROFILE].permissions = oldPermissions;
+  config.agents[ANALYSIS_PROFILE].system = system;
+  config.experimental.policies = config.experimental.policies.filter(rule =>
+    typedKnowledge || ![...TYPED_KNOWLEDGE_TOOLS].some(name => rule.action === 'permission' && rule.resource === `${name}:*`));
+  return config;
+}
+
+// Match complete earlier configurations only, including the old policy and the
+// historical prompt for this exact settings scope.
 export function previousOpenCodeConfigs(settings = {}, runtime = {}) {
-  const current = createOpenCodeConfig(settings, runtime);
-  return previousAnalysisPrompts({ knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) }).map(system => {
-    const config = structuredClone(current);
-    config.agents[ANALYSIS_PROFILE].system = system;
-    return config;
-  });
+  const scope = { knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) };
+  const c2 = C2_ANALYSIS_PROMPTS.profile[2 * Number(scope.knowledge) + Number(scope.engineering)];
+  // C3 is recognized only as its complete, exact historical configuration.
+  const c3 = createOpenCodeConfig(settings, runtime);
+  c3.agents[EDITOR_PROFILE].description = 'Native-approved source review, unsaved buffer edits and project builds';
+  c3.agents[EDITOR_PROFILE].permissions = [...c3.permissions, ...DEVELOPMENT_EDITOR_ACTIONS.map(action => ({ action, resource: '*', effect: 'allow' }))];
+  c3.agents[EDITOR_PROFILE].system = previousC3EditorSystemPrompt();
+  const insertion = c3.experimental.policies.findIndex(rule => rule.action === 'provider.use');
+  c3.experimental.policies.splice(insertion, 0, ...DEVELOPMENT_EDITOR_ACTIONS.filter(action => !EDITOR_ACTIONS.includes(action)).map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })));
+  return [c3, ...previousAnalysisPrompts(scope).map(system => previousPolicyConfig(settings, runtime, system)),
+    previousPolicyConfig(settings, runtime, c2, { typedKnowledge: true })];
 }

@@ -1,5 +1,33 @@
 # Implementation status
 
+**Beta 5 release scope, 2026-11-12.** The next release integrates versioned
+Engineering 0.5.3 and Knowledge 0.1.2 with selective PLC builds, build-owned
+diagnostics, native navigation and the pinned-chat-list fix. The full ST source
+development is retained but inactive: no source tools, source panel or editor
+accessor are supplied, and native source dispatch is refused. The original
+read-only editor attachment remains available. C4 migrates exact historical
+policies to the nine-tool build profile. The owner performs live host acceptance
+after publication. [Release scope](releases/native-v0.2.0-beta.5.md).
+
+**Private MCP-first candidate, 2026-11-12.** Assistant [PR #30](https://github.com/Auda29/twincat-assistant/pull/30)
+integrates Engineering [PR #2](https://github.com/Auda29/twincat-mcp-mono/pull/2)
+and Knowledge [PR #27](https://github.com/Auda29/twincat-knowledge-mcp/pull/27).
+The candidate adds explicit per-chat Editor activation, native approvals,
+selective PLC builds, build-owned output/diagnostics, exact native compiler
+navigation and normal TwinCAT ST discovery/live read/preview. Knowledge adds
+five typed symbol/library/error tools alongside its four existing tools.
+Supported ordinary XML buffers have conditional apply and post-image rollback.
+Normal-ST apply/rollback remains blocked by the vendor adapter's missing
+exact-section transaction contract; it is not merely awaiting a live test.
+The rebuilt private candidate passes 191 Node tests, 1,076 native policy/context
+checks, 36 standalone WPF/WebView checks and 112 chat-list component checks.
+Pinned history remains visible but inactive during transient build/save/frame
+context invalidation, then resumes after exact project revalidation.
+Installed-host and real-corpus
+acceptance remain open. No merge, release, installation or IDE/PLC operation was
+performed. The published Beta 4 below is unchanged. Exact inputs, scope and
+evidence are in [the integration record](MCP_P1_INTEGRATION_20261112.md).
+
 **Beta 4, 2026-11-11.** PR #26 and #27 and release PR #28 are merged after green source CI. Application `0.2.0-beta.4` / native `0.2.0.10` is [GitHub Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.4). It reduces unchanged project-setup lock contention, rejects torn member correlation and includes the hash-bound Knowledge validator overlay. The fresh x86 build passes 944 native regressions and 17 standalone WPF/WebView checks. Its actual packaged native launcher reaches protected readiness in 11865 ms under the unchanged 80-second deadline with private state. Package smoke with both real MCPs, restart/state preservation, synthetic installer/DPAPI rollback, wizard/icon checks and actual EXE extraction pass. Uploaded assets match local SHA-256 digests. Pinned runtime inputs were reused after receipt/hash validation; this is a local Windows release build, not execution of the full trusted-runner workflow. No workstation installation or operator-profile change was performed. The Knowledge 15-second target, installed normal-use/member/unsaved-buffer and real provider-login rollback acceptance remain open. Shell64/4026 groundwork is included, but installation support remains blocked pending a real host. Explicit PLC builds/navigable diagnostics remain planned. [Release scope](releases/native-v0.2.0-beta.4.md).
 
 **Beta 3, 2026-11-10.** PR #24 and release PR #25 are merged after green

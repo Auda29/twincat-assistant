@@ -1,4 +1,4 @@
-﻿param(
+param(
  [Parameter(Mandatory=$true)][string]$FixtureDirectory,
  [string]$HostAssembly,
  [string]$OutputDirectory
@@ -168,5 +168,102 @@ try{
  Put '_automating' $false;Await(Invoke-Private 'RunAutomationAsync')|Out-Null;Put '_automating' $true
  Check ((Field '_chatSelection').sessionId -ceq $selected) 'a later automation pass does not create another chat'
  Check ($null -eq (Field '_reader') -and $null -eq (Field '_chatSession')) 'no IDE or operator backend was used'
+ # Build/save notifications clear project context before the tracker republishes
+ # it. Keep a pinned list visible, but make its old scope unusable meanwhile.
+ $picker=Invoke-Private 'EnsureProjectChatPicker'
+ $picker.ShowLoading('Startup',$false,$true)
+ $scope=[Activator]::CreateInstance($control.GetType().GetNestedType('PickerScope',[Reflection.BindingFlags]'NonPublic'),$true)
+ $scope.GetType().GetField('Project').SetValue($scope,$project)
+ $scope.GetType().GetField('Document').SetValue($scope,(Field '_chatDocumentGeneration'))
+ $scope.GetType().GetField('Request').SetValue($scope,(Field '_pickerRequest'))
+ Put '_pickerScope' $scope;Put '_sidebarProject' $project
+ Invoke-Private 'RememberSidebarPin' @($true)|Out-Null
+ Invoke-Private 'RenderProjectContext' @($null,'Updating active editor context...')|Out-Null
+ Check ($picker.IsOpen -and $picker.Pinned -and !$picker.View.IsEnabled -and $null -eq (Field '_chatProject')) 'build-style transient invalidation preserves the pinned list without retaining project authority'
+ Check (!(Invoke-Private 'PickerCurrent' @($scope))) 'old sidebar actions are refused while project context is suspended'
+ Invoke-Private 'RenderProjectContext' @($project,$null)|Out-Null
+ Check ($picker.IsOpen -and $picker.View.IsEnabled -and [object]::ReferenceEquals((Field '_pickerScope'),$scope)) 'same-project resolution restores the existing pinned list and scope'
+ Check ((Invoke-Private 'PickerCurrent' @($scope))) 'sidebar actions resume only after the exact project is revalidated'
+ Invoke-Private 'CloseProjectChatsOnChange' @($null,$false)|Out-Null
+ Check (!$picker.IsOpen) 'actual project loss still closes the pinned project list'
+ Put '_chatProject' $project
+ # Exercise the real project callback boundary without a provider or IDE.
+ # Ordinary tracker invalidation must retain observation state and session epoch.
+ $operationGuard=$control.GetType().GetField('EngineeringBuildGuard',$flags -bor [Reflection.BindingFlags]::Static).GetValue($null)
+ $guardType=$operationGuard.GetType()
+ $buildId=[Guid]::NewGuid()
+ Check ($guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))) 'synthetic operation reserves the process-wide engineering guard'
+ try {
+  Put '_engineeringProject' $project;Put '_engineeringBusy' $true;Put '_engineeringUncertain' $true;Put '_engineeringBuildId' $buildId
+  $epoch=Field '_engineeringEpoch'
+  $previewType=$control.GetType().GetNestedType('SourcePreview',[Reflection.BindingFlags]'NonPublic')
+  $preview=[Activator]::CreateInstance($previewType,$true)
+  Put '_sourcePreview' $preview
+  1..3|ForEach-Object{Invoke-Private 'RenderEngineeringProject' @($project,$false)|Out-Null}
+  Check ([object]::ReferenceEquals((Field '_sourcePreview'),$preview)) 'unchanged project polling preserves an existing source preview'
+  Invoke-Private 'RenderEngineeringProject' @($null,$true)|Out-Null
+  Check ($null -eq (Field '_sourcePreview')) 'a real transient editor invalidation revokes the source preview'
+  Check ((Field '_engineeringEpoch') -eq $epoch -and (Field '_engineeringProject').Equals($project) -and (Field '_engineeringBusy') -and (Field '_engineeringBuildId') -eq $buildId) 'transient editor invalidation preserves engineering observation and epoch'
+  Invoke-Private 'RenderEngineeringProject' @($project,$false)|Out-Null
+  Check ((Field '_engineeringEpoch') -eq $epoch -and (Field '_engineeringUncertain') -and (Field '_engineeringBuildId') -eq $buildId) 'same-project resolution retains unresolved operation state'
+  Call 'DisposeEngineering'|Out-Null
+  Check ((Field '_engineeringUncertain') -and (Field '_engineeringBuildId') -eq $buildId -and $guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'actual lifecycle revocation cannot erase an unresolved engineering operation'
+ } finally { $guardType.GetMethod('Reconcile',$flags).Invoke($operationGuard,@($buildId))|Out-Null }
+ # Test only the real response renderer with a synthetic binding; no provider is constructed or invoked.
+ $bindingType=$assembly.GetType('TwinCatAssistant.Native.EngineeringBinding')
+ $sessionId=[Guid]::NewGuid();$started=[DateTime]::UtcNow
+ $binding=$bindingType.GetConstructors($flags)[0].Invoke([object[]]@($sessionId,[int]$PID,$started,'C:\Synthetic\Build.sln','C:\Synthetic\Build.plcproj','fixture'))
+ $sessionType=$assembly.GetType('TwinCatAssistant.Native.EngineeringProviderSession')
+ $renderSession=[Runtime.Serialization.FormatterServices]::GetUninitializedObject($sessionType)
+ $sessionType.GetField('binding',$flags).SetValue($renderSession,$binding)
+ Check (!$sessionType.GetField('DevelopmentSourceAccess',[Reflection.BindingFlags]'Static,NonPublic').GetValue($null) -and $null -eq (Field '_sourceDiscover')) 'release mode has no experimental source panel or runtime source opt-in'
+ $sourceRefused=$true
+ foreach($sourceOperation in @('source.targets','source.read','source.preview','source.apply','source.rollback','source.journal')){
+  try {
+   $sourceCall=@{operation=$sourceOperation}|ConvertTo-Json -Compress
+   $sessionType.GetMethod('DispatchAsync',$flags).Invoke($renderSession,[object[]]@([string]$sourceCall,[Threading.CancellationToken]::None))|Out-Null
+   $sourceRefused=$false
+  } catch {
+   $taskSourceError=$_.Exception
+   while($taskSourceError.InnerException){$taskSourceError=$taskSourceError.InnerException}
+   if($taskSourceError -isnot [InvalidOperationException] -or $taskSourceError.Message -cne 'Source operations are unavailable in this release.'){$sourceRefused=$false}
+  }
+ }
+ Check $sourceRefused 'all source operations are refused before any provider or approval can run'
+ $context=@{sessionId=$sessionId.ToString('D');idePid=[int]$PID;ideStartedUtc=$started.ToString('o');solutionFile='C:\Synthetic\Build.sln';projectFile='C:\Synthetic\Build.plcproj';contextEpoch='fixture'}
+ function Build-Response([Guid]$build,[Guid]$request,[string]$status,[bool]$hasResult){
+  $reply=@{protocolVersion=1;sessionId=$sessionId.ToString('D');operationId=$request.ToString('D');status=$status;provenance=@{context=$context;buildOperationId=$build.ToString('D')}}
+  if($hasResult){$reply.result=@{buildOperationId=$build.ToString('D');cancellationRequested=$true};$reply.output=$null;$reply.diagnostics=@()}
+  return $reply|ConvertTo-Json -Depth 8 -Compress
+ }
+ $buildId=[Guid]::NewGuid();$null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))
+ try{
+  $request=[Guid]::NewGuid()
+  $observing=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'unknown' $true)))
+  Check ($observing -and $guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'cancellation acknowledgement retains the guard and continues bounded build observation'
+  $request=[Guid]::NewGuid()
+  $observing=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'succeeded' $true)))
+  Check (!$observing -and !$guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'later correlated completion reconciles a cancellation request'
+  foreach($case in @(@{status='conflict';hasResult=$false},@{status='refused';hasResult=$true})){
+   $null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))
+   $null=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$buildId,([string](Build-Response $buildId $buildId $case.status $case.hasResult)))
+   Check (!$guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) ('validated pre-submission '+$case.status+' does not leave an unresolved build')
+  }
+  $null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))
+  $request=[Guid]::NewGuid()
+  $null=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'conflict' $false)))
+  Check ($guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'a later observation conflict cannot clear a submitted build'
+ }finally{$guardType.GetMethod('Reconcile',$flags).Invoke($operationGuard,@($buildId))|Out-Null}
+ $capabilityId=[Guid]::NewGuid()
+ $capability=@{protocolVersion=1;sessionId=$sessionId.ToString('D');operationId=$capabilityId.ToString('D');status='succeeded';result=@{contextValidated=$true;capabilities=@{plcBuild='supported'};buildScope='plcProject';targetProjectFile='C:\Synthetic\Build.plcproj';configuration='Release';platform='TwinCAT RT (x64)'}}
+ $capabilityMethod=$control.GetType().GetMethod('EngineeringSupportsPlcOnlyBuild',[Reflection.BindingFlags]'Static,NonPublic')
+ $capabilityArgs=[object[]]@([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId,$null,$null)
+ Check ($capabilityMethod.Invoke($null,$capabilityArgs) -and $capabilityArgs[3] -ceq 'Release' -and $capabilityArgs[4] -ceq 'TwinCAT RT (x64)') 'fresh model capability results supply the exact current build configuration and platform'
+ $capability.result.buildScope='twinCatProject'
+ $capabilityArgs=[object[]]@([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId,$null,$null)
+ Check (!$capabilityMethod.Invoke($null,$capabilityArgs)) 'a broader TwinCAT build scope cannot enable PLC approval'
+ $capability.result.buildScope='plcProject';$capability.result.configuration=$null
+ $capabilityArgs=[object[]]@([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId,$null,$null)
+ Check (!$capabilityMethod.Invoke($null,$capabilityArgs)) 'missing configuration cannot enable PLC approval'
  [pscustomobject]@{passed=$checks.Count;checks=@($checks);hostSha256=(Get-FileHash -LiteralPath $HostAssembly -Algorithm SHA256).Hash.ToLowerInvariant();installedIdeAcceptance=$false}|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $OutputDirectory 'result.json') -Encoding UTF8
 }finally{if($control){$control.Dispose()};if($window){$window.Close()};[AppDomain]::CurrentDomain.remove_AssemblyResolve($resolver);$env:TWINCAT_ASSISTANT_TEST_CONFIG=$oldOverride}

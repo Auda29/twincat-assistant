@@ -243,6 +243,7 @@ namespace TwinCatAssistant.Native
         private async Task PermitCurrentChatAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            CheckEngineeringEditorContext();
             var selection = _chatSelection;
             var active = _chatActive?.Identity?.ProjectIdentity?.Equals(_chatProject) == true ? _chatActive : null;
             var metadata = CanPromptCurrentChat() && !_chatBinding.IsGeneral ? ChatContextMetadata(active, _chatProject) : null;
@@ -364,6 +365,7 @@ namespace TwinCatAssistant.Native
 
         private void RenderChatBinding()
         {
+            CheckEngineeringEditorContext();
             ThreadHelper.ThrowIfNotOnUIThread();
             try
             {

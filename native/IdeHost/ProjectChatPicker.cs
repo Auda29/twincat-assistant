@@ -366,7 +366,7 @@ namespace TwinCatAssistant.Native
             _collapseButton.ToolTip = _pinned ? HostText.Get("H237") : HostText.Get("H264");
         }
 
-        private void OnAnchorVisibleChanged(object sender, DependencyPropertyChangedEventArgs args) { if (!_anchor.IsVisible) CloseCore(false); }
+        private void OnAnchorVisibleChanged(object sender, DependencyPropertyChangedEventArgs args) { if (!_anchor.IsVisible && !Pinned) CloseCore(false); }
 
         // ---- Building blocks ----
 

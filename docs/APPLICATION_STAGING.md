@@ -16,10 +16,12 @@ normal Windows layout.
 
 The [application input builder](APPLICATION_INPUTS.md) now creates these MCP
 runtimes and collects the exact runtime notices. Engineering relocation and a
-technical Knowledge corpus-status probe pass with synthetic state. The owner
-has confirmed bundling permission, retained in the
-[permission record](../upstream/permissions/knowledge-0.1.1.txt). The complete
-application and installer candidate now pass the [local build checks](ALPHA_DELIVERY_BUILD.md).
+technical Knowledge probes use synthetic state. The earlier released input's
+[permission record](../upstream/permissions/knowledge-0.1.1.txt) and
+[local build checks](ALPHA_DELIVERY_BUILD.md) remain historical evidence.
+The current development branch uses private candidate inputs under
+[a separate private integration permission](../upstream/permissions/knowledge-development.txt).
+Public release is blocked until its reviewed release pin replaces the candidate.
 
 The builder requires these explicit prebuilt inputs:
 
@@ -27,7 +29,7 @@ The builder requires these explicit prebuilt inputs:
   for the exact Node binary used by the builder, reviewed for redistribution.
 - `artifacts/application-inputs/webview2/LICENSE.txt` and `NOTICE.txt`: the
   pinned WebView2 SDK's redistributed license and notice.
-- `artifacts/application-inputs/knowledge/`: a relocatable Knowledge 0.1.1
+- `artifacts/application-inputs/knowledge/`: a relocatable pinned Knowledge
   runtime with `twincat-knowledge.exe` at its root, its Python runtime,
   dependencies, a root `LICENSE`, other applicable notices and
   `application-manifest.json` schema 1.
@@ -35,10 +37,11 @@ The builder requires these explicit prebuilt inputs:
   runtime with `packages/mcp/dist/index.js`, its dependencies, root `LICENSE`,
   other applicable notices and its
   own schema-1 `application-manifest.json`. Its manifest version is the pinned
-  revision `3c303837e6d6f72bec1b9d38e778a7c32c61ae5c`.
+  revision from `upstream/engineering-lock.json`. Its native provider and
+  revision/version/hash receipt must also verify before host packaging.
 
 Both input manifests must match the backend architecture and verify in full;
-the Knowledge input manifest version must be `0.1.1`. The builder probes the
+the Knowledge input manifest version must match `upstream/knowledge-lock.json`. The builder probes the
 staged Knowledge executable's version. A manifest and version probe are not a
 proof that an arbitrary Python environment is relocatable or was produced from
 its claimed source. Supply independently built, reviewed relocatable inputs;

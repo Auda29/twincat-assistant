@@ -1,0 +1,14 @@
+TwinCAT Knowledge MCP private development input
+
+Candidate: 0.1.2.dev20261112
+Source: Auda29/twincat-knowledge-mcp d5b774941600f746b092b0672216471f35dca73b
+Functional review: 486be3cef2a29e7163d362bd5cb3a89ef01f421a
+Recorded: 2026-11-12
+
+The project owner requested coordinated implementation and private integration
+of the Knowledge MCP's P1 functions with TwinCAT Assistant. This document records
+the scope of private development inputs prepared under that instruction. It is
+not an additional public redistribution license or a published upstream release.
+No Beckhoff documentation is included. Dependency licenses/notices remain in the
+input. Public release remains blocked until a reviewed release pin and the
+corresponding distribution authorization are available.

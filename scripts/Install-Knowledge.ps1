@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'This installer targets the Windows Assistant host. Use the source installation guide on other platforms.' }
 $taskRepository = Split-Path $PSScriptRoot -Parent
 $taskPin = Get-Content (Join-Path $taskRepository 'upstream\knowledge-lock.json') -Raw | ConvertFrom-Json
+if ($taskPin.developmentOnly -eq $true) { throw 'Development-only Knowledge pins cannot be installed by the public release installer.' }
 if ($taskPin.schemaVersion -ne 1 -or $taskPin.version -notmatch '^\d+\.\d+\.\d+$') { throw 'Unsupported Knowledge release pin.' }
 if (-not $InstallRoot) { $InstallRoot = Join-Path $env:LOCALAPPDATA ('TwinCatAssistant\knowledge-runtime\' + $taskPin.version) }
 if (-not [IO.Path]::IsPathRooted($InstallRoot)) { throw 'Choose an absolute Knowledge installation directory.' }
@@ -63,7 +64,8 @@ if (Test-Path -LiteralPath $taskInstall) {
     Assert-ReleaseArtifacts
     & uv venv --python $Python $taskEnvironment | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Knowledge Python environment creation failed.' }
-    & uv pip sync --python $taskPython --require-hashes (Join-Path $taskPackages 'runtime-requirements.txt') | Out-Host
+    $taskRuntimeRequirements=if($taskPin.runtimeRequirements){$taskPin.runtimeRequirements}else{'runtime-requirements.txt'}
+    & uv pip sync --python $taskPython --require-hashes (Join-Path $taskPackages $taskRuntimeRequirements) | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Knowledge locked dependency installation failed.' }
     $taskWheel = @($taskPin.artifacts | Where-Object { $_.name.EndsWith('.whl') })
     if ($taskWheel.Count -ne 1) { throw 'Knowledge release pin must contain one wheel.' }

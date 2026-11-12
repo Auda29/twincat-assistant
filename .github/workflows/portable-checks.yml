@@ -114,6 +114,10 @@ jobs:
         run: npm run build:runtime
       - name: Verify source runtime login, models, process ownership and existing data compatibility
         run: node --test tests/integration/native-chat.test.mjs tests/integration/session-compatibility.test.mjs
+      - name: Verify ephemeral Editor permissions, location isolation and credential cleanup in the real Core
+        env:
+          TC_EDITOR_RUNTIME: source
+        run: node --test tests/integration/editor-session.test.mjs
       - name: Check source contract types, lint and original composer assembly
         shell: pwsh
         env:

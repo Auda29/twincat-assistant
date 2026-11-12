@@ -1,5 +1,4 @@
 import { withPackageVerificationScope } from './package-verification-scope.mjs';
-import { createInterface } from 'node:readline';
 import { createServer } from 'node:net';
 import { lstat } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
@@ -8,7 +7,8 @@ import { initializeState, inspectState } from './state.mjs';
 import { prepareRuntimeLaunch } from './runtime-start.mjs';
 import { supervise } from './supervisor.mjs';
 import { configureNativeMcp } from './native-mcp.mjs';
-import { verifyPackageIfPresent } from './package-integrity.mjs';
+import { applicationRoot, verifyPackageIfPresent } from './package-integrity.mjs';
+import { createEditorNativeControl, parseEditorControl, readBoundedControlLines } from './editor-native-control.mjs';
 
 export function validateNativeChatRequest(value) {
   if (!value || Object.keys(value).some(key => !['state', 'port', 'password', 'mcpConfig'].includes(key))
@@ -61,8 +61,9 @@ async function assertFreePort(port) {
 }
 
 export async function startNativeChat(request, signal, report, options = {}) {
+  let packaged = false;
   const plan = await withPackageVerificationScope(async () => {
-    await verifyPackageIfPresent();
+    packaged = await verifyPackageIfPresent();
     const { state, port } = validateNativeChatRequest(request);
     await assertFreePort(port); // refuse an occupied port rather than adopting another service
     try { await lstat(state); }
@@ -98,6 +99,7 @@ export async function startNativeChat(request, signal, report, options = {}) {
       await new Promise(resolve => setTimeout(resolve, 150));
     }
     if (!ready || signal.aborted || finished) throw new Error('Protected chat startup failed');
+    options.onReady?.({ packaged });
     report({ status: 'ready', port }); // no credential or upstream output on this control channel
     return await completion;
   } finally {
@@ -107,32 +109,45 @@ export async function startNativeChat(request, signal, report, options = {}) {
   }
 }
 
-async function main() {
+export function runNativeChatControl({ input, report, onFailure, startChat = startNativeChat }) {
   const controller = new AbortController();
-  const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
-  let received = false;
-  let work;
-  let bytes = 0;
-  // Enough for the largest allowed path/password after JSON escaping; still
-  // bounded independently of the upstream process logs.
-  process.stdin.on('data', chunk => { bytes += chunk.length; if (bytes > 32768) { controller.abort(); lines.close(); } });
-  lines.on('close', () => { if (!received) process.exitCode = 1; controller.abort(); });
-  lines.on('line', line => {
-    if (received) { controller.abort(); return; }
-    received = true;
-    work = (async () => {
-      try {
-        const request = parseNativeChatRequest(line);
-        await startNativeChat(request, controller.signal, value => process.stdout.write(JSON.stringify(value) + '\n'));
-      } catch {
-        process.stdout.write('{"status":"failed"}\n');
-        process.exitCode = 1;
-      } finally { lines.close(); }
-    })();
+  let received = false, editor;
+  const stopInput = readBoundedControlLines(input, line => {
+    if (!received) {
+      received = true;
+      let request;
+      try { request = parseNativeChatRequest(line); }
+      catch (error) { report({ status: 'failed' }); throw error; }
+      void (async () => {
+        try {
+          await startChat(request, controller.signal, report, { onReady: ({ packaged }) => {
+            editor = createEditorNativeControl({ origin: `http://127.0.0.1:${request.port}`, password: request.password,
+              node: process.execPath, packaged, applicationRoot, signal: controller.signal, report });
+          } });
+        } catch {
+          report({ status: 'failed' });
+          onFailure();
+        } finally {
+          stopInput();
+          input.destroy();
+          if (editor) await editor.close();
+        }
+      })();
+      return;
+    }
+    if (!editor) throw new Error('Editor control before readiness');
+    editor.enqueue(parseEditorControl(line));
+  }, error => {
+    if (error || !received) onFailure();
+    controller.abort();
+    if (error) input.destroy();
   });
   // Never leave an unconfigured subprocess waiting forever for its owner.
-  const timeout = setTimeout(() => { if (!received) { process.exitCode = 1; lines.close(); process.stdin.destroy(); } }, 10000);
+  const timeout = setTimeout(() => { if (!received) { onFailure(); stopInput(); input.destroy(); } }, 10000);
   timeout.unref();
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  runNativeChatControl({ input: process.stdin, report: value => process.stdout.write(JSON.stringify(value) + '\n'),
+    onFailure: () => { process.exitCode = 1; } });
+}

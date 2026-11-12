@@ -14,7 +14,7 @@ test('input builder refuses missing release license before creating outputs', {s
   const parent=await mkdtemp(join(tmpdir(),'tc-input-refuse-'));
   try {
     const output=join(parent,'inputs');
-    await assert.rejects(run('powershell.exe',['-NoProfile','-File',join(root,'scripts/Build-ApplicationInputs.ps1'),'-Component','All','-OutputRoot',output],{cwd:parent}),/declares no license/);
+    await assert.rejects(run('powershell.exe',['-NoProfile','-File',join(root,'scripts/Build-ApplicationInputs.ps1'),'-Component','All','-OutputRoot',output],{cwd:parent}),/reviewed redistribution permission file/);
     await assert.rejects(readFile(join(output,'knowledge','application-manifest.json')),{code:'ENOENT'});
     await assert.rejects(readFile(join(output,'engineering','application-manifest.json')),{code:'ENOENT'});
   } finally { await rm(parent,{recursive:true,force:true}); }

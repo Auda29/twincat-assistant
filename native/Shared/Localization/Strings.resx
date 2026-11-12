@@ -387,4 +387,76 @@
   <data name="ProjectSetupTimeout" xml:space="preserve"><value>Die Prüfung der Projektkonfiguration hat das Zeitlimit erreicht. Die Chatverbindung ist davon unabhängig. Diagnose prüfen und die Einrichtung erneut versuchen.</value></data>
   <data name="ProjectSetupFailed" xml:space="preserve"><value>Einrichtung fehlgeschlagen</value></data>
   <data name="ProjectChatNotConfigured" xml:space="preserve"><value>Projektchat nicht eingerichtet</value></data>
+  <data name="EngineeringBuild" xml:space="preserve"><value>PLC-Projekt erstellen</value></data>
+  <data name="EngineeringCancel" xml:space="preserve"><value>Abbruch anfordern</value></data>
+  <data name="EngineeringDetails" xml:space="preserve"><value>Compiler-Ausgabe und Meldungen</value></data>
+  <data name="EngineeringNoProject" xml:space="preserve"><value>Zum Erstellen ein PLC-Projekt auswählen.</value></data>
+  <data name="EngineeringUnsupportedHost" xml:space="preserve"><value>Erstellen ist für diesen IDE-Host nicht freigegeben.</value></data>
+  <data name="EngineeringLoading" xml:space="preserve"><value>Engineering-Modul wird geprüft …</value></data>
+  <data name="EngineeringUnavailable" xml:space="preserve"><value>Verifiziertes Engineering-Modul nicht verfügbar. Chat bleibt verfügbar.</value></data>
+  <data name="EngineeringReady" xml:space="preserve"><value>Bereit für einen manuell bestätigten Build.</value></data>
+  <data name="EngineeringConfirm" xml:space="preserve"><value>PLC-Projekt mit der aktuellen IDE-Konfiguration erstellen?
+
+Projektmappe: {0}
+PLC-Projekt: {1}
+Konfiguration: {2}
+Plattform: {3}
+
+Es wird nichts gespeichert. Bei ungespeicherten Änderungen oder unklarer Zuordnung wird der Build abgelehnt. Keine Aktivierung und kein Download.</value></data>
+  <data name="EngineeringStarting" xml:space="preserve"><value>Build wird angefordert …</value></data>
+  <data name="EngineeringRefresh" xml:space="preserve"><value>Build-Verfügbarkeit prüfen</value></data>
+  <data name="EngineeringRunning" xml:space="preserve"><value>Build läuft …</value></data>
+  <data name="EngineeringSucceeded" xml:space="preserve"><value>Build erfolgreich.</value></data>
+  <data name="EngineeringFailed" xml:space="preserve"><value>Build fehlgeschlagen.</value></data>
+  <data name="EngineeringRefused" xml:space="preserve"><value>Build abgelehnt. Projektzuordnung, gespeicherten Zustand und aktive IDE-Konfiguration prüfen.</value></data>
+  <data name="EngineeringContextChanged" xml:space="preserve"><value>Projektkontext geändert. Ein bereits gestarteter Build kann weiterlaufen.</value></data>
+  <data name="EngineeringUnsupported" xml:space="preserve"><value>Diese Aktion wird vom Engineering-Modul nicht unterstützt.</value></data>
+  <data name="EngineeringCancelled" xml:space="preserve"><value>Build abgebrochen.</value></data>
+  <data name="EngineeringUnknown" xml:space="preserve"><value>Build-Ergebnis unbekannt. IDE-Ausgabe prüfen; nicht automatisch erneut starten.</value></data>
+  <data name="EngineeringCancelRequested" xml:space="preserve"><value>Abbruch angefordert. Der Build kann noch laufen.</value></data>
+  <data name="EngineeringCancelUnknown" xml:space="preserve"><value>Abbruch nicht bestätigt. Der Build kann noch laufen.</value></data>
+  <data name="EngineeringOutputUnavailable" xml:space="preserve"><value>Keine eindeutig zugeordnete Compiler-Ausgabe verfügbar.</value></data>
+  <data name="EngineeringNavigationUnavailable" xml:space="preserve"><value>Meldungen werden nur angezeigt. Ohne geprüften Quelltextstand ist keine sichere Navigation möglich. Ausgabe wird nicht an den Chat gesendet.</value></data>
+  <data name="EngineeringError" xml:space="preserve"><value>Fehler</value></data>
+  <data name="EngineeringWarning" xml:space="preserve"><value>Warnung</value></data>
+  <data name="EngineeringTruncated" xml:space="preserve"><value>Ausgabe oder Meldungsliste wurde gekürzt.</value></data>
+  <data name="EngineeringPlcBuildUnavailable" xml:space="preserve"><value>PLC-spezifischer Build nicht verfügbar. Ein umfassenderer TwinCAT-Projekt-Build ist nicht freigegeben.</value></data>
+  <data name="EngineeringSourceTitle" xml:space="preserve"><value>Quelltext im Editor (manuell)</value></data>
+  <data name="EngineeringSourceScope" xml:space="preserve"><value>Unterstützte angehängte TwinCAT-ST-Editoren live lesen und Änderungen vorab ansehen. Freigegebene Änderungen benötigen eine verifizierte XML-Textpuffertransaktion. Keine automatische Speicherung. Vorschau und Journal bestehen nur während dieser Sitzung; keine Wiederherstellung nach Absturz.</value></data>
+  <data name="EngineeringSourceDiscover" xml:space="preserve"><value>Aktives Dokument prüfen</value></data>
+  <data name="EngineeringSourceRead" xml:space="preserve"><value>Lesen</value></data>
+  <data name="EngineeringSourcePreview" xml:space="preserve"><value>Vorschau</value></data>
+  <data name="EngineeringSourceApply" xml:space="preserve"><value>Übernehmen</value></data>
+  <data name="EngineeringSourceRollback" xml:space="preserve"><value>Zurücksetzen</value></data>
+  <data name="EngineeringSourceReconcile" xml:space="preserve"><value>Journal prüfen</value></data>
+  <data name="EngineeringSourceBefore" xml:space="preserve"><value>Aktueller Abschnitt</value></data>
+  <data name="EngineeringSourceProposed" xml:space="preserve"><value>Vorgeschlagener Abschnitt</value></data>
+  <data name="EngineeringSourceContext" xml:space="preserve"><value>Projektkontext wird erneut geprüft; Freigabe aufgehoben.</value></data>
+  <data name="EngineeringSourceUnknown" xml:space="preserve"><value>Ausgang unbekannt. Keine erneute Änderung möglich. Vorgang {0}, Journal {1}.</value></data>
+  <data name="EngineeringSourceSessionOnly" xml:space="preserve"><value>Journal und Vorschau gelten nur für diese Sitzung.</value></data>
+  <data name="EngineeringSourceChoose" xml:space="preserve"><value>Abschnitt wählen und lesen oder Vorschau erstellen.</value></data>
+  <data name="EngineeringSourceUnavailable" xml:space="preserve"><value>Quelle oder Vorgang nicht verfügbar; aktives Dokument und Projekt prüfen.</value></data>
+  <data name="EngineeringSourceReadReady" xml:space="preserve"><value>Abschnitt gelesen. Änderung eingeben und Vorschau erstellen.</value></data>
+  <data name="EngineeringSourcePreviewReady" xml:space="preserve"><value>Vorschau bereit. Vorher und nachher vor der Freigabe prüfen.</value></data>
+  <data name="EngineeringSourceDone" xml:space="preserve"><value>Abgeschlossen. Vorgang {0}, Journal {1}. Nicht automatisch gespeichert.</value></data>
+  <data name="EngineeringSourceRefused" xml:space="preserve"><value>Änderung abgelehnt oder Kontext geändert; erneut prüfen.</value></data>
+  <data name="EngineeringSourceReconciled" xml:space="preserve"><value>Journalstatus: {0}. Journal {1}.</value></data>
+  <data name="EngineeringSourceConfirm" xml:space="preserve"><value>Ziel: {0}
+Abschnitt: {1}
+Projektrevision: {2}
+Links vorher, rechts nachher. Nur diese Änderung freigeben?</value></data>
+  <data name="EngineeringSourceCancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="EngineeringSourceConfirmButton" xml:space="preserve"><value>Freigeben</value></data>
+  <data name="EngineeringEditorEnable" xml:space="preserve"><value>Editor für diesen Chat aktivieren</value></data>
+  <data name="EngineeringEditorDisable" xml:space="preserve"><value>Zur Analyse zurückkehren</value></data>
+  <data name="EngineeringEditorConsent" xml:space="preserve"><value>Projektgebundene Live-Werkzeuge für diesen Chat aktivieren? Jeder Build und jede Quelltextänderung benötigt eine eigene native Bestätigung. Kein automatisches Speichern, Aktivieren oder Herunterladen. Nicht unterstützte Editor-Schreibtransaktionen bleiben gesperrt.</value></data>
+  <data name="EngineeringEditorUnavailable" xml:space="preserve"><value>Editor nicht verfügbar. Einen gebundenen Projektchat in der von diesem Fenster gestarteten Laufzeit auswählen.</value></data>
+  <data name="EngineeringEditorEnabled" xml:space="preserve"><value>Editor für diesen Chat aktiviert. Builds und Änderungen benötigen eine native Freigabe.</value></data>
+  <data name="EngineeringSourceStPreviewOnly" xml:space="preserve"><value>Live-ST-Vorschau bereit. Dieser Editor bietet keine verifizierte atomare Schreibtransaktion; Übernehmen ist nicht verfügbar.</value></data>
+  <data name="EditorCaption" xml:space="preserve"><value>TwinCAT Assistant — Editor</value></data>
+  <data name="EngineeringBuildModeEnable" xml:space="preserve"><value>Build-Werkzeuge für diesen Chat aktivieren</value></data>
+  <data name="EngineeringBuildModeConsent" xml:space="preserve"><value>Projektgebundene Build- und Diagnosewerkzeuge für diesen Chat aktivieren? Jeder Build benötigt eine eigene native Bestätigung. Quelltextänderungen, automatisches Speichern, Aktivieren und Herunterladen sind nicht verfügbar.</value></data>
+  <data name="EngineeringBuildModeUnavailable" xml:space="preserve"><value>Build-Werkzeuge nicht verfügbar. Einen gebundenen Projektchat in der von diesem Fenster gestarteten Laufzeit auswählen.</value></data>
+  <data name="EngineeringBuildModeEnabled" xml:space="preserve"><value>Build-Werkzeuge für diesen Chat aktiviert. Jeder Build benötigt eine native Freigabe.</value></data>
+  <data name="BuildModeCaption" xml:space="preserve"><value>TwinCAT Assistant — Build-Werkzeuge</value></data>
 </root>

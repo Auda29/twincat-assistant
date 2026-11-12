@@ -8,7 +8,7 @@ import { createManifest, verifyManifest } from './application-manifest.mjs';
 import { runVersion } from '../src/launcher.mjs';
 import { applySourceOverlay } from './source-overlay.mjs';
 import { trimChatPackage } from './trim-chat-package.mjs';
-import { patchedSha256 } from './knowledge-validation-overlay.mjs';
+import { isReviewedKnowledgeOverlay } from './knowledge-validation-overlay.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', windowsHide: true }).trim();
@@ -76,6 +76,25 @@ export async function reduceDeliveryFiles(stage) {
   if (reduction.removedServerFiles || reduction.removedPackages.length) console.log('Chat package reduction: ' + JSON.stringify(reduction));
 }
 
+// The input manifest authenticates these bytes within the assembled input;
+// this separate receipt binds the module to the reviewed source revision.
+export async function verifyEngineeringModule(input, lock) {
+  if (lock?.schemaVersion !== 1 || !/^[a-f0-9]{40}$/.test(lock.revision ?? '') || lock.moduleVersion !== '1.0.0.0') throw new Error('Invalid reviewed Engineering lock');
+  const module = join(input, 'native/host/TwinCatMcp.Engineering.Host.dll');
+  const receiptPath = join(input, 'native/host/receipt.json');
+  await regular(module); await regular(receiptPath);
+  const receipt = JSON.parse(await readFile(receiptPath, 'utf8'));
+  if (Object.keys(receipt).sort().join(',') !== 'moduleVersion,revision,schemaVersion,sha256' || receipt.schemaVersion !== 1
+      || receipt.revision !== lock.revision || receipt.moduleVersion !== lock.moduleVersion
+      || !/^[a-f0-9]{64}$/.test(receipt.sha256 ?? '')
+      || createHash('sha256').update(await readFile(module)).digest('hex') !== receipt.sha256) throw new Error('Engineering provider receipt mismatch');
+  const identity = execFileSync('powershell.exe', ['-NoProfile','-NonInteractive','-Command',
+    '$a=[Reflection.AssemblyName]::GetAssemblyName($env:TC_ENGINEERING_MODULE); $a.Name + "|" + $a.Version.ToString()'],
+    { env: {...process.env, TC_ENGINEERING_MODULE:module}, encoding:'utf8', windowsHide:true, timeout:10000 }).trim();
+  if (identity !== 'TwinCatMcp.Engineering.Host|' + lock.moduleVersion) throw new Error('Engineering provider module identity mismatch');
+  return module;
+}
+
 export async function buildApplicationPackage(output, inputs) {
   if (!isAbsolute(output) || resolve(output) !== output) throw new Error('OutputDirectory must be absolute and normalized');
   if (process.platform !== 'win32' || !['x64', 'arm64', 'ia32'].includes(process.arch) || Number(process.versions.node.split('.')[0]) < 22) throw new Error('Build with Windows Node 22+ for the backend architecture');
@@ -87,6 +106,7 @@ export async function buildApplicationPackage(output, inputs) {
   const receipt = JSON.parse(await readFile(join(root, 'artifacts/source-runtime/runtime.json'), 'utf8'));
   const lock = JSON.parse(await readFile(join(root, 'upstream/source-lock.json'), 'utf8'));
   const knowledgeLock = JSON.parse(await readFile(join(root, 'upstream/knowledge-lock.json'), 'utf8'));
+  const engineeringLock = JSON.parse(await readFile(join(root, 'upstream/engineering-lock.json'), 'utf8'));
   const inputRoot = inputs ?? join(root, 'artifacts/application-inputs');
   if (!isAbsolute(inputRoot) || resolve(inputRoot) !== inputRoot) throw new Error('Input directory must be absolute and normalized');
   const knowledgeInput = join(inputRoot, 'knowledge');
@@ -96,11 +116,12 @@ export async function buildApplicationPackage(output, inputs) {
   const knowledgeManifest = await verifyManifest(knowledgeInput);
   const engineeringManifest = await verifyManifest(engineeringInput);
   const knowledgeOverlay = JSON.parse(await readFile(join(knowledgeInput, 'assistant-validation-overlay.json')));
-  if (knowledgeOverlay.version !== 1 || knowledgeOverlay.patchedSha256 !== patchedSha256
-      || createHash('sha256').update(await readFile(join(knowledgeInput, 'site-packages/twincat_knowledge/domain/provenance.py'))).digest('hex') !== patchedSha256)
+  if (!isReviewedKnowledgeOverlay(knowledgeOverlay,
+      createHash('sha256').update(await readFile(join(knowledgeInput, 'site-packages/twincat_knowledge/domain/provenance.py'))).digest('hex')))
     throw new Error('Rebuild Knowledge inputs with the reviewed startup validation overlay');
-  if (knowledgeManifest.version !== knowledgeLock.version || engineeringManifest.version !== '3c303837e6d6f72bec1b9d38e778a7c32c61ae5c'
+  if (knowledgeManifest.version !== knowledgeLock.version || engineeringManifest.version !== engineeringLock.revision
       || knowledgeManifest.architecture !== process.arch || engineeringManifest.architecture !== process.arch) throw new Error('MCP input version or backend architecture mismatch');
+  const engineeringModule = await verifyEngineeringModule(engineeringInput, engineeringLock);
   for (const item of [join(knowledgeInput, 'twincat-knowledge.exe'), join(knowledgeInput, 'LICENSE'), join(engineeringInput, 'packages/mcp/dist/index.js'), join(engineeringInput, 'LICENSE'), nodeLicense,
     join(inputRoot, 'webview2/LICENSE.txt'), join(inputRoot, 'webview2/NOTICE.txt'),
     join(hostInput, 'extension.vsixmanifest'), join(hostInput, 'TwinCatAssistant.IdeHost.dll'), join(hostInput, 'TwinCatAssistant.IdeHost.pkgdef')]) await regular(item);
@@ -137,7 +158,7 @@ export async function buildApplicationPackage(output, inputs) {
     const buildEnv = Object.fromEntries(['SystemRoot', 'WINDIR', 'PATH', 'Path', 'COMSPEC', 'PATHEXT', 'SystemDrive', 'ProgramFiles', 'ProgramFiles(x86)', 'ProgramData', 'OS', 'DOTNET_ROOT', 'DOTNET_ROOT_X86', 'DOTNET_ROOT_X64', 'DOTNET_ROOT_ARM64'].filter(k => process.env[k] !== undefined).map(k => [k, process.env[k]]));
     Object.assign(buildEnv, { HOME: scratch, USERPROFILE: scratch, APPDATA: scratch, LOCALAPPDATA: scratch, TEMP: scratch, TMP: scratch,
       npm_config_cache: join(scratch, 'npm-cache'), npm_config_userconfig: join(scratch, 'npmrc') });
-    for (const file of ['package.json', 'package-lock.json', 'upstream/package.json', 'upstream/package-lock.json', 'upstream/source-lock.json', 'upstream/knowledge-lock.json', 'scripts/application-manifest.mjs'])
+    for (const file of ['package.json', 'package-lock.json', 'upstream/package.json', 'upstream/package-lock.json', 'upstream/source-lock.json', 'upstream/knowledge-lock.json', 'upstream/engineering-lock.json', 'scripts/application-manifest.mjs'])
       await copyFile(join(root, file), join(stage, file));
     for (const file of ownSources) await copyFile(join(root, file), join(stage, file));
     const integrity = join(stage, 'src/package-integrity.mjs');
@@ -172,6 +193,7 @@ export async function buildApplicationPackage(output, inputs) {
     await writeFile(join(stage, 'runtime/mcp/default-settings.json'), '{"knowledge":{},"engineering":{}}\n');
     for (const file of ['extension.vsixmanifest', 'TwinCatAssistant.IdeHost.dll', 'TwinCatAssistant.IdeHost.pkgdef', 'Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebView2.Wpf.dll', 'Microsoft.Web.WebView2.WinForms.dll'])
       await copyFile(join(hostInput, file), join(stage, 'host/x86', file));
+    await copyFile(engineeringModule, join(stage, 'host/x86/TwinCatMcp.Engineering.Host.dll'));
     await copyTree(join(hostInput, 'runtimes/win-x86'), join(stage, 'host/x86/runtimes/win-x86'));
     await copyFile(join(hostInput, 'en/TwinCatAssistant.IdeHost.resources.dll'), join(stage, 'host/x86/en/TwinCatAssistant.IdeHost.resources.dll'));
     for (const name of ['WindowsHost.exe', 'WindowsHost.dll', 'WindowsHost.deps.json', 'WindowsHost.runtimeconfig.json']) await copyFile(join(root, 'native/WindowsHost/bin/Release/net8.0-windows', name), join(stage, 'native/WindowsHost/bin/Release/net8.0-windows', name));

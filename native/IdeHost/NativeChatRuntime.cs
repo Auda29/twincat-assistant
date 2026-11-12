@@ -356,11 +356,41 @@ namespace TwinCatAssistant.Native
 
     public sealed class NativeChatSession : IDisposable
     {
+        private readonly SemaphoreSlim _editorControl = new SemaphoreSlim(1, 1);
+        private bool _editorControlBroken;
         private Process _process;
-        private bool _stopping;
+        private SafeFileHandle _ownedJob;
+        private volatile bool _stopping;
         public event Action Stopped;
         public int Port { get; private set; }
         public bool IsRunning { get { try { return _process != null && !_process.HasExited; } catch { return false; } } }
+
+        public async Task<bool> EditorControlAsync(object command, string requestId, string expectedStatus, CancellationToken cancellation)
+        {
+            await _editorControl.WaitAsync(cancellation);
+            try
+            {
+                if (_editorControlBroken || !IsRunning) return false;
+                var bytes = Encoding.UTF8.GetBytes(new JavaScriptSerializer().Serialize(command) + "\n");
+                try
+                {
+                    if (bytes.Length > 32768) return false;
+                    await _process.StandardInput.BaseStream.WriteAsync(bytes, 0, bytes.Length, cancellation);
+                    await _process.StandardInput.BaseStream.FlushAsync(cancellation);
+                }
+                finally { Array.Clear(bytes, 0, bytes.Length); }
+                var response = ReadReadyAsync(_process.StandardOutput);
+                if (await Task.WhenAny(response, Task.Delay(65000, cancellation)) != response)
+                { _editorControlBroken = true; return false; }
+                var value = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(await response);
+                object id, status;
+                if (value == null || value.Count != 2 || !value.TryGetValue("requestId", out id) || !Equals(id, requestId)
+                    || !value.TryGetValue("status", out status)) { _editorControlBroken = true; return false; }
+                return Equals(status, expectedStatus);
+            }
+            catch { _editorControlBroken = true; return false; }
+            finally { _editorControl.Release(); }
+        }
 
         public async Task StartAsync(NativeChatConfiguration config, int port, string password)
         {
@@ -381,15 +411,19 @@ namespace TwinCatAssistant.Native
             start.EnvironmentVariables["DOTNET_ROOT"] = config.DotNetRoot;
             _process = new Process { StartInfo = start };
             _process.Exited += OnExited;
-            if (!_process.Start()) throw new IOException("The local chat launcher could not start.");
-            _process.EnableRaisingEvents = true;
-            // Upstream logs are deliberately drained without displaying them or
-            // retaining credentials/URLs in an IDE error message.
-            var drain = DrainAsync(_process.StandardError);
-            var request = new Dictionary<string, object> { { "state", config.StateRoot }, { "port", port }, { "password", password } };
-            if (!string.IsNullOrEmpty(config.McpSettingsPath)) request.Add("mcpConfig", config.McpSettingsPath);
             try
             {
+                if (!_process.Start()) throw new IOException("The local chat launcher could not start.");
+                // The launcher waits for its first stdin line before it starts any
+                // descendant. Assign it before sending that line or credentials.
+                _ownedJob = NativeChatProcessJob.Attach(_process);
+                if (_stopping) { CloseOwnedJob(); throw new OperationCanceledException("Local chat is stopping."); }
+                _process.EnableRaisingEvents = true;
+                // Upstream logs are deliberately drained without displaying them or
+                // retaining credentials/URLs in an IDE error message.
+                var drain = DrainAsync(_process.StandardError);
+                var request = new Dictionary<string, object> { { "state", config.StateRoot }, { "port", port }, { "password", password } };
+                if (!string.IsNullOrEmpty(config.McpSettingsPath)) request.Add("mcpConfig", config.McpSettingsPath);
                 // A GUI .NET Framework process may use an ANSI/OEM encoding for
                 // StandardInput. Send UTF-8 bytes explicitly so Unicode passwords
                 // and state paths reach the Node protocol without substitution.
@@ -443,18 +477,20 @@ namespace TwinCatAssistant.Native
         public async Task StopAsync()
         {
             var process = _process;
-            if (process == null) return;
+            if (process == null) { CloseOwnedJob(); return; }
             _stopping = true;
             try { process.StandardInput.Close(); } catch { }
             await Task.Run(() => {
                 try { if (!process.WaitForExit(5000)) { process.Kill(); process.WaitForExit(2000); } } catch { }
             });
+            CloseOwnedJob();
             process.Exited -= OnExited;
             process.Dispose();
             if (_process == process) _process = null;
         }
-        public void Dispose() { var stop = StopAsync(); }
-        private void OnExited(object sender, EventArgs args) { if (!_stopping) Stopped?.Invoke(); }
+        public void Dispose() { _stopping = true; CloseOwnedJob(); var stop = StopAsync(); }
+        private void CloseOwnedJob() { Interlocked.Exchange(ref _ownedJob, null)?.Dispose(); }
+        private void OnExited(object sender, EventArgs args) { CloseOwnedJob(); if (!_stopping) Stopped?.Invoke(); }
         internal static async Task DrainAsync(StreamReader reader)
         { try { var buffer = new char[1024]; while (await reader.ReadAsync(buffer, 0, buffer.Length) > 0) { } } catch { } }
         internal static async Task<string> ReadReadyAsync(StreamReader reader, int limit = 4096)
@@ -475,6 +511,56 @@ namespace TwinCatAssistant.Native
                 throw new ArgumentException("Invalid launcher path.");
             return "\"" + argument + "\"";
         }
+    }
+
+    // A private job is inherited by all descendants. Closing its last handle on
+    // normal shutdown or an IDE crash terminates only this owned process tree.
+    internal static class NativeChatProcessJob
+    {
+        internal static SafeFileHandle Attach(Process process)
+        {
+            var job = CreateJobObject(IntPtr.Zero, null);
+            if (job.IsInvalid) { job.Dispose(); throw new IOException("Local chat ownership could not be established."); }
+            try
+            {
+                var limits = new ExtendedLimits();
+                limits.Basic.LimitFlags = 0x2000; // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+                int size = Marshal.SizeOf(typeof(ExtendedLimits));
+                var memory = Marshal.AllocHGlobal(size);
+                try
+                {
+                    Marshal.StructureToPtr(limits, memory, false);
+                    if (!SetInformationJobObject(job, 9, memory, (uint)size) || !AssignProcessToJobObject(job, process.Handle))
+                        throw new IOException("Local chat ownership could not be established.");
+                }
+                finally { Marshal.FreeHGlobal(memory); }
+                return job;
+            }
+            catch { job.Dispose(); throw; }
+        }
+        [StructLayout(LayoutKind.Sequential)] private struct BasicLimits
+        {
+            internal long ProcessTime, JobTime;
+            internal uint LimitFlags;
+            internal UIntPtr MinWorkingSet, MaxWorkingSet;
+            internal uint ActiveProcesses;
+            internal UIntPtr Affinity;
+            internal uint Priority, Scheduling;
+        }
+        [StructLayout(LayoutKind.Sequential)] private struct IoCounters
+        { internal ulong ReadOps, WriteOps, OtherOps, ReadBytes, WriteBytes, OtherBytes; }
+        [StructLayout(LayoutKind.Sequential)] private struct ExtendedLimits
+        {
+            internal BasicLimits Basic;
+            internal IoCounters Io;
+            internal UIntPtr ProcessMemory, JobMemory, PeakProcessMemory, PeakJobMemory;
+        }
+        [DllImport("kernel32.dll", EntryPoint = "CreateJobObjectW", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern SafeFileHandle CreateJobObject(IntPtr security, string name);
+        [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetInformationJobObject(SafeFileHandle job, int type, IntPtr info, uint length);
+        [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool AssignProcessToJobObject(SafeFileHandle job, IntPtr process);
     }
 
     // Same no-follow, bounded leaf read contract as the existing Windows helper.

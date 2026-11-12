@@ -180,10 +180,19 @@ namespace TwinCatAssistant.Native
             SetWidth(390);
             Call("SelectEntryAsync", "s2"); Pump();
             Check(_picker.Pinned && !_picker.Docked && _picker.IsOpen, "selecting the current chat keeps a pinned narrow overlay open");
+            _anchor.Visibility = Visibility.Collapsed; Pump();
+            Check(_picker.IsOpen, "a pinned list survives temporary host or anchor invisibility");
+            _anchor.Visibility = Visibility.Visible; Pump();
             Key(Field<TextBox>("_search"), System.Windows.Input.Key.Escape);
             Check(_picker.IsOpen, "Escape leaves a pinned narrow sidebar open");
             Field<Button>("_pinButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Pump();
             Check(!_picker.Pinned && AutomationProperties.GetName(Field<Button>("_pinButton")) == "Chatleiste anheften", "unpin restores the transient overlay behavior");
+            _anchor.Visibility = Visibility.Collapsed; Pump();
+            Check(!_picker.IsOpen, "an unpinned list still closes when its anchor disappears");
+            _anchor.Visibility = Visibility.Visible; Pump();
+            _picker.ShowLoading("Anlage_Linie3", false, true);
+            _picker.Show("Anlage_Linie3", "s2", Items());
+            _closes.Clear(); // The visibility regression above deliberately closed one unpinned session.
             SetWidth(1100);
 
             // Live refresh: identical lists keep the rows, changes update them in place.

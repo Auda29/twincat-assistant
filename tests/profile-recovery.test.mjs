@@ -54,8 +54,9 @@ test('a killed profile writer leaves a lock; coordinated lock removal allows val
     const paths=await initializeState(root,before);
     await writeFile(join(paths.data,'chat-sentinel'),'kept');
     const journal={version:1,before:{settings:before,config:createOpenCodeConfig(before)},after:{settings:after,config:createOpenCodeConfig(after)}};
-    const code=`import {open} from 'node:fs/promises'; import {atomicJson} from ${JSON.stringify(pathToFileURL(join(process.cwd(),'src/profile-update.mjs')).href)}; const [root,config,journal]=process.argv.slice(1); await open(root+'/model-consent.lock','wx'); await atomicJson(root+'/.profile-update.json',JSON.parse(journal)); await atomicJson(config,JSON.parse(journal).after.config); process.stdout.write('ready\\n'); setInterval(()=>{},1000);`;
-    child=spawn(process.execPath,['--input-type=module','-e',code,root,paths.configPath,JSON.stringify(journal)],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+    const code=`import {open} from 'node:fs/promises'; import {atomicJson} from ${JSON.stringify(pathToFileURL(join(process.cwd(),'src/profile-update.mjs')).href)}; const [root,config]=process.argv.slice(1); let journal=''; for await(const chunk of process.stdin) journal+=chunk; await open(root+'/model-consent.lock','wx'); await atomicJson(root+'/.profile-update.json',JSON.parse(journal)); await atomicJson(config,JSON.parse(journal).after.config); process.stdout.write('ready\\n'); setInterval(()=>{},1000);`;
+    child=spawn(process.execPath,['--input-type=module','-e',code,root,paths.configPath],{windowsHide:true,stdio:['pipe','pipe','pipe']});
+    child.stdin.end(JSON.stringify(journal));
     await Promise.race([once(child.stdout,'data'),once(child,'exit').then(()=>{throw new Error('Writer exited before crash boundary')}),new Promise((_,reject)=>{const timer=setTimeout(()=>reject(new Error('Writer boundary timeout')),15000); timer.unref();})]);
     const exited=once(child,'exit'); child.kill(); await exited; child=null;
     await assert.rejects(inspectState(root),{code:'EEXIST'});

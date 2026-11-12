@@ -28,7 +28,7 @@ namespace TwinCatAssistant.Native
         private DateTime _pickerRefreshedAt = DateTime.MinValue;
         private string _pickerUnknownSelection;
         private NativeProjectIdentity _sidebarProject;
-        private bool _sidebarWasDocked, _generalSidebarPinned;
+        private bool _sidebarWasDocked, _generalSidebarPinned, _sidebarContextSuspended;
         private readonly Dictionary<string, bool> _sidebarPinPreferences = new Dictionary<string, bool>(StringComparer.Ordinal);
         // Restores attempted per project and chat document; preferences per project.
         private readonly HashSet<string> _sidebarRestored = new HashSet<string>(StringComparer.Ordinal);
@@ -134,6 +134,8 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed || picker != _projectChatPicker) return;
+            _sidebarContextSuspended = false;
+            picker.View.IsEnabled = true;
             var projectHistory = _pickerScope?.General == false;
             _pickerRequest++;
             _pickerScope = null;
@@ -196,7 +198,7 @@ namespace TwinCatAssistant.Native
         private void MaintainSidebar()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_disposed || !_chatPresented || !SidebarPinned() || _strip.Visibility != Visibility.Visible || _browser.Visibility != Visibility.Visible) return;
+            if (_disposed || _sidebarContextSuspended || !_chatPresented || !SidebarPinned() || _strip.Visibility != Visibility.Visible || _browser.Visibility != Visibility.Visible) return;
             if (!_chatAdapterReady || _chatSelection?.authenticated != true || _chatActionPending) return;
             var project = _chatProject;
             if (project == null || (_projectChatPicker?.IsOpen == true && _pickerScope != null)) return;
@@ -249,6 +251,8 @@ namespace TwinCatAssistant.Native
         private void CloseProjectChats()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            _sidebarContextSuspended = false;
+            if (_projectChatPicker != null) _projectChatPicker.View.IsEnabled = true;
             _pickerRequest++;
             _pickerScope = null;
             _projectChatPicker?.Close();
@@ -263,11 +267,22 @@ namespace TwinCatAssistant.Native
             if (_projectChatPicker?.IsOpen == true && !SidebarPinned()) CloseProjectChats();
         }
 
-        private void CloseProjectChatsOnChange(NativeProjectIdentity project)
+        private void CloseProjectChatsOnChange(NativeProjectIdentity project, bool transient = false)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (!SameProject(_chatProject, project)) { _autoProjectKey = null; _explicitGeneralRequested = false; }
             var picker = _projectChatPicker;
+            // Build/save/frame events briefly invalidate context. Retain only
+            // the pinned presentation; no callback may use its old scope until
+            // a fresh project identity has been published again.
+            if (transient && picker?.IsOpen == true && picker.Pinned)
+            {
+                _sidebarContextSuspended = true;
+                picker.View.IsEnabled = false;
+                return;
+            }
+            _sidebarContextSuspended = false;
+            if (picker != null) picker.View.IsEnabled = true;
+            if (!SameProject(_chatProject, project)) { _autoProjectKey = null; _explicitGeneralRequested = false; }
             var stale = (_pickerScope != null && !SameProject(_pickerScope.Project, project))
                 || (_pickerScope == null && picker?.IsOpen == true && !SameProject(_sidebarProject, project));
             if (!stale) return;
@@ -289,7 +304,7 @@ namespace TwinCatAssistant.Native
         private bool PickerCurrent(PickerScope scope)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            return !_disposed && ReferenceEquals(scope, _pickerScope) && scope.Request == _pickerRequest
+            return !_disposed && !_sidebarContextSuspended && ReferenceEquals(scope, _pickerScope) && scope.Request == _pickerRequest
                 && scope.Document == _chatDocumentGeneration && SameProject(scope.Project, ReadProjectIdentity());
         }
         private void CheckPicker(PickerScope scope)

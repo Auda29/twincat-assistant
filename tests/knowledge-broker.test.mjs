@@ -41,8 +41,11 @@ test('concurrent native contexts share one Knowledge backend, retain it after di
       const text = results[i].result.content.at(-1).text;
       assert.equal(JSON.parse(text).data.items[0].topic_id,'fixture-topic-1');
       assert.equal(JSON.parse(text).data.items[0].text,['first','second','third'][i]);
-      assert.deepEqual(results[i].toolNames.sort(),['tc_browse_topics','tc_get_corpus_status','tc_get_topic','tc_search']);
+      assert.deepEqual(results[i].toolNames.sort(),['tc_browse_topics','tc_find_libraries','tc_find_symbols','tc_get_corpus_status','tc_get_library','tc_get_symbol','tc_get_topic','tc_lookup_error','tc_search']);
     }
+    const typed = await probeServer('knowledge', server, {name:'tc_get_symbol',arguments:{symbol_id:'fixture-symbol'}}, {cwd:root,env:process.env});
+    assert.equal(JSON.parse(typed.result.content.at(-1).text).arguments.symbol_id, 'fixture-symbol');
+    assert.ok(!typed.toolNames.includes('unreviewed_write'));
     const warm = Date.now(); await search('warm');
     assert.equal(broker.statistics.starts,1,'closing frontends must retain the shared corpus');
     assert.ok(Date.now()-warm<5000,'warm requests must not load the corpus again');
@@ -100,4 +103,22 @@ test('a broker without a configured corpus starts quietly and loads nothing', {t
     assert.equal(broker.statistics.starts,0);
     assert.equal(await knowledgeBrokerAvailable(knowledge.bridge), true);
   } finally { await broker?.close(); await rm(root,{recursive:true,force:true}); }
+});
+
+
+test('broker refuses a backend catalog missing a reviewed typed tool', {timeout:30000}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tc-knowledge-incomplete-'));
+  let broker;
+  try {
+    const base = join(root, 'knowledge'); await mkdir(base);
+    const config = join(base, 'knowledge.toml'), bridge = join(base, 'broker.json');
+    await writeFile(config, '[paths]\n');
+    const knowledge = { executable: process.execPath, config, bridge, startupTimeout: 15000 };
+    broker = await startKnowledgeBroker({ root, knowledge, cwd: root,
+      env: { ...process.env, TC_TEST_OMIT_TOOL: 'tc_get_symbol' },
+      backendCommand: [process.execPath, resolve('tests/fixtures/knowledge-server.mjs')] });
+    const server = createOpenCodeConfig({ knowledge }).mcp.servers.knowledge;
+    await assert.rejects(probeServer('knowledge', server, { name: 'tc_search', arguments: { query: 'test' } },
+      { cwd: root, env: process.env }), /Read-only MCP probe failed/);
+  } finally { await broker?.close(); await rm(root, { recursive: true, force: true }); }
 });

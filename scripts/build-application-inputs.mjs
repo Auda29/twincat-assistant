@@ -13,7 +13,11 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 let inputRoot = join(root, 'artifacts/application-inputs');
-const engineeringRevision = '3c303837e6d6f72bec1b9d38e778a7c32c61ae5c';
+async function engineeringLock() {
+  const lock=JSON.parse(await readFile(join(root,'upstream/engineering-lock.json'),'utf8'));
+  if(lock.schemaVersion!==1 || !/^[a-f0-9]{40}$/.test(lock.revision ?? '') || lock.moduleVersion!=='1.0.0.0') throw new Error('Invalid reviewed Engineering lock');
+  return lock;
+}
 const pyHash = '4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3';
 const sha = b => createHash('sha256').update(b).digest('hex');
 const exists = p => lstat(p).then(() => true, e => { if (e.code === 'ENOENT') return false; throw e; });
@@ -40,14 +44,130 @@ function isolated(scratch) {
   const e=Object.fromEntries(['SystemRoot','WINDIR','PATH','Path','COMSPEC','PATHEXT','SystemDrive','ProgramFiles','ProgramFiles(x86)','ProgramData','OS'].filter(k=>process.env[k]!==undefined).map(k=>[k,process.env[k]]));
   return {...e, HOME:scratch,USERPROFILE:scratch,APPDATA:scratch,LOCALAPPDATA:scratch,TEMP:scratch,TMP:scratch,npm_config_cache:join(scratch,'npm-cache'),npm_config_userconfig:join(scratch,'npmrc'),UV_CACHE_DIR:join(scratch,'uv-cache'),UV_NO_CONFIG:'1',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'NUL',GIT_TERMINAL_PROMPT:'0'};
 }
-async function engineering(checkout) {
-  if(!isAbsolute(checkout)) throw new Error('Engineering checkout must be absolute');
+
+async function verifiedEngineeringRelease(lock, directory) {
+  if (typeof directory !== 'string' || !isAbsolute(directory)) throw new Error('Engineering release artifact directory must be absolute');
+  if (!/^engineering-v[0-9]+\.[0-9]+\.[0-9]+$/.test(lock.tag) || lock.tag !== 'engineering-v' + lock.version
+      || !Array.isArray(lock.releaseArtifacts) || lock.releaseArtifacts.length !== 4) throw new Error('Invalid Engineering release lock');
+  const names=[`${lock.tag}-runtime-win-x86.zip`, `${lock.tag}-sources.zip`, `${lock.tag}-receipt.json`, 'engineering-catalog.json'];
+  const data=new Map();
+  for (const item of lock.releaseArtifacts) {
+    if (!item || !names.includes(item.name) || data.has(item.name) || !/^[a-f0-9]{64}$/.test(item.sha256 ?? '')) throw new Error('Invalid Engineering release artifact lock');
+    const path=join(directory,item.name), stat=await lstat(path);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Engineering artifact is not a regular file: '+item.name);
+    const bytes=await readFile(path);
+    if (sha(bytes)!==item.sha256) throw new Error('Engineering release artifact checksum mismatch: '+item.name);
+    data.set(item.name,bytes);
+  }
+  const receipt=JSON.parse(data.get(names[2]).toString('utf8'));
+  const runtime=data.get(names[0]);
+  const runtimeAssets=Array.isArray(receipt.assets) ? receipt.assets.filter(a=>a.filename===names[0]) : [];
+  if (receipt.schemaVersion!==1 || receipt.version!==lock.version || receipt.tag!==lock.tag || receipt.sourceCommit!==lock.revision
+      || receipt.protocolVersion!==1 || receipt.sourceFeatures!=='disabled'
+      || receipt.nativeFactory?.type!=='TwinCatMcp.Engineering.Host.EngineeringProviderFactory'
+      || receipt.nativeFactory?.method!=='CreateWithHostAccess' || receipt.nativeFactory?.parameterCount!==7
+      || receipt.nativeFactory?.getTextBuffer!==null
+      || receipt.module?.assembly!=='TwinCatMcp.Engineering.Host.dll' || receipt.module?.assemblyVersion!==lock.moduleVersion
+      || !/^[a-f0-9]{64}$/.test(receipt.module?.sha256 ?? '') || !/^[a-f0-9]{64}$/.test(receipt.module?.sourceTreeSha256 ?? '')
+      || receipt.catalog?.path!==names[3] || receipt.catalog?.sha256!==lock.catalogSha256
+      || sha(data.get(names[3]))!==receipt.catalog.sha256 || receipt.runtimeEntry!=='packages/mcp/dist/index.js'
+      || runtimeAssets.length!==1 || runtimeAssets[0].sha256!==sha(runtime) || runtimeAssets[0].size!==runtime.length)
+    throw new Error('Engineering release receipt mismatch');
+  return {receipt,runtime};
+}
+
+// Extract only a hash-verified release archive, validating every entry before
+// writing anything. A private scratch copy prevents a changed source archive.
+async function extractEngineeringArchive(archive, destination, scratch, env) {
+  const script = String.raw`Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [IO.Compression.ZipFile]::OpenRead($env:TC_RELEASE_ZIP)
+try {
+  $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+  $files = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+  $total = [long]0
+  foreach ($entry in $zip.Entries) {
+    $name = $entry.FullName
+    if (!$name -or $name.StartsWith('/') -or $name.Contains([char]92) -or $name.Contains(':') -or $name.EndsWith('/')) { throw 'Invalid ZIP path' }
+    $parts = $name.Split('/')
+    foreach ($part in $parts) {
+      if (!$part -or $part -eq '.' -or $part -eq '..' -or $part.EndsWith('.') -or $part.EndsWith(' ') -or $part -match '[\x00-\x1f<>"|?*]' -or $part -match '^(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)') { throw 'Invalid ZIP component' }
+    }
+    if (!$seen.Add($name)) { throw 'Duplicate ZIP path' }
+    $unixType = (($entry.ExternalAttributes -shr 16) -band 0xf000)
+    if (($unixType -ne 0 -and $unixType -ne 0x8000) -or (($entry.ExternalAttributes -band 0x400) -ne 0)) { throw 'ZIP contains a link or non-file' }
+    if ($entry.Length -gt 67108864) { throw 'ZIP entry too large' }
+    $total += $entry.Length
+    if ($total -gt 268435456) { throw 'ZIP too large' }
+    [void]$files.Add($name)
+  }
+  foreach ($name in $files) {
+    $parts = $name.Split('/')
+    for ($i = 1; $i -lt $parts.Length; $i++) {
+      if ($files.Contains(($parts[0..($i-1)] -join '/'))) { throw 'ZIP file overlaps directory' }
+    }
+  }
+  foreach ($entry in $zip.Entries) {
+    $target = Join-Path $env:TC_RELEASE_DEST ($entry.FullName.Replace('/', [IO.Path]::DirectorySeparatorChar))
+    [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target)) | Out-Null
+    $input = $entry.Open(); $output = [IO.File]::Open($target, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try { $input.CopyTo($output) } finally { $output.Dispose(); $input.Dispose() }
+  }
+} finally { $zip.Dispose() }
+`;
+  const path=join(scratch,'extract-release.ps1'); await writeFile(path,script);
+  await mkdir(destination);
+  run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path],scratch,
+    {...env,TC_RELEASE_ZIP:archive,TC_RELEASE_DEST:destination});
+}
+
+async function engineering(checkout, artifacts) {
+  if(!checkout || !isAbsolute(checkout)) throw new Error('Engineering checkout must be absolute');
+  const lock=await engineeringLock(), engineeringRevision=lock.revision;
+  const release = lock.tag ? await verifiedEngineeringRelease(lock, artifacts) : null;
   const revision=run('git',['rev-parse','HEAD'],checkout,isolated(root),true).trim();
   if(revision!==engineeringRevision) throw new Error('Engineering checkout revision mismatch');
   await publish('engineering',engineeringRevision,async(payload,scratch)=>{
     const env=isolated(scratch), source=join(scratch,'source');
     run('git',['clone','--no-hardlinks','--no-checkout',checkout,source],scratch,env);
     run('git',['-C',source,'checkout','--detach',engineeringRevision],scratch,env);
+    if (release) {
+      const sourceArchive=execFileSync('git',['archive','--format=tar',engineeringRevision,'native/Engineering.Host'],
+        {cwd:source,env,windowsHide:true,maxBuffer:16*1024*1024});
+      if (sha(sourceArchive)!==release.receipt.module.sourceTreeSha256)
+        throw new Error('Engineering native source tree mismatch');
+    }
+    // Use the pinned SDK and installed net472 targeting pack. Build only the
+    // provider from the clean clone; no vendor or SDK assemblies are copied.
+    const localDotnet=join(root,'local-data/dotnet8/dotnet.exe');
+    const dotnet=process.env.DOTNET_ROOT ? join(process.env.DOTNET_ROOT,'dotnet.exe') : (await exists(localDotnet) ? localDotnet : 'dotnet');
+    const dotnetEnv={...env, ...(isAbsolute(dotnet)?{DOTNET_ROOT:dirname(dotnet)}:{}), DOTNET_CLI_HOME:scratch,
+      DOTNET_CLI_TELEMETRY_OPTOUT:'1', DOTNET_SKIP_FIRST_TIME_EXPERIENCE:'1', DOTNET_GENERATE_ASPNET_CERTIFICATE:'false'};
+    if(run(dotnet,['--version'],source,dotnetEnv,true).trim()!=='8.0.425') throw new Error('Engineering provider requires .NET SDK 8.0.425');
+    run(dotnet,['build','native/Engineering.Host/TwinCatMcp.Engineering.Host.csproj','--configuration','Release','--nologo','-p:RestoreIgnoreFailedSources=true'],source,dotnetEnv);
+    const dll=join(source,'native/Engineering.Host/bin/Release/net472/TwinCatMcp.Engineering.Host.dll');
+    const moduleIdentity=run('powershell.exe',['-NoProfile','-NonInteractive','-Command',
+      '$a=[Reflection.AssemblyName]::GetAssemblyName($env:TC_ENGINEERING_MODULE); $a.Name + "|" + $a.Version.ToString()'],source,{...env,TC_ENGINEERING_MODULE:dll},true).trim();
+    if(moduleIdentity!=='TwinCatMcp.Engineering.Host|'+lock.moduleVersion) throw new Error('Engineering provider module identity mismatch');
+    await file(dll,join(payload,'native/host/TwinCatMcp.Engineering.Host.dll'));
+    await writeFile(join(payload,'native/host/receipt.json'),JSON.stringify({schemaVersion:1,revision:engineeringRevision,moduleVersion:lock.moduleVersion,sha256:sha(await readFile(dll))},null,2)+'\n');
+    if (release) {
+      const archive=join(scratch,'engineering-runtime.zip'); await writeFile(archive,release.runtime);
+      const unpacked=join(scratch,'engineering-runtime'); await extractEngineeringArchive(archive,unpacked,scratch,env);
+      if (sha(await readFile(join(unpacked,'engineering-catalog.json')))!==release.receipt.catalog.sha256
+          || sha(await readFile(join(unpacked,'host/x86/TwinCatMcp.Engineering.Host.dll')))!==release.receipt.module.sha256
+          || sha(await readFile(join(unpacked,'LICENSE')))!==sha(await readFile(join(source,'LICENSE'))))
+        throw new Error('Engineering runtime contents do not match release receipt or source');
+      await file(join(source,'LICENSE'),join(payload,'LICENSE'));
+      await file(join(unpacked,'package.json'),join(payload,'package.json'));
+      await tree(join(unpacked,'node_modules'),join(payload,'node_modules'));
+      for(const name of ['core','mcp']) {
+        await file(join(unpacked,'packages',name,'package.json'),join(payload,'packages',name,'package.json'));
+        await tree(join(unpacked,'packages',name,'dist'),join(payload,'packages',name,'dist'));
+      }
+      await writeFile(join(payload,'build-provenance.json'),JSON.stringify({schemaVersion:1,revision:engineeringRevision,
+        tag:lock.tag,version:lock.version,sourceCommit:release.receipt.sourceCommit,releaseArtifacts:lock.releaseArtifacts,
+        nativeSourceTreeSha256:release.receipt.module.sourceTreeSha256,node:process.versions.node},null,2)+'\n');
+    } else {
     const npm=join(dirname(process.execPath),'node_modules/npm/bin/npm-cli.js');
     run(process.execPath,[npm,'ci','--no-audit','--no-fund'],source,env);
     run(process.execPath,[npm,'run','build'],source,env);
@@ -71,6 +191,7 @@ async function engineering(checkout) {
     await file(join(source,'packages/core/package.json'),join(core,'package.json'));
     await tree(join(source,'packages/core/dist'),join(core,'dist'));
     await writeFile(join(payload,'build-provenance.json'),JSON.stringify({schemaVersion:1,revision:engineeringRevision,node:process.versions.node,packageLockSha256:sha(await readFile(join(source,'package-lock.json')))},null,2)+'\n');
+    }
     const moved=join(scratch,'relocated'); await rename(payload,moved);
     const project=join(scratch,'Synthetic.plcproj'), pou=join(scratch,'FB_Station.TcPOU'), config=join(scratch,'engineering.json');
     await writeFile(project,'<Project><ItemGroup><Compile Include="FB_Station.TcPOU" /></ItemGroup></Project>');
@@ -107,7 +228,7 @@ async function knowledge(artifacts, license, licenseSha, probeOnly=false) {
     const path=join(artifacts,artifact.name), s=await lstat(path);
     if(!s.isFile() || s.isSymbolicLink() || sha(await readFile(path))!==artifact.sha256) throw new Error('Knowledge release artifact checksum mismatch: '+artifact.name);
   }
-  if(!probeOnly && (!license || !isAbsolute(license) || !/^[a-f0-9]{64}$/.test(licenseSha ?? ''))) throw new Error('Knowledge release 0.1.1 wheel declares no license; provide a reviewed license file and its SHA-256 explicitly');
+  if(!probeOnly && (!license || !isAbsolute(license) || !/^[a-f0-9]{64}$/.test(licenseSha ?? ''))) throw new Error('Knowledge packaging requires a reviewed redistribution permission file and its SHA-256 explicitly');
   if(!probeOnly && sha(await readFile(license))!==licenseSha) throw new Error('Knowledge license checksum mismatch');
   if(process.arch!=='x64') throw new Error('Only the pinned x64 Python embedded archive is currently supported');
   const build = async(payload,scratch)=>{
@@ -119,16 +240,16 @@ async function knowledge(artifacts, license, licenseSha, probeOnly=false) {
     const uv=run('where.exe',['uv.exe'],scratch,env,true).trim().split(/\r?\n/)[0];
     if(!uv) throw new Error('uv is required to install pinned wheels');
     const site=join(payload,'site-packages'); await mkdir(site);
-    run(uv,['pip','install','--target',site,'--python',join(python,'python.exe'),'--require-hashes','--no-deps','--only-binary',':all:','-r',join(artifacts,'runtime-requirements.txt')],scratch,env);
+    run(uv,['pip','install','--target',site,'--python',join(python,'python.exe'),'--require-hashes','--no-deps','--only-binary',':all:','-r',join(artifacts,lock.runtimeRequirements ?? 'runtime-requirements.txt')],scratch,env);
     const wheel=lock.artifacts.find(a=>a.name.endsWith('.whl'));
     run(uv,['pip','install','--target',site,'--python',join(python,'python.exe'),'--no-deps',join(artifacts,wheel.name)],scratch,env);
-    await rm(join(site,'twincat_knowledge-0.1.1.dist-info/direct_url.json'),{force:true});
+    await rm(join(site,`twincat_knowledge-${lock.version}.dist-info/direct_url.json`),{force:true});
     // Console-script wrappers produced by installers may contain absolute paths.
     await rm(join(site,'Scripts'),{recursive:true,force:true});
-    const validationOverlay = await patchKnowledgeValidation(site);
+    const validationOverlay = await patchKnowledgeValidation(site, lock.version);
     await writeFile(join(payload,'assistant-validation-overlay.json'),JSON.stringify(validationOverlay,null,2)+'\n');
     if(!probeOnly) await file(license,join(payload,'LICENSE'));
-    await writeFile(join(payload,'build-provenance.json'),JSON.stringify({schemaVersion:1,revision:lock.revision,version:lock.version,python:lock.python,pythonEmbedSha256:pyHash,artifacts:lock.artifacts,licenseSha256:probeOnly?null:licenseSha},null,2)+'\n');
+    await writeFile(join(payload,'build-provenance.json'),JSON.stringify({schemaVersion:1,revision:lock.revision,version:lock.version,developmentOnly:lock.developmentOnly===true,python:lock.python,pythonEmbedSha256:pyHash,artifacts:lock.artifacts,licenseSha256:probeOnly?null:licenseSha},null,2)+'\n');
     const csc=join(process.env.SystemRoot,'Microsoft.NET/Framework/v4.0.30319/csc.exe');
     run(csc,['/nologo','/target:exe','/out:'+join(payload,'twincat-knowledge.exe'),join(root,'scripts/KnowledgeLauncher.cs')],scratch,env);
     const moved=join(scratch,'relocated'); await rename(payload,moved);
@@ -182,13 +303,13 @@ async function licenses() {
     console.log('Sourced exact Node and locked WebView2 licenses.');
   } finally { await rm(scratch,{recursive:true,force:true}); }
 }
-const {values}=parseArgs({options:{component:{type:'string'},engineering:{type:'string'},'knowledge-artifacts':{type:'string'},'knowledge-license':{type:'string'},'knowledge-license-sha256':{type:'string'},'output-root':{type:'string'}},strict:true});
+const {values}=parseArgs({options:{component:{type:'string'},engineering:{type:'string'},'engineering-artifacts':{type:'string'},'knowledge-artifacts':{type:'string'},'knowledge-license':{type:'string'},'knowledge-license-sha256':{type:'string'},'output-root':{type:'string'}},strict:true});
 try {
   if(process.platform!=='win32' || process.arch!=='x64' || Number(process.versions.node.split('.')[0])<22) throw new Error('Build inputs with Windows x64 Node 22+');
   if(values['output-root']) { if(!isAbsolute(values['output-root']) || resolve(values['output-root'])!==values['output-root']) throw new Error('OutputRoot must be absolute and normalized'); inputRoot=values['output-root']; }
   const component=(values.component??'All').toLowerCase();
   if(!['all','engineering','knowledge','knowledgeprobe','licenses'].includes(component)) throw new Error('Unknown component');
-  if(component==='all' && (!values['knowledge-license'] || !isAbsolute(values['knowledge-license']) || !/^[a-f0-9]{64}$/.test(values['knowledge-license-sha256'] ?? ''))) throw new Error('Knowledge release 0.1.1 wheel declares no license; provide a reviewed license file and its SHA-256 explicitly');
+  if(component==='all' && (!values['knowledge-license'] || !isAbsolute(values['knowledge-license']) || !/^[a-f0-9]{64}$/.test(values['knowledge-license-sha256'] ?? ''))) throw new Error('Knowledge packaging requires a reviewed redistribution permission file and its SHA-256 explicitly');
   if(component==='all') {
     if(sha(await readFile(values['knowledge-license']))!==values['knowledge-license-sha256']) throw new Error('Knowledge license checksum mismatch');
     const lock=JSON.parse(await readFile(join(root,'upstream/knowledge-lock.json'),'utf8'));
@@ -199,7 +320,7 @@ try {
     }
     for(const name of ['engineering','knowledge','node','webview2']) if(await exists(join(inputRoot,name))) throw new Error('Output already exists: '+join(inputRoot,name));
   }
-  if(component==='all' || component==='engineering') await engineering(values.engineering);
+  if(component==='all' || component==='engineering') await engineering(values.engineering,values['engineering-artifacts']);
   if(component==='all' || component==='knowledge') await knowledge(values['knowledge-artifacts'],values['knowledge-license'],values['knowledge-license-sha256']);
   if(component==='knowledgeprobe') await knowledge(values['knowledge-artifacts'],undefined,undefined,true);
   if(component==='all' || component==='licenses') await licenses();

@@ -3,7 +3,7 @@ import { lstat, mkdir, open, realpath } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJsonFile, inspectState } from './state.mjs';
-import { createOpenCodeConfig, validateSettings } from './config.mjs';
+import { createOpenCodeConfig, previousPolicyConfig, validateSettings } from './config.mjs';
 import { ANALYSIS_PROFILE, previousAnalysisPrompts, analysisSystemPrompt } from './agent-prompts.mjs';
 import { atomicJson, updateProfile } from './profile-update.mjs';
 import { effectiveKnowledge } from './knowledge-paths.mjs';
@@ -96,20 +96,21 @@ async function prepareNativeProjectOperation(input) {
       targetAmsNetId: '127.0.0.1.1.1', readOnly: true, writeAllowlist: [],
       engineering: { enabled: true, backend: 'configuredProjectFiles', projectFiles: [{ path: identity.project, type: 'plc' }] },
     });
-    const configuration = (selected, system = analysisSystemPrompt({ knowledge: true, engineering: true, project: true }), runtime = {}) => {
+    const configuration = (selected, system = analysisSystemPrompt({ knowledge: true, engineering: true, project: true }), runtime = {}, legacy = false) => {
       exactKeys(selected, ['knowledge', 'engineering']);
       exactKeys(selected.engineering, ['entrypoint']);
-      const config = createOpenCodeConfig({ knowledge: selected.knowledge,
-        engineering: { entrypoint: selected.engineering.entrypoint, config: engineeringConfig } }, runtime);
+      const configSettings = { knowledge: selected.knowledge,
+        engineering: { entrypoint: selected.engineering.entrypoint, config: engineeringConfig } };
+      const config = legacy ? previousPolicyConfig(configSettings, runtime, system) : createOpenCodeConfig(configSettings, runtime);
       // Provider/default model belong to the protected global profile.
       const agent = { ...config.agents[ANALYSIS_PROFILE], system };
       return { mcp: config.mcp, agents: { [ANALYSIS_PROFILE]: agent } };
     };
     // Exact configurations written by earlier releases; only their prompt differs.
     const previous = async (selected, actual) => {
-      const known = currentPackageSettings(selected) ? previousAnalysisPrompts({ knowledge: Boolean(selected.knowledge), engineering: true, project: true }).map(system => configuration(selected, system)) : [];
+      const known = currentPackageSettings(selected) ? previousAnalysisPrompts({ knowledge: Boolean(selected.knowledge), engineering: true, project: true }).map(system => configuration(selected, system, {}, true)) : [];
       const runtime = await previousPackageRuntime(actual, selected);
-      if (runtime) known.push(configuration(selected, undefined, runtime), ...previousAnalysisPrompts({ knowledge: Boolean(selected.knowledge), engineering: true, project: true }).map(system => configuration(selected, system, runtime)));
+      if (runtime) known.push(configuration(selected, undefined, runtime), ...previousAnalysisPrompts({ knowledge: Boolean(selected.knowledge), engineering: true, project: true }).map(system => configuration(selected, system, runtime, true)));
       return known;
     };
     // Adopt the 0.1.9 directory before updating its managed MCP configuration.
