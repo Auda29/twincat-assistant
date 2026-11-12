@@ -1,11 +1,6 @@
-# Native read-only MCP integration
+# Native MCP integration
 
-This page retains the released saved-file setup history below. The current P1
-branch uses private reviewed dependency candidates, nine read-only Knowledge
-tools, and a separate native Engineering provider. Standalone Knowledge release
-installation is disabled while its lock is marked `developmentOnly`. See
-[the current integration record](MCP_P1_INTEGRATION_20261112.md) for pins,
-supported editor scope and remaining acceptance gates.
+Beta 5 uses published Knowledge 0.1.2 and Engineering 0.5.3, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Knowledge exposes nine read-only tools. Project chats retain saved-file reads and can explicitly enable native **Build tools** for the selected chat; each selective build needs its own native approval. Source discovery and editing workflows are inactive in this release. See [Beta 5 release scope](releases/native-v0.2.0-beta.5.md), [Editor profile](EDITOR_PROFILE.md), and [Knowledge setup](KNOWLEDGE_SETUP.md).
 
 Native 0.1.9 adds [automatic documentation setup](KNOWLEDGE_SETUP.md). Users can
 prepare installed Beckhoff help from **Wissenssuche einrichten**; a manual TOML
@@ -50,6 +45,8 @@ selection and the installed native UI still require host acceptance.
 
 ### Configuration
 
+The following setup example describes the historical 0.1.8/0.1.9 release. For current installation and dependency pins use [Installation](INSTALLATION.md) and the lock files above.
+
 First configure the protected chat runtime using
 [Configure-NativeChat.ps1](../scripts/Configure-NativeChat.ps1). Install Knowledge
 and build the engineering checkout at the revisions in [Installation](INSTALLATION.md):
@@ -72,8 +69,7 @@ If an activated documentation corpus exists, add
 configuration. Setup neither downloads documentation nor imports a corpus.
 Without an explicit TOML, native 0.1.9 creates its private configuration and
 offers **Wissenssuche einrichten** for installed help. Before activation, the
-server reports `not_available`; saved-project tools remain usable. The local
-German operator help is now prepared with 49,970 articles.
+server reports `not_available`; saved-project tools remain usable. An earlier local German help fixture contained 49,970 articles; this does not establish a current operator corpus.
 
 The script writes `%LOCALAPPDATA%\TwinCatAssistant\native-mcp.json` and adds its
 path as `McpSettingsPath` in `native-chat.json`. It preserves the other host
@@ -141,11 +137,10 @@ project files through the reviewed read tools. Opening a project does not submit
 source to a model. **Attach** separately stages the supported active POU's
 Automation Interface snapshot; optional automatic attachment remains off by
 default. This snapshot is not verified unsaved editor-buffer text and can differ
-from the saved files returned by engineering tools. There are no PLC writes,
-implicit saves, builds, ADS/runtime backends or machine-control actions. Shell
+from the saved files returned by engineering tools. Analysis does not build or write. Explicitly enabled Build tools require native approval for each selective build; they do not save or enable source editing, ADS/runtime backends or machine-control actions. Shell
 and general filesystem tools remain denied by the existing agent policy.
 
-## Verification
+## Historical verification (0.1.8)
 
 Local candidate checks on 2026-10-27 pass: 51 Node tests, 8 browser contracts,
 80 shared native policy/context/chat checks, 28 WPF view checks, and both x86
@@ -185,5 +180,4 @@ All fixtures use isolated state, synthetic PLC files and synthetic provider
 credentials. They make no model request. Passing these tests does not prove
 installed IDE lifecycle behavior, actual documentation quality, live unsaved
 buffer semantics, PLC compilation or machine behavior. Operator acceptance with
-a real activated corpus and live amd64 host remains open. Source-only release
-and Beckhoff interop redistribution constraints are unchanged.
+a real activated corpus and the supported live x86 host remains open. See the Beta 5 release scope for current evidence and constraints.

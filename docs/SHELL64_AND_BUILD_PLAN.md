@@ -1,4 +1,19 @@
-# Next priorities: 4026/Shell64, then build diagnostics
+# Shell64 preparation and build diagnostics
+
+## Current checkpoint, 2026-11-12
+
+[Beta 5](releases/native-v0.2.0-beta.5.md) implements selective PLC builds,
+build-owned diagnostics and guarded native navigation on the eligible
+4024.78 / TcXaeShell 15 x86 host. Each build needs native approval; installed-host
+acceptance remains open. See [Build tools](EDITOR_PROFILE.md) for the current
+scope and [Roadmap](ROADMAP.md) for remaining work.
+
+4026/Shell64 remains a separate, disabled installation target. The operator has
+identified an IPC reporting TwinCAT 4026.26; that does not prove extension loading,
+editor compatibility or build/navigation behavior. The inventory, test counts
+and proposed build slice below describe the earlier 2026-11-10 checkpoint.
+
+## Historical preparation, 2026-11-10
 
 Operator priority, 2026-11-10:
 

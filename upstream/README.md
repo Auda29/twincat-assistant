@@ -1,5 +1,12 @@
 # Source runtime for the TwinCAT Assistant
 
+Beta 5 bundles published Engineering 0.5.3 and Knowledge 0.1.2. Their exact
+source, release assets, receipts and tool catalogs are pinned separately in
+[`engineering-lock.json`](engineering-lock.json) and
+[`knowledge-lock.json`](knowledge-lock.json). The native build provider is built
+from the released Engineering source; the package verifies published inputs
+before staging them. See [application inputs](../docs/APPLICATION_INPUTS.md).
+
 The independent Knowledge MCP release is pinned in
 [`knowledge-lock.json`](knowledge-lock.json). On Windows,
 [`Install-Knowledge.ps1`](../scripts/Install-Knowledge.ps1) installs its verified
@@ -8,9 +15,13 @@ cycle and operator corpus remain separate from the OpenCode/OpenChamber source
 build described below. See [installation](../docs/INSTALLATION.md).
 
 `source-lock.json` fixes OpenCode 2.0.23 and OpenChamber 2.1.1 to their exact
-Git revisions. OpenCode's implementation is built unchanged. This includes its
+Git revisions. Reviewed overlays retain its
 providers, login methods, model catalog, streaming, cancellation, agent loop,
-MCP clients, permissions and database. No tool family is removed in this step.
+MCP clients, permissions and database while specializing the delivery surface.
+Analysis remains read-only. Optional per-chat Build tools use native approval;
+new source-editor tools and accessors are inactive in Beta 5. See
+[delivery scope](../docs/DELIVERY_SCOPE.md) and
+[runtime integration](../docs/RUNTIME_INTEGRATION.md) for the current boundaries.
 
 The reviewed OpenChamber overlay adds a versioned source integration to the
 existing web entry and composer. `changes.json` lists exact, unique source

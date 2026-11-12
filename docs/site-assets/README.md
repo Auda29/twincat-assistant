@@ -19,7 +19,11 @@ composer. It uses synthetic `FB_StartDelay` code and an example timer explanatio
 Both languages label it as an illustration and link to the real screenshot
 section. It is independent of the unchanged original PNG.
 
-Release links and compatibility text on the initial site refer to the published
-`native-v0.2.0-beta.4` release. The package version is `0.2.0-beta.4`, and the
+Release links and current capability text refer to published
+`native-v0.2.0-beta.5`, including Engineering 0.5.3 and Knowledge 0.1.2.
+Analysis remains read-only; project-bound build tools require explicit native
+approval. The source-editor development is retained but inactive. The original
+screenshot remains dated 2026-11-11 and is not presented as Beta 5 acceptance.
+The package version is `0.2.0-beta.5`, and the
 supported installation target is TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on
 Windows x64. Shell64/4026 is preparation only, not an accepted installation.

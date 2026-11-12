@@ -8,9 +8,13 @@ The MVP documents describe the target product. Start with [Status](STATUS.md) fo
 what exists and has been tested, then [Roadmap](ROADMAP.md) for the work sequence
 and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
-Native acceptance and future engineering write/build milestones remain separate.
+Native acceptance and future engineering write milestones remain separate.
 
-Current release: [0.2.0 Beta 4](releases/native-v0.2.0-beta.4.md), including startup/member-context hardening and the Knowledge validation overlay. [Published Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.4) contains setup, checksums and build provenance. Shell64 support remains preparation only.
+Current release: [0.2.0 Beta 5](releases/native-v0.2.0-beta.5.md), with optional approved PLC builds, build-owned diagnostics/native navigation, five typed Knowledge tools and the pinned-chat-list fix. [Published Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.5) contains setup, checksums and build provenance. All new source-editor tools remain inactive; their development code is preserved. Shell64 support remains preparation only.
+
+Start with [Build tools and approvals](EDITOR_PROFILE.md), [Knowledge setup](KNOWLEDGE_SETUP.md) and [current status](STATUS.md). The released inputs are Engineering 0.5.3 and Knowledge 0.1.2. The [MCP-first integration record](MCP_P1_INTEGRATION_20261112.md) retains private-development evidence, separately from active release scope.
+
+Previous release: [0.2.0 Beta 4](releases/native-v0.2.0-beta.4.md), including startup/member-context hardening and the Knowledge validation overlay.
 
 Previous release: [0.2.0 Beta 3](releases/native-v0.2.0-beta.3.md), with UI-thread/startup performance corrections and the shared product icon. The [Beta 3 release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.3) includes setup, checksums and build provenance.
 
@@ -85,7 +89,8 @@ Previous application: [0.2.0 Beta 1](releases/native-v0.2.0-beta.1.md), includin
 6. The assistant follows the active ST editor locally; manual Refresh/Read/object
    selection is diagnostic scaffolding, not the normal product workflow.
 7. Automatic local context is not source-disclosure consent. Current native work
-   stays read-only; live writes and compiler integration are later milestones.
+   keeps Analysis read-only; each optional PLC build requires native approval.
+   Source edits and runtime actions remain outside the release permissions.
 
 ## Updating the Plan
 
