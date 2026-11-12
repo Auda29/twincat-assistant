@@ -78,6 +78,12 @@ solution and PLC paths and an epoch separate from chat IDs. Transient editor
 invalidation suspends approvals while retaining submitted-operation observation.
 Actual rebinding or view disposal revokes the provider and owned child.
 
+Pinned chat history also survives transient build/save/frame invalidation.
+Its existing rows stay visible but disabled until a fresh project identity is
+published; stale callbacks remain refused. Temporary anchor/host invisibility
+does not dismiss a pinned list. Confirmed project loss still closes the list,
+and unpinned lists retain their normal dismissal behavior.
+
 BuildProject receives the exact `.plcproj` path and verified configuration plus
 platform, without substituting `.tsproj`, changing platform, saving, activating
 or downloading. Bounded output/diagnostics belong to matching build events.
@@ -125,7 +131,8 @@ Pending generations and fresh chat epochs prevent late activation after a switch
   policy/context/localization checks passed. Fourteen existing threading warnings.
 - Full Node suite: 191 passed, no skipped tests. The source Core/Chat runtime was
   rebuilt for the Editor overlay.
-- Thirty-one actual standalone WPF/WebView callback/renderer checks passed.
+- Thirty-six actual standalone WPF/WebView callback/renderer checks passed;
+  112 chat-list component checks include pinned/unpinned visibility regression.
   Actual packaged Node HMAC bootstrap, MCP initialization, correlated describe,
   owned-process disposal and tamper refusals passed against a synthetic provider.
 - Real pinned Core integration established Editor-allow, Analysis-deny and shell-

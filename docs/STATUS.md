@@ -11,7 +11,10 @@ Supported ordinary XML buffers have conditional apply and post-image rollback.
 Normal-ST apply/rollback remains blocked by the vendor adapter's missing
 exact-section transaction contract; it is not merely awaiting a live test.
 The rebuilt private candidate passes 191 Node tests, 1,076 native policy/context
-checks and 31 standalone WPF/WebView checks. Installed-host and real-corpus
+checks, 36 standalone WPF/WebView checks and 112 chat-list component checks.
+Pinned history remains visible but inactive during transient build/save/frame
+context invalidation, then resumes after exact project revalidation.
+Installed-host and real-corpus
 acceptance remain open. No merge, release, installation or IDE/PLC operation was
 performed. The published Beta 4 below is unchanged. Exact inputs, scope and
 evidence are in [the integration record](MCP_P1_INTEGRATION_20261112.md).

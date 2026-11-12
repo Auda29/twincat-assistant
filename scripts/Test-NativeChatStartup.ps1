@@ -168,6 +168,25 @@ try{
  Put '_automating' $false;Await(Invoke-Private 'RunAutomationAsync')|Out-Null;Put '_automating' $true
  Check ((Field '_chatSelection').sessionId -ceq $selected) 'a later automation pass does not create another chat'
  Check ($null -eq (Field '_reader') -and $null -eq (Field '_chatSession')) 'no IDE or operator backend was used'
+ # Build/save notifications clear project context before the tracker republishes
+ # it. Keep a pinned list visible, but make its old scope unusable meanwhile.
+ $picker=Invoke-Private 'EnsureProjectChatPicker'
+ $picker.ShowLoading('Startup',$false,$true)
+ $scope=[Activator]::CreateInstance($control.GetType().GetNestedType('PickerScope',[Reflection.BindingFlags]'NonPublic'),$true)
+ $scope.GetType().GetField('Project').SetValue($scope,$project)
+ $scope.GetType().GetField('Document').SetValue($scope,(Field '_chatDocumentGeneration'))
+ $scope.GetType().GetField('Request').SetValue($scope,(Field '_pickerRequest'))
+ Put '_pickerScope' $scope;Put '_sidebarProject' $project
+ Invoke-Private 'RememberSidebarPin' @($true)|Out-Null
+ Invoke-Private 'RenderProjectContext' @($null,'Updating active editor context...')|Out-Null
+ Check ($picker.IsOpen -and $picker.Pinned -and !$picker.View.IsEnabled -and $null -eq (Field '_chatProject')) 'build-style transient invalidation preserves the pinned list without retaining project authority'
+ Check (!(Invoke-Private 'PickerCurrent' @($scope))) 'old sidebar actions are refused while project context is suspended'
+ Invoke-Private 'RenderProjectContext' @($project,$null)|Out-Null
+ Check ($picker.IsOpen -and $picker.View.IsEnabled -and [object]::ReferenceEquals((Field '_pickerScope'),$scope)) 'same-project resolution restores the existing pinned list and scope'
+ Check ((Invoke-Private 'PickerCurrent' @($scope))) 'sidebar actions resume only after the exact project is revalidated'
+ Invoke-Private 'CloseProjectChatsOnChange' @($null,$false)|Out-Null
+ Check (!$picker.IsOpen) 'actual project loss still closes the pinned project list'
+ Put '_chatProject' $project
  # Exercise the real project callback boundary without a provider or IDE.
  # Ordinary tracker invalidation must retain observation state and session epoch.
  $operationGuard=$control.GetType().GetField('EngineeringBuildGuard',$flags -bor [Reflection.BindingFlags]::Static).GetValue($null)
