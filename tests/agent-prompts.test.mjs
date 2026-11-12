@@ -50,7 +50,7 @@ test('generated configurations carry the scope-specific prompt without widening 
   assert.equal(createOpenCodeConfig({}).agents[ANALYSIS_PROFILE].system, analysisSystemPrompt({}));
   assert.match(createOpenCodeConfig({ knowledge, engineering }).agents[ANALYSIS_PROFILE].system, /saved PLC project files configured by the operator/);
   // Fits the bounded secure JSON reader with ample room for MCP paths.
-  assert.ok(JSON.stringify(createOpenCodeConfig({ knowledge, engineering })).length < 24000);
+  assert.ok(Buffer.byteLength(JSON.stringify(createOpenCodeConfig({ knowledge, engineering }), null, 2)) < 32768);
 });
 
 test('every profile scope keeps the shared rules and the read-only boundary', () => {

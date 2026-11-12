@@ -35,7 +35,7 @@
     "changes": [
       [
         "import React from 'react';",
-        "import React from 'react';\nimport { useTwinCatComposerReferences, publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts, twinCatAttachmentMode, keepTwinCatReference, isTwinCatEmbedded, twinCatSelectableAgents, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { useTwinCatComposerReferences, publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts, twinCatAttachmentMode, keepTwinCatReference, isTwinCatEmbedded, twinCatSelectableAgents, subscribeTwinCatEmbedding, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
       ],
       [
         "        if (!isPermissionAutoAcceptInteractive) return false;",
@@ -83,7 +83,7 @@
       ],
       [
         "    const currentAgentName = pinnedComposerSelection?.agent ?? configAgentName;",
-        "    const currentAgentName = isTwinCatEmbedded() ? TWINCAT_ANALYSIS_PROFILE : pinnedComposerSelection?.agent ?? configAgentName;"
+        "    const twinCatProfile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);\n    const currentAgentName = isTwinCatEmbedded() ? twinCatProfile : pinnedComposerSelection?.agent ?? configAgentName;"
       ],
       [
         "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);",
@@ -5487,11 +5487,11 @@
     "changes": [
       [
         "import React from 'react';",
-        "import React from 'react';\nimport { Button } from '@/components/ui/button';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { Button } from '@/components/ui/button';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE } from '@/lib/twincat/twincat';"
       ],
       [
         "    const { t } = useI18n();",
-        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const [twinCatModelDetails, setTwinCatModelDetails] = React.useState(false);\n    const labelAgent = (agent: Pick<Agent, 'name' | 'displayName'>) => twinCatEmbedded && agent.name === TWINCAT_ANALYSIS_PROFILE\n        ? t('chat.twincat.profile.analysis') : agentLabel(agent);"
+        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const twinCatProfile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);\n    const [twinCatModelDetails, setTwinCatModelDetails] = React.useState(false);\n    const labelAgent = (agent: Pick<Agent, 'name' | 'displayName'>) => twinCatEmbedded && agent.name === TWINCAT_ANALYSIS_PROFILE\n        ? t('chat.twincat.profile.analysis') : twinCatEmbedded && agent.name === TWINCAT_EDITOR_PROFILE ? 'Editor' : agentLabel(agent);"
       ],
       [
         "    const agents = getVisibleAgents();",
@@ -5499,7 +5499,7 @@
       ],
       [
         "    const uiAgentName = currentSessionId\n        ? (sessionSavedAgentName || stickySessionAgentName || currentAgentName)\n        : currentAgentName;",
-        "    const uiAgentName = twinCatEmbedded ? TWINCAT_ANALYSIS_PROFILE : currentSessionId\n        ? (sessionSavedAgentName || stickySessionAgentName || currentAgentName)\n        : currentAgentName;\n    React.useEffect(() => {\n        if (!twinCatEmbedded || selection || !agents.some(agent => agent.name === TWINCAT_ANALYSIS_PROFILE)) return;\n        if (currentAgentName !== TWINCAT_ANALYSIS_PROFILE\n            || (sessionSavedAgentName && sessionSavedAgentName !== TWINCAT_ANALYSIS_PROFILE)) {\n            setAgent(TWINCAT_ANALYSIS_PROFILE, { keepModel: true });\n        }\n    }, [twinCatEmbedded, selection, agents, currentAgentName, currentSessionId, sessionSavedAgentName, setAgent]);"
+        "    const uiAgentName = twinCatEmbedded ? twinCatProfile : currentSessionId\n        ? (sessionSavedAgentName || stickySessionAgentName || currentAgentName)\n        : currentAgentName;\n    React.useEffect(() => {\n        if (!twinCatEmbedded || selection || !agents.some(agent => agent.name === twinCatProfile)) return;\n        if (currentAgentName !== twinCatProfile\n            || (sessionSavedAgentName && sessionSavedAgentName !== twinCatProfile)) {\n            setAgent(twinCatProfile, { keepModel: true });\n        }\n    }, [twinCatEmbedded, twinCatProfile, selection, agents, currentAgentName, currentSessionId, sessionSavedAgentName, setAgent]);"
       ],
       [
         "        if (!isModelSelectorOpen) {\n            setDesktopModelQuery('');",
@@ -5507,7 +5507,7 @@
       ],
       [
         "    const handleAgentChange = React.useCallback((agentName: string, options?: { closeModelSelector?: boolean }) => {",
-        "    const handleAgentChange = React.useCallback((agentName: string, options?: { closeModelSelector?: boolean }) => {\n        if (isTwinCatEmbedded() && agentName !== TWINCAT_ANALYSIS_PROFILE) return;"
+        "    const handleAgentChange = React.useCallback((agentName: string, options?: { closeModelSelector?: boolean }) => {\n        if (isTwinCatEmbedded() && (agentName !== TWINCAT_ANALYSIS_PROFILE && !(agentName === TWINCAT_EDITOR_PROFILE && twinCatActiveProfile() === TWINCAT_EDITOR_PROFILE))) return;"
       ],
       [
         "            return shownAgent ? agentLabel(shownAgent) : t('chat.modelControls.selectAgent');",
@@ -5551,7 +5551,7 @@
       ],
       [
         "    const resolveLiveAgentName = React.useCallback(() => {",
-        "    const resolveLiveAgentName = React.useCallback(() => {\n        if (isTwinCatEmbedded()) return TWINCAT_ANALYSIS_PROFILE;"
+        "    const resolveLiveAgentName = React.useCallback(() => {\n        if (isTwinCatEmbedded()) return twinCatActiveProfile();"
       ]
     ]
   },
@@ -5560,11 +5560,11 @@
     "changes": [
       [
         "import React from 'react';",
-        "import React from 'react';\nimport { useI18n } from '@/lib/i18n';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { useI18n } from '@/lib/i18n';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE } from '@/lib/twincat/twincat';"
       ],
       [
         "    const getAgentColor = useAgentColors();",
-        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const getAgentColor = useAgentColors();"
+        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const twinCatProfile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);\n    const getAgentColor = useAgentColors();"
       ],
       [
         "    const agents = getVisibleAgents();",
@@ -5572,11 +5572,11 @@
       ],
       [
         "    const uiAgentName = currentSessionId ? (sessionAgentName || currentAgentName) : currentAgentName;",
-        "    const uiAgentName = twinCatEmbedded ? TWINCAT_ANALYSIS_PROFILE : currentSessionId ? (sessionAgentName || currentAgentName) : currentAgentName;"
+        "    const uiAgentName = twinCatEmbedded ? twinCatProfile : currentSessionId ? (sessionAgentName || currentAgentName) : currentAgentName;"
       ],
       [
         "    const agentLabel = getAgentDisplayName(agents, uiAgentName);",
-        "    const agentLabel = twinCatEmbedded ? t('chat.twincat.profile.analysis') : getAgentDisplayName(agents, uiAgentName);"
+        "    const agentLabel = twinCatEmbedded ? (twinCatProfile === TWINCAT_EDITOR_PROFILE ? 'Editor' : t('chat.twincat.profile.analysis')) : getAgentDisplayName(agents, uiAgentName);"
       ]
     ]
   },

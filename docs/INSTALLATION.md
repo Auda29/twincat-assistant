@@ -36,7 +36,7 @@ chat after one-time [native chat configuration](NATIVE_CHAT.md#development-setup
 | OpenChamber web / SDK | `2.1.1` |
 | OpenCode CLI / schema | `2.0.23` |
 | Knowledge MCP | private `0.1.2.dev20261112`, `d5b774941600f746b092b0672216471f35dca73b` |
-| Engineering monorepo MCP | `98f34dd76dc5903c2020ba037cec632ac3cd2004` |
+| Engineering monorepo MCP | `83a7d226fbe2492e917a7fe6ea6fa26f0498ac6a` |
 
 Root and `upstream/` npm lockfiles pin their own dependencies. MCP source trees
 are deliberately not vendored. Review upstream licenses before redistribution.

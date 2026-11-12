@@ -2,11 +2,14 @@
 
 ## Implemented boundary
 
-The current launcher is read-only with default-deny tool and provider policies.
-The portable C# core implements proposal/apply/rollback validation against an
-injected adapter, but the diagnostic [pipe bridge](BRIDGE.md) exposes none of
-those mutations. No native adapter, real build or runtime action is connected.
-The rest of this document specifies the requirements for that future integration.
+Analysis remains read-only with default-deny tool and provider policies. The
+private [Editor profile](EDITOR_PROFILE.md) connects the Engineering-owned native
+provider for explicit build and supported source actions, with independent
+native approval. Normal-ST writes remain blocked as documented in
+[the transaction analysis](NORMAL_ST_TRANSACTIONS.md).
+The older portable C# core and diagnostic [pipe bridge](BRIDGE.md) remain separate
+test infrastructure; their injected adapter is not a second live compiler/source
+implementation. The requirements below still apply to the native integration.
 
 ## MVP Safety Boundary
 

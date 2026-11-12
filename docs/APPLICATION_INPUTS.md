@@ -37,7 +37,7 @@ not a machine determination of copyright or redistribution permission.
 
 The Engineering input is built from the detached revision in
 `upstream/engineering-lock.json`; the checked-out HEAD must match. The current
-private candidate is `98f34dd76dc5903c2020ba037cec632ac3cd2004`.
+private candidate is `83a7d226fbe2492e917a7fe6ea6fa26f0498ac6a`.
 The script builds in a separate clone with `npm ci`, then performs a second
 locked production install restricted to the MCP and core workspaces. It copies
 compiled MCP and core files, production dependencies and license, materializes

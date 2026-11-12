@@ -16,15 +16,17 @@ namespace TwinCatAssistant.Native
         private const int MaxProjects = 512, MaxItems = 4096;
         private const int SolutionDirtyProperty = -8004; // VSPROPID_IsSolutionDirty
 
-        internal static bool? GetDirty(IVsRunningDocumentTable rdt, DTE injectedDte, Func<Type, object> getService, string exactPath)
+        internal static bool? GetDirty(IVsRunningDocumentTable rdt, DTE injectedDte, Func<Type, object> getService, string exactPath, string boundProjectFile = null)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             try
             {
                 if (rdt == null || getService == null || !Canonical(exactPath)) return null;
+                var extension = Path.GetExtension(exactPath);
+                if (IsPlcSource(extension))
+                    return ReadSource(rdt, injectedDte, getService, exactPath, boundProjectFile);
                 bool absent; var observed = ReadRdt(rdt, exactPath, out absent);
                 if (!absent) return observed;
-                var extension = Path.GetExtension(exactPath);
                 if (!extension.Equals(".sln", StringComparison.OrdinalIgnoreCase)
                     && !extension.Equals(".plcproj", StringComparison.OrdinalIgnoreCase)
                     && !extension.Equals(".tsproj", StringComparison.OrdinalIgnoreCase)) return null;
@@ -56,6 +58,137 @@ namespace TwinCatAssistant.Native
                 return absentLater ? state : rdtLater == true ? true : (bool?)null;
             }
             catch { return null; }
+        }
+
+        private static bool IsPlcSource(string extension)
+        {
+            return extension.Equals(".TcPOU", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".TcGVL", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".TcDUT", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // A source may have several live member documents under one physical
+        // file. Only a complete, stable RDT scan can establish that none is
+        // open. An unregistered document is never assumed clean.
+        private static bool? ReadSource(IVsRunningDocumentTable rdt, DTE dte, Func<Type, object> getService,
+            string path, string projectFile)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (!Canonical(projectFile) || !projectFile.EndsWith(".plcproj", StringComparison.OrdinalIgnoreCase)) return null;
+            var solution = getService(typeof(SVsSolution)) as IVsSolution;
+            string solutionBefore, uniqueName; IVsHierarchy hierarchy;
+            if (solution == null || !SolutionFile(solution, out solutionBefore)
+                || !FindHierarchy(solution, dte, projectFile, out hierarchy, out uniqueName)
+                || !(hierarchy is IPersistFileFormat) || !ProjectIdentity(hierarchy, projectFile)) return null;
+            uint item;
+            if (!SourceItem(hierarchy, path, out item)) return null;
+            List<OpenSource> before;
+            if (!ScanSource(rdt, path, hierarchy, out before)) return null;
+            var wasDirty = before.Exists(entry => entry.Dirty == true);
+            var beforeUnknown = before.Exists(entry => !entry.Dirty.HasValue || !entry.InBoundHierarchy);
+            bool? itemState = null;
+            if (before.Count == 0)
+            {
+                var persist = hierarchy as IVsPersistHierarchyItem2; int dirty;
+                if (persist == null || persist.IsItemDirty(item, IntPtr.Zero, out dirty) != VSConstants.S_OK || (dirty != 0 && dirty != 1)) return null;
+                itemState = dirty != 0;
+            }
+            string solutionAfter; IVsHierarchy laterHierarchy; uint laterItem;
+            if (!SolutionFile(solution, out solutionAfter) || !SamePath(solutionBefore, solutionAfter)
+                || solution.GetProjectOfUniqueName(uniqueName, out laterHierarchy) != VSConstants.S_OK
+                || !SameCom(hierarchy, laterHierarchy) || !ProjectIdentity(hierarchy, projectFile)
+                || !SourceItem(hierarchy, path, out laterItem) || laterItem != item) return null;
+            List<OpenSource> after;
+            if (!ScanSource(rdt, path, hierarchy, out after)) return null;
+            if (!SolutionFile(solution, out solutionAfter) || !SamePath(solutionBefore, solutionAfter)
+                || solution.GetProjectOfUniqueName(uniqueName, out laterHierarchy) != VSConstants.S_OK
+                || !SameCom(hierarchy, laterHierarchy) || !ProjectIdentity(hierarchy, projectFile)
+                || !SourceItem(hierarchy, path, out laterItem) || laterItem != item || !SameOpenSources(before, after)) return null;
+            if (wasDirty || after.Exists(entry => entry.Dirty == true)) return true;
+            if (beforeUnknown || after.Exists(entry => !entry.Dirty.HasValue || !entry.InBoundHierarchy)) return null;
+            if (before.Count != 0) return false;
+            var secondPersist = hierarchy as IVsPersistHierarchyItem2; int secondDirty;
+            if (secondPersist == null || secondPersist.IsItemDirty(item, IntPtr.Zero, out secondDirty) != VSConstants.S_OK
+                || (secondDirty != 0 && secondDirty != 1) || itemState != (secondDirty != 0)
+                || !ProjectIdentity(hierarchy, projectFile) || !SourceItem(hierarchy, path, out laterItem) || laterItem != item) return null;
+            List<OpenSource> final;
+            if (!ScanSource(rdt, path, hierarchy, out final)) return null;
+            if (final.Count != 0 || !SolutionFile(solution, out solutionAfter) || !SamePath(solutionBefore, solutionAfter)
+                || solution.GetProjectOfUniqueName(uniqueName, out laterHierarchy) != VSConstants.S_OK
+                || !SameCom(hierarchy, laterHierarchy) || !ProjectIdentity(hierarchy, projectFile)
+                || !SourceItem(hierarchy, path, out laterItem) || laterItem != item) return null;
+            return itemState;
+        }
+
+        private static bool SourceItem(IVsHierarchy hierarchy, string path, out uint item)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            item = VSConstants.VSITEMID_NIL;
+            var project = hierarchy as IVsProject;
+            if (project == null) return false;
+            var priority = new VSDOCUMENTPRIORITY[1]; int found; uint canonicalItem; string moniker, canonical;
+            return project.IsDocumentInProject(path, out found, priority, out item) == VSConstants.S_OK && found == 1
+                && item != VSConstants.VSITEMID_NIL && item != VSConstants.VSITEMID_ROOT
+                && project.GetMkDocument(item, out moniker) == VSConstants.S_OK && SamePath(moniker, path)
+                && hierarchy.GetCanonicalName(item, out canonical) == VSConstants.S_OK && SamePath(canonical, path)
+                && hierarchy.ParseCanonicalName(path, out canonicalItem) == VSConstants.S_OK && canonicalItem == item;
+        }
+
+        private sealed class OpenSource
+        {
+            internal uint Cookie, Item; internal IntPtr Data; internal string Moniker;
+            internal IVsHierarchy Hierarchy; internal bool InBoundHierarchy; internal bool? Dirty;
+        }
+        private static bool ScanSource(IVsRunningDocumentTable rdt, string path, IVsHierarchy bound, out List<OpenSource> found)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            found = new List<OpenSource>(); IEnumRunningDocuments enumerator;
+            if (rdt.GetRunningDocumentsEnum(out enumerator) != VSConstants.S_OK || enumerator == null) return false;
+            var seen = new HashSet<uint>(); var one = new uint[1];
+            for (var count = 0; count <= 256; count++)
+            {
+                uint fetched; int hr = enumerator.Next(1, one, out fetched);
+                if (hr == VSConstants.S_FALSE && fetched == 0) return true;
+                if (hr != VSConstants.S_OK || fetched != 1 || count == 256 || one[0] == 0 || !seen.Add(one[0])) return false;
+                uint flags, reads, edits, item; string moniker; IVsHierarchy hierarchy; IntPtr data;
+                hr = rdt.GetDocumentInfo(one[0], out flags, out reads, out edits, out moniker, out hierarchy, out item, out data);
+                try
+                {
+                    if (hr != VSConstants.S_OK || string.IsNullOrEmpty(moniker) || data == IntPtr.Zero) return false;
+                    var sep = moniker.IndexOf(';');
+                    var physical = sep < 0 ? moniker : moniker.Substring(0, sep);
+                    if (!SamePath(physical, path)) continue;
+                    var entry = new OpenSource { Cookie = one[0], Item = item, Data = data, Moniker = moniker,
+                        Hierarchy = hierarchy, InBoundHierarchy = SameCom(hierarchy, bound) };
+                    int dirty;
+                    try { var persist = Marshal.GetObjectForIUnknown(data) as IVsPersistDocData;
+                        if (persist != null && persist.IsDocDataDirty(out dirty) == VSConstants.S_OK && (dirty == 0 || dirty == 1)) entry.Dirty = dirty != 0; }
+                    catch { entry.Dirty = null; }
+                    uint foundItem, foundCookie; IVsHierarchy foundHierarchy; IntPtr foundData;
+                    int findHr = rdt.FindAndLockDocument((uint)_VSRDTFLAGS.RDT_NoLock, moniker, out foundHierarchy, out foundItem, out foundData, out foundCookie);
+                    try
+                    {
+                        if (findHr != VSConstants.S_OK || foundCookie != one[0] || foundItem != item || foundData != data
+                            || !SameCom(foundHierarchy, hierarchy)) return false;
+                    }
+                    finally { if (foundData != IntPtr.Zero) Marshal.Release(foundData); }
+                    found.Add(entry);
+                }
+                finally { if (data != IntPtr.Zero) Marshal.Release(data); }
+            }
+            return false;
+        }
+        private static bool SameOpenSources(List<OpenSource> left, List<OpenSource> right)
+        {
+            if (left.Count != right.Count) return false;
+            foreach (var first in left)
+            {
+                var other = right.Find(x => x.Cookie == first.Cookie);
+                if (other == null || other.Item != first.Item || other.Data != first.Data
+                    || !string.Equals(other.Moniker, first.Moniker, StringComparison.OrdinalIgnoreCase)
+                    || !SameCom(other.Hierarchy, first.Hierarchy)) return false;
+            }
+            return true;
         }
 
         // 'absent' is set only by a successful lookup returning neither docdata

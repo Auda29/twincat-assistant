@@ -24,6 +24,7 @@ namespace TwinCatAssistant.Native
         private readonly Type contextType;
         private EngineeringBinding binding;
         private bool approvalsSuspended;
+        private readonly Func<object, bool> confirmEditorApproval;
         internal EngineeringBinding Binding { get { return Volatile.Read(ref binding); } }
 
         internal static bool SupportedHost(HostIdentity host)
@@ -62,13 +63,24 @@ namespace TwinCatAssistant.Native
         }
 
         internal EngineeringProviderSession(Assembly assembly, object dte, Func<string, bool?> dirty,
-            EngineeringBinding initial, SynchronizationContext ui, Func<string, object> getTextBuffer = null)
+            EngineeringBinding initial, SynchronizationContext ui, Func<string, object> getTextBuffer = null,
+            Func<string, bool> navigateExactErrorItem = null, Func<string, string, object> getSectionEditor = null,
+            Func<object, bool> confirmEditorApproval = null)
         {
             binding = initial ?? throw new ArgumentNullException(nameof(initial));
+            this.confirmEditorApproval = confirmEditorApproval;
             contextType = assembly.GetType("TwinCatMcp.Engineering.Host.HostContext", true);
             var approvalType = assembly.GetType("TwinCatMcp.Engineering.Host.ApprovalRequest", true);
             var factoryType = assembly.GetType("TwinCatMcp.Engineering.Host.EngineeringProviderFactory", true);
-            var factory = factoryType.GetMethod("CreateWithEditorAccess", BindingFlags.Public | BindingFlags.Static, null,
+            var factory = factoryType.GetMethod("CreateWithEditorViews", BindingFlags.Public | BindingFlags.Static, null,
+                new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
+                    typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>), typeof(Func<string, bool>), typeof(Func<string, string, object>) }, null);
+            var withEditorViews = factory != null;
+            if (factory == null) factory = factoryType.GetMethod("CreateWithHostAccess", BindingFlags.Public | BindingFlags.Static, null,
+                new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
+                    typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>), typeof(Func<string, bool>) }, null);
+            var withHostAccess = factory != null;
+            if (factory == null) factory = factoryType.GetMethod("CreateWithEditorAccess", BindingFlags.Public | BindingFlags.Static, null,
                 new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
                     typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>) }, null);
             var withEditorAccess = factory != null;
@@ -81,7 +93,11 @@ namespace TwinCatAssistant.Native
             var argument = Expression.Parameter(approvalType, "request");
             var consume = Expression.Lambda(typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)),
                 Expression.Call(Expression.Constant(this), GetType().GetMethod(nameof(ConsumeApproval), BindingFlags.NonPublic | BindingFlags.Instance), Expression.Convert(argument, typeof(object))), argument).Compile();
-            provider = factory.Invoke(null, withEditorAccess
+            provider = factory.Invoke(null, withEditorViews
+                ? new object[] { dte, dirty, current, consume, ui, getTextBuffer, navigateExactErrorItem, getSectionEditor }
+                : withHostAccess
+                ? new object[] { dte, dirty, current, consume, ui, getTextBuffer, navigateExactErrorItem }
+                : withEditorAccess
                 ? new object[] { dte, dirty, current, consume, ui, getTextBuffer }
                 : new object[] { dte, dirty, current, consume, ui });
             dispatch = assembly.GetType("TwinCatMcp.Engineering.Host.IEngineeringProvider", true).GetMethod("DispatchAsync");
@@ -110,6 +126,11 @@ namespace TwinCatAssistant.Native
                     (string)Property(request, "TargetObjectId"), (string)Property(request, "Section"),
                     (string)Property(request, "PreviewId"), (string)Property(request, "JournalId"), (DateTime)Property(request, "ExpiresUtc"),
                     (string)Property(request, "CanonicalRequestDigest"), (string)Property(request, "BaselineDigest"), (string)Property(request, "ProposedDigest"));
+                if (authorization.Consume(action, Binding, DateTime.UtcNow)) return true;
+                if (confirmEditorApproval == null || approvalsSuspended || !exact.Same(Binding)
+                    || !confirmEditorApproval(request) || approvalsSuspended || !exact.Same(Binding)
+                    || action.ExpiresUtc <= DateTime.UtcNow) return false;
+                authorization.Grant(action, DateTime.UtcNow);
                 return authorization.Consume(action, Binding, DateTime.UtcNow);
             }
             catch { authorization.Revoke(); return false; }

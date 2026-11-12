@@ -19,6 +19,7 @@ namespace TwinCatAssistant.Native
     {
         private EngineeringProviderSession _engineering;
         private EngineeringMcpChild _engineeringMcp;
+        private EngineeringSectionEditorAccess _engineeringSections;
         private NativeProjectIdentity _engineeringProject;
         private Func<string, bool?> _engineeringDirty;
         private IVsRunningDocumentTable _engineeringRdt;
@@ -65,13 +66,14 @@ namespace TwinCatAssistant.Native
             _toolbar.Children.Add(panel);
             SetEngineeringStatus("EngineeringNoProject");
             BuildEngineeringSourcePanel();
+            BuildEngineeringEditorMode();
         }
 
         private void BindEngineering(Func<string, bool?> dirty, IVsRunningDocumentTable rdt, IVsMonitorSelection selection, Func<Type, object> getService)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             DisposeEngineering();
-            _engineeringDirty = path => EngineeringDirtyState.GetDirty(rdt, _boundDte, getService, path);
+            _engineeringDirty = path => EngineeringDirtyState.GetDirty(rdt, _boundDte, getService, path, _engineering?.Binding?.ProjectFile);
             _engineeringRdt = rdt; _engineeringSelection = selection; _engineeringGetService = getService;
         }
 
@@ -131,8 +133,14 @@ namespace TwinCatAssistant.Native
                     var editor = new EngineeringEditorAccess(_engineeringRdt, _engineeringSelection, _boundDte, binding,
                         () => !_disposed && epoch == _engineeringEpoch
                             && _engineering != null && binding.Same(_engineering.Binding), _engineeringGetService);
+                    var navigation = new EngineeringDiagnosticNavigation(_boundDte, binding,
+                        () => !_disposed && !_engineeringProjectSuspended && epoch == _engineeringEpoch
+                            && _engineering != null && binding.Same(_engineering.Binding), ConsumeEngineeringNavigationClick);
+                    var sections = new EngineeringSectionEditorAccess(_engineeringRdt, _engineeringSelection, _boundDte, binding,
+                        () => !_disposed && !_engineeringProjectSuspended && epoch == _engineeringEpoch && _engineering != null && binding.Same(_engineering.Binding), _engineeringGetService);
+                    _engineeringSections = sections;
                     _engineering = new EngineeringProviderSession(assembly, _boundDte, _engineeringDirty, binding,
-                        new DispatcherSynchronizationContext(Dispatcher), editor.GetTextBuffer);
+                        new DispatcherSynchronizationContext(Dispatcher), editor.GetTextBuffer, navigation.Navigate, sections.GetSectionEditor, ConfirmEditorEngineeringApproval);
                 }
                 EngineeringSessionChanged?.Invoke(_engineering);
                 EngineeringSourceSessionChanged();
@@ -154,7 +162,7 @@ namespace TwinCatAssistant.Native
             }
             catch
             {
-                if (!_disposed && epoch == _engineeringEpoch) { _engineeringBuildButton.IsEnabled = false; SetEngineeringStatus("EngineeringUnavailable"); }
+                if (!_disposed && epoch == _engineeringEpoch) { DisposeEngineering(); SetEngineeringStatus("EngineeringUnavailable"); }
             }
         }
 
@@ -162,12 +170,15 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             ++_engineeringEpoch;
+            RevokeEngineeringEditor();
+            ClearEngineeringNavigationClick();
             _engineeringLifetime?.Cancel();
             _engineeringLifetime?.Dispose();
             _engineeringLifetime = null;
             _engineeringMcp?.Dispose();
             _engineeringMcp = null;
             var previous = _engineering;
+            _engineeringSections?.Dispose(); _engineeringSections = null;
             _engineering = null;
             EngineeringSourceSessionChanged();
             try { previous?.Dispose(); }
@@ -420,7 +431,16 @@ namespace TwinCatAssistant.Native
                         var label = HostText.Get(severity == "error" ? "EngineeringError" : "EngineeringWarning") + ": "
                             + EngineeringBounded(EngineeringProviderSession.Text(row, "code"), 64) + " "
                             + EngineeringBounded(EngineeringProviderSession.Text(row, "message"), 4096) + Environment.NewLine + location;
-                        _engineeringRows.Children.Add(new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 3) });
+                        object navigationAvailable;
+                        var diagnosticId = EngineeringProviderSession.Text(row, "diagnosticId");
+                        if (row.TryGetValue("navigationAvailable", out navigationAvailable) && Equals(navigationAvailable, true)
+                            && EngineeringProviderSession.Text(row, "navigationKind") == "nativeErrorItemExactMatchRequired" && SourceDigest(diagnosticId))
+                        {
+                            var navigate = Secondary(AsyncButton(label, () => NavigateEngineeringDiagnosticAsync(session, build, diagnosticId)));
+                            navigate.HorizontalContentAlignment = HorizontalAlignment.Left;
+                            _engineeringRows.Children.Add(navigate);
+                        }
+                        else _engineeringRows.Children.Add(new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 3) });
                     }
                 }
                 object outputTruncated, diagnosticsTruncated;

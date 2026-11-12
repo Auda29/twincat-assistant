@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Priorities updated: **2026-11-02**. Older implementation/milestone snapshots retain
+Priorities updated: **2026-11-12**. Older implementation/milestone snapshots retain
 their dates. [Status](STATUS.md) records evidence; this document defines work order
 and exit gates. [MVP](MVP.md) describes the eventual product, not current prototype
 permissions. No delivery dates or effort estimates are committed.
@@ -10,6 +10,16 @@ open. Host acceptance must include cold startup with restored PLC editors and th
 Assistant window. The observed toolbox wait has not been attributed to Assistant.
 
 ## Agreed priorities (2026-11-02)
+
+Development update, 2026-11-12: MCP-first P1 work is in three separate PRs.
+Typed Knowledge tools, selective PLC builds, exact native diagnostic navigation,
+normal-ST live read/preview and the session-bound Editor profile are implemented
+as private candidates. Normal-ST apply/rollback remains blocked by the lack of
+a verified exact-slot transaction; existing XML-buffer writes do not close that
+gap. No merge, public release, installation or live acceptance is implied. See
+[the integration record](MCP_P1_INTEGRATION_20261112.md),
+[Editor profile](EDITOR_PROFILE.md) and
+[the transaction blocker](NORMAL_ST_TRANSACTIONS.md).
 
 Priority update, 2026-11-10: next focus is TwinCAT 4026 with TcXaeShell64, followed
 by explicit project builds and navigable compiler diagnostics. Full Visual Studio

@@ -85,13 +85,14 @@ namespace TwinCatAssistant.Native
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             Content = new AssistantControl();
+            ((AssistantControl)Content).EngineeringEditorModeChanged += UpdateCaption;
             UpdateCaption();
             HostText.Changed += UpdateCaption;
         }
         private void UpdateCaption()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            Caption = HostText.Get("ReadOnlyCaption");
+            Caption = HostText.Get((Content as AssistantControl)?.EngineeringEditorProfileEnabled == true ? "EditorCaption" : "ReadOnlyCaption");
             if (Frame is IVsWindowFrame frame) frame.SetProperty((int)__VSFPROPID.VSFPROPID_Caption, Caption);
         }
         public override void OnToolWindowCreated()
@@ -113,7 +114,7 @@ namespace TwinCatAssistant.Native
         protected override void Dispose(bool disposing)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (disposing) { HostText.Changed -= UpdateCaption; (Content as AssistantControl)?.Dispose(); }
+            if (disposing) { HostText.Changed -= UpdateCaption; if (Content is AssistantControl control) { control.EngineeringEditorModeChanged -= UpdateCaption; control.Dispose(); } }
             base.Dispose(disposing);
         }
     }
