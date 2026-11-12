@@ -421,6 +421,7 @@ Nothing is saved. Unsaved changes or uncertain project identity refuse the build
   <data name="EngineeringWarning" xml:space="preserve"><value>Warning</value></data>
   <data name="EngineeringTruncated" xml:space="preserve"><value>Output or diagnostics were truncated.</value></data>
   <data name="EngineeringPlcBuildUnavailable" xml:space="preserve"><value>PLC-only build unavailable. A broader TwinCAT project build is not approved.</value></data>
+  <data name="EngineeringPlcBuildUnavailableReason" xml:space="preserve"><value>PLC build unavailable. Reason: {0}.</value></data>
   <data name="EngineeringSourceTitle" xml:space="preserve"><value>Editor source (manual)</value></data>
   <data name="EngineeringSourceScope" xml:space="preserve"><value>Read and preview supported attached TwinCAT ST editors. Approved changes require a verified XML text-buffer transaction. Changes are not saved automatically. Previews and the journal exist only for this session; they do not provide crash recovery.</value></data>
   <data name="EngineeringSourceDiscover" xml:space="preserve"><value>Inspect active document</value></data>
