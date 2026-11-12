@@ -17,6 +17,8 @@ namespace TwinCatAssistant.Native
     // package. No compiler or vendor interop implementation lives in this host.
     internal sealed class EngineeringProviderSession : IDisposable
     {
+        // Change only in a development build; no runtime setting can enable source access.
+        internal static readonly bool DevelopmentSourceAccess = false;
         internal const string ProviderEntry = "host/x86/TwinCatMcp.Engineering.Host.dll";
         private readonly EngineeringAuthorization authorization = new EngineeringAuthorization();
         private readonly object provider;
@@ -72,19 +74,19 @@ namespace TwinCatAssistant.Native
             contextType = assembly.GetType("TwinCatMcp.Engineering.Host.HostContext", true);
             var approvalType = assembly.GetType("TwinCatMcp.Engineering.Host.ApprovalRequest", true);
             var factoryType = assembly.GetType("TwinCatMcp.Engineering.Host.EngineeringProviderFactory", true);
-            var factory = factoryType.GetMethod("CreateWithEditorViews", BindingFlags.Public | BindingFlags.Static, null,
+            var factory = DevelopmentSourceAccess ? factoryType.GetMethod("CreateWithEditorViews", BindingFlags.Public | BindingFlags.Static, null,
                 new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
-                    typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>), typeof(Func<string, bool>), typeof(Func<string, string, object>) }, null);
+                    typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>), typeof(Func<string, bool>), typeof(Func<string, string, object>) }, null) : null;
             var withEditorViews = factory != null;
             if (factory == null) factory = factoryType.GetMethod("CreateWithHostAccess", BindingFlags.Public | BindingFlags.Static, null,
                 new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
                     typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>), typeof(Func<string, bool>) }, null);
             var withHostAccess = factory != null;
-            if (factory == null) factory = factoryType.GetMethod("CreateWithEditorAccess", BindingFlags.Public | BindingFlags.Static, null,
+            if (factory == null && DevelopmentSourceAccess) factory = factoryType.GetMethod("CreateWithEditorAccess", BindingFlags.Public | BindingFlags.Static, null,
                 new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
                     typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>) }, null);
             var withEditorAccess = factory != null;
-            if (factory == null) factory = factoryType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static, null,
+            if (factory == null && DevelopmentSourceAccess) factory = factoryType.GetMethod("Create", BindingFlags.Public | BindingFlags.Static, null,
                 new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
                     typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext) }, null);
             if (factory == null) throw new MissingMethodException("Engineering provider factory is unavailable.");
@@ -96,7 +98,7 @@ namespace TwinCatAssistant.Native
             provider = factory.Invoke(null, withEditorViews
                 ? new object[] { dte, dirty, current, consume, ui, getTextBuffer, navigateExactErrorItem, getSectionEditor }
                 : withHostAccess
-                ? new object[] { dte, dirty, current, consume, ui, getTextBuffer, navigateExactErrorItem }
+                ? new object[] { dte, dirty, current, consume, ui, DevelopmentSourceAccess ? getTextBuffer : null, navigateExactErrorItem }
                 : withEditorAccess
                 ? new object[] { dte, dirty, current, consume, ui, getTextBuffer }
                 : new object[] { dte, dirty, current, consume, ui });
@@ -116,7 +118,7 @@ namespace TwinCatAssistant.Native
             {
                 if (approvalsSuspended) { authorization.Revoke(); return false; }
                 var operation = (string)Property(request, "Operation");
-                if (operation != "build.start" && operation != "source.apply" && operation != "source.rollback") return false;
+                if (operation != "build.start" && (!DevelopmentSourceAccess || (operation != "source.apply" && operation != "source.rollback"))) return false;
                 var expected = Property(request, "Expected");
                 var exact = new EngineeringBinding((Guid)Property(expected, "SessionId"), (int)Property(expected, "IdePid"),
                     (DateTime)Property(expected, "IdeStartedUtc"), (string)Property(expected, "SolutionFile"),
@@ -157,7 +159,7 @@ namespace TwinCatAssistant.Native
         internal void ApproveSource(string operation, Guid id, string exactRequest, DateTime expires,
             string target, string section, string preview, string journal, string baseline, string proposed)
         {
-            if (approvalsSuspended || (operation != "source.apply" && operation != "source.rollback")) throw new InvalidOperationException();
+            if (!DevelopmentSourceAccess || approvalsSuspended || (operation != "source.apply" && operation != "source.rollback")) throw new InvalidOperationException();
             var current = Binding ?? throw new ObjectDisposedException(nameof(EngineeringProviderSession));
             authorization.Grant(new EngineeringAction(current, id, operation, target, section, preview, journal,
                 expires, EngineeringAction.HashRequest(exactRequest), baseline, proposed), DateTime.UtcNow);
@@ -169,6 +171,14 @@ namespace TwinCatAssistant.Native
         internal Task<string> DispatchAsync(string request, CancellationToken cancellation)
         {
             if (Binding == null) throw new ObjectDisposedException(nameof(EngineeringProviderSession));
+            if (!DevelopmentSourceAccess)
+            {
+                // Fail closed before invoking the provider, including manual native calls.
+                var envelope = Json().DeserializeObject(request) as Dictionary<string, object>;
+                var operation = Text(envelope, "operation");
+                if (operation == null || operation.StartsWith("source.", StringComparison.Ordinal))
+                    throw new InvalidOperationException("Source operations are unavailable in this release.");
+            }
             return (Task<string>)dispatch.Invoke(provider, new object[] { request, cancellation });
         }
 

@@ -454,4 +454,9 @@ Before is on the left, after is on the right. Approve this change?</value></data
   <data name="EngineeringEditorEnabled" xml:space="preserve"><value>Editor enabled for this chat. Builds and changes require native approval.</value></data>
   <data name="EngineeringSourceStPreviewOnly" xml:space="preserve"><value>Live ST preview ready. This editor does not expose a verified atomic write transaction; Apply is unavailable.</value></data>
   <data name="EditorCaption" xml:space="preserve"><value>TwinCAT Assistant — Editor</value></data>
+  <data name="EngineeringBuildModeEnable" xml:space="preserve"><value>Enable build tools for this chat</value></data>
+  <data name="EngineeringBuildModeConsent" xml:space="preserve"><value>Enable project-bound build and diagnostic tools for this chat? Each build requires a separate native confirmation. Source changes, automatic saving, activation and download are unavailable.</value></data>
+  <data name="EngineeringBuildModeUnavailable" xml:space="preserve"><value>Build tools are unavailable. Select a bound project chat in the runtime owned by this window.</value></data>
+  <data name="EngineeringBuildModeEnabled" xml:space="preserve"><value>Build tools enabled for this chat. Each build requires native approval.</value></data>
+  <data name="BuildModeCaption" xml:space="preserve"><value>TwinCAT Assistant — Build tools</value></data>
 </root>

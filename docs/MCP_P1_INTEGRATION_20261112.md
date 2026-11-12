@@ -1,5 +1,12 @@
 # MCP-first integration, 2026-11-12
 
+Release update: Beta 5 adopts the published MCP versions and exposes only build,
+session and diagnostic operations. All new source-editor paths are retained
+but inactive, as described in [the release scope](releases/native-v0.2.0-beta.5.md)
+and [profile guide](EDITOR_PROFILE.md). The following record describes the
+earlier private development checkpoint and its evidence, not the active release
+source-tool catalog. It does not claim real-host or corpus acceptance.
+
 Changes remain private development pull requests, without merges, releases,
 installation or live IDE/PLC operations. The coordinated window ends at
 14:30 Europe/Berlin. All three leads use Sol; bounded implementation uses Terra

@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
   "repository": "Auda29/twincat-knowledge-mcp",
-  "tag": null,
-  "developmentOnly": true,
-  "revision": "d5b774941600f746b092b0672216471f35dca73b",
+  "tag": "v0.1.2",
+  "developmentOnly": false,
+  "revision": "84c437aea8e27da930a246e7bb3ae310e8e5d31d",
   "reviewedFunctionalRevision": "486be3cef2a29e7163d362bd5cb3a89ef01f421a",
-  "version": "0.1.2.dev20261112",
+  "version": "0.1.2",
   "runtimeRequirements": "requirements-runtime.txt",
   "protocol": "2026-07-28",
   "python": "3.12.10",
   "artifacts": [
     {
-      "name": "twincat_knowledge-0.1.2.dev20261112-py3-none-any.whl",
-      "sha256": "ae4b7a20c006439560bacf73ac2f7d2f68915c56932684ec0453c1976be367cb"
+      "name": "twincat_knowledge-0.1.2-py3-none-any.whl",
+      "sha256": "7a657e559854bb85843aedbe0a1ac25a11994088ec39e1c7ff80cfcc2f509765"
     },
     {
       "name": "requirements-runtime.txt",
@@ -21,6 +21,10 @@
     {
       "name": "nine-tools.json",
       "sha256": "6a2231f57a81c3ca2820bbae78c2f590fd5f6d259a37b19ae996fd8085f3c3ab"
+    },
+    {
+      "name": "release-receipt.json",
+      "sha256": "ce48bf76c22857272c99fcf3b8a8fb41e8cbea955b741d57b8b01cabd9830617"
     }
   ]
 }

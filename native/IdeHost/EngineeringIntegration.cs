@@ -65,7 +65,7 @@ namespace TwinCatAssistant.Native
             panel.Children.Add(actions); panel.Children.Add(_engineeringDetails);
             _toolbar.Children.Add(panel);
             SetEngineeringStatus("EngineeringNoProject");
-            BuildEngineeringSourcePanel();
+            if (EngineeringProviderSession.DevelopmentSourceAccess) BuildEngineeringSourcePanel();
             BuildEngineeringEditorMode();
         }
 
@@ -130,17 +130,17 @@ namespace TwinCatAssistant.Native
                     if (process.Id != project.IdeProcessId) throw new InvalidOperationException();
                     var binding = new EngineeringBinding(Guid.NewGuid(), process.Id, process.StartTime.ToUniversalTime(),
                         Path.GetFullPath(project.SolutionFile), Path.GetFullPath(project.ProjectFile), epoch.ToString(CultureInfo.InvariantCulture));
-                    var editor = new EngineeringEditorAccess(_engineeringRdt, _engineeringSelection, _boundDte, binding,
+                    var editor = EngineeringProviderSession.DevelopmentSourceAccess ? new EngineeringEditorAccess(_engineeringRdt, _engineeringSelection, _boundDte, binding,
                         () => !_disposed && epoch == _engineeringEpoch
-                            && _engineering != null && binding.Same(_engineering.Binding), _engineeringGetService);
+                            && _engineering != null && binding.Same(_engineering.Binding), _engineeringGetService) : null;
                     var navigation = new EngineeringDiagnosticNavigation(_boundDte, binding,
                         () => !_disposed && !_engineeringProjectSuspended && epoch == _engineeringEpoch
                             && _engineering != null && binding.Same(_engineering.Binding), ConsumeEngineeringNavigationClick);
-                    var sections = new EngineeringSectionEditorAccess(_engineeringRdt, _engineeringSelection, _boundDte, binding,
-                        () => !_disposed && !_engineeringProjectSuspended && epoch == _engineeringEpoch && _engineering != null && binding.Same(_engineering.Binding), _engineeringGetService);
+                    var sections = EngineeringProviderSession.DevelopmentSourceAccess ? new EngineeringSectionEditorAccess(_engineeringRdt, _engineeringSelection, _boundDte, binding,
+                        () => !_disposed && !_engineeringProjectSuspended && epoch == _engineeringEpoch && _engineering != null && binding.Same(_engineering.Binding), _engineeringGetService) : null;
                     _engineeringSections = sections;
                     _engineering = new EngineeringProviderSession(assembly, _boundDte, _engineeringDirty, binding,
-                        new DispatcherSynchronizationContext(Dispatcher), editor.GetTextBuffer, navigation.Navigate, sections.GetSectionEditor, ConfirmEditorEngineeringApproval);
+                        new DispatcherSynchronizationContext(Dispatcher), editor == null ? (Func<string, object>)null : editor.GetTextBuffer, navigation.Navigate, sections == null ? (Func<string, string, object>)null : sections.GetSectionEditor, ConfirmEditorEngineeringApproval);
                 }
                 EngineeringSessionChanged?.Invoke(_engineering);
                 EngineeringSourceSessionChanged();

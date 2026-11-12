@@ -65,12 +65,14 @@ namespace TwinCatAssistant.Native
         private void EngineeringSourceContextChanged()
         {
             InvalidateSourcePreview();
+            if (_sourceStatus == null) return;
             if (_engineeringProjectSuspended) _sourceStatus.Text = HostText.Get("EngineeringSourceContext");
             UpdateSourceButtons();
         }
         private void EngineeringSourceSessionChanged()
         {
             InvalidateSourcePreview(); _sourceApplied = null; _sourceJournal = Guid.Empty; _sourceMoniker = null;
+            if (_sourceTargets == null) return;
             _sourceTargets.Items.Clear(); _sourceBefore.Clear();
             _sourceSettingText = true; _sourceProposed.Clear(); _sourceSettingText = false;
             _sourceStatus.Text = EngineeringSourceGuard.HasUnresolved

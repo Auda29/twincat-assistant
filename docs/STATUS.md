@@ -1,5 +1,14 @@
 # Implementation status
 
+**Beta 5 release scope, 2026-11-12.** The next release integrates versioned
+Engineering 0.5.3 and Knowledge 0.1.2 with selective PLC builds, build-owned
+diagnostics, native navigation and the pinned-chat-list fix. The full ST source
+development is retained but inactive: no source tools, source panel or editor
+accessor are supplied, and native source dispatch is refused. The original
+read-only editor attachment remains available. C4 migrates exact historical
+policies to the nine-tool build profile. The owner performs live host acceptance
+after publication. [Release scope](releases/native-v0.2.0-beta.5.md).
+
 **Private MCP-first candidate, 2026-11-12.** Assistant [PR #30](https://github.com/Auda29/twincat-assistant/pull/30)
 integrates Engineering [PR #2](https://github.com/Auda29/twincat-mcp-mono/pull/2)
 and Knowledge [PR #27](https://github.com/Auda29/twincat-knowledge-mcp/pull/27).

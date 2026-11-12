@@ -46,6 +46,7 @@ namespace TwinCatAssistant.Native
                     || pending.Cancellation.IsCancellationRequested || pending.Session != _engineering || pending.Binding == null || !pending.Binding.Same(pending.Session.Binding)) return false;
                 var raw = EditorProperty(providerApproval, "RawRequestJson") as string;
                 var kind = EditorProperty(providerApproval, "Operation") as string;
+                if (!EngineeringProviderSession.DevelopmentSourceAccess && kind != "build.start") return false;
                 var expected = EditorProperty(providerApproval, "Expected");
                 if (raw != pending.Raw || kind != pending.Operation || (Guid)EditorProperty(providerApproval, "SessionId") != pending.Binding.SessionId
                     || !EditorExpectedObject(expected, pending.Binding) || EditorProperty(providerApproval, "CanonicalRequestDigest") as string != EngineeringAction.HashRequest(raw)) return false;
@@ -137,6 +138,8 @@ namespace TwinCatAssistant.Native
             var binding = session?.Binding;
             var parsed = EditorParseRequest(request, binding);
             if (parsed == null) throw new InvalidOperationException("Invalid engineering request.");
+            if (!EngineeringProviderSession.DevelopmentSourceAccess && parsed.Operation.StartsWith("source.", StringComparison.Ordinal))
+                throw new InvalidOperationException("Source operations are unavailable in this release.");
             using (var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
             {
             attempt.CancelAfter(TimeSpan.FromSeconds(20));

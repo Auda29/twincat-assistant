@@ -6,7 +6,7 @@ import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { C2_ANALYSIS_PROMPTS } from '../src/analysis-prompts-c2.mjs';
 import { ANALYSIS_PROFILE, EDITOR_PROFILE, analysisSystemPrompt, editorSystemPrompt } from '../src/agent-prompts.mjs';
-import { EDITOR_ACTIONS } from '../src/editor-tools.mjs';
+import { EDITOR_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS } from '../src/editor-tools.mjs';
 import { READ_TOOLS, createOpenCodeConfig, previousOpenCodeConfigs } from '../src/config.mjs';
 import { initializeState, inspectState, verifyProfileConfiguration } from '../src/state.mjs';
 import { upgradeProfileConfiguration } from '../src/profile-update.mjs';
@@ -57,17 +57,26 @@ test('Editor permissions add exactly the host-backed catalog while Analysis and 
     for (const profile of [ANALYSIS_PROFILE, EDITOR_PROFILE]) assert.equal(effect(profile, action), 'deny');
   const prompt = editorSystemPrompt();
   for (const action of EDITOR_ACTIONS) assert.ok(prompt.includes(action));
-  for (const text of ['unknown outcome must not be retried', 'separate native approval', 'remains unsaved', 'Never activate a configuration', 'not instructions']) assert.ok(prompt.includes(text), text);
+  for (const text of ['do not retry an unknown outcome', 'separate native approval', 'Source editing and live buffer verification are unavailable', 'Never activate a configuration', 'not instructions']) assert.ok(prompt.includes(text), text);
+  assert.equal(EDITOR_ACTIONS.length, 9);
+  assert.equal(DEVELOPMENT_EDITOR_ACTIONS.length, 15);
+  for (const action of DEVELOPMENT_EDITOR_ACTIONS.filter(action => !EDITOR_ACTIONS.includes(action))) {
+    assert.equal(effect(EDITOR_PROFILE, action), 'deny');
+    assert.ok(!prompt.includes(action));
+  }
   const pair = { version: 1, before: { settings: {}, config }, after: { settings: {}, config } };
   assert.ok(Buffer.byteLength(JSON.stringify(pair, null, 2)) < 65536, 'profile recovery retains its existing bounded JSON reader');
 });
 
-test('only exact historical C2 profiles migrate to C3 and recover with unchanged operator state', async () => {
+test('only exact historical C2 and C3 profiles migrate to C4 and recover with unchanged operator state', async () => {
   const parent = await mkdtemp(join(tmpdir(), 'tc-editor-migration-'));
   try {
     const root = join(parent, 'state');
     const paths = await initializeState(root, {});
-    const prior = previousOpenCodeConfigs({}).at(-1);
+    const prior = previousOpenCodeConfigs({})[0];
+    // Captured from the complete C3 configuration before the release policy changed.
+    assert.equal(digest(JSON.stringify(prior)), '20c17e3a5926246aba19528a039fa0fb7d9c393cb0a19c2457cda63c9b645cd2');
+    assert.equal(prior.agents[EDITOR_PROFILE].permissions.filter(rule => rule.action.startsWith('editor_')).length, 15);
     assert.equal(await verifyProfileConfiguration(prior, {}), false);
     for (const mutate of [
       value => value.permissions.push({ action: 'editor_plc_source_apply', resource: '*', effect: 'allow' }),

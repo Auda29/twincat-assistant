@@ -1,0 +1,15 @@
+TwinCAT Knowledge MCP 0.1.2: distribution permission record
+
+Repository: Auda29/twincat-knowledge-mcp
+Revision: 84c437aea8e27da930a246e7bb3ae310e8e5d31d
+Release: v0.1.2
+Recorded: 2026-11-12
+
+The project owner previously confirmed that this MCP is their own code and may
+be bundled with TwinCAT Assistant. In the 2026-11-12 implementation session the
+owner explicitly approved publishing new releases of both MCPs, adopting those
+released packages in Assistant and building the next Assistant beta.
+
+This records that authorization for the exact released component above. It does
+not select a public open-source license or change the wheel. Existing licenses
+and notices for third-party dependencies remain applicable and are retained.

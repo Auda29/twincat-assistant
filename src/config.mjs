@@ -2,9 +2,9 @@ import { isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Config } from '@opencode/schema';
 import { Schema } from 'effect';
-import { ANALYSIS_PROFILE, EDITOR_PROFILE, previousAnalysisPrompts, analysisSystemPrompt, editorSystemPrompt } from './agent-prompts.mjs';
+import { ANALYSIS_PROFILE, EDITOR_PROFILE, previousAnalysisPrompts, analysisSystemPrompt, editorSystemPrompt, previousC3EditorSystemPrompt } from './agent-prompts.mjs';
 import { C2_ANALYSIS_PROMPTS } from './analysis-prompts-c2.mjs';
-import { EDITOR_ACTIONS } from './editor-tools.mjs';
+import { EDITOR_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
 
 function object(value, keys) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -99,7 +99,7 @@ export function createOpenCodeConfig(settings = {}, runtime = {}) {
         system: analysisSystemPrompt({ knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) }),
       },
       [EDITOR_PROFILE]: {
-        description: 'Native-approved source review, unsaved buffer edits and project builds',
+        description: 'Native-approved project builds and diagnostics',
         mode: 'primary',
         permissions: [...permissions, ...EDITOR_ACTIONS.map(action => ({ action, resource: '*', effect: 'allow' }))],
         system: editorSystemPrompt(),
@@ -148,6 +148,13 @@ export function previousPolicyConfig(settings = {}, runtime = {}, system, { type
 export function previousOpenCodeConfigs(settings = {}, runtime = {}) {
   const scope = { knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) };
   const c2 = C2_ANALYSIS_PROMPTS.profile[2 * Number(scope.knowledge) + Number(scope.engineering)];
-  return [...previousAnalysisPrompts(scope).map(system => previousPolicyConfig(settings, runtime, system)),
+  // C3 is recognized only as its complete, exact historical configuration.
+  const c3 = createOpenCodeConfig(settings, runtime);
+  c3.agents[EDITOR_PROFILE].description = 'Native-approved source review, unsaved buffer edits and project builds';
+  c3.agents[EDITOR_PROFILE].permissions = [...c3.permissions, ...DEVELOPMENT_EDITOR_ACTIONS.map(action => ({ action, resource: '*', effect: 'allow' }))];
+  c3.agents[EDITOR_PROFILE].system = previousC3EditorSystemPrompt();
+  const insertion = c3.experimental.policies.findIndex(rule => rule.action === 'provider.use');
+  c3.experimental.policies.splice(insertion, 0, ...DEVELOPMENT_EDITOR_ACTIONS.filter(action => !EDITOR_ACTIONS.includes(action)).map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })));
+  return [c3, ...previousAnalysisPrompts(scope).map(system => previousPolicyConfig(settings, runtime, system)),
     previousPolicyConfig(settings, runtime, c2, { typedKnowledge: true })];
 }

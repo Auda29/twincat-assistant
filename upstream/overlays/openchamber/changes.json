@@ -236,7 +236,7 @@
     "changes": [
       [
         "\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatic\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Follows the active editor. Switching objects replaces this attachment.\",\n  'chat.twincat.attachment.manualHint': \"Kept manually. Switching objects does not change this snapshot.\",\n  'chat.twincat.attachment.keep': \"Keep\",\n  'chat.twincat.attachment.keepHint': \"Keep this revision as a manual attachment.\",\n\n  'chat.twincat.profile.analysis': \"Analysis\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat information\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatic\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Follows the active editor. Switching objects replaces this attachment.\",\n  'chat.twincat.attachment.manualHint': \"Kept manually. Switching objects does not change this snapshot.\",\n  'chat.twincat.attachment.keep': \"Keep\",\n  'chat.twincat.attachment.keepHint': \"Keep this revision as a manual attachment.\",\n\n  'chat.twincat.profile.analysis': \"Analysis\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat information\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -637,7 +637,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Manuell\",\n  'chat.twincat.attachment.followingHint': \"Folgt dem aktiven Editor. Ein Objektwechsel ersetzt diesen Anhang.\",\n  'chat.twincat.attachment.manualHint': \"Manuell beibehalten. Ein Objektwechsel ändert diesen Snapshot nicht.\",\n  'chat.twincat.attachment.keep': \"Beibehalten\",\n  'chat.twincat.attachment.keepHint': \"Diesen Stand als manuellen Anhang beibehalten.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat-Informationen\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Manuell\",\n  'chat.twincat.attachment.followingHint': \"Folgt dem aktiven Editor. Ein Objektwechsel ersetzt diesen Anhang.\",\n  'chat.twincat.attachment.manualHint': \"Manuell beibehalten. Ein Objektwechsel ändert diesen Snapshot nicht.\",\n  'chat.twincat.attachment.keep': \"Beibehalten\",\n  'chat.twincat.attachment.keepHint': \"Diesen Stand als manuellen Anhang beibehalten.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.profile.build': \"Build-Werkzeuge\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat-Informationen\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -1034,7 +1034,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Sigue al editor activo. Al cambiar de objeto se reemplaza este adjunto.\",\n  'chat.twincat.attachment.manualHint': \"Conservado manualmente. Cambiar de objeto no modifica esta instantánea.\",\n  'chat.twincat.attachment.keep': \"Conservar\",\n  'chat.twincat.attachment.keepHint': \"Conservar esta revisión como adjunto manual.\",\n\n  'chat.twincat.profile.analysis': \"Análisis\",\n  'chat.twincat.modelDetails': \"Detalles\",\n\n  'chat.twincat.chatInformation': \"Información del chat\",\n  'chat.twincat.chatInformationDetails': \"Detalles\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Sigue al editor activo. Al cambiar de objeto se reemplaza este adjunto.\",\n  'chat.twincat.attachment.manualHint': \"Conservado manualmente. Cambiar de objeto no modifica esta instantánea.\",\n  'chat.twincat.attachment.keep': \"Conservar\",\n  'chat.twincat.attachment.keepHint': \"Conservar esta revisión como adjunto manual.\",\n\n  'chat.twincat.profile.analysis': \"Análisis\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Detalles\",\n\n  'chat.twincat.chatInformation': \"Información del chat\",\n  'chat.twincat.chatInformationDetails': \"Detalles\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -1435,7 +1435,7 @@
     "changes": [
       [
         "\n} as const;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatique\",\n  'chat.twincat.attachment.manual': \"Manuel\",\n  'chat.twincat.attachment.followingHint': \"Suit l’éditeur actif. Un changement d’objet remplace cette pièce jointe.\",\n  'chat.twincat.attachment.manualHint': \"Conservé manuellement. Un changement d’objet ne modifie pas cet instantané.\",\n  'chat.twincat.attachment.keep': \"Conserver\",\n  'chat.twincat.attachment.keepHint': \"Conserver cette version comme pièce jointe manuelle.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.modelDetails': \"Détails\",\n\n  'chat.twincat.chatInformation': \"Informations du chat\",\n  'chat.twincat.chatInformationDetails': \"Détails\",\n\n} as const;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatique\",\n  'chat.twincat.attachment.manual': \"Manuel\",\n  'chat.twincat.attachment.followingHint': \"Suit l’éditeur actif. Un changement d’objet remplace cette pièce jointe.\",\n  'chat.twincat.attachment.manualHint': \"Conservé manuellement. Un changement d’objet ne modifie pas cet instantané.\",\n  'chat.twincat.attachment.keep': \"Conserver\",\n  'chat.twincat.attachment.keepHint': \"Conserver cette version comme pièce jointe manuelle.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Détails\",\n\n  'chat.twincat.chatInformation': \"Informations du chat\",\n  'chat.twincat.chatInformationDetails': \"Détails\",\n\n} as const;\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -1844,7 +1844,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"アクティブなエディターに追従します。オブジェクトを切り替えると、この添付は置き換わります。\",\n  'chat.twincat.attachment.manualHint': \"手動で保持されています。オブジェクトを切り替えても、このスナップショットは変わりません。\",\n  'chat.twincat.attachment.keep': \"保持\",\n  'chat.twincat.attachment.keepHint': \"この版を手動の添付として保持します。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.modelDetails': \"詳細\",\n\n  'chat.twincat.chatInformation': \"チャット情報\",\n  'chat.twincat.chatInformationDetails': \"詳細\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"アクティブなエディターに追従します。オブジェクトを切り替えると、この添付は置き換わります。\",\n  'chat.twincat.attachment.manualHint': \"手動で保持されています。オブジェクトを切り替えても、このスナップショットは変わりません。\",\n  'chat.twincat.attachment.keep': \"保持\",\n  'chat.twincat.attachment.keepHint': \"この版を手動の添付として保持します。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"詳細\",\n\n  'chat.twincat.chatInformation': \"チャット情報\",\n  'chat.twincat.chatInformationDetails': \"詳細\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -2241,7 +2241,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"자동\",\n  'chat.twincat.attachment.manual': \"수동\",\n  'chat.twincat.attachment.followingHint': \"활성 편집기를 따릅니다. 개체를 전환하면 이 첨부가 교체됩니다.\",\n  'chat.twincat.attachment.manualHint': \"수동으로 유지됩니다. 개체를 전환해도 이 스냅샷은 바뀌지 않습니다.\",\n  'chat.twincat.attachment.keep': \"유지\",\n  'chat.twincat.attachment.keepHint': \"이 버전을 수동 첨부로 유지합니다.\",\n\n  'chat.twincat.profile.analysis': \"분석\",\n  'chat.twincat.modelDetails': \"세부 정보\",\n\n  'chat.twincat.chatInformation': \"채팅 정보\",\n  'chat.twincat.chatInformationDetails': \"세부 정보\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"자동\",\n  'chat.twincat.attachment.manual': \"수동\",\n  'chat.twincat.attachment.followingHint': \"활성 편집기를 따릅니다. 개체를 전환하면 이 첨부가 교체됩니다.\",\n  'chat.twincat.attachment.manualHint': \"수동으로 유지됩니다. 개체를 전환해도 이 스냅샷은 바뀌지 않습니다.\",\n  'chat.twincat.attachment.keep': \"유지\",\n  'chat.twincat.attachment.keepHint': \"이 버전을 수동 첨부로 유지합니다.\",\n\n  'chat.twincat.profile.analysis': \"분석\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"세부 정보\",\n\n  'chat.twincat.chatInformation': \"채팅 정보\",\n  'chat.twincat.chatInformationDetails': \"세부 정보\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -2638,7 +2638,7 @@
     "changes": [
       [
         "\n} as const;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Handmatig\",\n  'chat.twincat.attachment.followingHint': \"Volgt de actieve editor. Bij een ander object wordt deze bijlage vervangen.\",\n  'chat.twincat.attachment.manualHint': \"Handmatig bewaard. Bij een ander object blijft deze momentopname ongewijzigd.\",\n  'chat.twincat.attachment.keep': \"Bewaren\",\n  'chat.twincat.attachment.keepHint': \"Deze versie als handmatige bijlage bewaren.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chatinformatie\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Handmatig\",\n  'chat.twincat.attachment.followingHint': \"Volgt de actieve editor. Bij een ander object wordt deze bijlage vervangen.\",\n  'chat.twincat.attachment.manualHint': \"Handmatig bewaard. Bij een ander object blijft deze momentopname ongewijzigd.\",\n  'chat.twincat.attachment.keep': \"Bewaren\",\n  'chat.twincat.attachment.keepHint': \"Deze versie als handmatige bijlage bewaren.\",\n\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chatinformatie\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -3039,7 +3039,7 @@
     "changes": [
       [
         "\n} as const;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatycznie\",\n  'chat.twincat.attachment.manual': \"Ręcznie\",\n  'chat.twincat.attachment.followingHint': \"Podąża za aktywnym edytorem. Zmiana obiektu zastępuje ten załącznik.\",\n  'chat.twincat.attachment.manualHint': \"Zachowano ręcznie. Zmiana obiektu nie zmienia tej migawki.\",\n  'chat.twincat.attachment.keep': \"Zachowaj\",\n  'chat.twincat.attachment.keepHint': \"Zachowaj tę wersję jako ręczny załącznik.\",\n\n  'chat.twincat.profile.analysis': \"Analiza\",\n  'chat.twincat.modelDetails': \"Szczegóły\",\n\n  'chat.twincat.chatInformation': \"Informacje o czacie\",\n  'chat.twincat.chatInformationDetails': \"Szczegóły\",\n\n} as const;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatycznie\",\n  'chat.twincat.attachment.manual': \"Ręcznie\",\n  'chat.twincat.attachment.followingHint': \"Podąża za aktywnym edytorem. Zmiana obiektu zastępuje ten załącznik.\",\n  'chat.twincat.attachment.manualHint': \"Zachowano ręcznie. Zmiana obiektu nie zmienia tej migawki.\",\n  'chat.twincat.attachment.keep': \"Zachowaj\",\n  'chat.twincat.attachment.keepHint': \"Zachowaj tę wersję jako ręczny załącznik.\",\n\n  'chat.twincat.profile.analysis': \"Analiza\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Szczegóły\",\n\n  'chat.twincat.chatInformation': \"Informacje o czacie\",\n  'chat.twincat.chatInformationDetails': \"Szczegóły\",\n\n} as const;\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -3440,7 +3440,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Acompanha o editor ativo. Trocar de objeto substitui este anexo.\",\n  'chat.twincat.attachment.manualHint': \"Mantido manualmente. Trocar de objeto não altera este instantâneo.\",\n  'chat.twincat.attachment.keep': \"Manter\",\n  'chat.twincat.attachment.keepHint': \"Manter esta versão como anexo manual.\",\n\n  'chat.twincat.profile.analysis': \"Análise\",\n  'chat.twincat.modelDetails': \"Detalhes\",\n\n  'chat.twincat.chatInformation': \"Informações do chat\",\n  'chat.twincat.chatInformationDetails': \"Detalhes\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Acompanha o editor ativo. Trocar de objeto substitui este anexo.\",\n  'chat.twincat.attachment.manualHint': \"Mantido manualmente. Trocar de objeto não altera este instantâneo.\",\n  'chat.twincat.attachment.keep': \"Manter\",\n  'chat.twincat.attachment.keepHint': \"Manter esta versão como anexo manual.\",\n\n  'chat.twincat.profile.analysis': \"Análise\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Detalhes\",\n\n  'chat.twincat.chatInformation': \"Informações do chat\",\n  'chat.twincat.chatInformationDetails': \"Detalhes\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -3841,7 +3841,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Otomatik\",\n  'chat.twincat.attachment.manual': \"El ile\",\n  'chat.twincat.attachment.followingHint': \"Etkin düzenleyiciyi izler. Nesne değiştirildiğinde bu ek değiştirilir.\",\n  'chat.twincat.attachment.manualHint': \"El ile saklanır. Nesne değiştirmek bu anlık görüntüyü değiştirmez.\",\n  'chat.twincat.attachment.keep': \"Sakla\",\n  'chat.twincat.attachment.keepHint': \"Bu sürümü el ile eklenmiş bir ek olarak sakla.\",\n\n  'chat.twincat.profile.analysis': \"Analiz\",\n  'chat.twincat.modelDetails': \"Ayrıntılar\",\n\n  'chat.twincat.chatInformation': \"Sohbet bilgileri\",\n  'chat.twincat.chatInformationDetails': \"Ayrıntılar\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Otomatik\",\n  'chat.twincat.attachment.manual': \"El ile\",\n  'chat.twincat.attachment.followingHint': \"Etkin düzenleyiciyi izler. Nesne değiştirildiğinde bu ek değiştirilir.\",\n  'chat.twincat.attachment.manualHint': \"El ile saklanır. Nesne değiştirmek bu anlık görüntüyü değiştirmez.\",\n  'chat.twincat.attachment.keep': \"Sakla\",\n  'chat.twincat.attachment.keepHint': \"Bu sürümü el ile eklenmiş bir ek olarak sakla.\",\n\n  'chat.twincat.profile.analysis': \"Analiz\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Ayrıntılar\",\n\n  'chat.twincat.chatInformation': \"Sohbet bilgileri\",\n  'chat.twincat.chatInformationDetails': \"Ayrıntılar\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -4242,7 +4242,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Автоматично\",\n  'chat.twincat.attachment.manual': \"Вручну\",\n  'chat.twincat.attachment.followingHint': \"Стежить за активним редактором. Зміна об’єкта замінює це вкладення.\",\n  'chat.twincat.attachment.manualHint': \"Збережено вручну. Зміна об’єкта не змінює цей знімок.\",\n  'chat.twincat.attachment.keep': \"Зберегти\",\n  'chat.twincat.attachment.keepHint': \"Зберегти цю версію як ручне вкладення.\",\n\n  'chat.twincat.profile.analysis': \"Аналіз\",\n  'chat.twincat.modelDetails': \"Докладніше\",\n\n  'chat.twincat.chatInformation': \"Інформація про чат\",\n  'chat.twincat.chatInformationDetails': \"Докладніше\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Автоматично\",\n  'chat.twincat.attachment.manual': \"Вручну\",\n  'chat.twincat.attachment.followingHint': \"Стежить за активним редактором. Зміна об’єкта замінює це вкладення.\",\n  'chat.twincat.attachment.manualHint': \"Збережено вручну. Зміна об’єкта не змінює цей знімок.\",\n  'chat.twincat.attachment.keep': \"Зберегти\",\n  'chat.twincat.attachment.keepHint': \"Зберегти цю версію як ручне вкладення.\",\n\n  'chat.twincat.profile.analysis': \"Аналіз\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Докладніше\",\n\n  'chat.twincat.chatInformation': \"Інформація про чат\",\n  'chat.twincat.chatInformationDetails': \"Докладніше\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -4643,7 +4643,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"自动\",\n  'chat.twincat.attachment.manual': \"手动\",\n  'chat.twincat.attachment.followingHint': \"跟随当前编辑器。切换对象会替换此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手动保留。切换对象不会更改此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"将此版本保留为手动附件。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.modelDetails': \"详情\",\n\n  'chat.twincat.chatInformation': \"聊天信息\",\n  'chat.twincat.chatInformationDetails': \"详情\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"自动\",\n  'chat.twincat.attachment.manual': \"手动\",\n  'chat.twincat.attachment.followingHint': \"跟随当前编辑器。切换对象会替换此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手动保留。切换对象不会更改此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"将此版本保留为手动附件。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"详情\",\n\n  'chat.twincat.chatInformation': \"聊天信息\",\n  'chat.twincat.chatInformationDetails': \"详情\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -5048,7 +5048,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"跟隨目前的編輯器。切換物件會取代此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手動保留。切換物件不會變更此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"將此版本保留為手動附件。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.modelDetails': \"詳細資料\",\n\n  'chat.twincat.chatInformation': \"聊天資訊\",\n  'chat.twincat.chatInformationDetails': \"詳細資料\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"跟隨目前的編輯器。切換物件會取代此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手動保留。切換物件不會變更此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"將此版本保留為手動附件。\",\n\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"詳細資料\",\n\n  'chat.twincat.chatInformation': \"聊天資訊\",\n  'chat.twincat.chatInformationDetails': \"詳細資料\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -5491,7 +5491,7 @@
       ],
       [
         "    const { t } = useI18n();",
-        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const twinCatProfile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);\n    const [twinCatModelDetails, setTwinCatModelDetails] = React.useState(false);\n    const labelAgent = (agent: Pick<Agent, 'name' | 'displayName'>) => twinCatEmbedded && agent.name === TWINCAT_ANALYSIS_PROFILE\n        ? t('chat.twincat.profile.analysis') : twinCatEmbedded && agent.name === TWINCAT_EDITOR_PROFILE ? 'Editor' : agentLabel(agent);"
+        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const twinCatProfile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);\n    const [twinCatModelDetails, setTwinCatModelDetails] = React.useState(false);\n    const labelAgent = (agent: Pick<Agent, 'name' | 'displayName'>) => twinCatEmbedded && agent.name === TWINCAT_ANALYSIS_PROFILE\n        ? t('chat.twincat.profile.analysis') : twinCatEmbedded && agent.name === TWINCAT_EDITOR_PROFILE ? t('chat.twincat.profile.build') : agentLabel(agent);"
       ],
       [
         "    const agents = getVisibleAgents();",
@@ -5576,7 +5576,7 @@
       ],
       [
         "    const agentLabel = getAgentDisplayName(agents, uiAgentName);",
-        "    const agentLabel = twinCatEmbedded ? (twinCatProfile === TWINCAT_EDITOR_PROFILE ? 'Editor' : t('chat.twincat.profile.analysis')) : getAgentDisplayName(agents, uiAgentName);"
+        "    const agentLabel = twinCatEmbedded ? (twinCatProfile === TWINCAT_EDITOR_PROFILE ? t('chat.twincat.profile.build') : t('chat.twincat.profile.analysis')) : getAgentDisplayName(agents, uiAgentName);"
       ]
     ]
   },

@@ -42,7 +42,8 @@ test('pinned Knowledge wheel reports its release and returns searchable topics t
     assert.equal(status.server.version, pin.version, 'actual MCP initialization must report the pinned release');
     assert.equal(status.protocol, pin.protocol);
     assert.equal(status.result.structuredContent.status, 'ok');
-    assert.deepEqual(status.toolNames.sort(), ['tc_browse_topics', 'tc_get_corpus_status', 'tc_get_topic', 'tc_search']);
+    assert.deepEqual(status.toolNames.sort(), ['tc_browse_topics', 'tc_find_libraries', 'tc_find_symbols', 'tc_get_corpus_status',
+      'tc_get_library', 'tc_get_symbol', 'tc_get_topic', 'tc_lookup_error', 'tc_search']);
     broker = await startKnowledgeBroker({ root: state, knowledge, env, cwd: root });
     const search = await probeServer('knowledge', config.mcp.servers.knowledge,
       { name: 'tc_search', arguments: { query: 'Fixture', limit: 2 } }, { cwd: root, env });

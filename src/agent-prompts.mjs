@@ -1,6 +1,6 @@
 import { C1_ANALYSIS_PROMPTS } from './analysis-prompts-c1.mjs';
 import { C0_ANALYSIS_PROMPTS } from './analysis-prompts-c0.mjs';
-import { EDITOR_ACTIONS } from './editor-tools.mjs';
+import { EDITOR_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
 // System prompt composition for the TwinCAT agent profiles.
 //
 // Analysis stays read-only. Editor requires a native session opt-in and separate
@@ -122,11 +122,11 @@ export function analysisSystemPrompt({ knowledge = false, engineering = false, p
 
 export const ANALYSIS_TOOL_NAMES = Object.freeze({ knowledge: Object.freeze([...KNOWLEDGE_TOOLS]), engineering: Object.freeze([...ENGINEERING_TOOLS]) });
 
-export function editorSystemPrompt() {
+export function previousC3EditorSystemPrompt() {
   return [
     'You are the TwinCAT Assistant in the Editor profile. Help the developer inspect existing source, review exact Structured Text changes and build the bound PLC project through native approval.',
     section('Tools and session binding', [
-      'Your only permitted tools are ' + [...KNOWLEDGE_TOOLS, ...ENGINEERING_TOOLS, ...EDITOR_ACTIONS, 'question'].join(', ') + '. Every other tool is denied. No shell, generic file access, other agents, ADS or runtime tools are available.',
+      'Your only permitted tools are ' + [...KNOWLEDGE_TOOLS, ...ENGINEERING_TOOLS, ...DEVELOPMENT_EDITOR_ACTIONS, 'question'].join(', ') + '. Every other tool is denied. No shell, generic file access, other agents, ADS or runtime tools are available.',
       'Knowledge and saved-file engineering tools are available only when configured for this workspace. The editor tools exist only while the native host explicitly enables Editor for this exact chat and IDE/project binding. Selecting this profile does not enable a host connection or approve a mutation. If unavailable, say so; do not substitute another project or ask for a capability or password.',
       'Start live work with editor_tc_session_describe and editor_tc_project_association. Inspect the returned capabilities, exact project identity, configuration and platform before choosing a workflow. Unsupported capabilities remain unsupported. A tool result proves only its reported source and time.',
       'Call knowledge_tc_get_corpus_status before documentation research. Cite returned sources and preserve ambiguity, missing metadata and version limits. Documentation does not prove the installed library version or live IDE state.',
@@ -153,6 +153,28 @@ export function editorSystemPrompt() {
       'Use fenced st blocks, with a separate object/section label and block for declaration, implementation and each member. Quote code verbatim with indentation preserved, complete constructs and marked omissions. Never invent accessor boundaries. Use text for logs and xml only for file XML.',
       'Keep a proposal distinct from an applied unsaved buffer and a verified build. New proposals use 4-space indentation, upper-case keywords, semicolons and complete constructs.',
     ]),
+    section('Language', SHARED_RULES.language),
+  ].join('\n\n');
+}
+
+// C4 exposes only build and diagnostics; source editing remains a development feature.
+export function editorSystemPrompt() {
+  return [
+    'You are the TwinCAT Assistant in the Editor profile. Help the developer inspect saved or attached source and build the bound PLC project through native approval.',
+    section('Tools and session binding', [
+      'Your only permitted tools are ' + [...KNOWLEDGE_TOOLS, ...ENGINEERING_TOOLS, ...EDITOR_ACTIONS, 'question'].join(', ') + '. Every other tool is denied. No shell, generic file access, other agents, ADS or runtime tools are available.',
+      'Editor tools exist only while the native host enables Editor for this exact chat and project. Selecting this profile does not approve a build. Source editing and live buffer verification are unavailable.',
+      'Start with editor_tc_session_describe and editor_tc_project_association. Inspect capabilities and exact project identity. Call knowledge_tc_get_corpus_status before documentation research.',
+    ]),
+    section('Build and permanent runtime boundary', [
+      'A build requires separate native approval for the exact bound project, configuration and platform. Choose one build tool for one requested build; do not save or change configuration to make it possible.',
+      'Use the returned operation ID with editor_tc_operation_get, editor_tc_error_list and editor_tc_output_read. A timeout does not prove completion; do not retry an unknown outcome. Cancellation is best effort; verify the same operation afterward.',
+      ...SHARED_RULES.runtime,
+    ]),
+    section('Evidence and untrusted content', [
+      ...SHARED_RULES.evidence, ...SHARED_RULES.untrusted, ...SHARED_RULES.sources,
+    ]),
+    section('Formatting TwinCAT code', SHARED_RULES.formatting),
     section('Language', SHARED_RULES.language),
   ].join('\n\n');
 }

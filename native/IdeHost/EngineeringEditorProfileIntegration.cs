@@ -37,7 +37,7 @@ namespace TwinCatAssistant.Native
         private void BuildEngineeringEditorMode()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            _editorModeButton = Secondary(AsyncButton(HostText.Get("EngineeringEditorEnable"), ToggleEngineeringEditorAsync));
+            _editorModeButton = Secondary(AsyncButton(HostText.Get((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorEnable" : "EngineeringBuildModeEnable")), ToggleEngineeringEditorAsync));
             _toolbar.Children.Add(_editorModeButton);
         }
 
@@ -60,11 +60,11 @@ namespace TwinCatAssistant.Native
             if (_disposed || session?.Binding == null || runtime?.IsRunning != true || !CanPromptCurrentChat()
                 || _chatBinding?.IsGeneral != false || !_chatBinding.SameProjectContext(_engineeringProject)
                 || _engineeringProjectSuspended || string.IsNullOrEmpty(_projectWorkspace))
-            { SetEngineeringStatus("EngineeringEditorUnavailable"); return; }
+            { SetEngineeringStatus((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorUnavailable" : "EngineeringBuildModeUnavailable")); return; }
             var chat = _chatSelection.sessionId;
             var workspace = _projectWorkspace;
             var binding = session.Binding;
-            if (MessageBox.Show(HostText.Get("EngineeringEditorConsent"), HostText.Get("EngineeringEditorEnable"),
+            if (MessageBox.Show(HostText.Get((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorConsent" : "EngineeringBuildModeConsent")), HostText.Get((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorEnable" : "EngineeringBuildModeEnable")),
                 MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
             if (_disposed || session != _engineering || runtime != _chatSession || _chatSelection?.sessionId != chat
                 || _projectWorkspace != workspace || _engineeringProjectSuspended) return;
@@ -102,13 +102,13 @@ namespace TwinCatAssistant.Native
                 if (!await PublishEngineeringEditorModeAsync(chat, true)) throw new InvalidOperationException();
                 _editorModeButton.Content = HostText.Get("EngineeringEditorDisable");
                 EngineeringEditorModeChanged?.Invoke();
-                SetEngineeringStatus("EngineeringEditorEnabled");
+                SetEngineeringStatus((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorEnabled" : "EngineeringBuildModeEnabled"));
             }
             catch
             {
                 RevokeEngineeringEditor();
                 if (submitted) await _editorRevocation;
-                if (!_disposed) SetEngineeringStatus("EngineeringEditorUnavailable");
+                if (!_disposed) SetEngineeringStatus((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorUnavailable" : "EngineeringBuildModeUnavailable"));
             }
             finally
             {
@@ -128,7 +128,7 @@ namespace TwinCatAssistant.Native
             _editorTransport?.Dispose(); _editorTransport = null;
             var chat = _editorChat;
             _editorChat = _editorWorkspace = null; _editorBinding = Guid.Empty;
-            if (_editorModeButton != null) _editorModeButton.Content = HostText.Get("EngineeringEditorEnable");
+            if (_editorModeButton != null) _editorModeButton.Content = HostText.Get((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorEnable" : "EngineeringBuildModeEnable"));
             if (wasActive)
             {
                 EngineeringEditorModeChanged?.Invoke();

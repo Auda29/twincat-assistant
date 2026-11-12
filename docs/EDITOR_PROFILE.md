@@ -1,16 +1,23 @@
 # Editor profile and native engineering
 
-This is a private development feature in Assistant PR #30. It is not installed
-or enabled by a released installer. Analysis remains the default profile.
+Beta 5 exposes the native profile as **Build tools**. Analysis remains the
+default. The release exposes only nine build/session/diagnostic tools; all six
+new source tools and their UI are disabled. The host supplies no XML or normal
+ST editor accessor and refuses `source.*` before provider dispatch or approval.
+The original read-only editor attachment path remains available.
+
+The full source-development implementation below is retained in the repository.
+It requires an explicit code change and review to enable; no model argument,
+environment variable, persisted setting or native runtime control enables it.
 
 ## Using the feature
 
 1. Select a project-bound chat in the local runtime started by this Assistant
    window. A general chat or another window's runtime cannot authorize Editor.
-2. Choose **Enable Editor for this chat** and review the scope notice.
+2. Choose **Enable build tools for this chat** and review the scope notice.
 3. The chat switches to the managed `twincat-editor` profile. Its live tools are
    bound to this exact chat, workspace, IDE process, solution and PLC project.
-4. Each build or source change requires a separate native confirmation. A chat
+4. Each build requires a separate native confirmation. A chat
    message, model instruction or profile selection cannot approve an operation.
 5. Choose **Return to Analysis** to revoke the connection. Changing chat,
    project, solution or owner also revokes it. Temporary editor invalidation
@@ -21,20 +28,23 @@ It does not permit arbitrary files, shell commands, ADS/runtime writes,
 activation, download, forcing, automatic saving or configuration switching.
 Analysis cannot use Editor tools even while the live server is connected.
 
-## What works
+## Release functions
 
 - Describe the bound session and project association.
 - Request a selective PLC build using its verified configuration and platform.
 - Read build-owned status, output and diagnostics. Cancellation is a request,
   not proof of an isolated IDE cancellation.
-- Discover supported already-open POU, Method and Action sections.
-- Read live normal TwinCAT ST text and prepare a before/proposed preview.
-- Apply approved changes to supported ordinary XML text buffers with an exact
-  whole-buffer transaction. Rollback requires the unchanged recorded post-image.
 - Click a diagnostic with a source-baseline navigation candidate. The helper
   holds and rechecks source/project evidence; the host requires one matching
   current native ErrorItem and invokes its own Navigate method. There is no
   path/line fallback when proof is missing.
+
+## Retained source-development functions, inactive in Beta 5
+
+The preserved development path can discover supported already-open POU, Method
+and Action sections and read their live ST text for a before/proposed preview.
+Supported ordinary XML buffers have whole-buffer conditional apply and rollback
+against the exact recorded post-image. These functions are not release tools.
 
 Normal ST previews explicitly report `customStReadOnly` and
 `atomicWriteSupported: false`. They issue no mutation-ready preview ID.

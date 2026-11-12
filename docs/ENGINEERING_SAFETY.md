@@ -3,9 +3,11 @@
 ## Implemented boundary
 
 Analysis remains read-only with default-deny tool and provider policies. The
-private [Editor profile](EDITOR_PROFILE.md) connects the Engineering-owned native
-provider for explicit build and supported source actions, with independent
-native approval. Normal-ST writes remain blocked as documented in
+native [Build tools profile](EDITOR_PROFILE.md) connects the Engineering-owned
+provider for explicit builds and diagnostics, with independent native approval.
+The source-development implementation is retained but disabled in Beta 5 at
+catalog, permission, accessor, dispatch and approval boundaries.
+Normal-ST writes remain blocked as documented in
 [the transaction analysis](NORMAL_ST_TRANSACTIONS.md).
 The older portable C# core and diagnostic [pipe bridge](BRIDGE.md) remain separate
 test infrastructure; their injected adapter is not a second live compiler/source

@@ -56,7 +56,8 @@ test('pinned Core connects an ephemeral Editor MCP in only its selected location
     }
     assert.ok(editor && analysis, 'Core must load both managed profiles: ' + agents.map(agent => agent.id ?? agent.name).join(','));
     const effect = (agent, action) => agent.permissions.findLast(rule => rule.action === '*' || rule.action === action)?.effect;
-    assert.equal(effect(editor, 'editor_plc_source_apply'), 'allow');
+    assert.equal(effect(editor, 'editor_tc_build_project'), 'allow');
+    assert.equal(effect(editor, 'editor_plc_source_apply'), 'deny');
     assert.equal(effect(analysis, 'editor_plc_source_apply'), 'deny');
     assert.equal(effect(editor, 'bash'), 'deny');
     let connected = false;

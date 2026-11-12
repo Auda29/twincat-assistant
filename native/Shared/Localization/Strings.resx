@@ -454,4 +454,9 @@ Links vorher, rechts nachher. Nur diese Änderung freigeben?</value></data>
   <data name="EngineeringEditorEnabled" xml:space="preserve"><value>Editor für diesen Chat aktiviert. Builds und Änderungen benötigen eine native Freigabe.</value></data>
   <data name="EngineeringSourceStPreviewOnly" xml:space="preserve"><value>Live-ST-Vorschau bereit. Dieser Editor bietet keine verifizierte atomare Schreibtransaktion; Übernehmen ist nicht verfügbar.</value></data>
   <data name="EditorCaption" xml:space="preserve"><value>TwinCAT Assistant — Editor</value></data>
+  <data name="EngineeringBuildModeEnable" xml:space="preserve"><value>Build-Werkzeuge für diesen Chat aktivieren</value></data>
+  <data name="EngineeringBuildModeConsent" xml:space="preserve"><value>Projektgebundene Build- und Diagnosewerkzeuge für diesen Chat aktivieren? Jeder Build benötigt eine eigene native Bestätigung. Quelltextänderungen, automatisches Speichern, Aktivieren und Herunterladen sind nicht verfügbar.</value></data>
+  <data name="EngineeringBuildModeUnavailable" xml:space="preserve"><value>Build-Werkzeuge nicht verfügbar. Einen gebundenen Projektchat in der von diesem Fenster gestarteten Laufzeit auswählen.</value></data>
+  <data name="EngineeringBuildModeEnabled" xml:space="preserve"><value>Build-Werkzeuge für diesen Chat aktiviert. Jeder Build benötigt eine native Freigabe.</value></data>
+  <data name="BuildModeCaption" xml:space="preserve"><value>TwinCAT Assistant — Build-Werkzeuge</value></data>
 </root>

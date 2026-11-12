@@ -216,6 +216,20 @@ try{
  $sessionType=$assembly.GetType('TwinCatAssistant.Native.EngineeringProviderSession')
  $renderSession=[Runtime.Serialization.FormatterServices]::GetUninitializedObject($sessionType)
  $sessionType.GetField('binding',$flags).SetValue($renderSession,$binding)
+ Check (!$sessionType.GetField('DevelopmentSourceAccess',[Reflection.BindingFlags]'Static,NonPublic').GetValue($null) -and $null -eq (Field '_sourceDiscover')) 'release mode has no experimental source panel or runtime source opt-in'
+ $sourceRefused=$true
+ foreach($sourceOperation in @('source.targets','source.read','source.preview','source.apply','source.rollback','source.journal')){
+  try {
+   $sourceCall=@{operation=$sourceOperation}|ConvertTo-Json -Compress
+   $sessionType.GetMethod('DispatchAsync',$flags).Invoke($renderSession,[object[]]@([string]$sourceCall,[Threading.CancellationToken]::None))|Out-Null
+   $sourceRefused=$false
+  } catch {
+   $taskSourceError=$_.Exception
+   while($taskSourceError.InnerException){$taskSourceError=$taskSourceError.InnerException}
+   if($taskSourceError -isnot [InvalidOperationException] -or $taskSourceError.Message -cne 'Source operations are unavailable in this release.'){$sourceRefused=$false}
+  }
+ }
+ Check $sourceRefused 'all source operations are refused before any provider or approval can run'
  $context=@{sessionId=$sessionId.ToString('D');idePid=[int]$PID;ideStartedUtc=$started.ToString('o');solutionFile='C:\Synthetic\Build.sln';projectFile='C:\Synthetic\Build.plcproj';contextEpoch='fixture'}
  function Build-Response([Guid]$build,[Guid]$request,[string]$status,[bool]$hasResult){
   $reply=@{protocolVersion=1;sessionId=$sessionId.ToString('D');operationId=$request.ToString('D');status=$status;provenance=@{context=$context;buildOperationId=$build.ToString('D')}}

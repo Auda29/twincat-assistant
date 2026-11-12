@@ -1,6 +1,6 @@
 # Local development and operator setup
 
-For packaged installation, use the [Preview 3 release instructions](releases/native-v0.2.0-preview.3.md).
+For packaged installation, use the [Beta 5 release instructions](releases/native-v0.2.0-beta.5.md).
 The commands below are for development checkouts, not prerequisites for using the EXE installer.
 
 This is a development checkout, not a supported TwinCAT installer. Commands are
@@ -35,8 +35,8 @@ chat after one-time [native chat configuration](NATIVE_CHAT.md#development-setup
 | --- | --- |
 | OpenChamber web / SDK | `2.1.1` |
 | OpenCode CLI / schema | `2.0.23` |
-| Knowledge MCP | private `0.1.2.dev20261112`, `d5b774941600f746b092b0672216471f35dca73b` |
-| Engineering monorepo MCP | `83a7d226fbe2492e917a7fe6ea6fa26f0498ac6a` |
+| Knowledge MCP | `0.1.2`, `84c437aea8e27da930a246e7bb3ae310e8e5d31d` |
+| Engineering monorepo MCP | `engineering-v0.5.3`; exact source revision in `upstream/engineering-lock.json` |
 
 Root and `upstream/` npm lockfiles pin their own dependencies. MCP source trees
 are deliberately not vendored. Review upstream licenses before redistribution.
@@ -62,13 +62,10 @@ not establish native Windows/TwinCAT compatibility.
 
 ## Install real upstreams
 
-The current development branch uses reviewed private candidates from
-`upstream/knowledge-lock.json` and `upstream/engineering-lock.json`.
-`Install-Knowledge.ps1` and public release builds deliberately refuse the
-development-only Knowledge pin. Build private relocatable inputs using
-[the input guide](APPLICATION_INPUTS.md); this is not a public installation
-or redistribution approval. The following standalone commands document the
-earlier released 0.1.1 setup and must be used from its release checkout.
+The versioned release pins are recorded in `upstream/knowledge-lock.json` and
+`upstream/engineering-lock.json`. Build relocatable bundled inputs using
+[the input guide](APPLICATION_INPUTS.md). Public builds and the standalone
+Knowledge installer continue to refuse any future development-only pin.
 
 For the Windows Assistant, install the pinned Knowledge release in its own
 environment with [Install-Knowledge.ps1](../scripts/Install-Knowledge.ps1):
@@ -79,11 +76,11 @@ $knowledge.KnowledgeExecutable
 ```
 
 This requires `gh` with access to the Knowledge repository and `uv`. The
-[release lock](../upstream/knowledge-lock.json) pins the 0.1.1 wheel, dependency
-requirements and checksums. The script verifies all three downloaded artifacts,
+[release lock](../upstream/knowledge-lock.json) pins the 0.1.2 wheel, dependency
+requirements, tool schema, source receipt and checksums. The script verifies all downloaded artifacts,
 installs hashed dependencies and the wheel, and checks both CLI and package
 versions. The default path is
-`%LOCALAPPDATA%\TwinCatAssistant\knowledge-runtime\0.1.1`; an absolute
+`%LOCALAPPDATA%\TwinCatAssistant\knowledge-runtime\0.1.2`; an absolute
 `-InstallRoot` selects another new directory. Completed matching installations
 are verified and reused. An incomplete or unrelated directory is refused.
 The installer does not change Assistant configuration, existing environments,
@@ -92,8 +89,8 @@ previous executable configured; use a new empty path to retry.
 
 Then use [native MCP setup](NATIVE_MCP.md) to select the returned executable.
 For development fixtures or non-Windows setups, use the source instructions
-below. The existing protocol profile and four-tool catalog remain unchanged.
-Version 0.1.1 recovers marked abandoned loader caches after process termination;
+below. The protocol profile is unchanged; five typed tools extend the existing
+four topic/status tools. Since version 0.1.1, marked abandoned loader caches recover after process termination;
 it does not remove unmarked legacy caches or reduce full-corpus startup time.
 
 Use a new ignored directory; do not reuse/change a customer checkout.
@@ -102,10 +99,10 @@ Use a new ignored directory; do not reuse/change a customer checkout.
 npm ci --prefix upstream --no-audit --no-fund
 mkdir -p local-data/upstream
 git clone https://github.com/Auda29/twincat-knowledge-mcp.git local-data/upstream/knowledge
-git -C local-data/upstream/knowledge checkout --detach fff24f410efa687bf39fe6829f5d068b1e80cf8f
+git -C local-data/upstream/knowledge checkout --detach v0.1.2
 (cd local-data/upstream/knowledge && uv sync --frozen --no-dev --python 3.13)
 git clone https://github.com/Auda29/twincat-mcp-mono.git local-data/upstream/engineering
-git -C local-data/upstream/engineering checkout --detach 3c303837e6d6f72bec1b9d38e778a7c32c61ae5c
+git -C local-data/upstream/engineering checkout --detach engineering-v0.5.3
 (cd local-data/upstream/engineering && npm ci --no-audit --no-fund && npm run build)
 ```
 

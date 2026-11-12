@@ -36,15 +36,15 @@ test('Editor remote MCP connects the real SDK, gates exact chat metadata, and st
     await client.connect(transport);
     const catalog = await client.listTools();
     assert.deepEqual(catalog.tools.map(tool => tool.name), EDITOR_TOOL_NAMES);
-    const result = await client.callTool(call('plc_source_preview', 'ses_editor_1', { proposedText: 'counter := counter + 1;' }));
+    const result = await client.callTool(call('tc_session_describe', 'ses_editor_1', { probe: 'scope' }));
     const value = JSON.parse(result.content[0].text);
-    assert.equal(value.arguments.proposedText, 'counter := counter + 1;');
+    assert.equal(value.arguments.probe, 'scope');
     assert.equal(value.secretInArguments, false);
     assert.equal(value.secretInEnvironment, false);
     assert.equal(value.inheritedSentinel, false);
     assert.ok(!JSON.stringify(broker).includes(bootstrap().capability));
     assert.ok(!JSON.stringify(broker.configuration()).includes(bootstrap().capability));
-    for (const params of [call('plc_source_apply', 'ses_analysis'), call('plc_write'), call('bash'), { name: 'tc_session_describe', arguments: {} }])
+    for (const params of [call('plc_source_apply', 'ses_analysis'), call('plc_source_apply'), call('plc_source_read'), call('plc_write'), call('bash'), { name: 'tc_session_describe', arguments: {} }])
       await assert.rejects(client.callTool(params));
     assert.equal((await rpc(broker, 'tools/list', {}, { Authorization: 'Bearer wrong' })).response.status, 403);
     assert.equal((await rpc(broker, 'tools/list', {}, { Origin: 'http://evil.invalid' })).response.status, 403);
@@ -59,7 +59,7 @@ test('Editor remote MCP connects the real SDK, gates exact chat metadata, and st
 test('revocation and child exit fail closed without retrying a pending call', { timeout: 15000 }, async () => {
   const controller = new AbortController();
   const broker = await startEditorSession(options(), controller.signal);
-  const pending = rpc(broker, 'tools/call', call('plc_source_apply', 'ses_editor_1', { delay: true }));
+  const pending = rpc(broker, 'tools/call', call('tc_build_project', 'ses_editor_1', { delay: true }));
   controller.abort();
   await assert.rejects(pending);
   await broker.close();

@@ -64,7 +64,8 @@ if (Test-Path -LiteralPath $taskInstall) {
     Assert-ReleaseArtifacts
     & uv venv --python $Python $taskEnvironment | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Knowledge Python environment creation failed.' }
-    & uv pip sync --python $taskPython --require-hashes (Join-Path $taskPackages 'runtime-requirements.txt') | Out-Host
+    $taskRuntimeRequirements=if($taskPin.runtimeRequirements){$taskPin.runtimeRequirements}else{'runtime-requirements.txt'}
+    & uv pip sync --python $taskPython --require-hashes (Join-Path $taskPackages $taskRuntimeRequirements) | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'Knowledge locked dependency installation failed.' }
     $taskWheel = @($taskPin.artifacts | Where-Object { $_.name.EndsWith('.whl') })
     if ($taskWheel.Count -ne 1) { throw 'Knowledge release pin must contain one wheel.' }

@@ -11,6 +11,12 @@ Assistant window. The observed toolbox wait has not been attributed to Assistant
 
 ## Agreed priorities (2026-11-02)
 
+Release decision, 2026-11-12: Beta 5 keeps the ST source-development code but
+disables its release tools, UI and accessors. Selective builds, diagnostics,
+navigation, typed Knowledge tools and the pinned-history fix form the usable
+release scope. Real-host acceptance follows publication; normal-ST transactions
+and durable source rollback remain separate open work.
+
 Development update, 2026-11-12: MCP-first P1 work is in three separate PRs.
 Typed Knowledge tools, selective PLC builds, exact native diagnostic navigation,
 normal-ST live read/preview and the session-bound Editor profile are implemented

@@ -92,7 +92,7 @@ namespace TwinCatAssistant.Native
         private void UpdateCaption()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            Caption = HostText.Get((Content as AssistantControl)?.EngineeringEditorProfileEnabled == true ? "EditorCaption" : "ReadOnlyCaption");
+            Caption = HostText.Get((Content as AssistantControl)?.EngineeringEditorProfileEnabled == true ? (EngineeringProviderSession.DevelopmentSourceAccess ? "EditorCaption" : "BuildModeCaption") : "ReadOnlyCaption");
             if (Frame is IVsWindowFrame frame) frame.SetProperty((int)__VSFPROPID.VSFPROPID_Caption, Caption);
         }
         public override void OnToolWindowCreated()

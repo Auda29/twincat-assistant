@@ -124,7 +124,8 @@ test('earlier prompts are recorded exactly and are never the current prompt', ()
   for (const scope of SCOPES)
     for (const old of [...PREVIOUS_ANALYSIS_PROMPTS.profile, ...PREVIOUS_ANALYSIS_PROMPTS.project])
       assert.notEqual(analysisSystemPrompt(scope), old);
-  const [previous] = previousOpenCodeConfigs({ knowledge });
+  const previous = previousOpenCodeConfigs({ knowledge }).find(config =>
+    config.permissions.length === 15 && config.agents[ANALYSIS_PROFILE].system === PREVIOUS_ANALYSIS_PROMPTS.profile[0]);
   const current = createOpenCodeConfig({ knowledge });
   assert.equal(previous.agents[ANALYSIS_PROFILE].system, PREVIOUS_ANALYSIS_PROMPTS.profile[0]);
   assert.notDeepEqual(previous.permissions, current.permissions, 'earlier policy retains its original tool list');
@@ -221,7 +222,8 @@ test('C1 scope snapshots and complete policies match the released bytes', () => 
   let i = 0;
   for (const k of [false, true]) for (const e of [false, true]) {
     const settings = { ...(k && { knowledge }), ...(e && { engineering }) };
-    const old = previousOpenCodeConfigs(settings, { node: 'legacy-node', knowledgeClient: 'legacy-client' })[1];
+    const old = previousOpenCodeConfigs(settings, { node: 'legacy-node', knowledgeClient: 'legacy-client' }).find(config =>
+      config.permissions.length === 15 && config.agents[ANALYSIS_PROFILE].system === C1_ANALYSIS_PROMPTS.profile[2 * Number(k) + Number(e)]);
     assert.equal(createHash('sha256').update(JSON.stringify(old, normalize)).digest('hex'), expected[i++]);
   }
 });
