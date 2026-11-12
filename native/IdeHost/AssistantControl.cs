@@ -123,6 +123,7 @@ namespace TwinCatAssistant.Native
             _toolbar.Children.Add(_banner);
             _toolbar.Children.Add(_knowledgePanel);
             _toolbar.Children.Add(_diagnostics);
+            BuildEngineeringPanel();
             DockPanel.SetDock(_toolbar, Dock.Top);
             dock.Children.Add(_toolbar);
             _chatArea.ColumnDefinitions.Add(_sidebarColumn);
@@ -347,6 +348,7 @@ namespace TwinCatAssistant.Native
             if (_disposed) return;
             if (dte == null)
             {
+                BindEngineering(null);
                 _tracker?.Dispose();
                 _tracker = null;
                 _reader?.Invalidate();
@@ -359,6 +361,7 @@ namespace TwinCatAssistant.Native
                 return;
             }
             if (_boundDte == dte && _tracker != null) return;
+            BindEngineering(dirty);
             _tracker?.Dispose();
             _tracker = null;
             _boundDte = dte;
@@ -436,6 +439,7 @@ namespace TwinCatAssistant.Native
         private void RenderProjectContext(NativeProjectIdentity project, string reason)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            RenderEngineeringProject(project);
             CloseProjectChatsOnChange(project);
             _chatProject = project;
             if (_disposed || _holdingView) return;
@@ -451,6 +455,7 @@ namespace TwinCatAssistant.Native
         private void Invalidate()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            DisposeEngineering();
             _reader?.Invalidate();
             _targets.ItemsSource = null;
             _diagnosticSource.Clear();
@@ -757,6 +762,7 @@ namespace TwinCatAssistant.Native
             ThreadHelper.ThrowIfNotOnUIThread();
             if (_disposed) return;
             _disposed = true;
+            DisposeEngineering();
             HostText.Changed -= OnLanguageChanged;
             SizeChanged -= OnSidebarSizeChanged;
             PreviewMouseDown -= OnSidebarOutsideMouseDown;

@@ -19,6 +19,8 @@
     <TwinCatInteropPath Condition="'$(TwinCatInteropPath)' == ''">C:\TwinCAT\3.1\Components\TcBlockDiagram\Common\TCatSysManagerLib.dll</TwinCatInteropPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../EngineeringHostTransport.cs;../../Shared/EngineeringAuthorization.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../EngineeringProviderSession.cs;../EngineeringIntegration.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../Shared/NativeProjectIdentity.cs" Link="Shared/NativeProjectIdentity.cs" />
     <Compile Include="../NativeMcpProject.cs" Link="Shared/NativeMcpProject.cs" />
     <Compile Include="../NativeKnowledge.cs;../KnowledgeIntegration.cs" Link="Shared/%(Filename)%(Extension)" />

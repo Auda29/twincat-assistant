@@ -27,4 +27,5 @@ var bindingCases = ChatBindingTests.Run();
 var viewStateCases = ProjectChatViewStateTests.Run();
 var hostCases = HostIdentityTests.Run();
 var languageCases = HostTextTests.Run();
-Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases + viewStateCases + hostCases + languageCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");
+var engineeringCases = EngineeringAuthorizationTests.Run();
+Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases + viewStateCases + hostCases + languageCases + engineeringCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");

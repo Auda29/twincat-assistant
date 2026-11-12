@@ -387,4 +387,35 @@
   <data name="ProjectSetupTimeout" xml:space="preserve"><value>Die Prüfung der Projektkonfiguration hat das Zeitlimit erreicht. Die Chatverbindung ist davon unabhängig. Diagnose prüfen und die Einrichtung erneut versuchen.</value></data>
   <data name="ProjectSetupFailed" xml:space="preserve"><value>Einrichtung fehlgeschlagen</value></data>
   <data name="ProjectChatNotConfigured" xml:space="preserve"><value>Projektchat nicht eingerichtet</value></data>
+  <data name="EngineeringBuild" xml:space="preserve"><value>PLC-Projekt erstellen</value></data>
+  <data name="EngineeringCancel" xml:space="preserve"><value>Abbruch anfordern</value></data>
+  <data name="EngineeringDetails" xml:space="preserve"><value>Compiler-Ausgabe und Meldungen</value></data>
+  <data name="EngineeringNoProject" xml:space="preserve"><value>Zum Erstellen ein PLC-Projekt auswählen.</value></data>
+  <data name="EngineeringUnsupportedHost" xml:space="preserve"><value>Erstellen ist für diesen IDE-Host nicht freigegeben.</value></data>
+  <data name="EngineeringLoading" xml:space="preserve"><value>Engineering-Modul wird geprüft …</value></data>
+  <data name="EngineeringUnavailable" xml:space="preserve"><value>Verifiziertes Engineering-Modul nicht verfügbar. Chat bleibt verfügbar.</value></data>
+  <data name="EngineeringReady" xml:space="preserve"><value>Bereit für einen manuell bestätigten Build.</value></data>
+  <data name="EngineeringConfirm" xml:space="preserve"><value>PLC-Projekt mit der aktuellen IDE-Konfiguration erstellen?
+
+Projektmappe: {0}
+PLC-Projekt: {1}
+
+Es wird nichts gespeichert. Bei ungespeicherten Änderungen oder unklarer Zuordnung wird der Build abgelehnt. Keine Aktivierung und kein Download.</value></data>
+  <data name="EngineeringStarting" xml:space="preserve"><value>Build wird angefordert …</value></data>
+  <data name="EngineeringRunning" xml:space="preserve"><value>Build läuft …</value></data>
+  <data name="EngineeringSucceeded" xml:space="preserve"><value>Build erfolgreich.</value></data>
+  <data name="EngineeringFailed" xml:space="preserve"><value>Build fehlgeschlagen.</value></data>
+  <data name="EngineeringRefused" xml:space="preserve"><value>Build abgelehnt. Projektzuordnung, gespeicherten Zustand und aktive IDE-Konfiguration prüfen.</value></data>
+  <data name="EngineeringContextChanged" xml:space="preserve"><value>Projektkontext geändert. Ein bereits gestarteter Build kann weiterlaufen.</value></data>
+  <data name="EngineeringUnsupported" xml:space="preserve"><value>Diese Aktion wird vom Engineering-Modul nicht unterstützt.</value></data>
+  <data name="EngineeringCancelled" xml:space="preserve"><value>Build abgebrochen.</value></data>
+  <data name="EngineeringUnknown" xml:space="preserve"><value>Build-Ergebnis unbekannt. IDE-Ausgabe prüfen; nicht automatisch erneut starten.</value></data>
+  <data name="EngineeringCancelRequested" xml:space="preserve"><value>Abbruch angefordert. Der Build kann noch laufen.</value></data>
+  <data name="EngineeringCancelUnknown" xml:space="preserve"><value>Abbruch nicht bestätigt. Der Build kann noch laufen.</value></data>
+  <data name="EngineeringOutputUnavailable" xml:space="preserve"><value>Keine eindeutig zugeordnete Compiler-Ausgabe verfügbar.</value></data>
+  <data name="EngineeringNavigationUnavailable" xml:space="preserve"><value>Meldungen werden nur angezeigt. Ohne geprüften Quelltextstand ist keine sichere Navigation möglich. Ausgabe wird nicht an den Chat gesendet.</value></data>
+  <data name="EngineeringError" xml:space="preserve"><value>Fehler</value></data>
+  <data name="EngineeringWarning" xml:space="preserve"><value>Warnung</value></data>
+  <data name="EngineeringTruncated" xml:space="preserve"><value>Ausgabe oder Meldungsliste wurde gekürzt.</value></data>
+  <data name="EngineeringPlcBuildUnavailable" xml:space="preserve"><value>PLC-spezifischer Build nicht verfügbar. Ein umfassenderer TwinCAT-Projekt-Build ist nicht freigegeben.</value></data>
 </root>
