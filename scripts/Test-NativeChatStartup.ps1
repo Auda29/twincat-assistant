@@ -265,5 +265,47 @@ try{
  $capability.result.buildScope='plcProject';$capability.result.configuration=$null
  $capabilityArgs=[object[]]@([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId,$null,$null)
  Check (!$capabilityMethod.Invoke($null,$capabilityArgs)) 'missing configuration cannot enable PLC approval'
+ $reasonMethod=$control.GetType().GetMethod('EngineeringBuildUnavailableReason',[Reflection.BindingFlags]'Static,NonPublic')
+ $capability.result.capabilities.plcBuild='unsupported'
+ $capability.result.buildUnavailableReason='association_interop_unavailable'
+ function Read-BuildReason { return $reasonMethod.Invoke($null,@([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId)) }
+ Check ((Read-BuildReason) -ceq 'association_interop_unavailable') 'current unsupported PLC preflight retains its specific reason'
+ $capability.result.buildUnavailableReason='association_interop_missing_tcatsysmanagerlib_itcsysmanager'
+ Check ((Read-BuildReason) -ceq $capability.result.buildUnavailableReason) 'per-interface interop diagnosis survives without paths or exception text'
+ Put '_engineeringPlcBuildVerified' $false
+ Put '_engineeringUncertain' $false
+ Put '_engineeringBusy' $false
+ Put '_sourceBusy' $false
+ (Field '_engineeringBuildButton').IsEnabled=$false
+ Invoke-Private 'SetEngineeringCapabilityStatus' @([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId)|Out-Null
+ Check ((Field '_engineeringStatus').Text.Contains($capability.result.buildUnavailableReason) -and !(Field '_engineeringBuildButton').IsEnabled) 'native build readiness shows the actual reason without enabling a build'
+ $reasonGuardId=[Guid]::NewGuid()
+ Check ($guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($reasonGuardId))) 'synthetic unresolved operation reserves the guard before a readiness refresh'
+ try {
+  Invoke-Private 'SetEngineeringCapabilityStatus' @([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId)|Out-Null
+  Check (!(Field '_engineeringStatus').Text.Contains($capability.result.buildUnavailableReason) -and $guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'an unavailable reason cannot replace unresolved-operation status or clear its guard'
+ }finally{$guardType.GetMethod('Reconcile',$flags).Invoke($operationGuard,@($reasonGuardId))|Out-Null}
+ (Field '_engineeringStatus').Text='synthetic-running-operation';Put '_engineeringBusy' $true
+ Invoke-Private 'SetEngineeringCapabilityStatus' @([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId)|Out-Null
+ Check ((Field '_engineeringStatus').Text -ceq 'synthetic-running-operation') 'a describe response cannot replace a running-operation status'
+ Put '_engineeringBusy' $false
+ $originalSession=$capability.sessionId;$capability.sessionId=[Guid]::NewGuid().ToString('D')
+ Check ($null -eq (Read-BuildReason)) 'another session cannot supply the displayed build reason'
+ $capability.sessionId=$originalSession;$capability.operationId=[Guid]::NewGuid().ToString('D')
+ Check ($null -eq (Read-BuildReason)) 'a stale describe operation cannot supply the displayed build reason'
+ $capability.operationId=$capabilityId.ToString('D');$capability.result.contextValidated=$false
+ Check ($null -eq (Read-BuildReason)) 'unvalidated context cannot supply a displayed build reason'
+ $capability.result.contextValidated=$true;$capability.result.targetProjectFile='C:\Synthetic\Other.plcproj'
+ Check ($null -eq (Read-BuildReason)) 'another project cannot supply a displayed build reason'
+ $capability.result.targetProjectFile='C:\Synthetic\Build.plcproj';$capability.result.buildScope='twinCatProject'
+ Check ($null -eq (Read-BuildReason)) 'broader build scope cannot supply a PLC preflight reason'
+ $capability.result.buildScope='plcProject'
+ foreach($invalidReason in @('',('a'*97),"bad`nmessage",'<b>loader</b>','C:\Private\loader.dll')){
+  $capability.result.buildUnavailableReason=$invalidReason
+  Check ($null -eq (Read-BuildReason)) 'non-code or oversized preflight detail is not displayed'
+ }
+ $capability.result.buildUnavailableReason='association_interop_unavailable';$capability.result.capabilities.plcBuild='supported'
+ Check ($null -eq (Read-BuildReason)) 'a supported response cannot carry an unavailable reason into the UI'
+ Check ($null -eq $reasonMethod.Invoke($null,@('{invalid',$binding,$capabilityId))) 'malformed preflight evidence has no displayed reason'
  [pscustomobject]@{passed=$checks.Count;checks=@($checks);hostSha256=(Get-FileHash -LiteralPath $HostAssembly -Algorithm SHA256).Hash.ToLowerInvariant();installedIdeAcceptance=$false}|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $OutputDirectory 'result.json') -Encoding UTF8
 }finally{if($control){$control.Dispose()};if($window){$window.Close()};[AppDomain]::CurrentDomain.remove_AssemblyResolve($resolver);$env:TWINCAT_ASSISTANT_TEST_CONFIG=$oldOverride}

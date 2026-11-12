@@ -157,8 +157,7 @@ namespace TwinCatAssistant.Native
                     out _engineeringConfiguration, out _engineeringPlatform);
                 _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringProjectSuspended
                     && !_engineeringUncertain && !EngineeringBuildGuard.HasUnresolved;
-                SetEngineeringStatus(EngineeringBuildGuard.HasUnresolved ? "EngineeringUnknown"
-                    : _engineeringPlcBuildVerified ? "EngineeringReady" : "EngineeringPlcBuildUnavailable");
+                SetEngineeringCapabilityStatus(description, session.Binding, describeId);
             }
             catch
             {
@@ -282,8 +281,7 @@ namespace TwinCatAssistant.Native
                 _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(response, session.Binding, id,
                     out _engineeringConfiguration, out _engineeringPlatform);
                 _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringUncertain && !EngineeringBuildGuard.HasUnresolved;
-                SetEngineeringStatus(EngineeringBuildGuard.HasUnresolved ? "EngineeringUnknown"
-                    : _engineeringPlcBuildVerified ? "EngineeringReady" : "EngineeringPlcBuildUnavailable");
+                SetEngineeringCapabilityStatus(response, session.Binding, id);
             }
             catch { if (session == _engineering) SetEngineeringStatus("EngineeringUnavailable"); }
             finally { _engineeringRefreshButton.IsEnabled = true; }
@@ -352,6 +350,44 @@ namespace TwinCatAssistant.Native
             platform = EngineeringProviderSession.Text(result, "platform");
             return !string.IsNullOrWhiteSpace(configuration) && configuration.Length <= 256
                 && !string.IsNullOrWhiteSpace(platform) && platform.Length <= 256;
+        }
+
+        private void SetEngineeringCapabilityStatus(string response, EngineeringBinding binding, Guid request)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_engineeringBusy || _sourceBusy) return;
+            if (_engineeringUncertain || EngineeringBuildGuard.HasUnresolved) { SetEngineeringStatus("EngineeringUnknown"); return; }
+            if (_engineeringPlcBuildVerified) { SetEngineeringStatus("EngineeringReady"); return; }
+            var reason = EngineeringBuildUnavailableReason(response, binding, request);
+            if (reason == null) SetEngineeringStatus("EngineeringPlcBuildUnavailable");
+            else _engineeringStatus.Text = HostText.Format("EngineeringPlcBuildUnavailableReason", new object[] { reason });
+        }
+
+        // Display only a bounded code from this exact describe response, never
+        // an exception message, source text or an unrelated session's evidence.
+        private static string EngineeringBuildUnavailableReason(string response, EngineeringBinding binding, Guid request)
+        {
+            try
+            {
+                if (response == null || response.Length > 512 * 1024 || binding == null) return null;
+                var envelope = EngineeringProviderSession.Json().DeserializeObject(response) as Dictionary<string, object>;
+                object version, resultObject, validated, capabilitiesObject;
+                if (envelope == null || !envelope.TryGetValue("protocolVersion", out version) || !Equals(version, 1)
+                    || EngineeringProviderSession.Text(envelope, "sessionId") != binding.SessionId.ToString("D")
+                    || EngineeringProviderSession.Text(envelope, "operationId") != request.ToString("D")
+                    || EngineeringProviderSession.Text(envelope, "status") != "succeeded") return null;
+                var result = envelope.TryGetValue("result", out resultObject) ? resultObject as Dictionary<string, object> : null;
+                if (result == null || !result.TryGetValue("contextValidated", out validated) || !Equals(validated, true)
+                    || EngineeringProviderSession.Text(result, "buildScope") != "plcProject"
+                    || !string.Equals(EngineeringProviderSession.Text(result, "targetProjectFile"), binding.ProjectFile, StringComparison.OrdinalIgnoreCase)) return null;
+                var capabilities = result.TryGetValue("capabilities", out capabilitiesObject) ? capabilitiesObject as Dictionary<string, object> : null;
+                if (EngineeringProviderSession.Text(capabilities, "plcBuild") != "unsupported") return null;
+                var reason = EngineeringProviderSession.Text(result, "buildUnavailableReason");
+                if (string.IsNullOrEmpty(reason) || reason.Length > 96) return null;
+                foreach (var c in reason) if (!(c >= 'a' && c <= 'z') && !(c >= '0' && c <= '9') && c != '_') return null;
+                return reason;
+            }
+            catch { return null; }
         }
 
         private static async Task<string> EngineeringDispatchBoundedAsync(EngineeringProviderSession session, string request, CancellationToken cancellation)
