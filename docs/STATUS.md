@@ -1,5 +1,17 @@
 # Implementation status
 
+**Beta 6, 2026-11-17.** Application `0.2.0-beta.6` / native `0.2.0.12`
+combines the native readiness diagnostics, background checks/quiet toolbar, and
+Windows runtime-lease recovery from PRs #32–#34. Engineering 0.5.4 adds bounded
+per-interface inspection diagnostics; Knowledge remains 0.1.2. The installed
+Beta 5 chat reconnected after manual backup of a verified dead-owner lock.
+That operator observation is separate from fixture verification of the new
+kernel-held lease. Actual release build checks and exact source identity are
+recorded in `BUILD_PROVENANCE.json`; see [release scope](releases/native-v0.2.0-beta.6.md).
+The Engineering interop incident is not claimed fixed. Source-editor operations,
+4026/Shell64 and remaining live-host/corpus acceptance stay closed or open as
+previously documented.
+
 **Beta 5 published, 2026-11-12.** [GitHub Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.5)
 is application `0.2.0-beta.5` / native `0.2.0.11`, built from reviewed source
 `f73b8e474ffb7e5981ecb95990f3ae0a09b68648`, merged by PR #30 into main

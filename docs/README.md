@@ -10,9 +10,11 @@ and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
 Native acceptance and future engineering write milestones remain separate.
 
-Current release: [0.2.0 Beta 5](releases/native-v0.2.0-beta.5.md), with optional approved PLC builds, build-owned diagnostics/native navigation, five typed Knowledge tools and the pinned-chat-list fix. [Published Latest](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.5) contains setup, checksums and build provenance. All new source-editor tools remain inactive; their development code is preserved. Shell64 support remains preparation only.
+Current release: [0.2.0 Beta 6](releases/native-v0.2.0-beta.6.md), with Windows chat restart recovery, background build readiness, a quiet chat toolbar and more precise Engineering diagnostics. [Latest release](https://github.com/Auda29/twincat-assistant/releases/latest) provides the installer, checksums and provenance. All new source-editor tools remain inactive; real-host build acceptance remains open.
 
-Start with [Build tools and approvals](EDITOR_PROFILE.md), [Knowledge setup](KNOWLEDGE_SETUP.md) and [current status](STATUS.md). The released inputs are Engineering 0.5.3 and Knowledge 0.1.2. The [MCP-first integration record](MCP_P1_INTEGRATION_20261112.md) retains private-development evidence, separately from active release scope.
+Previous release: [0.2.0 Beta 5](releases/native-v0.2.0-beta.5.md), with the initial optional build tools, typed Knowledge tools and pinned-history fix.
+
+Start with [Build tools and approvals](EDITOR_PROFILE.md), [Knowledge setup](KNOWLEDGE_SETUP.md) and [current status](STATUS.md). The released inputs are Engineering 0.5.4 and Knowledge 0.1.2. The [MCP-first integration record](MCP_P1_INTEGRATION_20261112.md) retains private-development evidence, separately from active release scope.
 
 Previous release: [0.2.0 Beta 4](releases/native-v0.2.0-beta.4.md), including startup/member-context hardening and the Knowledge validation overlay.
 

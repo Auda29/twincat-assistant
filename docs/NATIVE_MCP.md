@@ -1,6 +1,6 @@
 # Native MCP integration
 
-Beta 5 uses published Knowledge 0.1.2 and Engineering 0.5.3, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Knowledge exposes nine read-only tools. Project chats retain saved-file reads and can explicitly enable native **Build tools** for the selected chat; each selective build needs its own native approval. Source discovery and editing workflows are inactive in this release. See [Beta 5 release scope](releases/native-v0.2.0-beta.5.md), [Editor profile](EDITOR_PROFILE.md), and [Knowledge setup](KNOWLEDGE_SETUP.md).
+Beta 6 uses published Knowledge 0.1.2 and Engineering 0.5.4, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Knowledge exposes nine read-only tools. Project chats retain saved-file reads and can explicitly enable native **Build tools** for the selected chat; each selective build needs its own native approval. Source discovery and editing workflows are inactive in this release. See [Beta 6 release scope](releases/native-v0.2.0-beta.6.md), [Editor profile](EDITOR_PROFILE.md), and [Knowledge setup](KNOWLEDGE_SETUP.md).
 
 Native 0.1.9 adds [automatic documentation setup](KNOWLEDGE_SETUP.md). Users can
 prepare installed Beckhoff help from **Wissenssuche einrichten**; a manual TOML
