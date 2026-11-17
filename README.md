@@ -8,7 +8,7 @@ Explain Structured Text, explore PLC project code and find relevant Beckhoff
 documentation in a docked chat window. TwinCAT Assistant connects the active
 project and POU to a conversation that you can return to later.
 
-**0.2.0 Beta 5 · Read-only Analysis and optional approved build tools**
+**0.2.0 Beta 6 · Read-only Analysis and optional approved build tools**
 
 [Get started](#getting-started) · [Documentation](docs/README.md) · [Releases](https://github.com/Auda29/twincat-assistant/releases)
 
@@ -43,7 +43,7 @@ installed Beckhoff InfoSys help.
 1. Close TcXaeShell, verify the downloaded setup checksum and double-click the
    EXE. Confirm UAC with your normal Windows account. The setup window handles
    installation and managed updates without Git, npm or compilation. See the
-   [release notes](docs/releases/native-v0.2.0-beta.5.md), and the separate
+   [release notes](docs/releases/native-v0.2.0-beta.6.md), and the separate
    [migration notes for old unpackaged prototypes](docs/PROTOTYPE_PROFILE_MIGRATION_20261109.md).
 2. Open the TwinCAT Assistant tool window, connect your model provider and
    select a model in the chat.
@@ -51,7 +51,7 @@ installed Beckhoff InfoSys help.
    when you want the assistant to examine that code, then ask your question.
 4. For documentation questions, use **Knowledge search** to discover and prepare
    your installed InfoSys help. See [documentation setup](docs/KNOWLEDGE_SETUP.md).
-5. For compilation, explicitly enable **Build tools** for the project chat and
+5. For compilation, use the **…** menu to explicitly enable **Build tools** for the project chat and
    confirm each requested build in the native dialog. See the
    [build tools and approval guide](docs/EDITOR_PROFILE.md).
 
@@ -64,7 +64,7 @@ For development builds, use the [development setup](docs/INSTALLATION.md) and
 
 ## Beta scope
 
-Analysis remains read-only. Beta 5 adds optional, separately approved selective
+Analysis remains read-only. Beta 6 includes optional, separately approved selective
 PLC builds and build-owned diagnostics. Source editing, activation, download,
 Online Change and runtime control are unavailable. A connected PLC is not
 required for project analysis, documentation search or offline compilation.
@@ -91,13 +91,15 @@ two dedicated local MCP services.
 | Assistant Host | Native tool window, IDE context and WebView2 integration | C# / WPF |
 | Assistant Chat | Messages, input, attachments and conversation display | [OpenChamber](https://github.com/openchamber/openchamber) |
 | Assistant Core | Model providers, agent execution, MCP client and conversation storage | [OpenCode](https://github.com/anomalyco/opencode) |
-| Engineering MCP 0.5.3 | Saved project analysis and Assistant-bound builds/diagnostics | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.3) |
+| Engineering MCP 0.5.4 | Saved project analysis and Assistant-bound builds/diagnostics | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.4) |
 | Knowledge MCP 0.1.2 | Nine documentation tools, including symbol/library/error lookup | [Released package](https://github.com/Auda29/twincat-knowledge-mcp/releases/tag/v0.1.2) |
 
 Model execution and MCP processes run outside the IDE. Documentation, generated
 indexes and user project files are not bundled with the application.
 
 ## Documentation
+
+- [0.2.0 Beta 6: chat restart recovery and background build readiness](docs/releases/native-v0.2.0-beta.6.md)
 
 - [0.2.0 Beta 5: build tools, typed Knowledge and pinned-history fix](docs/releases/native-v0.2.0-beta.5.md)
 - [Build tools, native approvals and inactive ST development](docs/EDITOR_PROFILE.md)

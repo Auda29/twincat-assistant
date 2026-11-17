@@ -1,6 +1,6 @@
 # Editor profile and native engineering
 
-Beta 5 exposes the native profile as **Build tools**. Analysis remains the
+Beta 6 exposes the native profile as **Build tools**. Analysis remains the
 default. The release exposes only nine build/session/diagnostic tools; all six
 new source tools and their UI are disabled. The host supplies no XML or normal
 ST editor accessor and refuses `source.*` before provider dispatch or approval.
@@ -12,8 +12,7 @@ environment variable, persisted setting or native runtime control enables it.
 
 ## Using the feature
 
-The menu-based UI below is a development change for the next application
-release. Installed Beta 5 still uses the earlier toolbar.
+Beta 6 uses the menu-based UI below. Earlier Beta 5 installations use a separate toolbar.
 
 1. Select a project-bound chat in the local runtime started by this Assistant
    window. A general chat or another window's runtime cannot authorize Editor.
