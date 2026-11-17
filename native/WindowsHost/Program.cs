@@ -82,7 +82,13 @@ internal static class Program
                 finally { mutex.ReleaseMutex(); }
             }
             if (args is ["supervise"]) return await JobSupervisor.RunAsync();
+            if (args is ["supervise", var launcherRoot]) return await JobSupervisor.RunAsync(launcherRoot);
             return 2;
+        }
+        catch (RuntimeLeaseException)
+        {
+            Console.Error.WriteLine("Runtime ownership unavailable.");
+            return 3;
         }
         catch
         {
@@ -115,9 +121,56 @@ internal static class Program
 
 internal sealed record LaunchPlan(string Command, string[] Args, string Cwd, Dictionary<string, string> Env);
 
+internal sealed class RuntimeLeaseException : IOException { }
+
+internal static class RuntimeLease
+{
+    internal static FileStream Acquire(string root)
+    {
+        FileStream? stream = null;
+        try
+        {
+            if (!Path.IsPathFullyQualified(root) || !Directory.Exists(root)
+                || (File.GetAttributes(root) & FileAttributes.ReparsePoint) != 0) throw new IOException();
+            var handle = Native.CreateFile(Path.Combine(root, "launcher.lock"),
+                Native.GenericRead | 0x40000000u | 0x10000u, 0, IntPtr.Zero, 4,
+                Native.OpenReparsePoint | Native.BackupSemantics, IntPtr.Zero);
+            try
+            {
+                if (handle.IsInvalid || !Native.GetFileInformationByHandle(handle, out var info)
+                    || Native.GetFileType(handle) != 1 || (info.Attributes & (0x10u | 0x400u)) != 0
+                    || info.Links != 1 || info.SizeHigh != 0 || info.SizeLow > 1024) throw new IOException();
+                stream = new FileStream(handle, FileAccess.ReadWrite);
+            }
+            catch { handle.Dispose(); throw; }
+            if (stream.Length != 0)
+            {
+                var bytes = new byte[checked((int)stream.Length)];
+                stream.ReadExactly(bytes);
+                using var document = JsonDocument.Parse(bytes);
+                if (document.RootElement.ValueKind != JsonValueKind.Object) throw new IOException();
+                var properties = document.RootElement.EnumerateObject().ToArray();
+                if (properties.Length != 1 || properties[0].Name != "supervisorPid"
+                    || !properties[0].Value.TryGetInt32(out var pid) || pid <= 0) throw new IOException();
+                try { using var owner = System.Diagnostics.Process.GetProcessById(pid); if (!owner.HasExited) throw new IOException(); }
+                catch (ArgumentException) { /* Recognized legacy metadata whose owner is gone. */ }
+            }
+            // Mark only the verified, exclusively held file for deletion. Windows
+            // removes it on handle close, including TerminateProcess/job teardown.
+            var disposition = new Native.FileDisposition { DeleteFile = 1 };
+            if (!Native.SetFileInformationByHandle(stream.SafeFileHandle, 4, ref disposition, 1)) throw new IOException();
+            stream.Position = 0; stream.SetLength(0);
+            stream.Write(JsonSerializer.SerializeToUtf8Bytes(new { supervisorPid = Environment.ProcessId }));
+            stream.Flush(true);
+            return stream;
+        }
+        catch { stream?.Dispose(); throw new RuntimeLeaseException(); }
+    }
+}
+
 internal static class JobSupervisor
 {
-    public static async Task<int> RunAsync()
+    public static async Task<int> RunAsync(string? launcherRoot = null)
     {
         // The launch plan (including credentials) travels over stdin, never a command line or file.
         // Node writes UTF-8 regardless of the Windows/OEM console code page.
@@ -130,6 +183,7 @@ internal static class JobSupervisor
         if (!Path.IsPathFullyQualified(plan.Command) || !File.Exists(plan.Command) ||
             !Path.IsPathFullyQualified(plan.Cwd) || !Directory.Exists(plan.Cwd) ||
             plan.Args is null || plan.Env is null) throw new IOException();
+        using var lease = launcherRoot == null ? null : RuntimeLease.Acquire(launcherRoot);
         using var job = Native.CreateJobObject(IntPtr.Zero, null);
         if (job.IsInvalid) throw new IOException();
         var limits = new Native.ExtendedLimits();
@@ -280,6 +334,9 @@ internal static class Native
     internal static extern SafeFileHandle CreateFile(string path, uint access, uint share, IntPtr security, uint disposition, uint flags, IntPtr template);
     [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool GetFileInformationByHandle(SafeFileHandle handle, out FileInformation info);
+    [StructLayout(LayoutKind.Sequential)] internal struct FileDisposition { internal byte DeleteFile; }
+    [DllImport("kernel32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool SetFileInformationByHandle(SafeFileHandle handle, int type, ref FileDisposition information, uint length);
     [DllImport("kernel32.dll")] internal static extern uint GetFileType(SafeFileHandle handle);
     [DllImport("kernel32.dll", EntryPoint = "CreateJobObjectW", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern SafeFileHandle CreateJobObject(IntPtr security, string? name);

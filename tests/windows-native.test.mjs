@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm, link, open } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { supervise } from '../src/supervisor.mjs';
@@ -102,8 +102,11 @@ test('Windows helper revokes the whole job on Node owner death without killing u
     await assertGone(descendant.pid);
     await assertGone(owned.supervisorPid);
     assert.doesNotThrow(() => process.kill(sentinel.pid, 0));
-    // Crashed owner cannot remove its lock; never auto-recover it based only on PID.
-    await assert.rejects(supervise({}, root), /lock/);
+    // Kernel ownership ends even though the Node owner cannot execute finally.
+    await assert.rejects(readFile(join(root, 'launcher.lock')));
+    const restarted = await supervise({ command: process.execPath, args: ['-e', 'process.exit(0)'], cwd: root,
+      env: { SystemRoot: process.env.SystemRoot } }, root);
+    assert.equal(restarted.code, 0);
   } finally {
     if (owner?.exitCode === null && owner.signalCode === null) owner.kill();
     sentinel.kill();
@@ -112,6 +115,40 @@ test('Windows helper revokes the whole job on Node owner death without killing u
     await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
+
+test('Windows runtime lease recovers recognized dead-owner metadata without trusting PID alone', { skip: process.platform !== 'win32', timeout: 15000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tc-lease-stale-'));
+  try {
+    const dead = spawn(process.execPath, ['-e', 'process.exit(0)'], { stdio: 'ignore' });
+    await once(dead, 'exit');
+    await writeFile(join(root, 'launcher.lock'), JSON.stringify({ supervisorPid: dead.pid }));
+    const result = await supervise({ command: process.execPath, args: ['-e', 'process.exit(0)'], cwd: root,
+      env: { SystemRoot: process.env.SystemRoot } }, root);
+    assert.equal(result.code, 0);
+    await assert.rejects(readFile(join(root, 'launcher.lock')));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+for (const kind of ['malformed', 'live-owner', 'hardlink', 'legacy-open-handle']) {
+  test(`Windows runtime lease preserves and refuses ${kind} lock files`, { skip: process.platform !== 'win32', timeout: 15000 }, async () => {
+    const root = await mkdtemp(join(tmpdir(), 'tc-lease-refuse-'));
+    const lock = join(root, 'launcher.lock');
+    let legacyHandle;
+    try {
+      const dead = spawn(process.execPath, ['-e', 'process.exit(0)'], { stdio: 'ignore' });
+      await once(dead, 'exit');
+      const bytes = kind === 'malformed' ? 'unrecognized metadata' : JSON.stringify({ supervisorPid: kind === 'live-owner' ? process.pid : dead.pid });
+      await writeFile(lock, bytes);
+      if (kind === 'hardlink') await link(lock, join(root, 'second-link'));
+      if (kind === 'legacy-open-handle') legacyHandle = await open(lock, 'r+');
+      let started = false;
+      await assert.rejects(supervise({ command: process.execPath, args: ['-e', 'process.exit(0)'], cwd: root,
+        env: { SystemRoot: process.env.SystemRoot } }, root, undefined, () => { started = true; }), /lock/);
+      assert.equal(started, false);
+      assert.equal(await readFile(lock, 'utf8'), bytes);
+    } finally { await legacyHandle?.close(); await rm(root, { recursive: true, force: true }); }
+  });
+}
 
 test('Windows supervisor rejects missing executable and honors pre-start cancellation', { skip: process.platform !== 'win32' }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'tc-job-reject-'));
