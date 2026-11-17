@@ -160,6 +160,7 @@ namespace TwinCatAssistant.Native
                         out _engineeringConfiguration, out _engineeringPlatform);
                     _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringBusy && !_engineeringUncertain
                         && !_engineeringProjectSuspended && !EngineeringBuildGuard.HasUnresolved && !EngineeringSourceGuard.HasUnresolved;
+                    SetEngineeringCapabilityStatus(response, binding, parsed.Id);
                 }
                 else if (parsed.Operation == "operation.get" || parsed.Operation == "operation.cancel" || parsed.Operation == "diagnostics.read" || parsed.Operation == "output.read")
                 {
