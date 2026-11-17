@@ -12,9 +12,13 @@ environment variable, persisted setting or native runtime control enables it.
 
 ## Using the feature
 
+The menu-based UI below is a development change for the next application
+release. Installed Beta 5 still uses the earlier toolbar.
+
 1. Select a project-bound chat in the local runtime started by this Assistant
    window. A general chat or another window's runtime cannot authorize Editor.
-2. Choose **Enable build tools for this chat** and review the scope notice.
+2. In the Assistant's **…** menu, choose **Enable build tools for this chat** and
+   review the scope notice. There is no separate build toolbar above the chat.
 3. The chat switches to the managed `twincat-editor` profile. Its live tools are
    bound to this exact chat, workspace, IDE process, solution and PLC project.
 4. Each build requires a separate native confirmation. A chat
@@ -27,6 +31,11 @@ Editor permits the reviewed engineering tools and existing read-only tools.
 It does not permit arbitrary files, shell commands, ADS/runtime writes,
 activation, download, forcing, automatic saving or configuration switching.
 Analysis cannot use Editor tools even while the live server is connected.
+
+Build availability is checked automatically at startup and after the bound
+editor context settles following a change. These checks are read-only and do not
+start a build. Technical status, manual checks and build details are available
+only under **Diagnostics → Advanced**.
 
 ## Release functions
 
