@@ -19,7 +19,6 @@ namespace TwinCatAssistant.Native
         private NativeChatSession _editorOwner;
         private Task _editorRevocation = Task.CompletedTask;
         private bool _editorToggleRequested;
-        private Button _editorModeButton;
         internal event Action EngineeringEditorModeChanged;
         internal bool EngineeringEditorProfileEnabled { get { return _engineeringEditorEnabled; } }
 
@@ -34,11 +33,15 @@ namespace TwinCatAssistant.Native
                 && _chatSelection?.sessionId == _editorChat && _projectWorkspace == _editorWorkspace;
         }
 
-        private void BuildEngineeringEditorMode()
+        private void AddEngineeringProfileMenuRow()
         {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            _editorModeButton = Secondary(AsyncButton(HostText.Get((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorEnable" : "EngineeringBuildModeEnable")), ToggleEngineeringEditorAsync));
-            _toolbar.Children.Add(_editorModeButton);
+            var enabled = !_engineeringEditorChanging && !_editorToggleRequested
+                && (_engineeringEditorEnabled || (_engineering?.Binding != null && _chatSession?.IsRunning == true
+                    && CanPromptCurrentChat() && _chatBinding?.IsGeneral == false
+                    && _chatBinding.SameProjectContext(_engineeringProject) && !_engineeringProjectSuspended));
+            MenuRow("sliders", HostText.Get(_engineeringEditorEnabled ? "EngineeringEditorDisable"
+                : EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorEnable" : "EngineeringBuildModeEnable"),
+                null, enabled, ToggleEngineeringEditorAsync, MenuSwitch(_engineeringEditorEnabled));
         }
 
         private async Task ToggleEngineeringEditorAsync()
@@ -68,7 +71,7 @@ namespace TwinCatAssistant.Native
                 MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
             if (_disposed || session != _engineering || runtime != _chatSession || _chatSelection?.sessionId != chat
                 || _projectWorkspace != workspace || _engineeringProjectSuspended) return;
-            _engineeringEditorChanging = true; _editorModeButton.IsEnabled = false;
+            _engineeringEditorChanging = true;
             var generation = ++_editorGeneration;
             var selectedEpoch = _chatSelection.epoch;
             var selectedDocument = _chatSelection.documentId;
@@ -100,7 +103,6 @@ namespace TwinCatAssistant.Native
                 _editorChat = chat; _editorWorkspace = workspace; _editorBinding = binding.SessionId;
                 _engineeringEditorEnabled = true;
                 if (!await PublishEngineeringEditorModeAsync(chat, true)) throw new InvalidOperationException();
-                _editorModeButton.Content = HostText.Get("EngineeringEditorDisable");
                 EngineeringEditorModeChanged?.Invoke();
                 SetEngineeringStatus((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorEnabled" : "EngineeringBuildModeEnabled"));
             }
@@ -114,7 +116,7 @@ namespace TwinCatAssistant.Native
             {
                 transport?.Dispose();
                 if (!_engineeringEditorEnabled && _editorOwner == runtime) RevokeEngineeringEditor();
-                _engineeringEditorChanging = false; _editorModeButton.IsEnabled = true;
+                _engineeringEditorChanging = false;
             }
         }
 
@@ -128,7 +130,6 @@ namespace TwinCatAssistant.Native
             _editorTransport?.Dispose(); _editorTransport = null;
             var chat = _editorChat;
             _editorChat = _editorWorkspace = null; _editorBinding = Guid.Empty;
-            if (_editorModeButton != null) _editorModeButton.Content = HostText.Get((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorEnable" : "EngineeringBuildModeEnable"));
             if (wasActive)
             {
                 EngineeringEditorModeChanged?.Invoke();

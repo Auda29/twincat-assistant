@@ -574,6 +574,7 @@ namespace TwinCatAssistant.Native
                 MenuRow("copy", HostText.Get("H101"), HostText.Get("H102"), exportReady, () => ExportThreadAsync(false));
                 MenuRow("download", HostText.Get("H103"), HostText.Get("H104"), exportReady, () => ExportThreadAsync(true));
                 MenuRow("attach", HostText.Get("H105"), HostText.Get("H106"), true, ToggleAutoAttachAsync, MenuSwitch(_chatPreferences.AutoAttach));
+                AddEngineeringProfileMenuRow();
                 // Model providers: a single choice among the connected ones.
                 MenuSeparator();
                 MenuHeading(HostText.Get("LanguageLabel"));

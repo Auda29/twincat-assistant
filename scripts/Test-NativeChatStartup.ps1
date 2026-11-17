@@ -76,6 +76,18 @@ try{
  $context=[Activator]::CreateInstance($contextType)
  $thread.GetField('_joinableTaskContextCache',[Reflection.BindingFlags]'Static,NonPublic').SetValue($null,$context)
  Make-Control
+ function Is-InDiagnosticTools($element) {
+  for($depth=0;$null -ne $element -and $depth -lt 20;$depth++){
+   if([object]::ReferenceEquals($element,(Field '_diagnosticAdvanced'))){return $true}
+   $element=[Windows.LogicalTreeHelper]::GetParent($element)
+  }
+  return $false
+ }
+ Check ((Is-InDiagnosticTools (Field '_engineeringBuildButton')) -and (Is-InDiagnosticTools (Field '_engineeringRefreshButton')) -and (Is-InDiagnosticTools (Field '_engineeringStatus')) -and (Field '_diagnostics').Visibility -eq 'Collapsed') 'build controls and technical readiness are confined to opt-in advanced diagnostics'
+ Check ((Field '_toolbar').Children.Count -eq 4) 'normal chat has no build toolbar or separate profile banner'
+ $menuCount=(Field '_menuItems').Children.Count
+ Call 'AddEngineeringProfileMenuRow'|Out-Null
+ Check ((Field '_menuItems').Children.Count -eq ($menuCount+1) -and !(Field '_engineeringEditorEnabled')) 'profile activation is available in the existing menu without automatic authority'
  $configuration=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeChatConfiguration'))
  $configuration.StateRoot=$profileInfo.StateRoot
  Put '_chatConfiguration' ([StartupPump]::ConfigurationFactory($configuration.GetType(),$configuration))
@@ -206,6 +218,7 @@ try{
   Check ((Field '_engineeringEpoch') -eq $epoch -and (Field '_engineeringProject').Equals($project) -and (Field '_engineeringBusy') -and (Field '_engineeringBuildId') -eq $buildId) 'transient editor invalidation preserves engineering observation and epoch'
   Invoke-Private 'RenderEngineeringProject' @($project,$false)|Out-Null
   Check ((Field '_engineeringEpoch') -eq $epoch -and (Field '_engineeringUncertain') -and (Field '_engineeringBuildId') -eq $buildId) 'same-project resolution retains unresolved operation state'
+  Check (!(Field '_engineeringRefreshDelay').IsEnabled) 'context restoration without a provider does not queue work'
   Call 'DisposeEngineering'|Out-Null
   Check ((Field '_engineeringUncertain') -and (Field '_engineeringBuildId') -eq $buildId -and $guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'actual lifecycle revocation cannot erase an unresolved engineering operation'
  } finally { $guardType.GetMethod('Reconcile',$flags).Invoke($operationGuard,@($buildId))|Out-Null }
@@ -215,7 +228,16 @@ try{
  $binding=$bindingType.GetConstructors($flags)[0].Invoke([object[]]@($sessionId,[int]$PID,$started,'C:\Synthetic\Build.sln','C:\Synthetic\Build.plcproj','fixture'))
  $sessionType=$assembly.GetType('TwinCatAssistant.Native.EngineeringProviderSession')
  $renderSession=[Runtime.Serialization.FormatterServices]::GetUninitializedObject($sessionType)
+ $authorization=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.EngineeringAuthorization'),$true)
+ $sessionType.GetField('authorization',$flags).SetValue($renderSession,$authorization)
  $sessionType.GetField('binding',$flags).SetValue($renderSession,$binding)
+ Put '_engineering' $renderSession;Put '_engineeringProject' $project;Put '_engineeringProjectSuspended' $true
+ try {
+  Invoke-Private 'RenderEngineeringProject' @($project,$false)|Out-Null
+  Check ((Field '_engineeringRefreshDelay').IsEnabled) 'settled context with an existing provider automatically schedules a read-only readiness refresh'
+  for($queue=0;$queue -lt 10;$queue++){Call 'QueueEngineeringCapabilityRefresh'|Out-Null}
+  Check ((Field '_engineeringRefreshDelay').IsEnabled -and !(Field '_engineeringRefreshBusy') -and !(Field '_engineeringEditorEnabled')) 'editor bursts coalesce without starting a check inline or granting profile authority'
+ } finally {(Field '_engineeringRefreshDelay').Stop();Put '_engineering' $null;Put '_engineeringProject' $null}
  Check (!$sessionType.GetField('DevelopmentSourceAccess',[Reflection.BindingFlags]'Static,NonPublic').GetValue($null) -and $null -eq (Field '_sourceDiscover')) 'release mode has no experimental source panel or runtime source opt-in'
  $sourceRefused=$true
  foreach($sourceOperation in @('source.targets','source.read','source.preview','source.apply','source.rollback','source.journal')){
