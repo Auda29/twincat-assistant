@@ -58,9 +58,9 @@ export async function acquireKnowledgeLease(root) {
   } catch(error){releasing=true;helper.stdin.destroy();helper.kill();await closed;throw error;}
 }
 
-export async function superviseWindows(plan, signal, onStarted = () => {}, onOutput = null) {
+export async function superviseWindows(plan, signal, onStarted = () => {}, onOutput = null, launcherRoot = null) {
   if (signal?.aborted) return { cancelled: true };
-  const helper = spawn(windowsHelperPath(), ['supervise'], {
+  const helper = spawn(windowsHelperPath(), launcherRoot ? ['supervise', launcherRoot] : ['supervise'], {
     shell: false, windowsHide: true, stdio: ['pipe', 'pipe', onOutput ? 'pipe' : 'inherit'], env: helperEnvironment(),
   });
   if (onOutput) helper.stderr.on('data', onOutput);
@@ -93,7 +93,7 @@ export async function superviseWindows(plan, signal, onStarted = () => {}, onOut
       } catch { rejectProtocol(); }
     });
     helper.once('close', (code, childSignal) => {
-      if (!ready && !signal?.aborted) reject(new Error('Native Windows supervisor failed before starting the owned child'));
+      if (!ready && !signal?.aborted) reject(new Error(code === 3 ? 'Launcher lock unavailable; another owner or invalid lock exists' : 'Native Windows supervisor failed before starting the owned child'));
       else resolve({ code, signal: childSignal, cancelled: signal?.aborted ?? false });
     });
   });

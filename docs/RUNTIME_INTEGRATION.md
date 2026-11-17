@@ -15,6 +15,14 @@ Pinned history remains visible during transient build, save or frame invalidatio
 
 ## Existing data and project identity
 
+The development Windows launcher holds `launcher.lock` exclusively in the native
+job supervisor and marks it for deletion when its handle closes. This also releases
+ownership after abrupt Node/helper/IDE termination, without relying on JavaScript
+cleanup. Recognized legacy metadata is recovered only with an exclusive file
+handle and a confirmed absent owner. Live owners, unrecognized metadata, reparse
+points and hard-linked lock files remain refused. This change is pending the next
+application release; it does not change the PLC build or source-access policy.
+
 OpenCode remains the owner of `data/opencode/opencode.db` below the configured
 operator state directory. The channel, schema version and session IDs are
 unchanged. Existing provider records and OpenChamber preferences keep their

@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { open, unlink } from 'node:fs/promises';
+import { open, unlink, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { superviseWindows } from './windows-native.mjs';
 
@@ -10,6 +10,9 @@ function groupSignal(pid, signal) {
 }
 export async function supervise(plan, root, signal, onStarted = () => {}) {
   if (signal?.aborted) return { cancelled: true };
+  // Windows ownership is held by a kernel file handle in the native job
+  // supervisor. It survives no abrupt process exit and needs no JS finally.
+  if (process.platform === 'win32') return superviseWindows(plan, signal, onStarted, null, await realpath(root));
   const lockPath = join(root, 'launcher.lock');
   let lock;
   try { lock = await open(lockPath, 'wx', 0o600); }
@@ -25,7 +28,6 @@ export async function supervise(plan, root, signal, onStarted = () => {}) {
     await lock.writeFile(JSON.stringify({ supervisorPid: process.pid }) + '\n');
     await lock.sync();
     if (signal?.aborted) return { cancelled: true };
-    if (process.platform === 'win32') return await superviseWindows(plan, signal, onStarted);
     child = spawn(plan.command, plan.args, { cwd: plan.cwd, env: plan.env, detached: true, shell: false, stdio: ['ignore', 'inherit', 'inherit'] });
     const completed = new Promise((resolve, reject) => {
       child.once('error', () => reject(new Error('Upstream process could not start')));
