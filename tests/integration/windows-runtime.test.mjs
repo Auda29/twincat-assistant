@@ -55,7 +55,8 @@ test('real pinned Windows runtime boots with protected UI, isolated session and 
     const status = await inspectState(state);
     assert.equal(status.modelCallsEnabled, false);
     assert.equal(status.nativeEngineering, 'unavailable');
-    assert.ok(await readFile(join(state, 'launcher.lock')));
+    await assert.rejects(readFile(join(state, 'launcher.lock')),
+      error => ['EPERM', 'EACCES', 'EBUSY'].includes(error.code), 'The live native supervisor must hold its lease exclusively');
   } finally {
     if (child?.exitCode === null && child.signalCode === null) child.kill(); // deliberate Node-owner death, not an IDE shutdown
     if (closed) await closed;
@@ -66,6 +67,14 @@ test('real pinned Windows runtime boots with protected UI, isolated session and 
       if (listening) await new Promise(resolve => setTimeout(resolve, 100));
     }
     assert.equal(listening, false, 'Owned upstream listener survived Node-owner death');
+    const lockDeadline = Date.now() + 5000;
+    let leaseRemoved = false;
+    while (Date.now() < lockDeadline) {
+      try { await readFile(join(state, 'launcher.lock')); }
+      catch (error) { if (error.code === 'ENOENT') { leaseRemoved = true; break; } }
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    assert.equal(leaseRemoved, true, 'The native runtime lease survived Node-owner death');
     // Windows can release directory handles shortly after the owned listener
     // exits. Retry only cleanup; the independent shutdown assertion above must
     // still pass, and a persistent lock remains a test failure.
