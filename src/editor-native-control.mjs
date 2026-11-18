@@ -1,5 +1,6 @@
 import { isAbsolute, join, resolve } from 'node:path';
 import { startEditorSession, registerEditorSession, validateEditorBootstrap } from './editor-session-broker.mjs';
+import { ownedEngineeringProfile } from './editor-tools.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const CHAT_ID = /^[a-zA-Z0-9_:-]{1,160}$/;
@@ -67,9 +68,12 @@ export function validateEditorControl(command, { packaged, applicationRoot }) {
     if (!exact(command, ['kind', 'requestId'])) throw new Error('Invalid editor control');
     return command;
   }
-  if (command.kind !== 'editor.bind' || !exact(command, ['kind', 'requestId', 'bootstrap', 'workspace', 'sessionId', 'entrypoint'])
+  const bindKeys = ['kind', 'requestId', 'bootstrap', 'workspace', 'sessionId', 'entrypoint'];
+  if (Object.hasOwn(command, 'profile')) bindKeys.push('profile');
+  if (command.kind !== 'editor.bind' || !exact(command, bindKeys)
       || !absolute(command.workspace) || !absolute(command.entrypoint) || typeof command.sessionId !== 'string' || !CHAT_ID.test(command.sessionId))
     throw new Error('Invalid editor control');
+  ownedEngineeringProfile(command.profile);
   validateEditorBootstrap(command.bootstrap);
   if (packaged && !samePath(command.entrypoint, join(applicationRoot, 'runtime', 'mcp', 'engineering', 'packages', 'mcp', 'dist', 'index.js')))
     throw new Error('Invalid editor control');
@@ -102,7 +106,7 @@ export function createEditorNativeControl(options) {
         await revoke();
         if (command.kind === 'editor.revoke') { if (!closing) report({ status: 'editor-revoked', requestId: command.requestId }); return; }
         const broker = await start({ node, entrypoint: command.entrypoint, bootstrap: command.bootstrap,
-          workspace: command.workspace, sessionId: command.sessionId }, lifetime.signal);
+          workspace: command.workspace, sessionId: command.sessionId, profile: command.profile }, lifetime.signal);
         try {
           if (closing) { await broker.close(); return; }
           registration = await register({ origin, password, workspace: command.workspace, broker }, lifetime.signal);

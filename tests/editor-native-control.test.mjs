@@ -22,7 +22,7 @@ test('editor control rejects ambiguous, invalid and arbitrary packaged entrypoin
   assert.deepEqual(validateEditorControl(parseEditorControl(JSON.stringify(command())), opts), command());
   for (const line of [JSON.stringify({ ...command(), extra: 1 }), '{"kind":"editor.revoke","kind":"editor.revoke","requestId":"11111111-1111-4111-8111-111111111111"}',
     JSON.stringify({ ...command(), bootstrap: { ...bootstrap(), capability: 'bad' } }), JSON.stringify({ ...command(), workspace: 'relative' }),
-    JSON.stringify({ kind: 'unexpected', requestId: command().requestId })]) {
+    JSON.stringify({ kind: 'unexpected', requestId: command().requestId }), JSON.stringify({ ...command(), profile: '--config' })]) {
     assert.throws(() => validateEditorControl(parseEditorControl(line), opts));
   }
   assert.throws(() => validateEditorControl(command(), { ...opts, packaged: true }));
