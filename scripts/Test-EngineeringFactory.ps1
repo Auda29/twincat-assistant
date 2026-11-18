@@ -1,5 +1,10 @@
-param([string]$DotNetRoot)
+param([string]$DotNetRoot,[string]$CandidateAssembly,[string]$CandidateSha256)
 $ErrorActionPreference='Stop'
+if($CandidateAssembly -or $CandidateSha256){
+ if(!$CandidateAssembly -or $CandidateSha256 -cnotmatch '^[a-f0-9]{64}$'){throw 'Explicit candidate path and SHA256 are required together'}
+ $CandidateAssembly=(Resolve-Path -LiteralPath $CandidateAssembly).Path
+ if((Get-FileHash -LiteralPath $CandidateAssembly -Algorithm SHA256).Hash.ToLowerInvariant() -cne $CandidateSha256){throw 'Candidate bytes differ from test pin'}
+}
 $root=Split-Path -Parent $PSScriptRoot
 $dotnet=if($DotNetRoot){Join-Path $DotNetRoot 'dotnet.exe'}else{(Get-Command dotnet.exe -ErrorAction Stop).Source}
 $sdkRoot=Join-Path (Split-Path -Parent $dotnet) 'sdk'
@@ -17,6 +22,10 @@ try {
   if($LASTEXITCODE -ne 0){throw 'Factory fixture compilation failed'}
   & $exe
   if($LASTEXITCODE -ne 0){throw 'Factory fixture failed'}
+  if($mode -eq 'CURRENT' -and $CandidateAssembly){
+   & $exe $CandidateAssembly $CandidateSha256
+   if($LASTEXITCODE -ne 0){throw 'Actual candidate wire fixture failed'}
+  }
  }
 } finally {
  if([IO.Path]::GetFullPath((Split-Path $fixture -Parent)) -cne $parent -or (Split-Path $fixture -Leaf) -cnotmatch '^EngineeringFactoryFixture-[a-f0-9]{32}$'){throw 'Invalid fixture cleanup path'}

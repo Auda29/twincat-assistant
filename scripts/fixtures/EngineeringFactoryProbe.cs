@@ -1,5 +1,8 @@
 using System;
 using System.Reflection;
+using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using TwinCatAssistant.Native;
@@ -46,7 +49,8 @@ namespace TwinCatMcp.Engineering.Host {
 internal static class EngineeringFactoryProbe {
     private static int checks;
     private static void Check(bool value) { if(!value) throw new Exception("Factory contract assertion failed"); checks++; }
-    public static int Main() {
+    public static int Main(string[] args) {
+        if(args.Length!=0) return ActualCandidate(args);
         var assembly=Assembly.GetExecutingAssembly();
         var binding=new EngineeringBinding(Guid.NewGuid(),123,DateTime.UtcNow,"C:\\Synthetic.sln","C:\\Synthetic.plcproj","1");
         Func<string,Type> map=name=>{ throw new Exception("Host must not eagerly query binding"); };
@@ -75,6 +79,41 @@ internal static class EngineeringFactoryProbe {
 #endif
         Check(TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Calls7==1);
         Console.WriteLine("PASS explicit factory contract: "+checks+" checks; no IDE/provider operations");
+        return 0;
+    }
+    private static int ActualCandidate(string[] args) {
+        Check(args.Length==2);
+        var bytes=File.ReadAllBytes(args[0]);
+        using(var sha=SHA256.Create()) Check(BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","").ToLowerInvariant()==args[1]);
+        var candidate=Assembly.Load(bytes);
+        var binding=new EngineeringBinding(Guid.NewGuid(),123,DateTime.UtcNow,"C:\\Synthetic.sln","C:\\Synthetic.plcproj","1");
+        var requested=new HashSet<string>(StringComparer.Ordinal); int calls=0;
+        Func<string,Type> map=name=>{ calls++; Check(requested.Add(name)); return null; };
+        Func<string,object> buffer=name=>{throw new Exception("Source callback invoked");};
+        Func<string,string,object> section=(name,part)=>{throw new Exception("Section callback invoked");};
+        using(var session=new EngineeringProviderSession(candidate,new object(),p=>false,binding,new SynchronizationContext(),buffer,p=>false,section,null,map)) {
+            Check(calls==29);
+            Check(requested.Contains("TCatSysManagerLib.ITcSysManager") && requested.Contains("EnvDTE80.SolutionConfiguration2"));
+            for(int i=0;i<2;i++) {
+                var operation=Guid.NewGuid();
+                var request=session.CreateRequest("session.ping",operation,new {});
+                var response=EngineeringProviderSession.Json().DeserializeObject(session.DispatchAsync(request,CancellationToken.None).GetAwaiter().GetResult()) as Dictionary<string,object>;
+                Check(response!=null && (string)response["status"]=="succeeded");
+                Check((string)response["sessionId"]==binding.SessionId.ToString("D") && (string)response["operationId"]==operation.ToString("D"));
+            }
+            var describe=session.CreateRequest("session.describe",Guid.NewGuid(),new {});
+            var detail=EngineeringProviderSession.Json().DeserializeObject(session.DispatchAsync(describe,CancellationToken.None).GetAwaiter().GetResult()) as Dictionary<string,object>;
+            Check((string)detail["status"]=="succeeded");
+            var result=(Dictionary<string,object>)detail["result"];
+            var caps=(Dictionary<string,object>)result["capabilities"];
+            Check((string)caps["plcBuild"]=="unsupported");
+            foreach(var key in new[]{"sourceRead","sourcePreview","sourceApply","sourceRollback"}) Check((string)caps[key]=="unsupported");
+            var source=session.CreateRequest("source.read",Guid.NewGuid(),new {});
+            try { session.DispatchAsync(source,CancellationToken.None); throw new Exception("Source request accepted"); }
+            catch(InvalidOperationException) {checks++;}
+            Check(calls==29);
+        }
+        Console.WriteLine("PASS actual candidate factory9 host wire: "+checks+" assertions, all 29 bindings unavailable by design; no COM/IDE/build/source operation");
         return 0;
     }
 }
