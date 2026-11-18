@@ -61,6 +61,9 @@ jobs:
           dotnet-version: '8.0.425'
       - name: Build locked Windows ownership and JSON helper
         run: dotnet build native/WindowsHost/WindowsHost.csproj --configuration Release /p:RestoreLockedMode=true --nologo
+      - name: Check explicit Engineering factory selection without IDE access
+        shell: powershell
+        run: powershell.exe -NoProfile -File scripts/Test-EngineeringFactory.ps1
       - name: Install locked operator dependencies
         run: npm ci --no-audit --no-fund
       - name: Install pinned actual upstream runtime (no private MCP checkouts)

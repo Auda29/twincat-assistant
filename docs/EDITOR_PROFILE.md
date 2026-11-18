@@ -12,6 +12,23 @@ environment variable, persisted setting or native runtime control enables it.
 
 ## Using the feature
 
+### Unpublished authoritative interop integration
+
+An internal opt-in constructor path accepts `Func<string, Type>` and requires
+the exact nine-argument `CreateWithInteropTypes` factory. Missing methods and
+factory failures do not select any legacy factory. Both source-editor callbacks
+remain null in a release build, even when supplied to the constructor.
+
+This is contract preparation only. The application still selects factory7 and
+pins Engineering 0.5.4. No production caller supplies the new callback. A reviewed
+provider candidate, authenticated execution-loaded host reference types, runtime
+identity/MVID evidence and live-host acceptance are still required before adoption.
+Disk-only PIA metadata and CLR `IsEquivalentTo` are not sufficient evidence.
+The synthetic factory fixtures verify argument routing, dormant source callbacks,
+missing-factory refusal and absence of fallback after provider failure.
+
+### Published Beta 6 usage
+
 Beta 6 uses the menu-based UI below. Earlier Beta 5 installations use a separate toolbar.
 
 1. Select a project-bound chat in the local runtime started by this Assistant
