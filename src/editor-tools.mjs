@@ -9,3 +9,13 @@ export const DEVELOPMENT_EDITOR_TOOL_NAMES = Object.freeze([
 export const EDITOR_TOOL_NAMES = Object.freeze(DEVELOPMENT_EDITOR_TOOL_NAMES.filter(name => !name.startsWith('plc_source_')));
 export const DEVELOPMENT_EDITOR_ACTIONS = Object.freeze(DEVELOPMENT_EDITOR_TOOL_NAMES.map(name => 'editor_' + name));
 export const EDITOR_ACTIONS = Object.freeze(EDITOR_TOOL_NAMES.map(name => 'editor_' + name));
+
+const DEBUG_TOOL_NAMES = Object.freeze([...EDITOR_TOOL_NAMES, 'plc_debug_state', 'plc_debug_read']);
+export function ownedEngineeringProfile(profile = 'build') {
+  switch (profile) {
+    case 'build': return { argument: '--host-bootstrap-stdin', names: EDITOR_TOOL_NAMES };
+    case 'editor': return { argument: '--host-editor-bootstrap-stdin', names: DEVELOPMENT_EDITOR_TOOL_NAMES };
+    case 'debug': return { argument: '--host-debug-bootstrap-stdin', names: DEBUG_TOOL_NAMES };
+    default: throw new Error('Invalid owned Engineering profile');
+  }
+}
