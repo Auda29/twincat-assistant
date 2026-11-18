@@ -3,7 +3,6 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
 
@@ -33,37 +32,46 @@ namespace TwinCatAssistant.Native
                 && _chatSelection?.sessionId == _editorChat && _projectWorkspace == _editorWorkspace;
         }
 
-        private void AddEngineeringProfileMenuRow()
+        private async Task ConsumeChatProfileRequestAsync(ChatSelection selection, long documentGeneration)
         {
-            var enabled = !_engineeringEditorChanging && !_editorToggleRequested
-                && (_engineeringEditorEnabled || (_engineering?.Binding != null && _chatSession?.IsRunning == true
-                    && CanPromptCurrentChat() && _chatBinding?.IsGeneral == false
-                    && _chatBinding.SameProjectContext(_engineeringProject) && !_engineeringProjectSuspended));
-            MenuRow("sliders", HostText.Get(_engineeringEditorEnabled ? "EngineeringEditorDisable"
-                : EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorEnable" : "EngineeringBuildModeEnable"),
-                null, enabled, ToggleEngineeringEditorAsync, MenuSwitch(_engineeringEditorEnabled));
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (selection?.IsSelected != true || !ReferenceEquals(selection, _chatSelection)) return;
+            if (selection.profileRequest == "twincat-readonly")
+            {
+                if (_engineeringEditorEnabled || _engineeringEditorChanging) RevokeEngineeringEditor();
+                return;
+            }
+            if (selection.profileRequest != "twincat-editor" || _engineeringEditorEnabled) return;
+            var fresh = await ReadChatSelectionAsync();
+            if (_disposed || documentGeneration != _chatDocumentGeneration || !ReferenceEquals(selection, _chatSelection)
+                || fresh?.sessionId != selection.sessionId || fresh.epoch != selection.epoch || fresh.documentId != selection.documentId) return;
+            await EnableEngineeringEditorAsync();
         }
 
-        private async Task ToggleEngineeringEditorAsync()
+        private async Task EnableEngineeringEditorAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_editorToggleRequested) return;
             _editorToggleRequested = true;
-            try { await ToggleEngineeringEditorCoreAsync(); }
+            try { await EnableEngineeringEditorCoreAsync(); }
             finally { _editorToggleRequested = false; }
         }
-        private async Task ToggleEngineeringEditorCoreAsync()
+        private async Task EnableEngineeringEditorCoreAsync()
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (_engineeringEditorChanging) return;
-            if (_engineeringEditorEnabled) { RevokeEngineeringEditor(); return; }
+            if (_engineeringEditorChanging || _engineeringEditorEnabled) return;
             await _editorRevocation;
             var session = _engineering;
             var runtime = _chatSession;
             if (_disposed || session?.Binding == null || runtime?.IsRunning != true || !CanPromptCurrentChat()
                 || _chatBinding?.IsGeneral != false || !_chatBinding.SameProjectContext(_engineeringProject)
                 || _engineeringProjectSuspended || string.IsNullOrEmpty(_projectWorkspace))
-            { SetEngineeringStatus((EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorUnavailable" : "EngineeringBuildModeUnavailable")); return; }
+            {
+                var key = EngineeringProviderSession.DevelopmentSourceAccess ? "EngineeringEditorUnavailable" : "EngineeringBuildModeUnavailable";
+                SetEngineeringStatus(key);
+                Notify(HostText.Get(key), "warning");
+                return;
+            }
             var chat = _chatSelection.sessionId;
             var workspace = _projectWorkspace;
             var binding = session.Binding;

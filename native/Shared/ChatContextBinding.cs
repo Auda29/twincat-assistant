@@ -83,6 +83,7 @@ namespace TwinCatAssistant.Native
 
     public sealed class ChatSelection
     {
+        public string profileRequest { get; set; }
         public int version;
         public bool ready;
         public bool presentationReady;

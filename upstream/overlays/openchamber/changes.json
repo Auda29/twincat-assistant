@@ -5486,8 +5486,12 @@
     "file": "packages/ui/src/components/chat/ModelControls.tsx",
     "changes": [
       [
+        "{(!selection || agentSelectable) && !isAutoSelected && renderAgentSelector()}",
+        "{twinCatEmbedded && !isMobile && !selection ? <TwinCatProfilePicker /> : !twinCatEmbedded && (!selection || agentSelectable) && !isAutoSelected && renderAgentSelector()}"
+      ],
+      [
         "import React from 'react';",
-        "import React from 'react';\nimport { Button } from '@/components/ui/button';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { Button } from '@/components/ui/button';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE, TwinCatProfilePicker } from '@/lib/twincat/twincat';"
       ],
       [
         "    const { t } = useI18n();",
@@ -5559,8 +5563,12 @@
     "file": "packages/ui/src/components/chat/MobileAgentButton.tsx",
     "changes": [
       [
+        "    if (isAutoModel(currentProviderId, currentModelId)) return null;",
+        "    if (twinCatEmbedded) return <TwinCatProfilePicker />;\n    if (isAutoModel(currentProviderId, currentModelId)) return null;"
+      ],
+      [
         "import React from 'react';",
-        "import React from 'react';\nimport { useI18n } from '@/lib/i18n';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { useI18n } from '@/lib/i18n';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE, TwinCatProfilePicker } from '@/lib/twincat/twincat';"
       ],
       [
         "    const getAgentColor = useAgentColors();",

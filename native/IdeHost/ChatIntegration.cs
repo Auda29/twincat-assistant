@@ -189,7 +189,7 @@ namespace TwinCatAssistant.Native
             }
         }
 
-        private async Task<ChatSelection> ReadChatSelectionAsync()
+        private async Task<ChatSelection> ReadChatSelectionAsync(bool consumeProfileRequest = false)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_disposed || _browser.CoreWebView2 == null || !Allowed(_browser.CoreWebView2.Source)) return null;
@@ -205,6 +205,7 @@ namespace TwinCatAssistant.Native
                 + "const mounted=!!document.querySelector('[data-testid=\"chat-input\"],.oc-draft-center');"
                 + "const loading=!!document.querySelector('#initial-loading,[data-chat-hydration-skeleton],[data-twincat-startup-overlay]');"
                 + "return {...s,ready:s.ready === true,"
+                + (consumeProfileRequest ? "profileRequest:window.__twinCatSource?.takeProfileRequest?.(s.sessionId) ?? null," : "")
                 + "presentationReady:s.presentationReady === true && mounted && !loading};})())");
             if (_disposed || documentGeneration != _chatDocumentGeneration || !ReferenceEquals(browser, _browser.CoreWebView2) || raw == null || raw.Length > 12000) return null;
             var json = serializer.Deserialize<string>(raw);
@@ -221,7 +222,7 @@ namespace TwinCatAssistant.Native
             var languageVersion = _languageObservationVersion;
             try
             {
-                var selection = await ReadChatSelectionAsync();
+                var selection = await ReadChatSelectionAsync(consumeProfileRequest: true);
                 if (_disposed || generation != _chatConnection.Generation || documentGeneration != _chatDocumentGeneration || OlderChatSelection(selection)) return;
                 _chatSelection = selection; _chatAdapterReady = selection?.ready == true;
                 if (selection?.ready == true && languageVersion == _languageObservationVersion) ObserveChatLanguage(selection.language);
@@ -229,6 +230,8 @@ namespace TwinCatAssistant.Native
                 try { _chatBinding = selection?.IsSelected == true ? _chatBindings.Read(_origin.AbsoluteUri, selection.sessionId) : null; }
                 catch { _chatBinding = null; }
                 await PermitCurrentChatAsync();
+                if (!_disposed && generation == _chatConnection.Generation && documentGeneration == _chatDocumentGeneration)
+                    await ConsumeChatProfileRequestAsync(selection, documentGeneration);
                 if (!_disposed && generation == _chatConnection.Generation) { RetryKnowledge(); RenderChatBinding(); }
             }
             catch
@@ -574,7 +577,6 @@ namespace TwinCatAssistant.Native
                 MenuRow("copy", HostText.Get("H101"), HostText.Get("H102"), exportReady, () => ExportThreadAsync(false));
                 MenuRow("download", HostText.Get("H103"), HostText.Get("H104"), exportReady, () => ExportThreadAsync(true));
                 MenuRow("attach", HostText.Get("H105"), HostText.Get("H106"), true, ToggleAutoAttachAsync, MenuSwitch(_chatPreferences.AutoAttach));
-                AddEngineeringProfileMenuRow();
                 // Model providers: a single choice among the connected ones.
                 MenuSeparator();
                 MenuHeading(HostText.Get("LanguageLabel"));

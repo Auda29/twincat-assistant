@@ -12,17 +12,21 @@ environment variable, persisted setting or native runtime control enables it.
 
 ## Using the feature
 
-Beta 6 uses the menu-based UI below. Earlier Beta 5 installations use a separate toolbar.
+In the source build, the chat composer has a single profile selector. Select
+**Build tools** to request the existing native scope confirmation. Selecting
+**Analysis** revokes the grant. The **…** menu has no profile switch.
+
+In published Beta 6, use the **…** menu instead. Earlier Beta 5 installations
+use a separate toolbar.
 
 1. Select a project-bound chat in the local runtime started by this Assistant
    window. A general chat or another window's runtime cannot authorize Editor.
-2. In the Assistant's **…** menu, choose **Enable build tools for this chat** and
-   review the scope notice. There is no separate build toolbar above the chat.
+2. Request **Build tools** and review the scope notice.
 3. The chat switches to the managed `twincat-editor` profile. Its live tools are
    bound to this exact chat, workspace, IDE process, solution and PLC project.
 4. Each build requires a separate native confirmation. A chat
    message, model instruction or profile selection cannot approve an operation.
-5. Choose **Return to Analysis** to revoke the connection. Changing chat,
+5. Return to **Analysis** to revoke the connection. Changing chat,
    project, solution or owner also revokes it. Temporary editor invalidation
    suspends new approvals while preserving observation of submitted work.
 

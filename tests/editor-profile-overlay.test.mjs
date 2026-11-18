@@ -92,6 +92,23 @@ test('malformed native profile requests refuse and revoke an existing grant', as
   }
 });
 
+test('a picker request is consumed once and cannot grant tools or follow another chat', async () => {
+  const { api, select } = await makeBridge();
+  api.twinCatSource.activate();
+  api.publishTwinCatView('a', 'C:/project', true);
+  api.twinCatSource.setContext('a', context);
+
+  api.requestTwinCatProfile('twincat-editor');
+  assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
+  assert.equal(api.twinCatSource.takeProfileRequest('a'), 'twincat-editor');
+  assert.equal(api.twinCatSource.takeProfileRequest('a'), null);
+
+  api.requestTwinCatProfile('twincat-editor');
+  select({ currentSessionId: 'b', currentSessionDirectory: 'C:/project' });
+  select({ currentSessionId: 'a', currentSessionDirectory: 'C:/project' });
+  assert.equal(api.twinCatSource.takeProfileRequest('a'), null);
+});
+
 test('overlay routes composer, controls, live submission and mobile display through the active profile', async () => {
   const changes = JSON.parse(await readFile(new URL('../upstream/overlays/openchamber/changes.json', import.meta.url), 'utf8'));
   const output = file => changes.find(x => x.file === file).changes.map(pair => pair[1]).join('\n');

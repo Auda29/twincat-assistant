@@ -85,9 +85,7 @@ try{
  }
  Check ((Is-InDiagnosticTools (Field '_engineeringBuildButton')) -and (Is-InDiagnosticTools (Field '_engineeringRefreshButton')) -and (Is-InDiagnosticTools (Field '_engineeringStatus')) -and (Field '_diagnostics').Visibility -eq 'Collapsed') 'build controls and technical readiness are confined to opt-in advanced diagnostics'
  Check ((Field '_toolbar').Children.Count -eq 4) 'normal chat has no build toolbar or separate profile banner'
- $menuCount=(Field '_menuItems').Children.Count
- Call 'AddEngineeringProfileMenuRow'|Out-Null
- Check ((Field '_menuItems').Children.Count -eq ($menuCount+1) -and !(Field '_engineeringEditorEnabled')) 'profile activation is available in the existing menu without automatic authority'
+ Check (!(Field '_engineeringEditorEnabled')) 'the chat opens in Analysis without an engineering grant'
  $configuration=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeChatConfiguration'))
  $configuration.StateRoot=$profileInfo.StateRoot
  Put '_chatConfiguration' ([StartupPump]::ConfigurationFactory($configuration.GetType(),$configuration))
@@ -145,7 +143,7 @@ try{
  Check ($ok -eq 'true') 'synthetic local chat authenticated'
  $connection=Field '_chatConnection';$generation=$connection.Begin();$connection.Navigating([UInt64]1);$connection.Completed([UInt64]1,$true,200,$null)
  Put '_chatAdapterReady' $true
- $selection=Await (Invoke-Private 'ReadChatSelectionAsync');Put '_chatSelection' $selection
+ $selection=Await (Invoke-Private 'ReadChatSelectionAsync' ([object[]]@($false)));Put '_chatSelection' $selection
  Await ($core.ExecuteScriptAsync('window.__fixtureHoldMount=true;const originalQuery=document.querySelector.bind(document);document.querySelector=function(s){return window.__fixtureHoldMount && s.replace(/"/g,"")==="[data-testid=chat-input],.oc-draft-center"?null:originalQuery(s);};'))|Out-Null
  Await (Invoke-Private 'NewChatAsync' ([object[]]@($true)))|Out-Null
  Check ((Field '_chatBinding').IsGeneral -eq $true) 'valid chat metadata binds before the composer mounts'
@@ -156,6 +154,8 @@ try{
  $deadline=[DateTime]::UtcNow.AddSeconds(12)
  do{Await ([Threading.Tasks.Task]::Delay(150))|Out-Null;Await(Invoke-Private 'PollChatSelectionStateAsync')|Out-Null}while(!(Field '_chatPresented') -and [DateTime]::UtcNow -lt $deadline)
  Check ((Field '_chatPresented') -eq $true) 'actual WebView creates, binds and presents a general chat'
+ $profileSelector=Await ($core.ExecuteScriptAsync('(()=>{const picks=[...document.querySelectorAll("select")].filter(e=>e.options.namedItem("twincat-readonly")||[...e.options].some(o=>o.value==="twincat-readonly"));return picks.length===1 && picks[0].value==="twincat-readonly" && [...picks[0].options].find(o=>o.value==="twincat-editor")?.disabled===true;})()'))
+ Check ($profileSelector -eq 'true') 'the general chat displays one Analysis profile selector with Build tools disabled'
  Check ((Field '_bannerText').Text -ne 'Zuerst eine Unterhaltung öffnen.') 'no false missing conversation error'
  $project=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeProjectIdentity'),@([int]$PID,'C:/Synthetic/Startup.sln','C:/Synthetic/Startup.plcproj'))
  $projectReader=[StartupPump]::ConstantObject($project.GetType(),$project)
