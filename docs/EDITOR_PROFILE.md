@@ -12,21 +12,34 @@ environment variable, persisted setting or native runtime control enables it.
 
 ## Using the feature
 
-In the source build, the chat composer has a single profile selector. Select
-**Build tools** to request the existing native scope confirmation. Selecting
-**Analysis** revokes the grant. The **…** menu has no profile switch.
+### Unpublished authoritative interop integration
 
-In published Beta 6, use the **…** menu instead. Earlier Beta 5 installations
-use a separate toolbar.
+An internal opt-in constructor path accepts `Func<string, Type>` and requires
+the exact nine-argument `CreateWithInteropTypes` factory. Missing methods and
+factory failures do not select any legacy factory. Both source-editor callbacks
+remain null in a release build, even when supplied to the constructor.
+
+This is contract preparation only. The application still selects factory7 and
+pins Engineering 0.5.4. No production caller supplies the new callback. A reviewed
+provider candidate, authenticated execution-loaded host reference types, runtime
+identity/MVID evidence and live-host acceptance are still required before adoption.
+Disk-only PIA metadata and CLR `IsEquivalentTo` are not sufficient evidence.
+The synthetic factory fixtures verify argument routing, dormant source callbacks,
+missing-factory refusal and absence of fallback after provider failure.
+
+### Published Beta 6 usage
+
+Beta 6 uses the menu-based UI below. Earlier Beta 5 installations use a separate toolbar.
 
 1. Select a project-bound chat in the local runtime started by this Assistant
    window. A general chat or another window's runtime cannot authorize Editor.
-2. Request **Build tools** and review the scope notice.
+2. In the Assistant's **…** menu, choose **Enable build tools for this chat** and
+   review the scope notice. There is no separate build toolbar above the chat.
 3. The chat switches to the managed `twincat-editor` profile. Its live tools are
    bound to this exact chat, workspace, IDE process, solution and PLC project.
 4. Each build requires a separate native confirmation. A chat
    message, model instruction or profile selection cannot approve an operation.
-5. Return to **Analysis** to revoke the connection. Changing chat,
+5. Choose **Return to Analysis** to revoke the connection. Changing chat,
    project, solution or owner also revokes it. Temporary editor invalidation
    suspends new approvals while preserving observation of submitted work.
 
