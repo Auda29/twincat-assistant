@@ -67,14 +67,26 @@ namespace TwinCatAssistant.Native
         internal EngineeringProviderSession(Assembly assembly, object dte, Func<string, bool?> dirty,
             EngineeringBinding initial, SynchronizationContext ui, Func<string, object> getTextBuffer = null,
             Func<string, bool> navigateExactErrorItem = null, Func<string, string, object> getSectionEditor = null,
-            Func<object, bool> confirmEditorApproval = null)
+            Func<object, bool> confirmEditorApproval = null, Func<string, Type> getInteropType = null)
         {
             binding = initial ?? throw new ArgumentNullException(nameof(initial));
             this.confirmEditorApproval = confirmEditorApproval;
             contextType = assembly.GetType("TwinCatMcp.Engineering.Host.HostContext", true);
             var approvalType = assembly.GetType("TwinCatMcp.Engineering.Host.ApprovalRequest", true);
             var factoryType = assembly.GetType("TwinCatMcp.Engineering.Host.EngineeringProviderFactory", true);
-            var factory = DevelopmentSourceAccess ? factoryType.GetMethod("CreateWithEditorViews", BindingFlags.Public | BindingFlags.Static, null,
+            // Supplying an authoritative binding explicitly selects the unpublished
+            // factory9 contract. Absence or failure must never select a legacy factory.
+            var withInteropTypes = getInteropType != null;
+            MethodInfo factory = null;
+            if (withInteropTypes)
+            {
+                factory = factoryType.GetMethod("CreateWithInteropTypes", BindingFlags.Public | BindingFlags.Static, null,
+                    new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
+                        typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext),
+                        typeof(Func<string, object>), typeof(Func<string, bool>), typeof(Func<string, string, object>), typeof(Func<string, Type>) }, null);
+                if (factory == null) throw new MissingMethodException("Authoritative Engineering provider factory is unavailable.");
+            }
+            if (factory == null) factory = DevelopmentSourceAccess ? factoryType.GetMethod("CreateWithEditorViews", BindingFlags.Public | BindingFlags.Static, null,
                 new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
                     typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>), typeof(Func<string, bool>), typeof(Func<string, string, object>) }, null) : null;
             var withEditorViews = factory != null;
@@ -95,7 +107,10 @@ namespace TwinCatAssistant.Native
             var argument = Expression.Parameter(approvalType, "request");
             var consume = Expression.Lambda(typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)),
                 Expression.Call(Expression.Constant(this), GetType().GetMethod(nameof(ConsumeApproval), BindingFlags.NonPublic | BindingFlags.Instance), Expression.Convert(argument, typeof(object))), argument).Compile();
-            provider = factory.Invoke(null, withEditorViews
+            provider = factory.Invoke(null, withInteropTypes
+                ? new object[] { dte, dirty, current, consume, ui, DevelopmentSourceAccess ? getTextBuffer : null,
+                    navigateExactErrorItem, DevelopmentSourceAccess ? getSectionEditor : null, getInteropType }
+                : withEditorViews
                 ? new object[] { dte, dirty, current, consume, ui, getTextBuffer, navigateExactErrorItem, getSectionEditor }
                 : withHostAccess
                 ? new object[] { dte, dirty, current, consume, ui, DevelopmentSourceAccess ? getTextBuffer : null, navigateExactErrorItem }
