@@ -1,5 +1,9 @@
 # Implementation status
 
+**Beta 7.** Application `0.2.0-beta.7` / native `0.2.0.13`.
+The composer is the single place to switch between Analysis and Build tools.
+See [release scope](releases/native-v0.2.0-beta.7.md).
+
 **Beta 6, 2026-11-17.** Application `0.2.0-beta.6` / native `0.2.0.12`
 combines the native readiness diagnostics, background checks/quiet toolbar, and
 Windows runtime-lease recovery from PRs #32–#34. Engineering 0.5.4 adds bounded

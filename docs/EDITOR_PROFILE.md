@@ -1,6 +1,6 @@
 # Editor profile and native engineering
 
-Beta 6 exposes the native profile as **Build tools**. Analysis remains the
+Beta 7 exposes the native profile as **Build tools**. Analysis remains the
 default. The release exposes only nine build/session/diagnostic tools; all six
 new source tools and their UI are disabled. The host supplies no XML or normal
 ST editor accessor and refuses `source.*` before provider dispatch or approval.
@@ -12,7 +12,7 @@ environment variable, persisted setting or native runtime control enables it.
 
 ## Using the feature
 
-In the source build, the chat composer has a single profile selector. Select
+In Beta 7, the chat composer has a single profile selector. Select
 **Build tools** to request the existing native scope confirmation. Selecting
 **Analysis** revokes the grant. The **…** menu has no profile switch.
 

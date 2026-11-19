@@ -10,7 +10,9 @@ and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
 Native acceptance and future engineering write milestones remain separate.
 
-Current release: [0.2.0 Beta 6](releases/native-v0.2.0-beta.6.md), with Windows chat restart recovery, background build readiness, a quiet chat toolbar and more precise Engineering diagnostics. [Latest release](https://github.com/Auda29/twincat-assistant/releases/latest) provides the installer, checksums and provenance. All new source-editor tools remain inactive; real-host build acceptance remains open.
+Current release: [0.2.0 Beta 7](releases/native-v0.2.0-beta.7.md), with a single profile selector for Analysis and Build tools in the chat composer. [Latest release](https://github.com/Auda29/twincat-assistant/releases/latest) provides the installer, checksums and provenance. XML editing, Debug live values and live-host build acceptance remain open.
+
+Previous release: [0.2.0 Beta 6](releases/native-v0.2.0-beta.6.md), with Windows chat restart recovery, background build readiness and more precise Engineering diagnostics.
 
 Previous release: [0.2.0 Beta 5](releases/native-v0.2.0-beta.5.md), with the initial optional build tools, typed Knowledge tools and pinned-history fix.
 

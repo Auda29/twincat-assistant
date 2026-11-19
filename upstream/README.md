@@ -1,6 +1,6 @@
 # Source runtime for the TwinCAT Assistant
 
-Beta 6 bundles published Engineering 0.5.4 and Knowledge 0.1.2. Their exact
+Beta 7 bundles published Engineering 0.5.4 and Knowledge 0.1.2. Their exact
 source, release assets, receipts and tool catalogs are pinned separately in
 [`engineering-lock.json`](engineering-lock.json) and
 [`knowledge-lock.json`](knowledge-lock.json). The native build provider is built
@@ -19,7 +19,7 @@ Git revisions. Reviewed overlays retain its
 providers, login methods, model catalog, streaming, cancellation, agent loop,
 MCP clients, permissions and database while specializing the delivery surface.
 Analysis remains read-only. Optional per-chat Build tools use native approval;
-new source-editor tools and accessors are inactive in Beta 6. See
+new source-editor tools and accessors are inactive in Beta 7. See
 [delivery scope](../docs/DELIVERY_SCOPE.md) and
 [runtime integration](../docs/RUNTIME_INTEGRATION.md) for the current boundaries.
 
