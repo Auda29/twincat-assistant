@@ -102,6 +102,9 @@ test('a picker request is consumed once and cannot grant tools or follow another
   assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
   assert.equal(api.twinCatSource.takeProfileRequest('a'), 'twincat-editor');
   assert.equal(api.twinCatSource.takeProfileRequest('a'), null);
+  api.requestTwinCatProfile('twincat-debug');
+  assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true, profile: 'twincat-editor' }), false);
+  assert.equal(api.twinCatSource.takeProfileRequest('a'), 'twincat-debug');
 
   api.requestTwinCatProfile('twincat-editor');
   select({ currentSessionId: 'b', currentSessionDirectory: 'C:/project' });

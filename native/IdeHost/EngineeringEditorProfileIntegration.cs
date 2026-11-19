@@ -164,7 +164,8 @@ namespace TwinCatAssistant.Native
                 _activeEngineeringProfile = profile;
                 _debugGrant = debug;
                 _engineeringEditorEnabled = true;
-                if (!await PublishEngineeringEditorModeAsync(chat, true)) throw new InvalidOperationException();
+                if (!await PublishEngineeringEditorModeAsync(chat, true) || generation != _editorGeneration
+                    || !EditorProfileIsCurrent()) throw new InvalidOperationException();
                 EngineeringEditorModeChanged?.Invoke();
                 SetEngineeringStatus(profile == "debug" ? "EngineeringDebugEnabled" : "EngineeringEditorEnabled");
             }

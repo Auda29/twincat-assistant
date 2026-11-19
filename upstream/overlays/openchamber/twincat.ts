@@ -266,6 +266,7 @@ export const twinCatSource = {
     if (!parsed.success) { revokeTwinCatEditor(); return false; }
     request = parsed.data;
     if (!request.enabled) { revokeTwinCatEditor(); return true; }
+    if (requestedProfile !== null) return false;
     const selected = useSessionUIStore.getState();
     if (!active
       || view?.ready !== true || !view.directory || view.sessionId !== request.sessionId
