@@ -4,9 +4,9 @@
     <UseWPF>true</UseWPF>
     <LangVersion>latest</LangVersion>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>0.2.0-beta.6</Version>
-    <AssemblyVersion>0.2.0.12</AssemblyVersion>
-    <FileVersion>0.2.0.12</FileVersion>
+    <Version>0.2.0-beta.7</Version>
+    <AssemblyVersion>0.2.0.13</AssemblyVersion>
+    <FileVersion>0.2.0.13</FileVersion>
     <AssemblyName>TwinCatAssistant.IdeHost</AssemblyName>
     <RootNamespace>TwinCatAssistant.Native</RootNamespace>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -21,11 +21,13 @@
   <ItemGroup>
     <Compile Include="../EngineeringHostTransport.cs;../../Shared/EngineeringAuthorization.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../EngineeringProviderSession.cs;../EngineeringIntegration.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../EngineeringInteropReference.cs" Link="Shared/EngineeringInteropReference.cs" />
     <Compile Include="../EngineeringEditorAccess.cs" Link="Shared/EngineeringEditorAccess.cs" />
     <Compile Include="../EngineeringSourceIntegration.cs" Link="Shared/EngineeringSourceIntegration.cs" />
     <Compile Include="../EngineeringDiagnosticNavigation.cs;../EngineeringNavigationIntegration.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../EngineeringSectionEditorAccess.cs" Link="Shared/EngineeringSectionEditorAccess.cs" />
     <Compile Include="../EngineeringEditorProfileIntegration.cs;../EngineeringEditorApproval.cs" Link="Shared/%(Filename)%(Extension)" />
+    <Compile Include="../EngineeringDebugGrant.cs" Link="Shared/EngineeringDebugGrant.cs" />
     <Compile Include="../EngineeringDirtyState.cs;../EngineeringMcpChild.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../../Shared/NativeProjectIdentity.cs" Link="Shared/NativeProjectIdentity.cs" />
     <Compile Include="../NativeMcpProject.cs" Link="Shared/NativeMcpProject.cs" />

@@ -79,7 +79,7 @@ export async function reduceDeliveryFiles(stage) {
 // The input manifest authenticates these bytes within the assembled input;
 // this separate receipt binds the module to the reviewed source revision.
 export async function verifyEngineeringModule(input, lock) {
-  if (lock?.schemaVersion !== 1 || !/^[a-f0-9]{40}$/.test(lock.revision ?? '') || lock.moduleVersion !== '1.0.0.0') throw new Error('Invalid reviewed Engineering lock');
+  if (![1, 2].includes(lock?.schemaVersion) || !/^[a-f0-9]{40}$/.test(lock.revision ?? '') || lock.moduleVersion !== '1.0.0.0') throw new Error('Invalid reviewed Engineering lock');
   const module = join(input, 'native/host/TwinCatMcp.Engineering.Host.dll');
   const receiptPath = join(input, 'native/host/receipt.json');
   await regular(module); await regular(receiptPath);

@@ -1,65 +1,55 @@
-# Editor profile and native engineering
+# Profiles and native engineering
 
-Beta 6 exposes the native profile as **Build tools**. Analysis remains the
-default. The release exposes only nine build/session/diagnostic tools; all six
-new source tools and their UI are disabled. The host supplies no XML or normal
-ST editor accessor and refuses `source.*` before provider dispatch or approval.
-The original read-only editor attachment path remains available.
+Beta 7 exposes one profile selection in the chat composer.
+Analysis is the default. Editor and Debug are available in project-bound
+chats owned by this Assistant window. Selecting either profile requests
+native consent. Switching back to Analysis or changing chat, project or
+runtime owner revokes the grant.
 
-The full source-development implementation below is retained in the repository.
-It requires an explicit code change and review to enable; no model argument,
-environment variable, persisted setting or native runtime control enables it.
+| Profile | Access |
+| --- | --- |
+| Analysis | Read-only project and documentation tools. |
+| Editor | Source discovery, read and preview, approved XML-buffer changes, and selective builds. |
+| Debug | Read-only ADS samples of approved PLC symbols and selective builds. |
 
-## Using the feature
+## Editor
 
-Beta 6 uses the menu-based UI below. Earlier Beta 5 installations use a separate toolbar.
+Select **Editor** in the composer and approve the project chat. Ask the
+Assistant for a diff against the already-open document. Source changes can
+only be applied to the exact supported XML buffer after native confirmation
+of the diff and baseline. The resulting buffer remains unsaved. The normal
+TwinCAT ST editor can show a read-only preview. An unknown or conflicting
+result requires reconciliation before another mutation.
 
-1. Select a project-bound chat in the local runtime started by this Assistant
-   window. A general chat or another window's runtime cannot authorize Editor.
-2. In the Assistant's **…** menu, choose **Enable build tools for this chat** and
-   review the scope notice. There is no separate build toolbar above the chat.
-3. The chat switches to the managed `twincat-editor` profile. Its live tools are
-   bound to this exact chat, workspace, IDE process, solution and PLC project.
-4. Each build requires a separate native confirmation. A chat
-   message, model instruction or profile selection cannot approve an operation.
-5. Choose **Return to Analysis** to revoke the connection. Changing chat,
-   project, solution or owner also revokes it. Temporary editor invalidation
-   suspends new approvals while preserving observation of submitted work.
+## Debug
 
-Editor permits the reviewed engineering tools and existing read-only tools.
-It does not permit arbitrary files, shell commands, ADS/runtime writes,
-activation, download, forcing, automatic saving or configuration switching.
-Analysis cannot use Editor tools even while the live server is connected.
+Log in to the intended PLC from TwinCAT. Select **Debug** in the same project
+chat. The dialog shows the bound project and its configured AMS Net ID.
+Compare them with the PLC you are logged into, enter the verified ADS port
+(851–899) and list the exact symbols to disclose to this chat and model.
+An empty or unknown endpoint receives no grant.
 
-Build availability is checked automatically at startup and after the bound
-editor context settles following a change. These checks are read-only and do not
-start a build. Technical status, manual checks and build details are available
-only under **Diagnostics → Advanced**.
+The host rechecks the project's login and association during live reads.
+The ADS port is operator-confirmed. The login check alone cannot identify a
+different runtime port after a logout and relogin between observations.
+Re-select Debug and confirm the endpoint again after changing targets.
+The Debug process uses a read-only connection through the local ADS router
+and returns timestamped scalar samples. Debug does not offer source edits,
+PLC writes, breakpoints, stepping, forcing, login or runtime control.
 
-## Release functions
+## Builds
 
-- Describe the bound session and project association.
-- Request a selective PLC build using its verified configuration and platform.
-- Read build-owned status, output and diagnostics. Cancellation is a request,
-  not proof of an isolated IDE cancellation.
-- Click a diagnostic with a source-baseline navigation candidate. The helper
-  holds and rechecks source/project evidence; the host requires one matching
-  current native ErrorItem and invokes its own Navigate method. There is no
-  path/line fallback when proof is missing.
+Both Editor and Debug can request a local build of the exact PLC project
+using the verified configuration and platform. Each build asks for separate
+native approval. Build output and diagnostics are bound to that operation.
+Diagnostic navigation requires a current native error item and the recorded
+build evidence. A build never widens to the whole TwinCAT solution.
 
-## Retained source-development functions, inactive in Beta 5
+The host supplies the host's compiled interop types to the provider's
+authoritative factory. An unavailable reference can still block build or
+Debug preflight. The engineering profiles do not grant automatic saving,
+activation, download or configuration switching.
 
-The preserved development path can discover supported already-open POU, Method
-and Action sections and read their live ST text for a before/proposed preview.
-Supported ordinary XML buffers have whole-buffer conditional apply and rollback
-against the exact recorded post-image. These functions are not release tools.
-
-Normal ST previews explicitly report `customStReadOnly` and
-`atomicWriteSupported: false`. They issue no mutation-ready preview ID.
-Properties, unknown XML metadata and unsupported custom editor shapes remain
-refused. Source journals are session-memory records, not durable crash recovery.
-An unknown submitted outcome blocks conflicting actions until correlated
-terminal evidence reconciles it. It is never automatically retried.
 
 ## Runtime ownership
 

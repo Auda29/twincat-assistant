@@ -2,9 +2,12 @@ import { isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Config } from '@opencode/schema';
 import { Schema } from 'effect';
-import { ANALYSIS_PROFILE, EDITOR_PROFILE, previousAnalysisPrompts, analysisSystemPrompt, editorSystemPrompt, previousC3EditorSystemPrompt } from './agent-prompts.mjs';
+import {
+  ANALYSIS_PROFILE, EDITOR_PROFILE, DEBUG_PROFILE, previousAnalysisPrompts, analysisSystemPrompt,
+  editorSystemPrompt, debugSystemPrompt, previousC3EditorSystemPrompt, previousC4EditorSystemPrompt,
+} from './agent-prompts.mjs';
 import { C2_ANALYSIS_PROMPTS } from './analysis-prompts-c2.mjs';
-import { EDITOR_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
+import { DEBUG_ACTIONS, EDITOR_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
 
 function object(value, keys) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -60,7 +63,7 @@ export const READ_TOOLS = Object.freeze([
   'engineering_plc_describe_library',
 ]);
 
-export function createOpenCodeConfig(settings = {}, runtime = {}) {
+function createBeta6OpenCodeConfig(settings = {}, runtime = {}) {
   const node = runtime.node ?? process.execPath;
   const knowledgeClient = runtime.knowledgeClient ?? fileURLToPath(new URL('./knowledge-client.mjs', import.meta.url));
   settings = validateSettings(settings);
@@ -102,7 +105,7 @@ export function createOpenCodeConfig(settings = {}, runtime = {}) {
         description: 'Native-approved project builds and diagnostics',
         mode: 'primary',
         permissions: [...permissions, ...EDITOR_ACTIONS.map(action => ({ action, resource: '*', effect: 'allow' }))],
-        system: editorSystemPrompt(),
+        system: previousC4EditorSystemPrompt(),
       },
     },
     experimental: {
@@ -123,6 +126,30 @@ export function createOpenCodeConfig(settings = {}, runtime = {}) {
   return config;
 }
 
+export function createOpenCodeConfig(settings = {}, runtime = {}) {
+  const config = createBeta6OpenCodeConfig(settings, runtime);
+  const nativeAgents = [
+    [EDITOR_PROFILE, 'Native-approved XML buffer edits and local PLC builds', DEVELOPMENT_EDITOR_ACTIONS, editorSystemPrompt],
+    [DEBUG_PROFILE, 'Approved live PLC reads and local PLC builds', DEBUG_ACTIONS, debugSystemPrompt],
+  ];
+  for (const [id, description, actions, system] of nativeAgents) {
+    config.agents[id] = {
+      description, mode: 'primary',
+      permissions: [...config.permissions, ...actions.map(action => ({ action, resource: '*', effect: 'allow' }))],
+      system: system(),
+    };
+  }
+  // Core applies these as a global ceiling. Agent policy and the ephemeral
+  // native broker both enforce the narrower active catalog.
+  const nativeActions = [...new Set([...DEVELOPMENT_EDITOR_ACTIONS, ...DEBUG_ACTIONS])]
+    .filter(action => !EDITOR_ACTIONS.includes(action));
+  const insertion = config.experimental.policies.findIndex(rule => rule.action === 'provider.use');
+  config.experimental.policies.splice(insertion, 0,
+    ...nativeActions.map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })));
+  Schema.decodeUnknownSync(Config.Info)(config);
+  return config;
+}
+
 // Construct a previously generated policy, including its exact permissions. The
 // five typed tools did not exist in any of the recognized earlier releases.
 const TYPED_KNOWLEDGE_TOOLS = new Set([
@@ -130,7 +157,7 @@ const TYPED_KNOWLEDGE_TOOLS = new Set([
   'knowledge_tc_get_library', 'knowledge_tc_lookup_error',
 ]);
 export function previousPolicyConfig(settings = {}, runtime = {}, system, { typedKnowledge = false } = {}) {
-  const config = createOpenCodeConfig(settings, runtime);
+  const config = createBeta6OpenCodeConfig(settings, runtime);
   delete config.agents[EDITOR_PROFILE];
   config.experimental.policies = config.experimental.policies.filter(rule =>
     !EDITOR_ACTIONS.some(name => rule.action === 'permission' && rule.resource === `${name}:*`));
@@ -149,12 +176,13 @@ export function previousOpenCodeConfigs(settings = {}, runtime = {}) {
   const scope = { knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) };
   const c2 = C2_ANALYSIS_PROMPTS.profile[2 * Number(scope.knowledge) + Number(scope.engineering)];
   // C3 is recognized only as its complete, exact historical configuration.
-  const c3 = createOpenCodeConfig(settings, runtime);
+  const c4 = createBeta6OpenCodeConfig(settings, runtime);
+  const c3 = structuredClone(c4);
   c3.agents[EDITOR_PROFILE].description = 'Native-approved source review, unsaved buffer edits and project builds';
   c3.agents[EDITOR_PROFILE].permissions = [...c3.permissions, ...DEVELOPMENT_EDITOR_ACTIONS.map(action => ({ action, resource: '*', effect: 'allow' }))];
   c3.agents[EDITOR_PROFILE].system = previousC3EditorSystemPrompt();
   const insertion = c3.experimental.policies.findIndex(rule => rule.action === 'provider.use');
   c3.experimental.policies.splice(insertion, 0, ...DEVELOPMENT_EDITOR_ACTIONS.filter(action => !EDITOR_ACTIONS.includes(action)).map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })));
-  return [c3, ...previousAnalysisPrompts(scope).map(system => previousPolicyConfig(settings, runtime, system)),
+  return [c3, c4, ...previousAnalysisPrompts(scope).map(system => previousPolicyConfig(settings, runtime, system)),
     previousPolicyConfig(settings, runtime, c2, { typedKnowledge: true })];
 }

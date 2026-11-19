@@ -69,6 +69,21 @@ test('revocation and child exit fail closed without retrying a pending call', { 
   assert.throws(() => failed.configuration());
 });
 
+test('native Editor and Debug children expose mutually exclusive capabilities', { timeout: 15000 }, async () => {
+  for (const [profile, allowed, denied] of [
+    ['editor', 'plc_source_apply', 'plc_debug_read'],
+    ['debug', 'plc_debug_read', 'plc_source_apply'],
+  ]) {
+    const broker = await startEditorSession({ ...options(), profile });
+    try {
+      const allowedReply = await rpc(broker, 'tools/call', call(allowed));
+      assert.ok(allowedReply.value.result);
+      for (const request of [call(denied), call('plc_write'), call(allowed, 'other_chat')])
+        assert.ok((await rpc(broker, 'tools/call', request)).value.error);
+    } finally { await broker.close(); }
+  }
+});
+
 test('protected registration keeps frontend authentication in a memory-only Core override and revokes before deletion', { timeout: 15000 }, async () => {
   const broker = await startEditorSession(options());
   const requests = [];

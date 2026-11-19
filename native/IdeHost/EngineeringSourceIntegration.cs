@@ -295,13 +295,13 @@ namespace TwinCatAssistant.Native
                     DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out started) || started != binding.IdeStartedUtc) throw new InvalidOperationException();
             return envelope;
         }
-        private static bool ConfirmSource(SourcePreview p, bool rollback)
+        private static bool ConfirmSource(SourcePreview p, bool rollback, Func<Task<bool>> verifyView = null)
         {
             var window = new Window { Title = HostText.Get(rollback ? "EngineeringSourceRollback" : "EngineeringSourceApply"), Width = 780, Height = 650, WindowStartupLocation = WindowStartupLocation.CenterScreen };
             var panel = new DockPanel { Margin = new Thickness(12) }; window.Content = panel;
             var label = new TextBlock { Text = HostText.Format("EngineeringSourceConfirm", new object[] { p.ObjectId, p.Section, p.Revision }), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) }; DockPanel.SetDock(label, Dock.Top); panel.Children.Add(label);
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right }; DockPanel.SetDock(buttons, Dock.Bottom); panel.Children.Add(buttons);
-            var cancel = new Button { Content = HostText.Get("EngineeringSourceCancel"), Margin = new Thickness(4), MinWidth = 100, IsCancel = true }; var approve = new Button { Content = HostText.Get("EngineeringSourceConfirmButton"), Margin = new Thickness(4), MinWidth = 100 }; approve.Click += (s, e) => window.DialogResult = true; buttons.Children.Add(cancel); buttons.Children.Add(approve);
+            var cancel = new Button { Content = HostText.Get("EngineeringSourceCancel"), Margin = new Thickness(4), MinWidth = 100, IsCancel = true }; var approve = new Button { Content = HostText.Get("EngineeringSourceConfirmButton"), Margin = new Thickness(4), MinWidth = 100 }; BindEngineeringConfirmation(window, approve, verifyView); buttons.Children.Add(cancel); buttons.Children.Add(approve);
             var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition()); panel.Children.Add(grid);
             var before = new TextBox { Text = rollback ? p.After : p.Before, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 0, 4, 0) };
             var after = new TextBox { Text = rollback ? p.Before : p.After, IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto }; Grid.SetColumn(after, 1); grid.Children.Add(before); grid.Children.Add(after);

@@ -107,6 +107,8 @@ test('builder stages a bounded synthetic source build and verifies its output', 
     const providerReceipt = {schemaVersion:1,revision:engineeringLock.revision,moduleVersion:engineeringLock.moduleVersion,sha256:digest(providerBytes)};
     await write(receiptFile, JSON.stringify(providerReceipt));
     assert.equal(await verifyEngineeringModule(engineering, engineeringLock), provider);
+    assert.equal(await verifyEngineeringModule(engineering, { ...engineeringLock, schemaVersion: 1 }), provider);
+    await assert.rejects(verifyEngineeringModule(engineering, { ...engineeringLock, schemaVersion: 3 }), /Invalid reviewed Engineering lock/);
     await writeFile(receiptFile, JSON.stringify({...providerReceipt,revision:'a'.repeat(40)}));
     await assert.rejects(verifyEngineeringModule(engineering, engineeringLock), /receipt mismatch/);
     await writeFile(receiptFile, JSON.stringify(providerReceipt));

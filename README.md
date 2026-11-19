@@ -8,7 +8,7 @@ Explain Structured Text, explore PLC project code and find relevant Beckhoff
 documentation in a docked chat window. TwinCAT Assistant connects the active
 project and POU to a conversation that you can return to later.
 
-**0.2.0 Beta 6 · Read-only Analysis and optional approved build tools**
+**0.2.0 Beta 7 · Analysis, Editor and Debug**
 
 [Get started](#getting-started) · [Documentation](docs/README.md) · [Releases](https://github.com/Auda29/twincat-assistant/releases)
 
@@ -21,9 +21,9 @@ project and POU to a conversation that you can return to later.
 - Search locally installed Beckhoff InfoSys documentation and open the
   matching articles with sources through the Knowledge MCP. Look up documented
   symbols, libraries and error codes with explicit ambiguity and missing fields.
-- Enable project-bound **Build tools**, approve a selective PLC build and inspect
-  its status, compiler output and diagnostics. Native error navigation checks the
-  build and source evidence before opening a matching compiler diagnostic.
+- Preview changes in **Editor** and approve a diff for a supported XML buffer.
+- Use **Debug** to sample approved PLC symbols from an existing TwinCAT login.
+- Approve a selective PLC build from Editor or Debug and inspect its diagnostics.
 - Keep conversations associated with their PLC project, switch between
   project chats and use a general chat for questions without a project.
 
@@ -43,7 +43,7 @@ installed Beckhoff InfoSys help.
 1. Close TcXaeShell, verify the downloaded setup checksum and double-click the
    EXE. Confirm UAC with your normal Windows account. The setup window handles
    installation and managed updates without Git, npm or compilation. See the
-   [release notes](docs/releases/native-v0.2.0-beta.6.md), and the separate
+   [release notes](docs/releases/native-v0.2.0-beta.7.md), and the separate
    [migration notes for old unpackaged prototypes](docs/PROTOTYPE_PROFILE_MIGRATION_20261109.md).
 2. Open the TwinCAT Assistant tool window, connect your model provider and
    select a model in the chat.
@@ -51,9 +51,9 @@ installed Beckhoff InfoSys help.
    when you want the assistant to examine that code, then ask your question.
 4. For documentation questions, use **Knowledge search** to discover and prepare
    your installed InfoSys help. See [documentation setup](docs/KNOWLEDGE_SETUP.md).
-5. For compilation, use the **…** menu to explicitly enable **Build tools** for the project chat and
-   confirm each requested build in the native dialog. See the
-   [build tools and approval guide](docs/EDITOR_PROFILE.md).
+5. In a bound project chat, choose **Editor** or **Debug** in the composer.
+   Follow the native consent dialog and confirm each requested build or edit.
+   See the [profile guide](docs/EDITOR_PROFILE.md).
 
 The native host has separate x86 and amd64 builds. Live IDE testing currently
 focuses on x86; the [verification notes](docs/WINDOWS_ACCEPTANCE.md) track the
@@ -64,16 +64,16 @@ For development builds, use the [development setup](docs/INSTALLATION.md) and
 
 ## Beta scope
 
-Analysis remains read-only. Beta 6 includes optional, separately approved selective
-PLC builds and build-owned diagnostics. Source editing, activation, download,
-Online Change and runtime control are unavailable. A connected PLC is not
-required for project analysis, documentation search or offline compilation.
+Analysis reads project code and documentation. Editor can apply an approved
+diff to a supported open XML buffer. The resulting change remains unsaved.
+The standard TwinCAT ST editor supports live read and preview when its exact
+section is available. Debug reads approved scalar symbols from an
+operator-confirmed ADS endpoint of the already logged-in PLC. Editor and
+Debug can each request a separately approved selective PLC build.
 
-All experimental ST-editor discovery/read/preview/apply/rollback code remains
-preserved, but its tools, UI and editor accessors are inactive in this release.
-The existing read-only editor context and explicit attachment path remain.
-Installed-host build/navigation acceptance and real-corpus extraction quality
-and performance are still open; automated fixtures are not live acceptance.
+PLC activation, download, Online Change and runtime control are outside the
+profile permissions. Installed-host workflow acceptance and extraction
+quality and performance on a real documentation corpus are still open.
 
 Engineering tools read saved project files. An attached POU is a separate
 snapshot and does not guarantee complete access to unsaved editor changes or
@@ -91,7 +91,7 @@ two dedicated local MCP services.
 | Assistant Host | Native tool window, IDE context and WebView2 integration | C# / WPF |
 | Assistant Chat | Messages, input, attachments and conversation display | [OpenChamber](https://github.com/openchamber/openchamber) |
 | Assistant Core | Model providers, agent execution, MCP client and conversation storage | [OpenCode](https://github.com/anomalyco/opencode) |
-| Engineering MCP 0.5.4 | Saved project analysis and Assistant-bound builds/diagnostics | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.4) |
+| Engineering MCP 0.5.5 | Saved project analysis, bound builds, Editor and Debug | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.5) |
 | Knowledge MCP 0.1.2 | Nine documentation tools, including symbol/library/error lookup | [Released package](https://github.com/Auda29/twincat-knowledge-mcp/releases/tag/v0.1.2) |
 
 Model execution and MCP processes run outside the IDE. Documentation, generated
@@ -99,10 +99,11 @@ indexes and user project files are not bundled with the application.
 
 ## Documentation
 
+- [0.2.0 Beta 7 — Analysis, Editor and Debug](docs/releases/native-v0.2.0-beta.7.md)
 - [0.2.0 Beta 6: chat restart recovery and background build readiness](docs/releases/native-v0.2.0-beta.6.md)
 
 - [0.2.0 Beta 5: build tools, typed Knowledge and pinned-history fix](docs/releases/native-v0.2.0-beta.5.md)
-- [Build tools, native approvals and inactive ST development](docs/EDITOR_PROFILE.md)
+- [Profiles and native approvals](docs/EDITOR_PROFILE.md)
 - [0.2.0 Beta 4: startup, context and Knowledge improvements](docs/releases/native-v0.2.0-beta.4.md)
 - [0.2.0 Beta 3: startup performance and shared product icon](docs/releases/native-v0.2.0-beta.3.md)
 - [0.2.0 Beta 2: integrated fixes and version-aware setup](docs/releases/native-v0.2.0-beta.2.md)

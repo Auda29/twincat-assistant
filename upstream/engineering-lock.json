@@ -1,27 +1,48 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "repository": "Auda29/twincat-mcp-mono",
-  "tag": "engineering-v0.5.4",
-  "version": "0.5.4",
-  "revision": "d1724d03df3fe746dc67f56744705555913c790d",
-  "catalogSha256": "c0b0214a180d42bb8fb5359aec0f87d5a4326c472a2deadca8b5096ec274987a",
+  "tag": "engineering-v0.5.5",
+  "version": "0.5.5",
+  "revision": "b1a9b13a494b36da61534d8612d54bb05ff27492",
   "moduleVersion": "1.0.0.0",
+  "catalogs": {
+    "build": {
+      "path": "engineering-catalog.json",
+      "sha256": "c0b0214a180d42bb8fb5359aec0f87d5a4326c472a2deadca8b5096ec274987a"
+    },
+    "editor": {
+      "path": "engineering-editor-catalog.json",
+      "sha256": "0e8866c0d440723c9771c93b85a0f64eef1fa9b2b9fa6066c8d3f77b1f1b8447"
+    },
+    "debug": {
+      "path": "engineering-debug-catalog.json",
+      "sha256": "439ed9295165b58c79025abb65f602dd42efd7b9da74a84e408e0ee69bf85d8b"
+    }
+  },
   "releaseArtifacts": [
     {
-      "name": "engineering-v0.5.4-runtime-win-x86.zip",
-      "sha256": "4250a60669d907f584c795bb64c0f20555be75e35d70cec0111fd3f876da1df2"
+      "name": "engineering-v0.5.5-runtime-win-x86.zip",
+      "sha256": "8d77f7323fd936d0d0d592cbc3c6ac9e183097aebf8e88afda04ce9248ce40f0"
     },
     {
-      "name": "engineering-v0.5.4-sources.zip",
-      "sha256": "a63e9f51aef7a9a5328a10b3a164503832091f614806e611cdaf4bfa1212a96c"
+      "name": "engineering-v0.5.5-sources.zip",
+      "sha256": "eba24a46ab72b4eb99f1f1ad22633366500dafbff8823421b50770570c44f89d"
     },
     {
-      "name": "engineering-v0.5.4-receipt.json",
-      "sha256": "ad8827f7a803aaa957f65bc5a3ac88c04a605040dcd3c7c655780af8adf3f967"
+      "name": "engineering-v0.5.5-receipt.json",
+      "sha256": "f6b4922505feba35fcfcdc75c09cc297755cf9c70b140cc891071277e800e7a3"
     },
     {
       "name": "engineering-catalog.json",
       "sha256": "c0b0214a180d42bb8fb5359aec0f87d5a4326c472a2deadca8b5096ec274987a"
+    },
+    {
+      "name": "engineering-editor-catalog.json",
+      "sha256": "0e8866c0d440723c9771c93b85a0f64eef1fa9b2b9fa6066c8d3f77b1f1b8447"
+    },
+    {
+      "name": "engineering-debug-catalog.json",
+      "sha256": "439ed9295165b58c79025abb65f602dd42efd7b9da74a84e408e0ee69bf85d8b"
     }
   ]
 }

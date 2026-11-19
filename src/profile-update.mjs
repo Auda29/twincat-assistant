@@ -1,15 +1,17 @@
 import { open, rename, unlink, lstat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { inspectState, readJsonFile, statePaths, verifyProfileConfiguration, verifyProfileReferences } from './state.mjs';
+import { inspectState, MAX_SETTINGS_BYTES, readJsonFile, statePaths, verifyProfileConfiguration, verifyProfileReferences } from './state.mjs';
 import { createOpenCodeConfig, validateSettings } from './config.mjs';
 import { rebasePackageSettings } from './managed-relocation.mjs';
 
-export async function atomicJson(path, value) {
+export async function atomicJson(path, value, { compact = false, maxBytes = Infinity } = {}) {
+  const contents = JSON.stringify(value, null, compact ? 0 : 2) + '\n';
+  if (Buffer.byteLength(contents) > maxBytes) throw new Error('Profile update journal would exceed the recovery limit');
   const temporary = join(dirname(path), '.profile-' + randomUUID() + '.tmp');
   try {
     const file = await open(temporary, 'wx', 0o600);
-    try { await file.writeFile(JSON.stringify(value, null, 2) + '\n'); await file.sync(); }
+    try { await file.writeFile(contents); await file.sync(); }
     finally { await file.close(); }
     await rename(temporary, path);
   } finally { await unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
@@ -76,7 +78,8 @@ export async function writeProfilePair(root, before, after) {
   if (!same(await readJsonFile(paths.settingsPath), before.settings)
       || !same(await readJsonFile(paths.configPath), before.config)) throw new Error('Profile changed under update lock');
   if (same(before, after)) return;
-  await atomicJson(journalPath(root), { version: 1, before, after });
+  // The recovery reader is bounded. The journal contains two complete profiles.
+  await atomicJson(journalPath(root), { version: 1, before, after }, { compact: true, maxBytes: MAX_SETTINGS_BYTES });
   await atomicJson(paths.configPath, after.config);
   await atomicJson(paths.settingsPath, after.settings);
   await unlink(journalPath(root));

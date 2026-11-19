@@ -83,6 +83,7 @@ namespace TwinCatAssistant.Native
 
     public sealed class ChatSelection
     {
+        public string profileRequest { get; set; }
         public int version;
         public bool ready;
         public bool presentationReady;
@@ -93,6 +94,7 @@ namespace TwinCatAssistant.Native
         public string sessionId;
         public string directory;
         public string documentId;
+        public string activeEngineeringProfile;
         public long epoch;
         public bool creating;
         public bool manualAttachmentPending;

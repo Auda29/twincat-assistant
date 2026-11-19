@@ -1,7 +1,10 @@
 import { createInterface } from 'node:readline';
-import { EDITOR_TOOL_NAMES } from '../../src/editor-session-broker.mjs';
+import { ownedEngineeringProfile } from '../../src/editor-tools.mjs';
 
 const lines = createInterface({ input: process.stdin });
+const mode = process.argv[2] === '--host-editor-bootstrap-stdin' ? 'editor' :
+  process.argv[2] === '--host-debug-bootstrap-stdin' ? 'debug' : 'build';
+const names = ownedEngineeringProfile(mode).names;
 let bootstrap;
 const send = value => process.stdout.write(JSON.stringify(value) + '\n');
 lines.on('line', line => {
@@ -14,7 +17,7 @@ lines.on('line', line => {
   if (!Object.hasOwn(value, 'id')) return;
   let result;
   if (value.method === 'initialize') result = { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'fixture', version: '1' } };
-  if (value.method === 'tools/list') result = { tools: EDITOR_TOOL_NAMES.map(name => ({ name, inputSchema: { type: 'object' } })) };
+  if (value.method === 'tools/list') result = { tools: names.map(name => ({ name, inputSchema: { type: 'object' } })) };
   if (value.method === 'tools/call') {
     if (value.params.arguments.exit) { process.exit(1); return; }
     result = { content: [{ type: 'text', text: JSON.stringify({ name: value.params.name, arguments: value.params.arguments,

@@ -24,6 +24,7 @@ namespace TwinCatAssistant.Native
         private readonly object provider;
         private readonly MethodInfo dispatch;
         private readonly Type contextType;
+        private readonly bool sourceAccess;
         private EngineeringBinding binding;
         private bool approvalsSuspended;
         private readonly Func<object, bool> confirmEditorApproval;
@@ -67,14 +68,30 @@ namespace TwinCatAssistant.Native
         internal EngineeringProviderSession(Assembly assembly, object dte, Func<string, bool?> dirty,
             EngineeringBinding initial, SynchronizationContext ui, Func<string, object> getTextBuffer = null,
             Func<string, bool> navigateExactErrorItem = null, Func<string, string, object> getSectionEditor = null,
-            Func<object, bool> confirmEditorApproval = null)
+            Func<object, bool> confirmEditorApproval = null, Func<string, Type> getInteropType = null,
+            bool sourceAccess = false)
         {
             binding = initial ?? throw new ArgumentNullException(nameof(initial));
+            if (sourceAccess && (getInteropType == null || getTextBuffer == null))
+                throw new ArgumentException("Source access requires authoritative interop and an explicit XML editor accessor.", nameof(sourceAccess));
+            this.sourceAccess = sourceAccess;
             this.confirmEditorApproval = confirmEditorApproval;
             contextType = assembly.GetType("TwinCatMcp.Engineering.Host.HostContext", true);
             var approvalType = assembly.GetType("TwinCatMcp.Engineering.Host.ApprovalRequest", true);
             var factoryType = assembly.GetType("TwinCatMcp.Engineering.Host.EngineeringProviderFactory", true);
-            var factory = DevelopmentSourceAccess ? factoryType.GetMethod("CreateWithEditorViews", BindingFlags.Public | BindingFlags.Static, null,
+            // Supplying an authoritative binding explicitly selects the unpublished
+            // factory9 contract. Absence or failure must never select a legacy factory.
+            var withInteropTypes = getInteropType != null;
+            MethodInfo factory = null;
+            if (withInteropTypes)
+            {
+                factory = factoryType.GetMethod("CreateWithInteropTypes", BindingFlags.Public | BindingFlags.Static, null,
+                    new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
+                        typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext),
+                        typeof(Func<string, object>), typeof(Func<string, bool>), typeof(Func<string, string, object>), typeof(Func<string, Type>) }, null);
+                if (factory == null) throw new MissingMethodException("Authoritative Engineering provider factory is unavailable.");
+            }
+            if (factory == null) factory = DevelopmentSourceAccess ? factoryType.GetMethod("CreateWithEditorViews", BindingFlags.Public | BindingFlags.Static, null,
                 new[] { typeof(object), typeof(Func<string, bool?>), typeof(Func<>).MakeGenericType(contextType),
                     typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)), typeof(SynchronizationContext), typeof(Func<string, object>), typeof(Func<string, bool>), typeof(Func<string, string, object>) }, null) : null;
             var withEditorViews = factory != null;
@@ -95,7 +112,10 @@ namespace TwinCatAssistant.Native
             var argument = Expression.Parameter(approvalType, "request");
             var consume = Expression.Lambda(typeof(Func<,>).MakeGenericType(approvalType, typeof(bool)),
                 Expression.Call(Expression.Constant(this), GetType().GetMethod(nameof(ConsumeApproval), BindingFlags.NonPublic | BindingFlags.Instance), Expression.Convert(argument, typeof(object))), argument).Compile();
-            provider = factory.Invoke(null, withEditorViews
+            provider = factory.Invoke(null, withInteropTypes
+                ? new object[] { dte, dirty, current, consume, ui, sourceAccess ? getTextBuffer : null,
+                    navigateExactErrorItem, sourceAccess ? getSectionEditor : null, getInteropType }
+                : withEditorViews
                 ? new object[] { dte, dirty, current, consume, ui, getTextBuffer, navigateExactErrorItem, getSectionEditor }
                 : withHostAccess
                 ? new object[] { dte, dirty, current, consume, ui, DevelopmentSourceAccess ? getTextBuffer : null, navigateExactErrorItem }
@@ -118,7 +138,7 @@ namespace TwinCatAssistant.Native
             {
                 if (approvalsSuspended) { authorization.Revoke(); return false; }
                 var operation = (string)Property(request, "Operation");
-                if (operation != "build.start" && (!DevelopmentSourceAccess || (operation != "source.apply" && operation != "source.rollback"))) return false;
+                if (operation != "build.start" && (!sourceAccess || (operation != "source.apply" && operation != "source.rollback"))) return false;
                 var expected = Property(request, "Expected");
                 var exact = new EngineeringBinding((Guid)Property(expected, "SessionId"), (int)Property(expected, "IdePid"),
                     (DateTime)Property(expected, "IdeStartedUtc"), (string)Property(expected, "SolutionFile"),
@@ -159,7 +179,7 @@ namespace TwinCatAssistant.Native
         internal void ApproveSource(string operation, Guid id, string exactRequest, DateTime expires,
             string target, string section, string preview, string journal, string baseline, string proposed)
         {
-            if (!DevelopmentSourceAccess || approvalsSuspended || (operation != "source.apply" && operation != "source.rollback")) throw new InvalidOperationException();
+            if (!sourceAccess || approvalsSuspended || (operation != "source.apply" && operation != "source.rollback")) throw new InvalidOperationException();
             var current = Binding ?? throw new ObjectDisposedException(nameof(EngineeringProviderSession));
             authorization.Grant(new EngineeringAction(current, id, operation, target, section, preview, journal,
                 expires, EngineeringAction.HashRequest(exactRequest), baseline, proposed), DateTime.UtcNow);
@@ -171,7 +191,7 @@ namespace TwinCatAssistant.Native
         internal Task<string> DispatchAsync(string request, CancellationToken cancellation)
         {
             if (Binding == null) throw new ObjectDisposedException(nameof(EngineeringProviderSession));
-            if (!DevelopmentSourceAccess)
+            if (!sourceAccess)
             {
                 // Fail closed before invoking the provider, including manual native calls.
                 var envelope = Json().DeserializeObject(request) as Dictionary<string, object>;
