@@ -8,7 +8,7 @@ try {
  $lock=Get-Content upstream/knowledge-lock.json -Raw|ConvertFrom-Json
  if($lock.developmentOnly){throw 'Knowledge pin is a private development candidate. Public release requires a reviewed upstream release/artifact pin; use the explicit candidate input builder for development.'}
  $engineeringLock=Get-Content upstream/engineering-lock.json -Raw|ConvertFrom-Json
- if($engineeringLock.schemaVersion -ne 1 -or $engineeringLock.revision -cnotmatch '^[a-f0-9]{40}$' -or $engineeringLock.moduleVersion -ne '1.0.0.0'){throw 'Invalid reviewed Engineering lock'}
+ if($engineeringLock.schemaVersion -ne 2 -or $engineeringLock.revision -cnotmatch '^[a-f0-9]{40}$' -or $engineeringLock.moduleVersion -ne '1.0.0.0'){throw 'The three-profile release requires a reviewed Engineering schema-2 lock'}
  if(!$engineeringLock.tag -or !$lock.tag){throw 'Public builds require versioned releases for both MCPs'}
  if((& git status --porcelain --untracked-files=no)){throw 'Release source must be clean'}
  $version=(Get-Content package.json -Raw|ConvertFrom-Json).version
@@ -60,6 +60,7 @@ try {
  $env:DOTNET_ROOT=[IO.Path]::GetFullPath($DotNetRoot)
  Step 'reproducible MCP and license inputs' { & scripts/Build-ApplicationInputs.ps1 -Component All -EngineeringCheckout $engineering -EngineeringArtifacts $engineeringArtifacts -KnowledgeArtifacts $knowledge -KnowledgeLicense $license -KnowledgeLicenseSha256 $licenseSha -OutputRoot $inputRoot }
  Step 'Engineering owned child' { & powershell.exe -NoProfile -File scripts/Test-EngineeringMcpChild.ps1 -EngineeringInput (Join-Path $inputRoot 'engineering') }
+ Step 'Engineering profile brokers' { node scripts/test-packaged-profile-brokers.mjs (Join-Path $inputRoot 'engineering') }
  $env:TC_KNOWLEDGE_INPUT=(Resolve-Path (Join-Path $inputRoot 'knowledge')).Path
  Step 'Knowledge validator equivalence' { node --test tests/integration/knowledge-validation-overlay.test.mjs }
  $app=Join-Path $BuildDirectory 'release-application'

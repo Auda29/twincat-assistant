@@ -27,8 +27,7 @@ test('pinned Core connects an ephemeral Editor MCP in only its selected location
       runtime.catch(reject);
     });
     const before = await readFile(join(state, 'config', 'opencode.json'), 'utf8');
-    // Native project workspaces override only Analysis; the global Editor agent
-    // must survive that overlay without widening the project's Analysis rules.
+    // The Analysis-only project overlay must retain the other managed agents.
     const globalConfig = JSON.parse(before);
     await writeFile(join(workspace, 'opencode.json'), JSON.stringify({ agents: {
       'twincat-readonly': globalConfig.agents['twincat-readonly'],
@@ -45,20 +44,27 @@ test('pinned Core connects an ephemeral Editor MCP in only its selected location
     const login = await fetch(origin + '/auth/session', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ password }) });
     const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
     const headers = { cookie, 'x-opencode-directory': encodeURIComponent(workspace), 'x-opencode-directory-encoding': 'uri' };
-    let agents = [], editor, analysis;
+    let agents = [], editor, analysis, debug;
     const agentsDeadline = Date.now() + 20000;
     while (Date.now() < agentsDeadline) {
       agents = (await (await fetch(origin + '/api/agent', { headers })).json()).data;
       editor = agents.find(agent => (agent.id ?? agent.name) === 'twincat-editor');
       analysis = agents.find(agent => (agent.id ?? agent.name) === 'twincat-readonly');
-      if (editor && analysis) break;
+      debug = agents.find(agent => (agent.id ?? agent.name) === 'twincat-debug');
+      if (editor && analysis && debug) break;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    assert.ok(editor && analysis, 'Core must load both managed profiles: ' + agents.map(agent => agent.id ?? agent.name).join(','));
+    assert.ok(editor && analysis && debug, 'Core must load all managed profiles: ' + agents.map(agent => agent.id ?? agent.name).join(','));
     const effect = (agent, action) => agent.permissions.findLast(rule => rule.action === '*' || rule.action === action)?.effect;
     assert.equal(effect(editor, 'editor_tc_build_project'), 'allow');
-    assert.equal(effect(editor, 'editor_plc_source_apply'), 'deny');
+    assert.equal(effect(editor, 'editor_plc_source_apply'), 'allow');
+    assert.equal(effect(editor, 'editor_plc_debug_read'), 'deny');
+    assert.equal(effect(debug, 'editor_tc_build_project'), 'allow');
+    assert.equal(effect(debug, 'editor_plc_source_apply'), 'deny');
+    assert.equal(effect(debug, 'editor_plc_debug_read'), 'allow');
     assert.equal(effect(analysis, 'editor_plc_source_apply'), 'deny');
+    assert.equal(effect(analysis, 'editor_plc_debug_read'), 'deny');
+    assert.equal(effect(analysis, 'editor_tc_build_project'), 'deny');
     assert.equal(effect(editor, 'bash'), 'deny');
     let connected = false;
     const deadline = Date.now() + 20000;

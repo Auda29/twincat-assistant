@@ -18,7 +18,7 @@ $fixture=Join-Path $parent ('EngineeringFactoryFixture-'+[guid]::NewGuid().ToStr
 try {
  foreach($mode in @('CURRENT','LEGACY_ONLY','FAIL_FACTORY9')) {
   $exe=Join-Path $fixture ($mode+'.exe')
-  & $dotnet exec $csc /nologo /target:exe /langversion:latest /nowarn:0649 "/define:$mode" "/out:$exe" $refs (Join-Path $root 'native/IdeHost/EngineeringProviderSession.cs') (Join-Path $root 'native/Shared/EngineeringAuthorization.cs') (Join-Path $PSScriptRoot 'fixtures/EngineeringFactoryProbe.cs')
+  & $dotnet exec $csc /nologo /target:exe /langversion:latest /nowarn:0649 "/define:$mode,HOST_X86" "/out:$exe" $refs (Join-Path $root 'native/IdeHost/EngineeringProviderSession.cs') (Join-Path $root 'native/IdeHost/EngineeringInteropReference.cs') (Join-Path $root 'native/Shared/EngineeringAuthorization.cs') (Join-Path $PSScriptRoot 'fixtures/EngineeringFactoryProbe.cs')
   if($LASTEXITCODE -ne 0){throw 'Factory fixture compilation failed'}
   & $exe
   if($LASTEXITCODE -ne 0){throw 'Factory fixture failed'}

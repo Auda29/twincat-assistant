@@ -453,6 +453,14 @@ Before is on the left, after is on the right. Approve this change?</value></data
   <data name="EngineeringEditorConsent" xml:space="preserve"><value>Enable project-bound live tools for this chat? Each build or source change still requires a separate native confirmation. No automatic save, activation or download. Unsupported editor write transactions remain refused.</value></data>
   <data name="EngineeringEditorUnavailable" xml:space="preserve"><value>Editor is unavailable. Select a bound project chat in the runtime owned by this window.</value></data>
   <data name="EngineeringEditorEnabled" xml:space="preserve"><value>Editor enabled for this chat. Builds and changes require native approval.</value></data>
+  <data name="DebugCaption" xml:space="preserve"><value>TwinCAT Assistant — Debug</value></data>
+  <data name="EngineeringDebugEnable" xml:space="preserve"><value>Enable Debug</value></data>
+  <data name="EngineeringDebugEnabled" xml:space="preserve"><value>Debug is enabled for the approved symbols in this chat. Builds require separate approval.</value></data>
+  <data name="EngineeringDebugUnavailable" xml:space="preserve"><value>Debug needs a bound project chat with a verified TwinCAT online login. Check the target and log in from TwinCAT.</value></data>
+  <data name="EngineeringDebugConsent" xml:space="preserve"><value>Project: {0}. Configured AMS Net ID: {1}. Confirm these details against the PLC you are logged into. Enter its ADS port and the exact symbol names whose live values this chat may read and send to the selected model.</value></data>
+  <data name="EngineeringDebugPort" xml:space="preserve"><value>ADS port of the logged-in PLC (851–899)</value></data>
+  <data name="EngineeringDebugSymbols" xml:space="preserve"><value>Approved symbols, one name per line</value></data>
+  <data name="EngineeringDebugVerify" xml:space="preserve"><value>I verified the AMS Net ID and ADS port in TwinCAT.</value></data>
   <data name="EngineeringSourceStPreviewOnly" xml:space="preserve"><value>Live ST preview ready. This editor does not expose a verified atomic write transaction; Apply is unavailable.</value></data>
   <data name="EditorCaption" xml:space="preserve"><value>TwinCAT Assistant — Editor</value></data>
   <data name="EngineeringBuildModeEnable" xml:space="preserve"><value>Enable build tools for this chat</value></data>

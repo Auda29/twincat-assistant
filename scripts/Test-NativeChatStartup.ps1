@@ -86,6 +86,14 @@ try{
  Check ((Is-InDiagnosticTools (Field '_engineeringBuildButton')) -and (Is-InDiagnosticTools (Field '_engineeringRefreshButton')) -and (Is-InDiagnosticTools (Field '_engineeringStatus')) -and (Field '_diagnostics').Visibility -eq 'Collapsed') 'build controls and technical readiness are confined to opt-in advanced diagnostics'
  Check ((Field '_toolbar').Children.Count -eq 4) 'normal chat has no build toolbar or separate profile banner'
  Check (!(Field '_engineeringEditorEnabled')) 'the chat opens in Analysis without an engineering grant'
+ $debugLoginType=$control.GetType().GetNestedType('DebugLogin',[Reflection.BindingFlags]'NonPublic')
+ $debugLogin=[Activator]::CreateInstance($debugLoginType,$true)
+ $parseDebug=$control.GetType().GetMethod('ParseDebugGrant',[Reflection.BindingFlags]'Static,NonPublic')
+ $debugGrant=$parseDebug.Invoke($null,[object[]]@($debugLogin,'851',"MAIN.Counter`nMAIN.Ready",$true))
+ Check ($null -ne $debugGrant) 'Debug consent accepts an explicit PLC port and exact symbols'
+ Check ($null -eq $parseDebug.Invoke($null,[object[]]@($debugLogin,'851','MAIN.Counter',$false))) 'Debug consent requires endpoint confirmation'
+ Check ($null -eq $parseDebug.Invoke($null,[object[]]@($debugLogin,'850','MAIN.Counter',$true))) 'Debug rejects ports outside the PLC range'
+ Check ($null -eq $parseDebug.Invoke($null,[object[]]@($debugLogin,'851',"MAIN.Counter`nMAIN.Counter",$true))) 'Debug rejects duplicate symbols'
  $configuration=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeChatConfiguration'))
  $configuration.StateRoot=$profileInfo.StateRoot
  Put '_chatConfiguration' ([StartupPump]::ConfigurationFactory($configuration.GetType(),$configuration))
@@ -154,8 +162,8 @@ try{
  $deadline=[DateTime]::UtcNow.AddSeconds(12)
  do{Await ([Threading.Tasks.Task]::Delay(150))|Out-Null;Await(Invoke-Private 'PollChatSelectionStateAsync')|Out-Null}while(!(Field '_chatPresented') -and [DateTime]::UtcNow -lt $deadline)
  Check ((Field '_chatPresented') -eq $true) 'actual WebView creates, binds and presents a general chat'
- $profileSelector=Await ($core.ExecuteScriptAsync('(()=>{const picks=[...document.querySelectorAll("select")].filter(e=>e.options.namedItem("twincat-readonly")||[...e.options].some(o=>o.value==="twincat-readonly"));return picks.length===1 && picks[0].value==="twincat-readonly" && [...picks[0].options].find(o=>o.value==="twincat-editor")?.disabled===true;})()'))
- Check ($profileSelector -eq 'true') 'the general chat displays one Analysis profile selector with Build tools disabled'
+ $profileSelector=Await ($core.ExecuteScriptAsync('(()=>{const picks=[...document.querySelectorAll("select")].filter(e=>[...e.options].some(o=>o.value==="twincat-readonly"));return picks.length===1 && picks[0].value==="twincat-readonly" && ["twincat-editor","twincat-debug"].every(id=>[...picks[0].options].find(o=>o.value===id)?.disabled===true);})()'))
+ Check ($profileSelector -eq 'true') 'one profile selector keeps Editor and Debug disabled in a general chat'
  Check ((Field '_bannerText').Text -ne 'Zuerst eine Unterhaltung öffnen.') 'no false missing conversation error'
  $project=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeProjectIdentity'),@([int]$PID,'C:/Synthetic/Startup.sln','C:/Synthetic/Startup.plcproj'))
  $projectReader=[StartupPump]::ConstantObject($project.GetType(),$project)

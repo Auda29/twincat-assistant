@@ -1,11 +1,26 @@
 using System;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using TwinCatAssistant.Native;
+
+namespace EnvDTE {
+    public interface DTE { }
+    public interface SolutionConfiguration { }
+    public class Project { }
+}
+namespace EnvDTE80 {
+    public interface SolutionConfiguration2 : EnvDTE.SolutionConfiguration { }
+}
+namespace TCatSysManagerLib {
+    public interface ITcSysManager { }
+    public interface ITcSmTreeItem { }
+    public interface PrivateTestInterface { }
+}
 
 // Only dependencies of unused host-loading/eligibility paths are stubbed. The
 // constructor and authorization under test are compiled from production source.
@@ -51,6 +66,16 @@ internal static class EngineeringFactoryProbe {
     private static void Check(bool value) { if(!value) throw new Exception("Factory contract assertion failed"); checks++; }
     public static int Main(string[] args) {
         if(args.Length!=0) return ActualCandidate(args);
+        var duplicate = AppDomain.CurrentDomain.DefineDynamicAssembly(new AssemblyName("DuplicateInterop"), AssemblyBuilderAccess.Run)
+            .DefineDynamicModule("DuplicateInterop");
+        duplicate.DefineType("EnvDTE.DTE", TypeAttributes.Interface | TypeAttributes.Public | TypeAttributes.Abstract).CreateType();
+        var captured = EngineeringInteropReference.Capture();
+        Check(captured("EnvDTE.DTE") == typeof(EnvDTE.DTE));
+        Check(captured("EnvDTE80.SolutionConfiguration2") == typeof(EnvDTE80.SolutionConfiguration2));
+        Check(captured("TCatSysManagerLib.ITcSysManager") == typeof(TCatSysManagerLib.ITcSysManager));
+        Check(captured("EnvDTE.Project") == null);
+        Check(captured("TCatSysManagerLib.PrivateTestInterface") == null);
+        Check(captured("envdte.dte") == null);
         var assembly=Assembly.GetExecutingAssembly();
         var binding=new EngineeringBinding(Guid.NewGuid(),123,DateTime.UtcNow,"C:\\Synthetic.sln","C:\\Synthetic.plcproj","1");
         Func<string,Type> map=name=>{ throw new Exception("Host must not eagerly query binding"); };
@@ -58,6 +83,18 @@ internal static class EngineeringFactoryProbe {
         Func<string,string,object> section=(name,part)=>{ throw new Exception("Source must remain dormant"); };
         Func<EngineeringProviderSession> create=()=>new EngineeringProviderSession(assembly,new object(),p=>false,binding,
             new SynchronizationContext(),buffer,p=>false,section,null,map);
+        try {
+            new EngineeringProviderSession(assembly,new object(),p=>false,binding,
+                new SynchronizationContext(),buffer,p=>false,section,sourceAccess: true);
+            throw new Exception("Legacy source access was accepted");
+        }
+        catch(ArgumentException e) { Check(e.ParamName == "sourceAccess"); }
+        try {
+            new EngineeringProviderSession(assembly,new object(),p=>false,binding,
+                new SynchronizationContext(),navigateExactErrorItem: p=>false,getInteropType:map,sourceAccess: true);
+            throw new Exception("Source access without an XML accessor was accepted");
+        }
+        catch(ArgumentException e) { Check(e.ParamName == "sourceAccess"); }
         using(var legacy=new EngineeringProviderSession(assembly,new object(),p=>false,binding,new SynchronizationContext(),buffer,p=>false)) {
             Check(TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Calls7==1);
             Check(TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Buffer==null);
@@ -75,6 +112,12 @@ internal static class EngineeringFactoryProbe {
             Check(object.ReferenceEquals(map,TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Received));
             Check(TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Buffer==null);
             Check(TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Section==null);
+        }
+        using(var editor=new EngineeringProviderSession(assembly,new object(),p=>false,binding,
+            new SynchronizationContext(),buffer,p=>false,section,null,map,sourceAccess: true)) {
+            Check(TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Calls9==2);
+            Check(object.ReferenceEquals(buffer,TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Buffer));
+            Check(object.ReferenceEquals(section,TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Section));
         }
 #endif
         Check(TwinCatMcp.Engineering.Host.EngineeringProviderFactory.Calls7==1);

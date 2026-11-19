@@ -1,90 +1,54 @@
-# Editor profile and native engineering
+# Profiles and native engineering
 
-Beta 6 exposes the native profile as **Build tools**. Analysis remains the
-default. The release exposes only nine build/session/diagnostic tools; all six
-new source tools and their UI are disabled. The host supplies no XML or normal
-ST editor accessor and refuses `source.*` before provider dispatch or approval.
-The original read-only editor attachment path remains available.
+The three-profile candidate exposes one selection in the chat composer.
+Analysis is the default. Editor and Debug are available in project-bound
+chats owned by this Assistant window. Selecting either profile requests
+native consent. Switching back to Analysis or changing chat, project or
+runtime owner revokes the grant.
 
-The full source-development implementation below is retained in the repository.
-It requires an explicit code change and review to enable; no model argument,
-environment variable, persisted setting or native runtime control enables it.
+| Profile | Access |
+| --- | --- |
+| Analysis | Read-only project and documentation tools. |
+| Editor | Source discovery, read and preview, approved XML-buffer changes, and selective builds. |
+| Debug | Read-only ADS samples of approved PLC symbols and selective builds. |
 
-## Using the feature
+## Editor
 
-### Unpublished authoritative interop integration
+Select **Editor** in the composer and approve the project chat. Ask the
+Assistant for a diff against the already-open document. Source changes can
+only be applied to the exact supported XML buffer after native confirmation
+of the diff and baseline. The resulting buffer remains unsaved. The normal
+TwinCAT ST editor can show a read-only preview. An unknown or conflicting
+result requires reconciliation before another mutation.
 
-An internal opt-in constructor path accepts `Func<string, Type>` and requires
-the exact nine-argument `CreateWithInteropTypes` factory. Missing methods and
-factory failures do not select any legacy factory. Both source-editor callbacks
-remain null in a release build, even when supplied to the constructor.
+## Debug
 
-This is contract preparation only. The application still selects factory7 and
-pins Engineering 0.5.4. No production caller supplies the new callback. A reviewed
-provider candidate, authenticated execution-loaded host reference types, runtime
-identity/MVID evidence and live-host acceptance are still required before adoption.
-Disk-only PIA metadata and CLR `IsEquivalentTo` are not sufficient evidence.
-The synthetic factory fixtures verify argument routing, dormant source callbacks,
-missing-factory refusal and absence of fallback after provider failure.
+Log in to the intended PLC from TwinCAT. Select **Debug** in the same project
+chat. The dialog shows the bound project and its configured AMS Net ID.
+Compare them with the PLC you are logged into, enter the verified ADS port
+(851–899) and list the exact symbols to disclose to this chat and model.
+An empty or unknown endpoint receives no grant.
 
-`scripts/Test-EngineeringFactory.ps1` can additionally test an explicit candidate
-using `-CandidateAssembly` and `-CandidateSha256`. The candidate bytes are checked
-before execution-loading. This test deliberately supplies null for all 29 types:
-it verifies single capture, correlated ping/describe responses, unsupported builds
-and dormant source capabilities. It does not establish any vendor interface,
-runtime reference provenance or successful PLC build. The default hosted test
-does not download or load an unpublished candidate.
+The host rechecks the project's login and association during live reads.
+The Debug process uses a read-only connection through the local ADS router
+and returns timestamped scalar samples. Debug does not offer source edits,
+PLC writes, breakpoints, stepping, forcing, login or runtime control.
 
-### Published Beta 6 usage
+## Builds
 
-Beta 6 uses the menu-based UI below. Earlier Beta 5 installations use a separate toolbar.
+Both Editor and Debug can request a local build of the exact PLC project
+using the verified configuration and platform. Each build asks for separate
+native approval. Build output and diagnostics are bound to that operation.
+Diagnostic navigation requires a current native error item and the recorded
+build evidence. A build never widens to the whole TwinCAT solution.
 
-1. Select a project-bound chat in the local runtime started by this Assistant
-   window. A general chat or another window's runtime cannot authorize Editor.
-2. In the Assistant's **…** menu, choose **Enable build tools for this chat** and
-   review the scope notice. There is no separate build toolbar above the chat.
-3. The chat switches to the managed `twincat-editor` profile. Its live tools are
-   bound to this exact chat, workspace, IDE process, solution and PLC project.
-4. Each build requires a separate native confirmation. A chat
-   message, model instruction or profile selection cannot approve an operation.
-5. Choose **Return to Analysis** to revoke the connection. Changing chat,
-   project, solution or owner also revokes it. Temporary editor invalidation
-   suspends new approvals while preserving observation of submitted work.
+The candidate supplies the host's compiled interop types to the provider's
+authoritative factory. An unavailable reference can still block build or
+Debug preflight. The engineering profiles do not grant automatic saving,
+activation, download or configuration switching.
 
-Editor permits the reviewed engineering tools and existing read-only tools.
-It does not permit arbitrary files, shell commands, ADS/runtime writes,
-activation, download, forcing, automatic saving or configuration switching.
-Analysis cannot use Editor tools even while the live server is connected.
-
-Build availability is checked automatically at startup and after the bound
-editor context settles following a change. These checks are read-only and do not
-start a build. Technical status, manual checks and build details are available
-only under **Diagnostics → Advanced**.
-
-## Release functions
-
-- Describe the bound session and project association.
-- Request a selective PLC build using its verified configuration and platform.
-- Read build-owned status, output and diagnostics. Cancellation is a request,
-  not proof of an isolated IDE cancellation.
-- Click a diagnostic with a source-baseline navigation candidate. The helper
-  holds and rechecks source/project evidence; the host requires one matching
-  current native ErrorItem and invokes its own Navigate method. There is no
-  path/line fallback when proof is missing.
-
-## Retained source-development functions, inactive in Beta 5
-
-The preserved development path can discover supported already-open POU, Method
-and Action sections and read their live ST text for a before/proposed preview.
-Supported ordinary XML buffers have whole-buffer conditional apply and rollback
-against the exact recorded post-image. These functions are not release tools.
-
-Normal ST previews explicitly report `customStReadOnly` and
-`atomicWriteSupported: false`. They issue no mutation-ready preview ID.
-Properties, unknown XML metadata and unsupported custom editor shapes remain
-refused. Source journals are session-memory records, not durable crash recovery.
-An unknown submitted outcome blocks conflicting actions until correlated
-terminal evidence reconciles it. It is never automatically retried.
+Published Beta 6 continues to use **Build tools** in the **…** menu and
+does not offer the separate Editor and Debug profiles.
 
 ## Runtime ownership
 
