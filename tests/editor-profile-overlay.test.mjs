@@ -10,9 +10,20 @@ async function makeBridge() {
   const stripped = source.replace(/^import .*;\r?\n/gm, '');
   const prelude = `
     const stub = new Proxy(function () { return stub }, { get() { return stub }, apply() { return stub } });
-    const React = stub, z = globalThis.__z;
+    const React = {
+      createElement: (type, props, ...children) => ({ type, props, children }),
+      useSyncExternalStore: (_subscribe, snapshot) => snapshot(),
+    };
+    const z = globalThis.__z;
+    const DropdownMenu = 'menu', DropdownMenuContent = 'popup', DropdownMenuLabel = 'label',
+      DropdownMenuRadioGroup = 'radio-group', DropdownMenuRadioItem = 'radio-item', DropdownMenuTrigger = 'trigger', Icon = 'icon';
     const useSessionUIStore = globalThis.__sessionStore;
-    const useUIStore = stub, useConfigStore = stub, useInputStore = stub, useI18nStore = stub;
+    const useUIStore = stub, useConfigStore = stub, useInputStore = stub;
+    const useI18nStore = select => select({ dictionary: {
+      'chat.twincat.profile.label': 'Profil',
+      'chat.twincat.profile.analysis': 'Analyse',
+      'chat.twincat.profile.projectRequired': 'Open the project chat',
+    } });
     const opencodeClient = stub, buildExportFilename = stub, formatSessionAsMarkdown = stub;
     const getChatDraftIdentityKey = stub, useGlobalSessionsStore = stub, resolveGlobalSessionDirectory = stub;
     const archiveSession = stub, unarchiveSession = stub, updateSessionTitle = stub, registerSessionDirectory = stub;
@@ -128,6 +139,27 @@ test('Debug becomes active only through the bound native grant', async () => {
   assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true, profile: 'twincat-debug' }), true);
   select({ currentSessionId: 'b', currentSessionDirectory: 'C:/project' });
   assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
+});
+
+test('the shared profile menu marks only the approved profile and explains disabled choices', async () => {
+  const { api } = await makeBridge();
+  api.twinCatSource.activate();
+  let [trigger, popup] = api.TwinCatProfilePicker().children;
+  let [, group, hint] = popup.children;
+  assert.equal(trigger.type, 'trigger');
+  assert.equal(popup.props.side, 'top');
+  assert.equal(hint.children[0], 'Open the project chat');
+  assert.deepEqual(Array.from(group.children[0], item => item.props.disabled), [false, true, true]);
+
+  api.publishTwinCatView('a', 'C:/project', true);
+  api.twinCatSource.setContext('a', context);
+  [, popup] = api.TwinCatProfilePicker().children;
+  group = popup.children[1];
+  group.props.onValueChange('twincat-debug');
+  assert.equal(api.twinCatSource.takeProfileRequest('a'), 'twincat-debug');
+  assert.equal(api.TwinCatProfilePicker().children[1].children[1].props.value, 'twincat-readonly');
+  assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true, profile: 'twincat-debug' }), true);
+  assert.equal(api.TwinCatProfilePicker().children[1].children[1].props.value, 'twincat-debug');
 });
 
 test('overlay routes composer, controls, live submission and mobile display through the active profile', async () => {

@@ -1,10 +1,11 @@
 # Profiles and native engineering
 
-Beta 7 exposes one profile selection in the chat composer.
-Analysis is the default. Editor and Debug are available in project-bound
-chats owned by this Assistant window. Selecting either profile requests
-native consent. Switching back to Analysis or changing chat, project or
-runtime owner revokes the grant.
+Choose the profile in the chat composer. Analysis is the default.
+To use Editor or Debug, open a chat for the active PLC project in this
+Assistant window. With the PLC project selected in TwinCAT, click **+**
+in the Assistant to create a chat for that project. Selecting Editor or
+Debug requests native consent. Switching back to Analysis or changing
+chat, project or runtime owner revokes the grant.
 
 | Profile | Access |
 | --- | --- |
