@@ -5,8 +5,20 @@
     <ShellPackageVersion>15.9.28307</ShellPackageVersion>
     <DtePackageVersion>8.0.2</DtePackageVersion>
     <DefineConstants>$(DefineConstants);HOST_X86</DefineConstants>
+    <TcXaeEnvDte80Path Condition="'$(TcXaeEnvDte80Path)' == ''">C:\Program Files (x86)\Beckhoff\TcXaeShell\Common7\IDE\PublicAssemblies\EnvDTE80.dll</TcXaeEnvDte80Path>
   </PropertyGroup>
   <Import Project="../Host.props" />
+  <ItemGroup>
+    <Reference Include="EnvDTE80, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <HintPath>$(TcXaeEnvDte80Path)</HintPath>
+      <SpecificVersion>true</SpecificVersion>
+      <Private>false</Private>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+  </ItemGroup>
+  <Target Name="RequireTcXaeEnvDte80" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(TcXaeEnvDte80Path)')" Text="Select the installed TcXaeShell EnvDTE80 assembly with /p:TcXaeEnvDte80Path=...; the vendor assembly is never bundled." />
+  </Target>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk.WindowsDesktop" />
   <Import Project="$(VsSDKInstall)/Microsoft.VsSDK.targets" Condition="Exists('$(VsSDKInstall)/Microsoft.VsSDK.targets')" />
 </Project>

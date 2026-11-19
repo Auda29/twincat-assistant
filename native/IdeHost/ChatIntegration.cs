@@ -204,7 +204,7 @@ namespace TwinCatAssistant.Native
             var raw = await _browser.CoreWebView2.ExecuteScriptAsync("JSON.stringify((()=>{const s=window.__twinCatChat?.state() ?? {version:1,ready:false};"
                 + "const mounted=!!document.querySelector('[data-testid=\"chat-input\"],.oc-draft-center');"
                 + "const loading=!!document.querySelector('#initial-loading,[data-chat-hydration-skeleton],[data-twincat-startup-overlay]');"
-                + "return {...s,ready:s.ready === true,"
+                + "return {...s,ready:s.ready === true,activeEngineeringProfile:window.__twinCatSource?.activeProfile?.() ?? null,"
                 + (consumeProfileRequest ? "profileRequest:window.__twinCatSource?.takeProfileRequest?.(s.sessionId) ?? null," : "")
                 + "presentationReady:s.presentationReady === true && mounted && !loading};})())");
             if (_disposed || documentGeneration != _chatDocumentGeneration || !ReferenceEquals(browser, _browser.CoreWebView2) || raw == null || raw.Length > 12000) return null;

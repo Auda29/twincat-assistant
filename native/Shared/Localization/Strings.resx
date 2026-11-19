@@ -460,4 +460,12 @@ Links vorher, rechts nachher. Nur diese Änderung freigeben?</value></data>
   <data name="EngineeringBuildModeUnavailable" xml:space="preserve"><value>Build-Werkzeuge nicht verfügbar. Einen gebundenen Projektchat in der von diesem Fenster gestarteten Laufzeit auswählen.</value></data>
   <data name="EngineeringBuildModeEnabled" xml:space="preserve"><value>Build-Werkzeuge für diesen Chat aktiviert. Jeder Build benötigt eine native Freigabe.</value></data>
   <data name="BuildModeCaption" xml:space="preserve"><value>TwinCAT Assistant — Build-Werkzeuge</value></data>
+  <data name="DebugCaption" xml:space="preserve"><value>TwinCAT Assistant — Debug</value></data>
+  <data name="EngineeringDebugEnable" xml:space="preserve"><value>Debug aktivieren</value></data>
+  <data name="EngineeringDebugEnabled" xml:space="preserve"><value>Debug ist für die freigegebenen Symbole dieses Chats aktiv. Builds brauchen eine eigene Freigabe.</value></data>
+  <data name="EngineeringDebugUnavailable" xml:space="preserve"><value>Debug braucht einen gebundenen Projektchat mit bestätigtem Online-Login. Prüfe das Ziel und melde dich in TwinCAT an.</value></data>
+  <data name="EngineeringDebugConsent" xml:space="preserve"><value>Projekt: {0}. Konfigurierte AMS Net ID: {1}. Gleiche diese Angaben mit der PLC ab, in die du eingeloggt bist. Gib ihren ADS-Port und die genauen Symbolnamen ein, deren Livewerte dieser Chat lesen und an das ausgewählte Modell senden darf.</value></data>
+  <data name="EngineeringDebugPort" xml:space="preserve"><value>ADS-Port der eingeloggten PLC (851–899)</value></data>
+  <data name="EngineeringDebugSymbols" xml:space="preserve"><value>Freigegebene Symbole, ein Name pro Zeile</value></data>
+  <data name="EngineeringDebugVerify" xml:space="preserve"><value>Ich habe AMS Net ID und ADS-Port in TwinCAT geprüft.</value></data>
 </root>

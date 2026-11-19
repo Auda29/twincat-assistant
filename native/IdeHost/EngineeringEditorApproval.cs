@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
 
@@ -22,6 +23,7 @@ namespace TwinCatAssistant.Native
             internal EngineeringBinding Binding;
             internal string Raw, Operation;
             internal Guid Id;
+            internal long Generation;
             internal Dictionary<string, object> Arguments;
             internal bool Approved;
             internal CancellationToken Cancellation;
@@ -42,11 +44,11 @@ namespace TwinCatAssistant.Native
                 if (providerApproval == null || !EditorProfileIsCurrent() || _engineeringProjectSuspended || _engineeringBusy || _sourceBusy
                     || EngineeringBuildGuard.HasUnresolved || EngineeringSourceGuard.HasUnresolved) return false;
                 var id = (Guid)EditorProperty(providerApproval, "OperationId"); EditorRequest pending;
-                if (id == Guid.Empty || !_editorRequests.TryGetValue(id, out pending) || pending.Approved
+                if (id == Guid.Empty || !_editorRequests.TryGetValue(id, out pending) || pending.Approved || pending.Generation != _editorGeneration
                     || pending.Cancellation.IsCancellationRequested || pending.Session != _engineering || pending.Binding == null || !pending.Binding.Same(pending.Session.Binding)) return false;
                 var raw = EditorProperty(providerApproval, "RawRequestJson") as string;
                 var kind = EditorProperty(providerApproval, "Operation") as string;
-                if (!EngineeringProviderSession.DevelopmentSourceAccess && kind != "build.start") return false;
+                if (_activeEngineeringProfile != "editor" && kind != "build.start") return false;
                 var expected = EditorProperty(providerApproval, "Expected");
                 if (raw != pending.Raw || kind != pending.Operation || (Guid)EditorProperty(providerApproval, "SessionId") != pending.Binding.SessionId
                     || !EditorExpectedObject(expected, pending.Binding) || EditorProperty(providerApproval, "CanonicalRequestDigest") as string != EngineeringAction.HashRequest(raw)) return false;
@@ -100,14 +102,16 @@ namespace TwinCatAssistant.Native
                     { EditorSeenOperations.Clear(); EditorSeenSession = pending.Binding.SessionId; }
                     if (EditorSeenOperations.Count >= 64 || !EditorSeenOperations.Add(id)) return false;
                 }
+                Func<Task<bool>> verifyView = () => VerifyEngineeringEditorViewAsync(pending.Generation, pending.Cancellation);
                 bool confirmed;
                 if (kind == "build.start")
                 {
                     var text = HostText.Format("EngineeringConfirm", new object[] { pending.Binding.SolutionFile, target, configuration, platform });
-                    confirmed = MessageBox.Show(text, HostText.Get("EngineeringBuild"), MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) == MessageBoxResult.OK;
+                    confirmed = ConfirmEditorBuild(text, verifyView);
                 }
-                else confirmed = ConfirmSource(source, kind == "source.rollback");
-                if (!confirmed || pending.Cancellation.IsCancellationRequested || !EditorProfileIsCurrent() || _engineeringProjectSuspended || pending.Session != _engineering
+                else confirmed = ConfirmSource(source, kind == "source.rollback", verifyView);
+                if (!confirmed || pending.Cancellation.IsCancellationRequested || pending.Generation != _editorGeneration
+                    || !EditorProfileIsCurrent() || _engineeringProjectSuspended || pending.Session != _engineering
                     || !pending.Binding.Same(pending.Session.Binding) || DateTime.UtcNow >= expiry || _engineeringBusy || _sourceBusy
                     || EngineeringBuildGuard.HasUnresolved || EngineeringSourceGuard.HasUnresolved
                     || !_editorRequests.TryGetValue(id, out var current) || !ReferenceEquals(current, pending)) return false;
@@ -131,19 +135,57 @@ namespace TwinCatAssistant.Native
             catch { return false; }
         }
 
+        private static bool ConfirmEditorBuild(string text, Func<Task<bool>> verifyView)
+        {
+            var window = new Window { Title = HostText.Get("EngineeringBuild"), Width = 520,
+                SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+            var panel = new StackPanel { Margin = new Thickness(12) };
+            window.Content = panel;
+            panel.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            panel.Children.Add(buttons);
+            buttons.Children.Add(new Button { Content = HostText.Get("EngineeringSourceCancel"), Margin = new Thickness(4), MinWidth = 100, IsCancel = true });
+            var approve = new Button { Content = HostText.Get("EngineeringBuild"), Margin = new Thickness(4), MinWidth = 100 };
+            buttons.Children.Add(approve);
+            BindEngineeringConfirmation(window, approve, verifyView);
+            return window.ShowDialog() == true;
+        }
+
+        private static void BindEngineeringConfirmation(Window window, Button approve, Func<Task<bool>> verifyView)
+        {
+            approve.Click += async (sender, args) =>
+            {
+                approve.IsEnabled = false;
+                // Keep the dialog modal while awaiting the WebView instead of
+                // blocking its UI thread. Cancel/close still dismisses it.
+                var accepted = false;
+                try { accepted = verifyView == null || await verifyView(); }
+                catch { }
+                if (window.IsVisible) window.DialogResult = accepted;
+            };
+        }
+
         // One child request passes through the exact same provider instance.
         // An interrupted await is not evidence that the provider stopped.
-        private async Task<string> DispatchEditorEngineeringAsync(EngineeringProviderSession session, string request, CancellationToken cancellation)
+        private async Task<string> DispatchEditorEngineeringAsync(EngineeringProviderSession session, string request, CancellationToken cancellation, long generation)
         {
             var binding = session?.Binding;
             var parsed = EditorParseRequest(request, binding);
             if (parsed == null) throw new InvalidOperationException("Invalid engineering request.");
-            if (!EngineeringProviderSession.DevelopmentSourceAccess && parsed.Operation.StartsWith("source.", StringComparison.Ordinal))
-                throw new InvalidOperationException("Source operations are unavailable in this release.");
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellation);
+            if (_disposed || generation != _editorGeneration || session != _engineering || !binding.Same(session.Binding))
+                throw new InvalidOperationException("Engineering grant changed.");
+            if (parsed.Operation != "session.ping" && !await VerifyEngineeringEditorViewAsync(generation, cancellation))
+                throw new InvalidOperationException("Engineering grant is not active.");
+            if (parsed.Operation == "debug.context")
+                return await DescribeDebugGrantAsync(session, binding, parsed, generation, cancellation);
+            if (_activeEngineeringProfile != "editor" && parsed.Operation.StartsWith("source.", StringComparison.Ordinal))
+                throw new InvalidOperationException("The active profile does not allow source operations.");
             using (var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
             {
             attempt.CancelAfter(TimeSpan.FromSeconds(20));
             parsed.Session = session; parsed.Binding = binding; parsed.Raw = request; parsed.Cancellation = attempt.Token;
+            parsed.Generation = generation;
             var mutation = parsed.Operation == "build.start" || parsed.Operation == "source.apply" || parsed.Operation == "source.rollback";
             if (mutation && !_editorRequests.TryAdd(parsed.Id, parsed)) throw new InvalidOperationException("Operation is already in flight.");
             try
@@ -169,6 +211,9 @@ namespace TwinCatAssistant.Native
                         RenderEngineeringResponse(session, build, parsed.Id, response);
                 }
                 else if (parsed.Operation == "source.journal") ReconcileEditorSourceJournal(parsed, envelope);
+                if (generation != _editorGeneration
+                    || (parsed.Operation != "session.ping" && !await VerifyEngineeringEditorViewAsync(generation, cancellation)))
+                    throw new InvalidOperationException("Engineering grant changed.");
                 return response;
             }
             catch

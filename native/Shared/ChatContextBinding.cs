@@ -94,6 +94,7 @@ namespace TwinCatAssistant.Native
         public string sessionId;
         public string directory;
         public string documentId;
+        public string activeEngineeringProfile;
         public long epoch;
         public bool creating;
         public bool manualAttachmentPending;
