@@ -8,6 +8,8 @@ import { z } from 'zod';
 import type { ComposerReference } from '@/components/chat/composer/composerReferences';
 import { buildExportFilename, formatSessionAsMarkdown, type SessionMessageRecord } from '@/lib/exportSession';
 import React from 'react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Icon } from '@/components/icon/Icon';
 import { getChatDraftIdentityKey, type ChatDraftIdentity } from '@/lib/chatDraftPersistence';
 import { useGlobalSessionsStore, resolveGlobalSessionDirectory } from '@/stores/useGlobalSessionsStore';
 import { archiveSession, unarchiveSession, updateSessionTitle } from '@/sync/session-actions';
@@ -92,19 +94,32 @@ export function TwinCatProfilePicker() {
   const profile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);
   const eligible = React.useSyncExternalStore(subscribeTwinCatEmbedding, canRequestTwinCatProfile, () => false);
   const dictionary = useI18nStore(state => state.dictionary);
-  return React.createElement('select', {
-    'aria-label': dictionary['chat.modelControls.selectAgent'],
-    className: 'max-w-full rounded bg-transparent px-1 typography-meta text-foreground focus-visible:outline focus-visible:outline-ring',
-    value: profile,
-    onChange: (event: React.ChangeEvent<HTMLSelectElement>) => {
-      const next = event.target.value;
-      // Display the committed native profile while approval is pending.
-      event.target.value = profile;
-      requestTwinCatProfile(next);
+  const heading = dictionary['chat.twincat.profile.label'];
+  const options = [
+    { value: TWINCAT_ANALYSIS_PROFILE, label: dictionary['chat.twincat.profile.analysis'] },
+    { value: TWINCAT_EDITOR_PROFILE, label: 'Editor' },
+    { value: TWINCAT_DEBUG_PROFILE, label: 'Debug' },
+  ];
+  const label = options.find(option => option.value === profile)?.label;
+  return React.createElement(DropdownMenu, null,
+    React.createElement(DropdownMenuTrigger, {
+      type: 'button',
+      'aria-label': heading,
+      className: 'flex h-8 min-w-0 cursor-pointer select-none items-center gap-1 transition-colors hover:opacity-70 focus-visible:outline focus-visible:outline-ring',
     },
-  }, React.createElement('option', { value: TWINCAT_ANALYSIS_PROFILE }, dictionary['chat.twincat.profile.analysis']),
-  React.createElement('option', { value: TWINCAT_EDITOR_PROFILE, disabled: !eligible }, 'Editor'),
-  React.createElement('option', { value: TWINCAT_DEBUG_PROFILE, disabled: !eligible }, 'Debug'));
+    React.createElement('span', { className: 'typography-meta min-w-0 truncate font-medium text-foreground' }, label),
+    React.createElement(Icon, { name: 'arrow-down-s', className: 'size-3 shrink-0 text-muted-foreground' })),
+    React.createElement(DropdownMenuContent, { side: 'top', align: 'end', className: 'w-[min(180px,calc(100vw-2rem))]' },
+      React.createElement(DropdownMenuLabel, { className: 'typography-ui-header font-semibold text-foreground' }, heading),
+      React.createElement(DropdownMenuRadioGroup, { value: profile, onValueChange: requestTwinCatProfile },
+        options.map(option => React.createElement(DropdownMenuRadioItem, {
+          key: option.value,
+          value: option.value,
+          disabled: option.value !== TWINCAT_ANALYSIS_PROFILE && !eligible,
+          className: 'typography-meta',
+        }, option.label))),
+      !eligible && React.createElement('p', { className: 'px-2 py-1 typography-micro text-muted-foreground' },
+        dictionary['chat.twincat.profile.projectRequired'])));
 }
 function currentProfileContext() {
   const selected = useSessionUIStore.getState();

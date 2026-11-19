@@ -463,7 +463,13 @@ Links vorher, rechts nachher. Nur diese Änderung freigeben?</value></data>
   <data name="DebugCaption" xml:space="preserve"><value>TwinCAT Assistant — Debug</value></data>
   <data name="EngineeringDebugEnable" xml:space="preserve"><value>Debug aktivieren</value></data>
   <data name="EngineeringDebugEnabled" xml:space="preserve"><value>Debug ist für die freigegebenen Symbole dieses Chats aktiv. Builds brauchen eine eigene Freigabe.</value></data>
-  <data name="EngineeringDebugUnavailable" xml:space="preserve"><value>Debug braucht einen gebundenen Projektchat mit bestätigtem Online-Login. Prüfe das Ziel und melde dich in TwinCAT an.</value></data>
+  <data name="EngineeringDebugUnavailable" xml:space="preserve"><value>Debug konnte nicht gestartet werden. Analyse ist aktiv. Wähle Debug erneut.</value></data>
+  <data name="EngineeringDebugProjectRequired" xml:space="preserve"><value>Öffne im Assistant einen Chat für das aktuell geöffnete PLC-Projekt. Wähle in diesem Chat erneut Debug. Analyse ist aktiv.</value></data>
+  <data name="EngineeringDebugLoginRequired" xml:space="preserve"><value>TwinCAT meldet für dieses PLC-Projekt keine Online-Anmeldung. Wähle in TwinCAT „Einloggen“ und danach hier erneut Debug. Analyse ist aktiv.</value></data>
+  <data name="EngineeringDebugVerificationUnavailable" xml:space="preserve"><value>Der Assistant kann den Online-Status der PLC gerade nicht prüfen. Wähle Debug erneut. Analyse ist aktiv.</value></data>
+  <data name="EngineeringDebugAssociationUnavailable" xml:space="preserve"><value>Der Assistant konnte das PLC-Projekt in TwinCAT nicht eindeutig zuordnen. Analyse ist aktiv.</value></data>
+  <data name="EngineeringDebugTargetUnavailable" xml:space="preserve"><value>TwinCAT meldet eine Online-Anmeldung, liefert aber keine gültige AMS Net ID für das Ziel. Prüfe das ausgewählte Ziel und wähle Debug erneut. Analyse ist aktiv.</value></data>
+  <data name="EngineeringDebugTargetChanged" xml:space="preserve"><value>Das PLC-Ziel hat sich geändert. Wähle erneut Debug und bestätige das aktuelle Ziel. Analyse ist aktiv.</value></data>
   <data name="EngineeringDebugConsent" xml:space="preserve"><value>Projekt: {0}. Konfigurierte AMS Net ID: {1}. Gleiche diese Angaben mit der PLC ab, in die du eingeloggt bist. Gib ihren ADS-Port und die genauen Symbolnamen ein, deren Livewerte dieser Chat lesen und an das ausgewählte Modell senden darf.</value></data>
   <data name="EngineeringDebugPort" xml:space="preserve"><value>ADS-Port der eingeloggten PLC (851–899)</value></data>
   <data name="EngineeringDebugSymbols" xml:space="preserve"><value>Freigegebene Symbole, ein Name pro Zeile</value></data>

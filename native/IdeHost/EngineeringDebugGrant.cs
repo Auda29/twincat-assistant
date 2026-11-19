@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -27,24 +28,37 @@ namespace TwinCatAssistant.Native
                 && value.MappingDigest == Login.MappingDigest && value.ProjectFile == Login.ProjectFile;
         }
 
-        private async System.Threading.Tasks.Task<DebugLogin> ObserveDebugLoginAsync(EngineeringProviderSession session, CancellationToken cancellation)
+        private async System.Threading.Tasks.Task<(DebugLogin Login, string Notice)> ObserveDebugLoginAsync(EngineeringProviderSession session, CancellationToken cancellation)
         {
             try
             {
                 var binding = session.Binding;
-                if (binding == null) return null;
+                if (binding == null) return (null, "EngineeringDebugVerificationUnavailable");
                 var id = Guid.NewGuid();
                 var raw = await EngineeringDispatchBoundedAsync(session, session.CreateRequest("project.online", id, new { }), cancellation);
-                var envelope = EditorParseResponse(raw, binding, id);
-                var result = EditorObject(envelope, "result");
-                if (EditorText(envelope, "status", 32) != "succeeded" || result == null ||
-                    !result.TryGetValue("loggedIn", out var loggedIn) || !Equals(loggedIn, true)) return null;
-                var netId = EditorText(result, "configuredAmsNetId", 23);
-                var digest = EditorText(result, "mappingDigest", 64);
-                if (!ValidDebugNetId(netId) || !SourceDigest(digest)) return null;
-                return new DebugLogin { AmsNetId = netId, MappingDigest = digest, ProjectFile = binding.ProjectFile };
+                return ParseDebugLogin(EditorParseResponse(raw, binding, id), binding.ProjectFile);
             }
-            catch { return null; }
+            catch { return (null, "EngineeringDebugVerificationUnavailable"); }
+        }
+
+        private static (DebugLogin Login, string Notice) ParseDebugLogin(Dictionary<string, object> envelope, string projectFile)
+        {
+            if (EditorText(envelope, "status", 32) != "succeeded")
+            {
+                var error = EditorText(envelope, "error", 128);
+                return (null, error?.StartsWith("association_", StringComparison.Ordinal) == true
+                    ? "EngineeringDebugAssociationUnavailable" : "EngineeringDebugVerificationUnavailable");
+            }
+
+            var result = EditorObject(envelope, "result");
+            if (result == null || !result.TryGetValue("loggedIn", out var state) || !(state is bool loggedIn))
+                return (null, "EngineeringDebugVerificationUnavailable");
+            if (!loggedIn) return (null, "EngineeringDebugLoginRequired");
+            var netId = EditorText(result, "configuredAmsNetId", 23);
+            var digest = EditorText(result, "mappingDigest", 64);
+            if (!SourceDigest(digest)) return (null, "EngineeringDebugVerificationUnavailable");
+            if (!ValidDebugNetId(netId)) return (null, "EngineeringDebugTargetUnavailable");
+            return (new DebugLogin { AmsNetId = netId, MappingDigest = digest, ProjectFile = projectFile }, null);
         }
 
         private async System.Threading.Tasks.Task<string> DescribeDebugGrantAsync(EngineeringProviderSession session, EngineeringBinding binding,
@@ -59,10 +73,10 @@ namespace TwinCatAssistant.Native
             if (!await VerifyEngineeringEditorViewAsync(generation, cancellation) || !ReferenceEquals(grant, _debugGrant)
                 || !EditorProfileIsCurrent() || !binding.Same(session.Binding))
                 throw new InvalidOperationException("Debug grant changed.");
-            if (!grant.Matches(current))
+            if (!grant.Matches(current.Login))
             {
                 RevokeEngineeringEditor();
-                Notify(HostText.Get("EngineeringDebugUnavailable"), "warning");
+                Notify(HostText.Get(current.Notice ?? "EngineeringDebugTargetChanged"), "warning");
                 throw new InvalidOperationException("Debug login changed.");
             }
             return EngineeringProviderSession.Json().Serialize(new { protocolVersion = 1, sessionId = binding.SessionId.ToString("D"),
