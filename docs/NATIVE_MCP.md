@@ -1,6 +1,6 @@
 # Native MCP integration
 
-Beta 7 uses published Knowledge 0.1.2 and Engineering 0.5.4, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Knowledge exposes nine read-only tools. Project chats retain saved-file reads and can explicitly enable native **Build tools** for the selected chat; each selective build needs its own native approval. Source discovery and editing workflows are inactive in this release. See [Beta 7 release scope](releases/native-v0.2.0-beta.7.md), [Editor profile](EDITOR_PROFILE.md), and [Knowledge setup](KNOWLEDGE_SETUP.md).
+Beta 7 uses published Knowledge 0.1.2 and Engineering 0.5.5, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Analysis retains saved-file and documentation reads. Editor adds native source operations, and Debug adds approved read-only ADS sampling. Both profiles require separate native approval for each build. See [release notes](releases/native-v0.2.0-beta.7.md) and [Profiles and native engineering](EDITOR_PROFILE.md).
 
 Native 0.1.9 adds [automatic documentation setup](KNOWLEDGE_SETUP.md). Users can
 prepare installed Beckhoff help from **Wissenssuche einrichten**; a manual TOML
@@ -137,7 +137,7 @@ project files through the reviewed read tools. Opening a project does not submit
 source to a model. **Attach** separately stages the supported active POU's
 Automation Interface snapshot; optional automatic attachment remains off by
 default. This snapshot is not verified unsaved editor-buffer text and can differ
-from the saved files returned by engineering tools. Analysis does not build or write. Explicitly enabled Build tools require native approval for each selective build; they do not save or enable source editing, ADS/runtime backends or machine-control actions. Shell
+from the saved files returned by engineering tools. Analysis is read-only. Editor and Debug require native approval for each selective build. Editor changes require approval of the exact diff and apply only to supported XML buffers. Debug reads only approved scalar symbols from the operator-confirmed PLC endpoint. Shell
 and general filesystem tools remain denied by the existing agent policy.
 
 ## Historical verification (0.1.8)

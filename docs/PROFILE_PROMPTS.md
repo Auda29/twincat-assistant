@@ -1,6 +1,6 @@
 # Profile system prompts
 
-The default **Analysis** profile is read-only. Beta 5 also supports explicit per-project-chat **Build tools**, using the internal `twincat-editor` agent and C4 policy. Each selective build requires its own native approval. Source-editor tools remain inactive; see [Editor profile](EDITOR_PROFILE.md). The prompt review and evidence below began on 2026-11-05; dated results describe that checkpoint.
+**Analysis** is read-only. **Editor** and **Debug** use separate native grants and tool catalogs for the selected project chat. Each selective build requires its own native approval. The source and ADS scopes are described in [Profiles and native engineering](EDITOR_PROFILE.md). The dated prompt evidence below began on 2026-11-05.
 
 ## Where prompts come from
 
@@ -27,13 +27,14 @@ earlier prompt text was present. That earlier configuration-only probe made no m
 
 ## Actual tools and rights
 
-The Analysis configuration denies `*` and allows only `READ_TOOLS` plus `question`. Its prompt lists the tools of the configured servers; a test checks this against `READ_TOOLS`. Build tools use the separate C4 permissions described below.
+The Analysis configuration denies `*` and allows only `READ_TOOLS` plus `question`. Its prompt lists the tools of the configured servers; a test checks this against `READ_TOOLS`. Editor and Debug also use separate broker permissions.
 
 | Scope | Tools named in the prompt |
 | --- | --- |
 | General chat (native) | 9 `knowledge_tc_*` tools, `question`; "No PLC project is connected" |
 | Project chat | Knowledge tools, 9 `engineering_*` tools for the saved files of one `.plcproj`, `question` |
-| Build tools enabled in a project chat | Knowledge and saved-project tools plus nine native build, session and diagnostic tools; each build requires native approval |
+| Editor | Knowledge and saved-project tools, native source preview and approved XML-buffer edits, and separately approved PLC builds |
+| Debug | Knowledge and saved-project tools, approved read-only ADS samples, and separately approved PLC builds |
 | Operator CLI with global engineering | As the project chat, described as operator-configured saved files |
 | Without knowledge | No documentation citations; answers marked as not verified |
 

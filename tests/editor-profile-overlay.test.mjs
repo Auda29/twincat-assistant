@@ -102,11 +102,32 @@ test('a picker request is consumed once and cannot grant tools or follow another
   assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
   assert.equal(api.twinCatSource.takeProfileRequest('a'), 'twincat-editor');
   assert.equal(api.twinCatSource.takeProfileRequest('a'), null);
+  api.requestTwinCatProfile('twincat-debug');
+  assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true, profile: 'twincat-editor' }), false);
+  assert.equal(api.twinCatSource.takeProfileRequest('a'), 'twincat-debug');
 
   api.requestTwinCatProfile('twincat-editor');
   select({ currentSessionId: 'b', currentSessionDirectory: 'C:/project' });
   select({ currentSessionId: 'a', currentSessionDirectory: 'C:/project' });
   assert.equal(api.twinCatSource.takeProfileRequest('a'), null);
+});
+
+test('Debug becomes active only through the bound native grant', async () => {
+  const { api, select } = await makeBridge();
+  api.twinCatSource.activate();
+  api.publishTwinCatView('a', 'C:/project', true);
+  api.twinCatSource.setContext('a', context);
+  api.requestTwinCatProfile('twincat-debug');
+  assert.equal(api.twinCatSource.takeProfileRequest('a'), 'twincat-debug');
+  assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
+  assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true, profile: 'twincat-debug' }), true);
+  assert.equal(api.twinCatSource.activeProfile(), 'twincat-debug');
+  api.requestTwinCatProfile('twincat-readonly');
+  assert.equal(api.twinCatSource.activeProfile(), 'twincat-readonly');
+  assert.equal(api.twinCatSource.takeProfileRequest('a'), 'twincat-readonly');
+  assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true, profile: 'twincat-debug' }), true);
+  select({ currentSessionId: 'b', currentSessionDirectory: 'C:/project' });
+  assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
 });
 
 test('overlay routes composer, controls, live submission and mobile display through the active profile', async () => {

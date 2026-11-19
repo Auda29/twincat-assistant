@@ -7,7 +7,7 @@ source overlay connecting its existing composer and stores to the native host.
 The later [delivery scope](DELIVERY_SCOPE.md) disables terminal, browser-control,
 dev-server discovery, general FS mutation/execution and independent upstream
 updaters in the source application. Git and shared services remain for later
-separation. Analysis remains read-only; Beta 5 also allows explicitly enabled, per-chat native Build tools with separate approval for each build. Source-editor operations remain inactive. See [Beta 5 release scope](releases/native-v0.2.0-beta.5.md).
+separation. Analysis reads code and documentation. Editor and Debug use distinct project chat permissions. See [Profiles and native engineering](EDITOR_PROFILE.md) for their source, ADS and build boundaries.
 
 Build inputs and commands are described in [upstream](../upstream/README.md).
 

@@ -7,6 +7,7 @@ import { parseArgs } from 'node:util';
 import { createManifest, verifyManifest } from './application-manifest.mjs';
 import { probeServer } from '../src/probe.mjs';
 import { createOpenCodeConfig } from '../src/config.mjs';
+import { ownedEngineeringProfile } from '../src/editor-tools.mjs';
 import { patchKnowledgeValidation } from './knowledge-validation-overlay.mjs';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
@@ -15,7 +16,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 let inputRoot = join(root, 'artifacts/application-inputs');
 async function engineeringLock() {
   const lock=JSON.parse(await readFile(join(root,'upstream/engineering-lock.json'),'utf8'));
-  if(lock.schemaVersion!==1 || !/^[a-f0-9]{40}$/.test(lock.revision ?? '') || lock.moduleVersion!=='1.0.0.0') throw new Error('Invalid reviewed Engineering lock');
+  if(![1,2].includes(lock.schemaVersion) || !/^[a-f0-9]{40}$/.test(lock.revision ?? '') || lock.moduleVersion!=='1.0.0.0') throw new Error('Invalid reviewed Engineering lock');
   return lock;
 }
 const pyHash = '4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3';
@@ -47,9 +48,11 @@ function isolated(scratch) {
 
 async function verifiedEngineeringRelease(lock, directory) {
   if (typeof directory !== 'string' || !isAbsolute(directory)) throw new Error('Engineering release artifact directory must be absolute');
+  const profiles = lock.schemaVersion === 2 ? ['build', 'editor', 'debug'] : ['build'];
+  const catalogName = profile => profile === 'build' ? 'engineering-catalog.json' : `engineering-${profile}-catalog.json`;
+  const names=[`${lock.tag}-runtime-win-x86.zip`, `${lock.tag}-sources.zip`, `${lock.tag}-receipt.json`, ...profiles.map(catalogName)];
   if (!/^engineering-v[0-9]+\.[0-9]+\.[0-9]+$/.test(lock.tag) || lock.tag !== 'engineering-v' + lock.version
-      || !Array.isArray(lock.releaseArtifacts) || lock.releaseArtifacts.length !== 4) throw new Error('Invalid Engineering release lock');
-  const names=[`${lock.tag}-runtime-win-x86.zip`, `${lock.tag}-sources.zip`, `${lock.tag}-receipt.json`, 'engineering-catalog.json'];
+      || !Array.isArray(lock.releaseArtifacts) || lock.releaseArtifacts.length !== names.length) throw new Error('Invalid Engineering release lock');
   const data=new Map();
   for (const item of lock.releaseArtifacts) {
     if (!item || !names.includes(item.name) || data.has(item.name) || !/^[a-f0-9]{64}$/.test(item.sha256 ?? '')) throw new Error('Invalid Engineering release artifact lock');
@@ -62,18 +65,36 @@ async function verifiedEngineeringRelease(lock, directory) {
   const receipt=JSON.parse(data.get(names[2]).toString('utf8'));
   const runtime=data.get(names[0]);
   const runtimeAssets=Array.isArray(receipt.assets) ? receipt.assets.filter(a=>a.filename===names[0]) : [];
-  if (receipt.schemaVersion!==1 || receipt.version!==lock.version || receipt.tag!==lock.tag || receipt.sourceCommit!==lock.revision
-      || receipt.protocolVersion!==1 || receipt.sourceFeatures!=='disabled'
+  const featureScope = lock.schemaVersion === 2
+    ? receipt.sourceFeatures === 'profile-scoped' && receipt.nativeFactory?.method === 'CreateWithInteropTypes'
+      && receipt.nativeFactory?.parameterCount === 9 && receipt.nativeFactory?.getTextBuffer === 'editor-only'
+      && receipt.nativeFactory?.getSectionEditor === 'editor-only' && receipt.nativeFactory?.getInteropType === 'required'
+    : receipt.sourceFeatures === 'disabled' && receipt.nativeFactory?.method === 'CreateWithHostAccess'
+      && receipt.nativeFactory?.parameterCount === 7 && receipt.nativeFactory?.getTextBuffer === null;
+  if (receipt.schemaVersion!==lock.schemaVersion || receipt.version!==lock.version || receipt.tag!==lock.tag || receipt.sourceCommit!==lock.revision
+      || receipt.protocolVersion!==1 || !featureScope
       || receipt.nativeFactory?.type!=='TwinCatMcp.Engineering.Host.EngineeringProviderFactory'
-      || receipt.nativeFactory?.method!=='CreateWithHostAccess' || receipt.nativeFactory?.parameterCount!==7
-      || receipt.nativeFactory?.getTextBuffer!==null
       || receipt.module?.assembly!=='TwinCatMcp.Engineering.Host.dll' || receipt.module?.assemblyVersion!==lock.moduleVersion
       || !/^[a-f0-9]{64}$/.test(receipt.module?.sha256 ?? '') || !/^[a-f0-9]{64}$/.test(receipt.module?.sourceTreeSha256 ?? '')
-      || receipt.catalog?.path!==names[3] || receipt.catalog?.sha256!==lock.catalogSha256
-      || sha(data.get(names[3]))!==receipt.catalog.sha256 || receipt.runtimeEntry!=='packages/mcp/dist/index.js'
+      || receipt.runtimeEntry!=='packages/mcp/dist/index.js'
       || runtimeAssets.length!==1 || runtimeAssets[0].sha256!==sha(runtime) || runtimeAssets[0].size!==runtime.length)
     throw new Error('Engineering release receipt mismatch');
-  return {receipt,runtime};
+  const catalogs = {};
+  for (const profile of profiles) {
+    const path = catalogName(profile);
+    const catalog = lock.schemaVersion === 2 ? receipt.catalogs?.[profile] : receipt.catalog;
+    const expectedSha = lock.schemaVersion === 2 ? lock.catalogs?.[profile]?.sha256 : lock.catalogSha256;
+    const bytes = data.get(path);
+    if (!catalog || catalog.path !== path || !bytes || catalog.sha256 !== expectedSha || sha(bytes) !== expectedSha
+        || (lock.schemaVersion === 2 && lock.catalogs?.[profile]?.path !== path))
+      throw new Error('Engineering profile catalog checksum mismatch: ' + profile);
+    const decoded = JSON.parse(bytes.toString('utf8'));
+    const actual = decoded.tools?.map(tool => tool.name).sort();
+    if (decoded.schemaVersion !== 1 || JSON.stringify(actual) !== JSON.stringify([...ownedEngineeringProfile(profile).names].sort()))
+      throw new Error('Engineering profile tool catalog mismatch: ' + profile);
+    catalogs[profile] = catalog;
+  }
+  return {receipt,runtime,catalogs};
 }
 
 // Extract only a hash-verified release archive, validating every entry before
@@ -153,8 +174,10 @@ async function engineering(checkout, artifacts) {
     if (release) {
       const archive=join(scratch,'engineering-runtime.zip'); await writeFile(archive,release.runtime);
       const unpacked=join(scratch,'engineering-runtime'); await extractEngineeringArchive(archive,unpacked,scratch,env);
-      if (sha(await readFile(join(unpacked,'engineering-catalog.json')))!==release.receipt.catalog.sha256
-          || sha(await readFile(join(unpacked,'host/x86/TwinCatMcp.Engineering.Host.dll')))!==release.receipt.module.sha256
+      for (const {path,sha256} of Object.values(release.catalogs)) {
+        if (sha(await readFile(join(unpacked,path))) !== sha256) throw new Error('Packaged Engineering catalog mismatch: ' + path);
+      }
+      if (sha(await readFile(join(unpacked,'host/x86/TwinCatMcp.Engineering.Host.dll')))!==release.receipt.module.sha256
           || sha(await readFile(join(unpacked,'LICENSE')))!==sha(await readFile(join(source,'LICENSE'))))
         throw new Error('Engineering runtime contents do not match release receipt or source');
       await file(join(source,'LICENSE'),join(payload,'LICENSE'));

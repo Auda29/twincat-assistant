@@ -6,17 +6,19 @@ import test from 'node:test';
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { initializeState, inspectState } from '../src/state.mjs';
-import { createOpenCodeConfig } from '../src/config.mjs';
-import { updateProfile } from '../src/profile-update.mjs';
+import { initializeState, inspectState, MAX_SETTINGS_BYTES } from '../src/state.mjs';
+import { createOpenCodeConfig, previousOpenCodeConfigs } from '../src/config.mjs';
+import { atomicJson, updateProfile } from '../src/profile-update.mjs';
 const json = value => JSON.stringify(value, null, 2) + '\n';
+const journalJson = value => JSON.stringify(value) + '\n';
 for (const phase of ['journal', 'config', 'settings']) test('profile recovery after ' + phase + ' commit boundary preserves operator data', async () => {
   const parent = await mkdtemp(join(tmpdir(), 'tc-profile-recover-'));
   try {
     const root = join(parent, 'profile'), before = {}, after = { provider: 'openai', sourceCodeDisclosureAccepted: true };
     const paths = await initializeState(root, before);
     const sentinel = join(paths.data, 'chat-login-binding'); await writeFile(sentinel, 'keep');
-    await writeFile(join(root, '.profile-update.json'), json({version:1,before:{settings:before,config:createOpenCodeConfig(before)},after:{settings:after,config:createOpenCodeConfig(after)}}));
+    const journal = {version:1,before:{settings:before,config:createOpenCodeConfig(before)},after:{settings:after,config:createOpenCodeConfig(after)}};
+    await atomicJson(join(root, '.profile-update.json'), journal, {compact:true,maxBytes:MAX_SETTINGS_BYTES});
     if (phase !== 'journal') await writeFile(paths.configPath, json(createOpenCodeConfig(after)));
     if (phase === 'settings') await writeFile(paths.settingsPath, json(after));
     assert.deepEqual((await inspectState(root)).settings, after);
@@ -32,7 +34,7 @@ test('profile recovery refuses unknown policy, foreign live files and active or 
     const root=join(parent,'profile'), settings={}; const paths=await initializeState(root,settings);
     const config=createOpenCodeConfig(settings), pair={settings,config};
     const journal=join(root,'.profile-update.json');
-    await writeFile(journal,json({version:1,before:pair,after:pair}));
+    await writeFile(journal,journalJson({version:1,before:pair,after:pair}));
     const original=await readFile(paths.configPath);
     await writeFile(join(root,'model-consent.lock'),'');
     await assert.rejects(inspectState(root),{code:'EEXIST'});
@@ -40,10 +42,27 @@ test('profile recovery refuses unknown policy, foreign live files and active or 
     await writeFile(paths.configPath,json({...config,foreign:true}));
     await assert.rejects(inspectState(root),/Profile changed/);
     await writeFile(paths.configPath,original);
-    await writeFile(journal,json({version:1,before:pair,after:{settings,config:{...config,foreign:true}}}));
+    await writeFile(journal,journalJson({version:1,before:pair,after:{settings,config:{...config,foreign:true}}}));
     await assert.rejects(inspectState(root),/policy mismatch/);
     assert.deepEqual(await readFile(paths.configPath),original);
   } finally { await rm(parent,{recursive:true,force:true}); }
+});
+
+test('legacy indented Beta 6 recovery journals still complete', async () => {
+  const parent = await mkdtemp(join(tmpdir(), 'tc-profile-legacy-recovery-'));
+  try {
+    const root = join(parent, 'profile');
+    const before = {}, after = { provider: 'openai', sourceCodeDisclosureAccepted: true };
+    const paths = await initializeState(root, before);
+    const prior = settings => previousOpenCodeConfigs(settings)[1];
+    await writeFile(paths.configPath, json(prior(before)));
+    const journal = join(root, '.profile-update.json');
+    await writeFile(journal, json({ version: 1, before: { settings: before, config: prior(before) }, after: { settings: after, config: prior(after) } }));
+    const recovered = await inspectState(root);
+    assert.deepEqual(recovered.settings, after);
+    assert.equal(recovered.configurationCurrent, false);
+    await assert.rejects(readFile(journal), {code:'ENOENT'});
+  } finally { await rm(parent, { recursive: true, force: true }); }
 });
 
 test('a killed profile writer leaves a lock; coordinated lock removal allows validated recovery', async () => {
@@ -54,7 +73,7 @@ test('a killed profile writer leaves a lock; coordinated lock removal allows val
     const paths=await initializeState(root,before);
     await writeFile(join(paths.data,'chat-sentinel'),'kept');
     const journal={version:1,before:{settings:before,config:createOpenCodeConfig(before)},after:{settings:after,config:createOpenCodeConfig(after)}};
-    const code=`import {open} from 'node:fs/promises'; import {atomicJson} from ${JSON.stringify(pathToFileURL(join(process.cwd(),'src/profile-update.mjs')).href)}; const [root,config]=process.argv.slice(1); let journal=''; for await(const chunk of process.stdin) journal+=chunk; await open(root+'/model-consent.lock','wx'); await atomicJson(root+'/.profile-update.json',JSON.parse(journal)); await atomicJson(config,JSON.parse(journal).after.config); process.stdout.write('ready\\n'); setInterval(()=>{},1000);`;
+    const code=`import {open} from 'node:fs/promises'; import {atomicJson} from ${JSON.stringify(pathToFileURL(join(process.cwd(),'src/profile-update.mjs')).href)}; const [root,config]=process.argv.slice(1); let journal=''; for await(const chunk of process.stdin) journal+=chunk; await open(root+'/model-consent.lock','wx'); await atomicJson(root+'/.profile-update.json',JSON.parse(journal),{compact:true,maxBytes:${MAX_SETTINGS_BYTES}}); await atomicJson(config,JSON.parse(journal).after.config); process.stdout.write('ready\\n'); setInterval(()=>{},1000);`;
     child=spawn(process.execPath,['--input-type=module','-e',code,root,paths.configPath],{windowsHide:true,stdio:['pipe','pipe','pipe']});
     child.stdin.end(JSON.stringify(journal));
     await Promise.race([once(child.stdout,'data'),once(child,'exit').then(()=>{throw new Error('Writer exited before crash boundary')}),new Promise((_,reject)=>{const timer=setTimeout(()=>reject(new Error('Writer boundary timeout')),15000); timer.unref();})]);
@@ -79,7 +98,7 @@ for (const endpoint of ['before','after']) for (const fault of ['writable','impl
       const paths=await initializeState(root,good), sentinel=join(paths.data,'latest-chat-login-binding');await writeFile(sentinel,'latest');
       const pair=settings=>({settings,config:createOpenCodeConfig(settings)});
       const journal={version:1,before:pair(endpoint==='before'?bad:good),after:pair(endpoint==='after'?bad:good)};
-      const pending=join(root,'.profile-update.json');await writeFile(pending,json(journal));
+      const pending=join(root,'.profile-update.json');await writeFile(pending,journalJson(journal));
       // The live pair is valid. Merely inspecting live settings would miss the
       // unsafe, non-live endpoint which recovery must also validate.
       const files=[paths.configPath,paths.settingsPath,pending,sentinel];

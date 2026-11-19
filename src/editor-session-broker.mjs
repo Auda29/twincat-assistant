@@ -2,9 +2,8 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { isAbsolute, win32 } from 'node:path';
-import { EDITOR_TOOL_NAMES } from './editor-tools.mjs';
+import { ownedEngineeringProfile } from './editor-tools.mjs';
 export { EDITOR_TOOL_NAMES } from './editor-tools.mjs';
-const TOOLS = new Set(EDITOR_TOOL_NAMES);
 const FRAME_LIMIT = 512 * 1024;
 const REQUEST_LIMIT = 256 * 1024;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -43,10 +42,10 @@ export function validateEditorBootstrap(value) {
 
 // The only process receiving the host capability is this owned engineering child.
 // Neither the Core MCP process nor an HTTP client receives that capability.
-async function ownedEngineering({ node, entrypoint, bootstrap, workspace }, signal) {
+async function ownedEngineering({ node, entrypoint, bootstrap, workspace }, profile, tools, signal) {
   const env = {};
   for (const key of ['SystemRoot', 'WINDIR', 'TEMP', 'TMP']) if (process.env[key]) env[key] = process.env[key];
-  const child = spawn(node, [entrypoint, '--host-bootstrap-stdin'], {
+  const child = spawn(node, [entrypoint, profile.argument], {
     cwd: workspace, env, shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'],
   });
   let stopped = false, pending, buffered = Buffer.alloc(0), nextId = 0, queue = Promise.resolve(), queued = 0;
@@ -107,9 +106,9 @@ async function ownedEngineering({ node, entrypoint, bootstrap, workspace }, sign
     if (initialized.protocolVersion !== '2024-11-05' || !object(initialized.capabilities)) throw unavailable();
     child.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
     const catalog = await request('tools/list', {});
-    if (!Array.isArray(catalog.tools) || catalog.nextCursor !== undefined || catalog.tools.length !== TOOLS.size
-        || new Set(catalog.tools.map(tool => tool.name)).size !== TOOLS.size
-        || catalog.tools.some(tool => !TOOLS.has(tool.name) || !object(tool.inputSchema))) throw unavailable();
+    if (!Array.isArray(catalog.tools) || catalog.nextCursor !== undefined || catalog.tools.length !== tools.size
+        || new Set(catalog.tools.map(tool => tool.name)).size !== tools.size
+        || catalog.tools.some(tool => !tools.has(tool.name) || !object(tool.inputSchema))) throw unavailable();
     return {
       catalog: { tools: catalog.tools },
       isClosed: () => stopped,
@@ -132,7 +131,9 @@ export async function startEditorSession(options, signal) {
   for (const path of [options.node, options.entrypoint, options.workspace]) absolute(path);
   if (typeof options.sessionId !== 'string' || !CHAT_ID.test(options.sessionId)) throw new Error('Invalid Editor chat session');
   validateEditorBootstrap(options.bootstrap);
-  const backend = await ownedEngineering(options, signal);
+  const profile = ownedEngineeringProfile(options.profile);
+  const tools = new Set(profile.names);
+  const backend = await ownedEngineering(options, profile, tools, signal);
   const token = randomBytes(32).toString('hex');
   const expectedAuthorization = Buffer.from('Bearer ' + token);
   let closing = false, closeWork, origin, active = 0;
@@ -179,7 +180,7 @@ export async function startEditorSession(options, signal) {
           case 'tools/list': result = backend.catalog; break;
           case 'tools/call': {
             const params = message.params;
-            if (!object(params) || !TOOLS.has(params.name) || !object(params.arguments ?? {})
+            if (!object(params) || !tools.has(params.name) || !object(params.arguments ?? {})
                 || params._meta?.['ai.opencode/sessionID'] !== options.sessionId
                 || Object.keys(params).some(key => !['name', 'arguments', '_meta'].includes(key))) throw unavailable();
             result = await backend.call(params.name, params.arguments ?? {});

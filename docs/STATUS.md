@@ -1,7 +1,7 @@
 # Implementation status
 
 **Beta 7.** Application `0.2.0-beta.7` / native `0.2.0.13`.
-The composer is the single place to switch between Analysis and Build tools.
+The composer offers Analysis, Editor and Debug. XML-buffer changes and selective PLC builds require individual approval. Debug reads approved symbols from an existing TwinCAT login. Live host acceptance remains open.
 See [release scope](releases/native-v0.2.0-beta.7.md).
 
 **Beta 6, 2026-11-17.** Application `0.2.0-beta.6` / native `0.2.0.12`

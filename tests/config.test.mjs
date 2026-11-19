@@ -4,7 +4,7 @@ import { Config } from '@opencode/schema';
 import { Schema } from 'effect';
 import { sep } from 'node:path';
 import { createOpenCodeConfig, READ_TOOLS } from '../src/config.mjs';
-import { EDITOR_ACTIONS } from '../src/editor-tools.mjs';
+import { DEBUG_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS } from '../src/editor-tools.mjs';
 
 test('server configuration keeps knowledge modern and engineering legacy without code mode', () => {
   const path = name => `${sep}operator${sep}${name}`;
@@ -43,11 +43,13 @@ test('read-only profile uses a default-deny policy with only exact documentation
   const allowed = config.experimental.policies.filter(x => x.action === 'permission' && x.effect === 'allow').map(x => x.resource);
   assert.ok(allowed.includes('knowledge_tc_get_topic:*'));
   assert.ok(allowed.includes('engineering_plc_read_pou:*'));
-  assert.deepEqual(allowed, [...READ_TOOLS, 'question', ...EDITOR_ACTIONS].map(name => name + ':*'));
+  assert.deepEqual(allowed, [...new Set([...READ_TOOLS, 'question', ...DEVELOPMENT_EDITOR_ACTIONS, ...DEBUG_ACTIONS])].map(name => name + ':*'));
   assert.deepEqual(config.permissions.filter(rule => rule.effect === 'allow').map(rule => rule.action), [...READ_TOOLS, 'question']);
   assert.deepEqual(config.agents['twincat-readonly'].permissions, config.permissions);
   assert.deepEqual(config.agents['twincat-editor'].permissions.filter(rule => rule.effect === 'allow').map(rule => rule.action),
-    [...READ_TOOLS, 'question', ...EDITOR_ACTIONS]);
+    [...READ_TOOLS, 'question', ...DEVELOPMENT_EDITOR_ACTIONS]);
+  assert.deepEqual(config.agents['twincat-debug'].permissions.filter(rule => rule.effect === 'allow').map(rule => rule.action),
+    [...READ_TOOLS, 'question', ...DEBUG_ACTIONS]);
   assert.equal(config.mcp.servers.editor, undefined, 'the profile cannot enable an editor connection');
   assert.doesNotThrow(() => Schema.decodeUnknownSync(Config.Info)(config));
 });
