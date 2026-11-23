@@ -86,6 +86,26 @@ try{
  Check ((Is-InDiagnosticTools (Field '_engineeringBuildButton')) -and (Is-InDiagnosticTools (Field '_engineeringRefreshButton')) -and (Is-InDiagnosticTools (Field '_engineeringStatus')) -and (Field '_diagnostics').Visibility -eq 'Collapsed') 'build controls and technical readiness are confined to opt-in advanced diagnostics'
  Check ((Field '_toolbar').Children.Count -eq 4) 'normal chat has no build toolbar or separate profile banner'
  Check (!(Field '_engineeringEditorEnabled')) 'the chat opens in Analysis without an engineering grant'
+ $parseOnline=$control.GetType().GetMethod('ParseDebugLogin',[Reflection.BindingFlags]'Static,NonPublic')
+ Add-Type -AssemblyName System.Web.Extensions
+ $serializer=New-Object System.Web.Script.Serialization.JavaScriptSerializer
+ $onlineCases=@(
+  @{json='{"status":"succeeded","result":{"loggedIn":false}}';notice='EngineeringDebugLoginRequired';label='actual offline status requests TwinCAT login'},
+  @{json='{"status":"succeeded","result":{"loggedIn":"true"}}';notice='EngineeringDebugVerificationUnavailable';label='invalid login data does not claim TwinCAT is offline'},
+  @{json='{"status":"unsupported","error":"online_observation_unavailable"}';notice='EngineeringDebugVerificationUnavailable';label='unavailable COM observation has its own message'},
+  @{json='{"status":"unsupported","error":"association_interop_unavailable"}';notice='EngineeringDebugAssociationUnavailable';label='project association failure does not request TwinCAT login'}
+ )
+ foreach($case in $onlineCases){
+  $envelope=$serializer.DeserializeObject($case.json)
+  $observation=$parseOnline.Invoke($null,[object[]]@($envelope,'C:SyntheticProbe.plcproj'))
+  Check ($null -eq $observation.Item1 -and $observation.Item2 -ceq $case.notice) $case.label
+ }
+ $verifiedOnline=$serializer.DeserializeObject(('{"status":"succeeded","result":{"loggedIn":true,"configuredAmsNetId":"1.2.3.4.5.6","mappingDigest":"'+('a'*64)+'"}}'))
+ $observation=$parseOnline.Invoke($null,[object[]]@($verifiedOnline,'C:SyntheticProbe.plcproj'))
+ Check ($null -ne $observation.Item1 -and $null -eq $observation.Item2) 'verified login reaches the ADS consent gate'
+ $verifiedOnline['result']['configuredAmsNetId']=$null
+ $observation=$parseOnline.Invoke($null,[object[]]@($verifiedOnline,'C:SyntheticProbe.plcproj'))
+ Check ($null -eq $observation.Item1 -and $observation.Item2 -ceq 'EngineeringDebugTargetUnavailable') 'verified online status with missing target has a separate message'
  $debugLoginType=$control.GetType().GetNestedType('DebugLogin',[Reflection.BindingFlags]'NonPublic')
  $debugLogin=[Activator]::CreateInstance($debugLoginType,$true)
  $parseDebug=$control.GetType().GetMethod('ParseDebugGrant',[Reflection.BindingFlags]'Static,NonPublic')
@@ -162,8 +182,16 @@ try{
  $deadline=[DateTime]::UtcNow.AddSeconds(12)
  do{Await ([Threading.Tasks.Task]::Delay(150))|Out-Null;Await(Invoke-Private 'PollChatSelectionStateAsync')|Out-Null}while(!(Field '_chatPresented') -and [DateTime]::UtcNow -lt $deadline)
  Check ((Field '_chatPresented') -eq $true) 'actual WebView creates, binds and presents a general chat'
- $profileSelector=Await ($core.ExecuteScriptAsync('(()=>{const picks=[...document.querySelectorAll("select")].filter(e=>[...e.options].some(o=>o.value==="twincat-readonly"));return picks.length===1 && picks[0].value==="twincat-readonly" && ["twincat-editor","twincat-debug"].every(id=>[...picks[0].options].find(o=>o.value===id)?.disabled===true);})()'))
- Check ($profileSelector -eq 'true') 'one profile selector keeps Editor and Debug disabled in a general chat'
+ $profileTrigger='button[aria-label="Profil"],button[aria-label="Profile"]'
+ $profileSelector=Await ($core.ExecuteScriptAsync('(()=>{const triggers=document.querySelectorAll('+($profileTrigger|ConvertTo-Json -Compress)+');if(triggers.length!==1)return false;triggers[0].click();return true;})()'))
+ Check ($profileSelector -eq 'true') 'one shared profile menu opens in a general chat'
+ $deadline=[DateTime]::UtcNow.AddSeconds(5)
+ do{
+  Await ([Threading.Tasks.Task]::Delay(100))|Out-Null
+  $profileItems=Await ($core.ExecuteScriptAsync('(()=>{const items=[...document.querySelectorAll("[data-slot=dropdown-menu-radio-item]")];return items.length===3 && items[0].getAttribute("aria-checked")==="true" && ["Editor","Debug"].every(name=>items.some(item=>item.textContent.trim()===name && item.hasAttribute("data-disabled")));})()'))
+ }while($profileItems -ne 'true' -and [DateTime]::UtcNow -lt $deadline)
+ Check ($profileItems -eq 'true') 'profile menu marks Analysis and disables Editor and Debug outside a PLC project chat'
+ Await ($core.ExecuteScriptAsync('document.querySelector('+($profileTrigger|ConvertTo-Json -Compress)+')?.click()'))|Out-Null
  Check ((Field '_bannerText').Text -ne 'Zuerst eine Unterhaltung öffnen.') 'no false missing conversation error'
  $project=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeProjectIdentity'),@([int]$PID,'C:/Synthetic/Startup.sln','C:/Synthetic/Startup.plcproj'))
  $projectReader=[StartupPump]::ConstantObject($project.GetType(),$project)

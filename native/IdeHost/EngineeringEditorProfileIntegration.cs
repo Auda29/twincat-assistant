@@ -91,11 +91,14 @@ namespace TwinCatAssistant.Native
             await _editorRevocation;
             var session = _engineering;
             var runtime = _chatSession;
-            if (_disposed || session?.Binding == null || runtime?.IsRunning != true || !CanPromptCurrentChat()
-                || _chatBinding?.IsGeneral != false || !_chatBinding.SameProjectContext(_engineeringProject)
+            if (_disposed) return;
+            var hasProjectChat = HasCurrentChatBinding()
+                && (_engineeringProject == null || _chatBinding.SameProjectContext(_engineeringProject));
+            if (!hasProjectChat || _engineeringProject == null || session?.Binding == null || runtime?.IsRunning != true
                 || _engineeringProjectSuspended || string.IsNullOrEmpty(_projectWorkspace))
             {
-                var key = profile == "debug" ? "EngineeringDebugUnavailable" : "EngineeringEditorUnavailable";
+                var key = profile != "debug" ? "EngineeringEditorUnavailable"
+                    : hasProjectChat ? "EngineeringDebugVerificationUnavailable" : "EngineeringDebugProjectRequired";
                 SetEngineeringStatus(key);
                 Notify(HostText.Get(key), "warning");
                 return;
@@ -110,19 +113,21 @@ namespace TwinCatAssistant.Native
             if (profile == "debug")
             {
                 var online = await ObserveDebugLoginAsync(session, _engineeringLifetime.Token);
-                if (online == null)
-                {
-                    if (!_disposed) Notify(HostText.Get("EngineeringDebugUnavailable"), "warning");
-                    return;
-                }
                 if (_disposed || session != _engineering || _chatSelection?.sessionId != chat
                     || _chatSelection.epoch != selectedEpoch || _chatSelection.documentId != selectedDocument) return;
-                debug = ConfirmDebugGrant(online);
+                if (online.Login == null)
+                {
+                    Notify(HostText.Get(online.Notice), "warning");
+                    return;
+                }
+                debug = ConfirmDebugGrant(online.Login);
                 if (debug == null) return;
                 if (_disposed || session != _engineering || _engineeringLifetime == null) return;
-                if (!debug.Matches(await ObserveDebugLoginAsync(session, _engineeringLifetime.Token)))
+                var confirmed = await ObserveDebugLoginAsync(session, _engineeringLifetime.Token);
+                if (!debug.Matches(confirmed.Login))
                 {
-                    if (!_disposed) Notify(HostText.Get("EngineeringDebugUnavailable"), "warning");
+                    if (!_disposed && session == _engineering)
+                        Notify(HostText.Get(confirmed.Notice ?? "EngineeringDebugTargetChanged"), "warning");
                     return;
                 }
             }
@@ -173,7 +178,12 @@ namespace TwinCatAssistant.Native
             {
                 RevokeEngineeringEditor();
                 if (submitted) await _editorRevocation;
-                if (!_disposed) SetEngineeringStatus(profile == "debug" ? "EngineeringDebugUnavailable" : "EngineeringEditorUnavailable");
+                if (!_disposed)
+                {
+                    SetEngineeringStatus(profile == "debug" ? "EngineeringDebugUnavailable" : "EngineeringEditorUnavailable");
+                    if (profile == "debug" && session == _engineering && _chatSelection?.sessionId == chat)
+                        Notify(HostText.Get("EngineeringDebugUnavailable"), "warning");
+                }
             }
             finally
             {
