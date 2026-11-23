@@ -1,6 +1,6 @@
 # Native MCP integration
 
-Beta 7 uses published Knowledge 0.1.2 and Engineering 0.5.5, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Analysis retains saved-file and documentation reads. Editor adds native source operations, and Debug adds approved read-only ADS sampling. Both profiles require separate native approval for each build. See [release notes](releases/native-v0.2.0-beta.7.md) and [Profiles and native engineering](EDITOR_PROFILE.md).
+Beta 8 uses published Knowledge 0.1.2 and Engineering 0.5.5, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Analysis retains saved-file and documentation reads. Editor adds native source operations, and Debug adds approved read-only ADS sampling. Both profiles require separate native approval for each build. See [release notes](releases/native-v0.2.0-beta.8.md) and [Profiles and native engineering](EDITOR_PROFILE.md).
 
 Native 0.1.9 adds [automatic documentation setup](KNOWLEDGE_SETUP.md). Users can
 prepare installed Beckhoff help from **Wissenssuche einrichten**; a manual TOML

@@ -1,5 +1,9 @@
 # Implementation status
 
+**Beta 8.** Application `0.2.0-beta.8` / native `0.2.0.14`.
+Consolidates `main` with the shared composer profile menu and clearer Debug availability feedback on top of Beta 7. Live host acceptance remains open.
+See [release scope](releases/native-v0.2.0-beta.8.md).
+
 **Beta 7.** Application `0.2.0-beta.7` / native `0.2.0.13`.
 The composer offers Analysis, Editor and Debug. XML-buffer changes and selective PLC builds require individual approval. Debug reads approved symbols from an existing TwinCAT login. Live host acceptance remains open.
 See [release scope](releases/native-v0.2.0-beta.7.md).

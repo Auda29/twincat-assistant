@@ -1,6 +1,6 @@
 # Architecture and integration boundaries
 
-TwinCAT Assistant 0.2.0 Beta 7 embeds the source-built OpenChamber 2.1.1 interface in a native WPF/WebView2 host and uses OpenCode 2.0.23 for sessions, model access and MCP clients. The IDE host resolves the IDE, solution and exact PLC project; external processes provide Knowledge and Engineering services. See [Runtime integration](RUNTIME_INTEGRATION.md) and [installation](INSTALLATION.md) for build inputs and setup.
+TwinCAT Assistant 0.2.0 Beta 8 embeds the source-built OpenChamber 2.1.1 interface in a native WPF/WebView2 host and uses OpenCode 2.0.23 for sessions, model access and MCP clients. The IDE host resolves the IDE, solution and exact PLC project; external processes provide Knowledge and Engineering services. See [Runtime integration](RUNTIME_INTEGRATION.md) and [installation](INSTALLATION.md) for build inputs and setup.
 
 ```text
 TcXaeShell x86 / native host
@@ -39,4 +39,4 @@ Tool discovery alone is not evidence that content was received. See
 
 ## Eligibility and remaining acceptance
 
-The installation target is TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on Windows x64. TwinCAT 4026 and Shell64 are not enabled. Package and synthetic fixture evidence does not establish installed-host behavior: real build events, dirty-state checks and diagnostic navigation, real-corpus typed extraction quality and performance remain open. See [Beta 7 release scope](releases/native-v0.2.0-beta.7.md) and [status](STATUS.md).
+The installation target is TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on Windows x64. TwinCAT 4026 and Shell64 are not enabled. Package and synthetic fixture evidence does not establish installed-host behavior: real build events, dirty-state checks and diagnostic navigation, real-corpus typed extraction quality and performance remain open. See [Beta 8 release scope](releases/native-v0.2.0-beta.8.md) and [status](STATUS.md).
