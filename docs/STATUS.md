@@ -1,5 +1,9 @@
 # Implementation status
 
+**Beta 9.** Application `0.2.0-beta.9` / native `0.2.0.15`.
+Adopts Engineering MCP 0.5.7 (`engineering-v0.5.7`, `375dcfe8102a20baebe8c542fc7d4d837107ecff`), fixing `<PlcProjectDef>` mapping and COM `InvokeMember` invocation on real TwinCAT 3.1.4024.78. Isolated synthetic TcXaeShell verification confirmed `session.describe`, `project.association` and `project.online`. Full installed-host workflow acceptance remains open.
+See [release scope](releases/native-v0.2.0-beta.9.md).
+
 **Beta 8.** Application `0.2.0-beta.8` / native `0.2.0.14`.
 Consolidates `main` with the shared composer profile menu and clearer Debug availability feedback on top of Beta 7. Live host acceptance remains open.
 See [release scope](releases/native-v0.2.0-beta.8.md).
