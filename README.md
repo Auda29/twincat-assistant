@@ -8,7 +8,7 @@ Explain Structured Text, explore PLC project code and find relevant Beckhoff
 documentation in a docked chat window. TwinCAT Assistant connects the active
 project and POU to a conversation that you can return to later.
 
-**0.2.0 Beta 9 · Analysis, Editor and Debug**
+**0.2.0 Beta 10 · Analysis, Editor and Debug**
 
 [Get started](#getting-started) · [Documentation](docs/README.md) · [Releases](https://github.com/Auda29/twincat-assistant/releases)
 
@@ -22,7 +22,7 @@ project and POU to a conversation that you can return to later.
   matching articles with sources through the Knowledge MCP. Look up documented
   symbols, libraries and error codes with explicit ambiguity and missing fields.
 - Preview changes in **Editor** and approve a diff for a supported XML buffer.
-- Use **Debug** to sample approved PLC symbols from an existing TwinCAT login.
+- Use **Debug** to sample live PLC symbols read-only from an existing TwinCAT login (connects automatically to the configured PLC target by default; configurable in the `...` menu).
 - Approve a selective PLC build from Editor or Debug and inspect its diagnostics.
 - Keep conversations associated with their PLC project, switch between
   project chats and use a general chat for questions without a project.
@@ -43,7 +43,7 @@ installed Beckhoff InfoSys help.
 1. Close TcXaeShell, verify the downloaded setup checksum and double-click the
    EXE. Confirm UAC with your normal Windows account. The setup window handles
    installation and managed updates without Git, npm or compilation. See the
-   [release notes](docs/releases/native-v0.2.0-beta.9.md), and the separate
+   [release notes](docs/releases/native-v0.2.0-beta.10.md), and the separate
    [migration notes for old unpackaged prototypes](docs/PROTOTYPE_PROFILE_MIGRATION_20261109.md).
 2. Open the TwinCAT Assistant tool window, connect your model provider and
    select a model in the chat.
@@ -91,7 +91,7 @@ two dedicated local MCP services.
 | Assistant Host | Native tool window, IDE context and WebView2 integration | C# / WPF |
 | Assistant Chat | Messages, input, attachments and conversation display | [OpenChamber](https://github.com/openchamber/openchamber) |
 | Assistant Core | Model providers, agent execution, MCP client and conversation storage | [OpenCode](https://github.com/anomalyco/opencode) |
-| Engineering MCP 0.5.7 | Saved project analysis, bound builds, Editor and Debug | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.7) |
+| Engineering MCP 0.5.8 | Saved project analysis, bound builds, Editor and Debug | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.8) |
 | Knowledge MCP 0.1.2 | Nine documentation tools, including symbol/library/error lookup | [Released package](https://github.com/Auda29/twincat-knowledge-mcp/releases/tag/v0.1.2) |
 
 Model execution and MCP processes run outside the IDE. Documentation, generated
@@ -99,6 +99,7 @@ indexes and user project files are not bundled with the application.
 
 ## Documentation
 
+- [0.2.0 Beta 10 — automatic read-only Debug connection and Engineering 0.5.8](docs/releases/native-v0.2.0-beta.10.md)
 - [0.2.0 Beta 9 — Engineering 0.5.7 PLC association and COM invocation fixes](docs/releases/native-v0.2.0-beta.9.md)
 - [0.2.0 Beta 8 — unified composer profile menu and Debug diagnostics](docs/releases/native-v0.2.0-beta.8.md)
 - [0.2.0 Beta 7 — Analysis, Editor and Debug](docs/releases/native-v0.2.0-beta.7.md)

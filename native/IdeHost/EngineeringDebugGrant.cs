@@ -16,6 +16,7 @@ namespace TwinCatAssistant.Native
         private sealed class DebugLogin
         {
             internal string AmsNetId, MappingDigest, ProjectFile;
+            internal int? AdsPort;
         }
 
         private sealed class DebugGrant
@@ -23,9 +24,11 @@ namespace TwinCatAssistant.Native
             internal readonly Guid Id = Guid.NewGuid();
             internal DebugLogin Login;
             internal int Port;
+            internal bool AllowAllSymbols;
             internal string[] Symbols;
             internal bool Matches(DebugLogin value) => value != null && value.AmsNetId == Login.AmsNetId
-                && value.MappingDigest == Login.MappingDigest && value.ProjectFile == Login.ProjectFile;
+                && value.MappingDigest == Login.MappingDigest && value.ProjectFile == Login.ProjectFile
+                && value.AdsPort == Login.AdsPort;
         }
 
         private async System.Threading.Tasks.Task<(DebugLogin Login, string Notice)> ObserveDebugLoginAsync(EngineeringProviderSession session, CancellationToken cancellation)
@@ -58,7 +61,21 @@ namespace TwinCatAssistant.Native
             var digest = EditorText(result, "mappingDigest", 64);
             if (!SourceDigest(digest)) return (null, "EngineeringDebugVerificationUnavailable");
             if (!ValidDebugNetId(netId)) return (null, "EngineeringDebugTargetUnavailable");
-            return (new DebugLogin { AmsNetId = netId, MappingDigest = digest, ProjectFile = projectFile }, null);
+            int? adsPort = null;
+            if (result.TryGetValue("configuredAdsPort", out var portValue) && portValue != null)
+            {
+                if (!(portValue is int port) || port < 851 || port > 899)
+                    return (null, "EngineeringDebugVerificationUnavailable");
+                adsPort = port;
+            }
+            return (new DebugLogin { AmsNetId = netId, MappingDigest = digest, ProjectFile = projectFile, AdsPort = adsPort }, null);
+        }
+
+        private static DebugGrant CreateAutomaticDebugGrant(DebugLogin login)
+        {
+            if (login == null || !ValidDebugNetId(login.AmsNetId) || !login.AdsPort.HasValue
+                || login.AdsPort.Value < 851 || login.AdsPort.Value > 899) return null;
+            return new DebugGrant { Login = login, Port = login.AdsPort.Value, AllowAllSymbols = true };
         }
 
         private async System.Threading.Tasks.Task<string> DescribeDebugGrantAsync(EngineeringProviderSession session, EngineeringBinding binding,
@@ -79,10 +96,13 @@ namespace TwinCatAssistant.Native
                 Notify(HostText.Get(current.Notice ?? "EngineeringDebugTargetChanged"), "warning");
                 throw new InvalidOperationException("Debug login changed.");
             }
+            object payload = grant.AllowAllSymbols
+                ? (object)new { loggedIn = true, grantId = grant.Id.ToString("D"), amsNetId = grant.Login.AmsNetId,
+                    adsPort = grant.Port, symbolScope = "all" }
+                : new { loggedIn = true, grantId = grant.Id.ToString("D"), amsNetId = grant.Login.AmsNetId,
+                    adsPort = grant.Port, symbols = grant.Symbols };
             return EngineeringProviderSession.Json().Serialize(new { protocolVersion = 1, sessionId = binding.SessionId.ToString("D"),
-                operationId = request.Id.ToString("D"), status = "succeeded", provenance = new { },
-                result = new { loggedIn = true, grantId = grant.Id.ToString("D"), amsNetId = grant.Login.AmsNetId,
-                    adsPort = grant.Port, symbols = grant.Symbols } });
+                operationId = request.Id.ToString("D"), status = "succeeded", provenance = new { }, result = payload });
         }
 
         private static bool ValidDebugNetId(string value)
@@ -100,7 +120,8 @@ namespace TwinCatAssistant.Native
             var body = new StackPanel { Margin = new Thickness(16) };
             body.Children.Add(new TextBlock { Text = HostText.Format("EngineeringDebugConsent", Path.GetFileName(login.ProjectFile), login.AmsNetId),
                 TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) });
-            var port = new TextBox { MaxLength = 3, Width = 70, HorizontalAlignment = HorizontalAlignment.Left };
+            var port = new TextBox { MaxLength = 3, Width = 70, HorizontalAlignment = HorizontalAlignment.Left,
+                Text = login.AdsPort?.ToString(CultureInfo.InvariantCulture) ?? "" };
             body.Children.Add(new Label { Content = HostText.Get("EngineeringDebugPort"), Target = port });
             body.Children.Add(port);
             var names = new TextBox { AcceptsReturn = true, Height = 96, MaxLength = 5152, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };

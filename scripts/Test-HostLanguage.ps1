@@ -71,7 +71,7 @@ try{
  Check ((Field '_source').Text -ceq $source) 'source preview is byte-identical after switching'
  Check ((Field '_sourceNotice').Text -like 'Snapshot from TwinCAT*') 'English source-state notice'
  $saved=Get-Content (Join-Path $profileInfo.CredentialDirectory 'preferences.json') -Raw | ConvertFrom-Json
- Check ($saved.language -eq 'en' -and $saved.autoAttach -eq $true) 'language is saved with auto-attach retained'
+ Check ($saved.language -eq 'en' -and $saved.autoAttach -eq $true -and $saved.autoDebug -eq $true) 'language is saved with auto-attach and auto-debug retained'
  foreach($width in @(430,980)){Shot 'en' $width}
  $control.Dispose();$control=$null
  Make-Control
@@ -82,7 +82,7 @@ try{
  $legacyPath=Join-Path $OutputDirectory 'legacy-preferences';[IO.Directory]::CreateDirectory($legacyPath)|Out-Null
  $legacyFile=Join-Path $legacyPath 'preferences.json';[IO.File]::WriteAllText($legacyFile,'{"autoAttach":true}')
  $legacy=$preferencesType.GetMethod('Load').Invoke($null,[object[]]@([string]$legacyPath))
- Check ($legacy.AutoAttach -and $null -eq $legacy.Language) 'old preferences remain readable without a migration'
+ Check ($legacy.AutoAttach -and $legacy.AutoDebug -and $null -eq $legacy.Language) 'old preferences remain readable without a migration and default autoDebug to true'
  [IO.File]::WriteAllText($legacyFile,'{"autoAttach":true,"language":"fr"}')
  $before=[IO.File]::ReadAllBytes($legacyFile)
  $unknown=$preferencesType.GetMethod('Load').Invoke($null,[object[]]@([string]$legacyPath))

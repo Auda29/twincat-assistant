@@ -120,15 +120,20 @@ namespace TwinCatAssistant.Native
                     Notify(HostText.Get(online.Notice), "warning");
                     return;
                 }
-                debug = ConfirmDebugGrant(online.Login);
-                if (debug == null) return;
-                if (_disposed || session != _engineering || _engineeringLifetime == null) return;
-                var confirmed = await ObserveDebugLoginAsync(session, _engineeringLifetime.Token);
-                if (!debug.Matches(confirmed.Login))
+                if (_chatPreferences.AutoDebug)
+                    debug = CreateAutomaticDebugGrant(online.Login);
+                if (debug == null)
                 {
-                    if (!_disposed && session == _engineering)
-                        Notify(HostText.Get(confirmed.Notice ?? "EngineeringDebugTargetChanged"), "warning");
-                    return;
+                    debug = ConfirmDebugGrant(online.Login);
+                    if (debug == null) return;
+                    if (_disposed || session != _engineering || _engineeringLifetime == null) return;
+                    var confirmed = await ObserveDebugLoginAsync(session, _engineeringLifetime.Token);
+                    if (!debug.Matches(confirmed.Login))
+                    {
+                        if (!_disposed && session == _engineering)
+                            Notify(HostText.Get(confirmed.Notice ?? "EngineeringDebugTargetChanged"), "warning");
+                        return;
+                    }
                 }
             }
             else if (MessageBox.Show(HostText.Get("EngineeringEditorConsent"), HostText.Get("EngineeringEditorEnable"),
@@ -172,7 +177,11 @@ namespace TwinCatAssistant.Native
                 if (!await PublishEngineeringEditorModeAsync(chat, true) || generation != _editorGeneration
                     || !EditorProfileIsCurrent()) throw new InvalidOperationException();
                 EngineeringEditorModeChanged?.Invoke();
-                SetEngineeringStatus(profile == "debug" ? "EngineeringDebugEnabled" : "EngineeringEditorEnabled");
+                SetEngineeringStatus(profile == "debug"
+                    ? (debug?.AllowAllSymbols == true ? "EngineeringDebugStatusAuto" : "EngineeringDebugEnabled")
+                    : "EngineeringEditorEnabled");
+                if (profile == "debug" && debug?.AllowAllSymbols == true)
+                    Notify(HostText.Format("EngineeringDebugEnabledAuto", debug.Login.AmsNetId, debug.Port));
             }
             catch
             {

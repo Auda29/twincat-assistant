@@ -94,6 +94,7 @@ namespace TwinCatAssistant.Native
                 case "download": return Geometry.Parse("M8,2 L8,10 M4.5,6.5 L8,10 L11.5,6.5 M2.5,11 L2.5,13.5 L13.5,13.5 L13.5,11");
                 case "book": return Geometry.Parse("M8,4.2 C6.6,3.2 4.6,2.9 2.5,3.3 L2.5,12.6 C4.6,12.2 6.6,12.5 8,13.5 C9.4,12.5 11.4,12.2 13.5,12.6 L13.5,3.3 C11.4,2.9 9.4,3.2 8,4.2 Z M8,4.2 L8,13.5");
                 case "pulse": return Geometry.Parse("M1.5,8.5 L4.5,8.5 L6.3,4 L9.4,12.5 L11.2,8.5 L14.5,8.5");
+                case "debug": return Geometry.Parse("M8,3 A5,5 0 1 0 8,13 A5,5 0 1 0 8,3 M8,6 A2,2 0 1 0 8,10 A2,2 0 1 0 8,6 M8,1.5 L8,3.2 M8,12.8 L8,14.5 M1.5,8 L3.2,8 M12.8,8 L14.5,8");
                 default: return Geometry.Empty;
             }
         }

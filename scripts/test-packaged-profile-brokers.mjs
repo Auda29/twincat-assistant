@@ -18,6 +18,7 @@ const bootstrap = { kind: 'twincat-assistant-engineering-bootstrap', protocolVer
   capability: key.toString('hex'), expected: { idePid: 123, ideStartedUtc: '2026-01-01T00:00:00Z',
     solutionFile: 'C:\\Fixture\\Project.sln', projectFile: 'C:\\Fixture\\Project.plcproj', contextEpoch: 'fixture' } };
 const observed = [];
+let debugContextCalls = 0;
 const server = createServer(socket => {
   socket.on('error', () => {});
   const nonce = randomBytes(32).toString('hex');
@@ -41,7 +42,11 @@ const server = createServer(socket => {
       assert.equal(request.sessionId, sessionId);
       assert.deepEqual(request.expected, bootstrap.expected);
       observed.push(request.operation);
-      const result = request.operation === 'session.ping' ? { contextValidated: true, capabilities: {} } : null;
+      let result = null;
+      if (request.operation === 'session.ping') result = { contextValidated: true, capabilities: {} };
+      else if (request.operation === 'debug.context' && ++debugContextCalls === 2) {
+        result = { loggedIn: true, grantId: '00000000-0000-0000-0000-000000000001', amsNetId: '1.2.3.4.5.6', adsPort: 851, symbolScope: 'all' };
+      }
       assert.ok(['session.ping', 'source.preview', 'debug.context'].includes(request.operation));
       const response = JSON.stringify({ protocolVersion: 1, sessionId, operationId: request.operationId,
         status: result ? 'succeeded' : 'unsupported', provenance: {}, result });
@@ -70,10 +75,14 @@ try {
       assert.equal(Boolean(preview.result), profile === 'editor');
       const state = await rpc(broker, 'tools/call', call('plc_debug_state'));
       assert.equal(Boolean(state.result), profile === 'debug');
-      if (profile === 'debug') assert.equal(JSON.parse(state.result.content[0].text).status, 'online_session_not_verified');
+      if (profile === 'debug') {
+        assert.equal(JSON.parse(state.result.content[0].text).status, 'online_session_not_verified');
+        const allState = await rpc(broker, 'tools/call', call('plc_debug_state'));
+        assert.deepEqual(JSON.parse(allState.result.content[0].text), { status: 'online', symbolScope: 'all' });
+      }
     } finally { await broker.close(); }
   }
-  assert.deepEqual(observed, ['session.ping', 'session.ping', 'source.preview', 'session.ping', 'debug.context']);
+  assert.deepEqual(observed, ['session.ping', 'session.ping', 'source.preview', 'session.ping', 'debug.context', 'debug.context']);
   console.log('Packaged build, Editor and Debug brokers passed catalog and bound operation checks.');
 } finally {
   server.close();

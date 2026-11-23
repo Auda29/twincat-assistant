@@ -577,6 +577,7 @@ namespace TwinCatAssistant.Native
                 MenuRow("copy", HostText.Get("H101"), HostText.Get("H102"), exportReady, () => ExportThreadAsync(false));
                 MenuRow("download", HostText.Get("H103"), HostText.Get("H104"), exportReady, () => ExportThreadAsync(true));
                 MenuRow("attach", HostText.Get("H105"), HostText.Get("H106"), true, ToggleAutoAttachAsync, MenuSwitch(_chatPreferences.AutoAttach));
+                MenuRow("debug", HostText.Get("AutoDebugLabel"), HostText.Get("AutoDebugDetail"), true, ToggleAutoDebugAsync, MenuSwitch(_chatPreferences.AutoDebug));
                 // Model providers: a single choice among the connected ones.
                 MenuSeparator();
                 MenuHeading(HostText.Get("LanguageLabel"));
@@ -758,6 +759,17 @@ namespace TwinCatAssistant.Native
                 await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat?.clearFollowing()");
                 Notify(HostText.Get("H124"));
             }
+            await PollChatSelectionAsync();
+        }
+
+        private async Task ToggleAutoDebugAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            _chatPreferences.AutoDebug = !_chatPreferences.AutoDebug;
+            try { _chatPreferences.Save(); } catch { Notify(HostText.Get("H122"), "warning"); }
+            if (!_chatPreferences.AutoDebug && _activeEngineeringProfile == "debug" && _debugGrant?.AllowAllSymbols == true)
+                RevokeEngineeringEditor();
+            Notify(HostText.Get(_chatPreferences.AutoDebug ? "AutoDebugEnabled" : "AutoDebugDisabled"));
             await PollChatSelectionAsync();
         }
 

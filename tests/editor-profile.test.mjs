@@ -85,22 +85,24 @@ test('Editor and Debug have separate native permissions while Analysis remains t
     assert.ok(!editor.includes(action), action);
   }
   assert.match(editor, /Normal TwinCAT ST buffers support preview only/);
-  assert.match(debug, /Read only approved exact symbol names/);
+  assert.match(debug, /Read exact symbol names permitted by that scope/);
   const pair = { version: 1, before: { settings: {}, config }, after: { settings: {}, config } };
   assert.ok(Buffer.byteLength(JSON.stringify(pair) + '\n') <= 65536, 'profile recovery retains its existing bounded JSON reader');
 });
 
-test('exact Beta 6 profiles upgrade with untouched operator state and unrecognized changes are refused', async () => {
+test('exact Beta 6 and Beta 9 profiles upgrade with untouched operator state and unrecognized changes are refused', async () => {
   const parent = await mkdtemp(join(tmpdir(), 'tc-editor-migration-'));
   try {
     const root = join(parent, 'state');
     const paths = await initializeState(root, {});
-    const [c3, prior] = previousOpenCodeConfigs({});
+    const [c3, prior, beta9] = previousOpenCodeConfigs({});
     // Captured from the complete C3 configuration before the release policy changed.
     assert.equal(digest(JSON.stringify(c3)), '20c17e3a5926246aba19528a039fa0fb7d9c393cb0a19c2457cda63c9b645cd2');
     assert.equal(await verifyProfileConfiguration(c3, {}), false);
     assert.equal(prior.agents[EDITOR_PROFILE].permissions.filter(rule => rule.action.startsWith('editor_')).length, 9);
     assert.equal(await verifyProfileConfiguration(prior, {}), false);
+    assert.match(beta9.agents[DEBUG_PROFILE].system, /Read only approved exact symbol names/);
+    assert.equal(await verifyProfileConfiguration(beta9, {}), false);
     for (const mutate of [
       value => value.permissions.push({ action: 'editor_plc_source_apply', resource: '*', effect: 'allow' }),
       value => value.agents[ANALYSIS_PROFILE].system += ' extra',
@@ -109,8 +111,12 @@ test('exact Beta 6 profiles upgrade with untouched operator state and unrecogniz
       const foreign = structuredClone(prior); mutate(foreign);
       await assert.rejects(verifyProfileConfiguration(foreign, {}), /policy mismatch/);
     }
-    await writeFile(paths.configPath, JSON.stringify(prior, null, 2) + '\n');
+    await writeFile(paths.configPath, JSON.stringify(beta9, null, 2) + '\n');
     await writeFile(join(paths.data, 'sentinel'), 'unchanged');
+    assert.equal((await inspectState(root)).configurationCurrent, false);
+    assert.equal(await upgradeProfileConfiguration(root), true);
+    assert.equal((await inspectState(root)).configurationCurrent, true);
+    await writeFile(paths.configPath, JSON.stringify(prior, null, 2) + '\n');
     assert.equal((await inspectState(root)).configurationCurrent, false);
     assert.equal(await upgradeProfileConfiguration(root), true);
     assert.equal((await inspectState(root)).configurationCurrent, true);

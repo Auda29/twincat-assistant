@@ -323,6 +323,7 @@ namespace TwinCatAssistant.Native
         public NativeChatPreferences(string directory = null) { _directory = directory ?? NativeChatConfiguration.CredentialDirectory; }
         private string FilePath { get { return Path.Combine(_directory, "preferences.json"); } }
         public bool AutoAttach { get; set; }
+        public bool AutoDebug { get; set; } = true;
         public string Language { get; set; }
         public static NativeChatPreferences Load(string directory = null)
         {
@@ -332,6 +333,7 @@ namespace TwinCatAssistant.Native
                 if (!File.Exists(result.FilePath)) return result;
                 var values = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(Encoding.UTF8.GetString(NativeChatFiles.Read(result.FilePath)));
                 result.AutoAttach = values != null && values.ContainsKey("autoAttach") && values["autoAttach"] is bool enabled && enabled;
+                if (values != null && values.TryGetValue("autoDebug", out var autoDebug) && autoDebug is bool autoDebugEnabled) result.AutoDebug = autoDebugEnabled;
                 if (values != null && values.TryGetValue("language", out var language) && language is string locale && (locale == "de" || locale == "en")) result.Language = locale;
             }
             catch { /* Unreadable preferences fall back to the explicit default. */ }
@@ -346,7 +348,7 @@ namespace TwinCatAssistant.Native
             try
             {
                 if (Language != null && Language != "de" && Language != "en") throw new InvalidOperationException("Unsupported UI language.");
-                File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(new { autoAttach = AutoAttach, language = Language }), new UTF8Encoding(false));
+                File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(new { autoAttach = AutoAttach, autoDebug = AutoDebug, language = Language }), new UTF8Encoding(false));
                 if (File.Exists(FilePath)) File.Replace(temporary, FilePath, null);
                 else File.Move(temporary, FilePath);
             }

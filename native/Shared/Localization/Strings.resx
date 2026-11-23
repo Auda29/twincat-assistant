@@ -474,4 +474,10 @@ Links vorher, rechts nachher. Nur diese Änderung freigeben?</value></data>
   <data name="EngineeringDebugPort" xml:space="preserve"><value>ADS-Port der eingeloggten PLC (851–899)</value></data>
   <data name="EngineeringDebugSymbols" xml:space="preserve"><value>Freigegebene Symbole, ein Name pro Zeile</value></data>
   <data name="EngineeringDebugVerify" xml:space="preserve"><value>Ich habe AMS Net ID und ADS-Port in TwinCAT geprüft.</value></data>
+  <data name="AutoDebugLabel" xml:space="preserve"><value>Debug automatisch verbinden</value></data>
+  <data name="AutoDebugDetail" xml:space="preserve"><value>Verwendet im Debug-Profil automatisch das konfigurierte PLC-Ziel (nur Lesen)</value></data>
+  <data name="AutoDebugEnabled" xml:space="preserve"><value>Debug nutzt jetzt automatisch die konfigurierte AMS Net ID und den ADS-Port des verbundenen PLC-Projekts (schreibgeschützt, ohne Dialog).</value></data>
+  <data name="AutoDebugDisabled" xml:space="preserve"><value>Automatisches Debug ist aus. Bei der Auswahl von Debug werden Ziel, ADS-Port und Symbole wieder manuell bestätigt.</value></data>
+  <data name="EngineeringDebugEnabledAuto" xml:space="preserve"><value>Debug ist für alle Symbole dieses Chats schreibgeschützt aktiv ({0}, Port {1}). Builds brauchen eine eigene Freigabe.</value></data>
+  <data name="EngineeringDebugStatusAuto" xml:space="preserve"><value>Debug ist für das verbundene PLC-Ziel schreibgeschützt aktiv. Builds brauchen eine eigene Freigabe.</value></data>
 </root>

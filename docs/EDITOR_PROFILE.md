@@ -11,7 +11,7 @@ chat, project or runtime owner revokes the grant.
 | --- | --- |
 | Analysis | Read-only project and documentation tools. |
 | Editor | Source discovery, read and preview, approved XML-buffer changes, and selective builds. |
-| Debug | Read-only ADS samples of approved PLC symbols and selective builds. |
+| Debug | Read-only ADS samples from the connected PLC target and selective builds. |
 
 ## Editor
 
@@ -24,19 +24,29 @@ result requires reconciliation before another mutation.
 
 ## Debug
 
-Log in to the intended PLC from TwinCAT. Select **Debug** in the same project
-chat. The dialog shows the bound project and its configured AMS Net ID.
-Compare them with the PLC you are logged into, enter the verified ADS port
-(851–899) and list the exact symbols to disclose to this chat and model.
-An empty or unknown endpoint receives no grant.
+Log in to the intended PLC from TwinCAT and select **Debug** in the bound
+project chat.
 
-The host rechecks the project's login and association during live reads.
-The ADS port is operator-confirmed. The login check alone cannot identify a
-different runtime port after a logout and relogin between observations.
-Re-select Debug and confirm the endpoint again after changing targets.
-The Debug process uses a read-only connection through the local ADS router
-and returns timestamped scalar samples. Debug does not offer source edits,
-PLC writes, breakpoints, stepping, forcing, login or runtime control.
+By default, **Connect Debug automatically** is enabled in the Assistant's
+`...` menu (persisted in `preferences.json` as `autoDebug: true`). When
+enabled and the PLC project provides a valid configured AMS Net ID and ADS port
+(`851–899`), selecting **Debug** connects directly in read-only mode for all
+symbols (`symbolScope: "all"`) without a modal dialog.
+
+If you turn **Connect Debug automatically** off (or if the project does not
+report a configured ADS port), selecting **Debug** falls back to the manual
+confirmation dialog (with any detected ADS port pre-filled), where you confirm
+the endpoint and list exact symbol names to disclose.
+
+The host rechecks the project's login, association and configured target
+address during live reads. Configured AMS Net ID and ADS port are project
+configuration evidence, not independent proof of a different runtime port
+after a logout/relogin between observations; re-select Debug after changing
+targets. The Debug process uses a strictly read-only ADS connection
+(`readOnly: true`, empty write allowlist, up to 8 scalar symbols per read)
+through the local ADS router and returns timestamped scalar samples. Debug does
+not offer source edits, PLC writes, breakpoints, stepping, forcing, login or
+runtime control.
 
 ## Builds
 

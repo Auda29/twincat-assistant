@@ -1,6 +1,6 @@
 # Source runtime for the TwinCAT Assistant
 
-Beta 9 bundles published Engineering 0.5.7 and Knowledge 0.1.2. Their exact
+Beta 10 bundles published Engineering 0.5.8 and Knowledge 0.1.2. Their exact
 source, release assets, receipts and tool catalogs are pinned separately in
 [`engineering-lock.json`](engineering-lock.json) and
 [`knowledge-lock.json`](knowledge-lock.json). The native build provider is built

@@ -474,4 +474,10 @@ Before is on the left, after is on the right. Approve this change?</value></data
   <data name="EngineeringBuildModeUnavailable" xml:space="preserve"><value>Build tools are unavailable. Select a bound project chat in the runtime owned by this window.</value></data>
   <data name="EngineeringBuildModeEnabled" xml:space="preserve"><value>Build tools enabled for this chat. Each build requires native approval.</value></data>
   <data name="BuildModeCaption" xml:space="preserve"><value>TwinCAT Assistant — Build tools</value></data>
+  <data name="AutoDebugLabel" xml:space="preserve"><value>Connect Debug automatically</value></data>
+  <data name="AutoDebugDetail" xml:space="preserve"><value>Automatically uses the configured PLC target in Debug mode (read-only)</value></data>
+  <data name="AutoDebugEnabled" xml:space="preserve"><value>Debug now automatically uses the configured AMS Net ID and ADS port of the connected PLC project (read-only, without a dialog).</value></data>
+  <data name="AutoDebugDisabled" xml:space="preserve"><value>Automatic Debug is off. Selecting Debug will ask you to confirm the target, ADS port and symbols manually.</value></data>
+  <data name="EngineeringDebugEnabledAuto" xml:space="preserve"><value>Debug is active in read-only mode for all symbols in this chat ({0}, port {1}). Builds require separate approval.</value></data>
+  <data name="EngineeringDebugStatusAuto" xml:space="preserve"><value>Debug is active in read-only mode for the connected PLC target. Builds require separate approval.</value></data>
 </root>

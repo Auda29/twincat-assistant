@@ -204,9 +204,15 @@ export function editorSystemPrompt() {
   ]);
 }
 
-export function debugSystemPrompt() {
+export function previousBeta9DebugSystemPrompt() {
   return nativeEngineeringSystemPrompt('Debug', [
     'Use editor_plc_debug_state to verify an existing online session. Read only approved exact symbol names via editor_plc_debug_read. The host chooses the endpoint. Report each scalar with its observation time. Relate values to saved code and diagnostics and mark inferences. Source edits are outside this profile’s permissions.',
+  ]);
+}
+
+export function debugSystemPrompt() {
+  return nativeEngineeringSystemPrompt('Debug', [
+    'Use editor_plc_debug_state to verify an existing online session and its granted symbol scope. Read exact symbol names permitted by that scope via editor_plc_debug_read. The host chooses the endpoint. Report each scalar with its observation time. Relate values to saved code and diagnostics and mark inferences. Source edits are outside this profile’s permissions.',
   ]);
 }
 

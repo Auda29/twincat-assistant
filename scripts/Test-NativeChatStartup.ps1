@@ -1,4 +1,4 @@
-param(
+﻿param(
  [Parameter(Mandatory=$true)][string]$FixtureDirectory,
  [string]$HostAssembly,
  [string]$OutputDirectory
@@ -100,13 +100,32 @@ try{
   $observation=$parseOnline.Invoke($null,[object[]]@($envelope,'C:SyntheticProbe.plcproj'))
   Check ($null -eq $observation.Item1 -and $observation.Item2 -ceq $case.notice) $case.label
  }
- $verifiedOnline=$serializer.DeserializeObject(('{"status":"succeeded","result":{"loggedIn":true,"configuredAmsNetId":"1.2.3.4.5.6","mappingDigest":"'+('a'*64)+'"}}'))
+ $verifiedOnline=$serializer.DeserializeObject(('{"status":"succeeded","result":{"loggedIn":true,"configuredAmsNetId":"1.2.3.4.5.6","configuredAdsPort":851,"mappingDigest":"'+('a'*64)+'"}}'))
  $observation=$parseOnline.Invoke($null,[object[]]@($verifiedOnline,'C:SyntheticProbe.plcproj'))
- Check ($null -ne $observation.Item1 -and $null -eq $observation.Item2) 'verified login reaches the ADS consent gate'
+ $debugLoginType=$control.GetType().GetNestedType('DebugLogin',[Reflection.BindingFlags]'NonPublic')
+ $debugGrantType=$control.GetType().GetNestedType('DebugGrant',[Reflection.BindingFlags]'NonPublic')
+ $adsPortField=$debugLoginType.GetField('AdsPort',$flags)
+ $grantPortField=$debugGrantType.GetField('Port',$flags)
+ $grantAllField=$debugGrantType.GetField('AllowAllSymbols',$flags)
+ $grantSymbolsField=$debugGrantType.GetField('Symbols',$flags)
+ $grantMatchesMethod=$debugGrantType.GetMethod('Matches',$flags)
+ Check ($null -ne $observation.Item1 -and $null -eq $observation.Item2 -and $adsPortField.GetValue($observation.Item1) -eq 851) 'verified login parses configured ADS port'
+ $createAutoDebug=$control.GetType().GetMethod('CreateAutomaticDebugGrant',[Reflection.BindingFlags]'Static,NonPublic')
+ $autoGrant=$createAutoDebug.Invoke($null,[object[]]@($observation.Item1))
+ Check ($null -ne $autoGrant -and $grantPortField.GetValue($autoGrant) -eq 851 -and $grantAllField.GetValue($autoGrant) -eq $true -and $null -eq $grantSymbolsField.GetValue($autoGrant)) 'automatic Debug creates a read-only all-symbol grant from configured NetID and port'
+ $changedPort=$serializer.DeserializeObject(('{"status":"succeeded","result":{"loggedIn":true,"configuredAmsNetId":"1.2.3.4.5.6","configuredAdsPort":852,"mappingDigest":"'+('a'*64)+'"}}'))
+ $changedObservation=$parseOnline.Invoke($null,[object[]]@($changedPort,'C:SyntheticProbe.plcproj'))
+ Check ($grantMatchesMethod.Invoke($autoGrant,[object[]]@($observation.Item1)) -and !$grantMatchesMethod.Invoke($autoGrant,[object[]]@($changedObservation.Item1))) 'Debug grant detects configured ADS port changes'
+ $verifiedOnline['result']['configuredAdsPort']=$null
+ $observationNoPort=$parseOnline.Invoke($null,[object[]]@($verifiedOnline,'C:SyntheticProbe.plcproj'))
+ Check ($null -ne $observationNoPort.Item1 -and $null -eq $adsPortField.GetValue($observationNoPort.Item1) -and $null -eq $createAutoDebug.Invoke($null,[object[]]@($observationNoPort.Item1))) 'missing configured ADS port falls back to manual dialog instead of auto-granting'
+ $verifiedOnline['result']['configuredAdsPort']=850
+ $observationBadPort=$parseOnline.Invoke($null,[object[]]@($verifiedOnline,'C:SyntheticProbe.plcproj'))
+ Check ($null -eq $observationBadPort.Item1 -and $observationBadPort.Item2 -ceq 'EngineeringDebugVerificationUnavailable') 'out-of-range configured ADS port is rejected'
+ $verifiedOnline['result']['configuredAdsPort']=851
  $verifiedOnline['result']['configuredAmsNetId']=$null
  $observation=$parseOnline.Invoke($null,[object[]]@($verifiedOnline,'C:SyntheticProbe.plcproj'))
  Check ($null -eq $observation.Item1 -and $observation.Item2 -ceq 'EngineeringDebugTargetUnavailable') 'verified online status with missing target has a separate message'
- $debugLoginType=$control.GetType().GetNestedType('DebugLogin',[Reflection.BindingFlags]'NonPublic')
  $debugLogin=[Activator]::CreateInstance($debugLoginType,$true)
  $parseDebug=$control.GetType().GetMethod('ParseDebugGrant',[Reflection.BindingFlags]'Static,NonPublic')
  $debugGrant=$parseDebug.Invoke($null,[object[]]@($debugLogin,'851',"MAIN.Counter`nMAIN.Ready",$true))
