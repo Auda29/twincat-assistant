@@ -1,7 +1,7 @@
 # Implementation status
 
 **Beta 11.** Application `0.2.0-beta.11` / native `0.2.0.17`.
-[Beta 11](releases/native-v0.2.0-beta.11.md) adopts Engineering MCP 0.5.9 for
+[Beta 11](releases/native-v0.2.0-beta.11.md) adopts Engineering MCP 0.5.10 for
 Automation Interface discovery, approved Structured Text edits and object
 creation. Installed-host workflow acceptance remains open.
 

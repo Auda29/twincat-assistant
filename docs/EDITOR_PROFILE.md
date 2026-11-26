@@ -20,6 +20,11 @@ Assistant to find a Structured Text object in the bound project or limit
 discovery to a file. Review the exact before and proposed text in the native
 approval dialog.
 
+Engineering MCP 0.5.10 sends tool approvals with a 90-second expiry, within
+the native host's 120-second ceiling. The Engineering MCP client and native
+host allow 125 seconds for a mutation. The pipe and broker exchanges allow
+130 seconds, and the broker HTTP timeout is 135 seconds.
+
 - TwinCAT Automation Interface edits support closed and open ST POUs,
   members, DUTs, interfaces and GVLs. Changes may persist directly to disk.
   The provider refuses conflicting or unverified unsaved editor changes.

@@ -14,13 +14,15 @@ project and create new ST objects, with native approval for each mutation.
   struct DUT or GVL through a dedicated approval dialog. TwinCAT writes the
   object file or updates the owning POU file immediately. Changes to the
   `.plcproj` remain pending save. Creation has no source journal entry.
-- Adopt published Engineering MCP `0.5.9` (`engineering-v0.5.9`,
-  `d635d7f6e8e794bb6490561aa4501b8db791cfcd`). The Editor catalog has 16 tools.
+- Adopt published Engineering MCP `0.5.10` (`engineering-v0.5.10`,
+  `c90e8ad571c2b3c8e37809c9cad93be180468183`). The Editor catalog has 16 tools.
   Build retains 9 tools and Debug retains 11.
 - Support ST sections up to 65,536 characters, 1 MiB inner requests and
-  responses, and 2 MiB authenticated frames. Mutation timeouts accommodate
-  a two-minute host approval window. Engineering MCP 0.5.9 tool requests
-  carry a 90-second approval expiry.
+  responses, and 2 MiB authenticated frames. Engineering MCP tool approvals
+  expire after 90 seconds, within the host's 120-second ceiling. Mutation
+  timeouts are 125 seconds in both the Engineering MCP client and the native
+  host. The pipe and broker exchange timeouts are 130 seconds, and the broker
+  HTTP timeout is 135 seconds.
 - Upgrade recognized Beta 6–10 managed profile configurations in place.
   Builds still require separate approval. PLC activation, download, Online
   Change, writes, forcing and runtime control remain blocked.
@@ -33,5 +35,7 @@ the existing installation directory for a managed upgrade. See the
 [installation guide](../INSTALLATION.md) and [profile guide](../EDITOR_PROFILE.md).
 
 Offline verification covers profile migration, catalog isolation, framed
-transport and native policy. Installed TwinCAT workflow acceptance remains
-pending.
+transport and native policy. Against a simulated native pipe, the published
+Engineering runtime returned 500 source targets in a roughly 2.1 MiB MCP
+response and completed a source creation request after a 32-second approval
+delay. Installed TwinCAT workflow acceptance remains pending.

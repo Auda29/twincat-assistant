@@ -378,7 +378,7 @@ namespace TwinCatAssistant.Native
         }
         private static bool MatchesCreatedKind(string requested, string observed)
         {
-            // Engineering 0.5.9 describes created objects with the discovery
+            // Engineering describes created objects with the discovery
             // catalog's kinds, where POUs and DUTs share their respective labels.
             return requested == observed || (observed == "pou" && (requested == "fb" || requested == "prg" || requested == "fun"))
                 || (observed == "dut" && requested == "dut_struct");

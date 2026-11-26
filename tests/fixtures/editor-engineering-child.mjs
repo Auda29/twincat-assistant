@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline';
 import { ownedEngineeringProfile } from '../../src/editor-tools.mjs';
+import { sourceTargetDiscovery } from './editor-source-targets.mjs';
 
 const lines = createInterface({ input: process.stdin });
 const mode = process.argv[2] === '--host-editor-bootstrap-stdin' ? 'editor' :
@@ -9,28 +10,10 @@ let bootstrap;
 const send = value => process.stdout.write(JSON.stringify(value) + '\n');
 
 function sourceTargets() {
-  const folders = [
-    'ProductionLineControl', 'IntegratedMaterialHandlingAndTracking', 'StationControllersForWorkpiecePreparation',
-    'ConveyorAndWorkpieceTransferCoordination', 'InfeedAndOutfeedSynchronization', 'MachineSpecificWorkpieceProcessing',
-    'AutomaticOperationAndInterlockManagement', 'CalculationOfConveyorPositionAndOffsets',
-    'CommissioningAndProductionRecipeSpecificAdjustments',
-  ];
-  const targets = Array.from({ length: 500 }, (_, index) => {
-    const owner = `FB_WorkpieceProcessing${index}`;
-    const member = 'CalculateConveyorPosition';
-    const qualifiedName = `${owner}.${member}`;
-    const treePath = ['TIPC', 'LineControl', 'LineControl Project', 'POUs', ...folders, owner, member].join('^');
-    const physicalFile = ['C:', 'TwinCAT', 'Projects', 'MachineController', 'LineControl', 'POUs', ...folders, owner + '.TcPOU'].join('\\');
-    return {
-      objectId: `${physicalFile}|${treePath}`, qualifiedName, kind: 'method', sections: ['declaration', 'implementation'],
-      language: 'ST', treePath, physicalFile, source: 'automationInterface', sourceMode: 'automationInterface',
-      persistence: 'mayPersistToDisk', applySupported: true,
-    };
-  });
   const structuredContent = {
     protocolVersion: 1, sessionId: bootstrap.sessionId, operationId: 'ca3fd4c1-76e7-42b4-9794-c484a5879bee', status: 'succeeded',
     provenance: { context: bootstrap.expected, source: 'automationInterface', persistence: 'mayPersistToDisk' },
-    result: { moniker: null, targets, count: targets.length, truncated: false, source: 'automationInterface', persistence: 'mayPersistToDisk' },
+    result: sourceTargetDiscovery(),
   };
   return { structuredContent, content: [{ type: 'text', text: JSON.stringify(structuredContent, null, 2) }] };
 }

@@ -35,11 +35,11 @@ components remain and can be retained while the missing component is retried
 individually. An explicitly supplied license and digest are a reviewed input,
 not a machine determination of copyright or redistribution permission.
 
-The Engineering input is built from the detached revision in
-`upstream/engineering-lock.json`; the checked-out HEAD must match. The current
-release is `engineering-v0.5.3`; the exact source commit is recorded in the lock.
+The Engineering input requires a detached checkout of `engineering-v0.5.10`.
+The checked-out HEAD must match the revision in `upstream/engineering-lock.json`.
 For a release pin, the script verifies the published runtime/source archives,
-receipt and catalog against the lock, then adopts the actual runtime bytes.
+receipt and three profile catalogs against the lock, then uses the published
+runtime bytes.
 Every ZIP entry is validated before extraction, including path, file-type,
 duplicate and size checks. Production dependencies and compiled MCP/core files
 come from that runtime; the unrelated Pi agent is not included. No

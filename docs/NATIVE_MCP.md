@@ -1,6 +1,6 @@
 # Native MCP integration
 
-Beta 11 uses published Knowledge 0.1.2 and Engineering 0.5.9, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Analysis retains saved-file and documentation reads. Editor adds native source operations, and Debug adds automatic (configurable) read-only ADS sampling for the connected PLC target. Both profiles require separate native approval for each build. See [release notes](releases/native-v0.2.0-beta.11.md) and [Profiles and native engineering](EDITOR_PROFILE.md).
+Beta 11 uses published Knowledge 0.1.2 and Engineering 0.5.10, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Analysis retains saved-file and documentation reads. Editor adds native source operations, and Debug adds automatic (configurable) read-only ADS sampling for the connected PLC target. Both profiles require separate native approval for each build. See [release notes](releases/native-v0.2.0-beta.11.md) and [Profiles and native engineering](EDITOR_PROFILE.md).
 
 Native 0.1.9 adds [automatic documentation setup](KNOWLEDGE_SETUP.md). Users can
 prepare installed Beckhoff help from **Wissenssuche einrichten**; a manual TOML
