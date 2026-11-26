@@ -276,7 +276,11 @@ namespace TwinCatAssistant.Native
                 // presentation deadline before project preparation even starts.
                 RunAction(() => RefreshKnowledgeAsync());
                 if (_disposed || _chatSelection == null || !_chatAdapterReady) return;
-                if (_chatSelection.authenticated != true) { await SignInAgainAsync(); return; }
+                if (_chatSelection.authenticated != true)
+                {
+                    if (_chatSelection.authenticationKnown != false) await SignInAgainAsync();
+                    return;
+                }
                 _signInAttempts = 0;
                 var identity = _chatProject;
                 var selected = _chatSelection.IsSelected;

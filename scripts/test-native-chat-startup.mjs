@@ -49,6 +49,11 @@ try {
   });
   if (!login.ok) throw new Error('Synthetic login failed');
   const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
+  const session = await fetch(origin + '/auth/session', { headers: { cookie }, redirect: 'error' });
+  if (session.status !== 200 || (await session.json())?.authenticated !== true) {
+    throw new Error('Authenticated OpenChamber session must return HTTP 200 with authenticated: true');
+  }
+  console.log('PASS authenticated OpenChamber GET /auth/session returned HTTP 200 with authenticated: true');
   const headers = { origin, cookie, 'content-type': 'application/json',
     'x-opencode-directory': encodeURIComponent(join(fixture, 'state', 'workspace')), 'x-opencode-directory-encoding': 'uri' };
   const connected = await fetch(origin + '/api/integration/openai/connect/key', {

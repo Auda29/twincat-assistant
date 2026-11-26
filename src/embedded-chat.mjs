@@ -106,7 +106,7 @@ export function composerChips(scope) {
   };
 }
 
-export function createChatAdapter({ ui, sessions, input, config, source = null, loadSessions, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], mcpObservation = () => null, theme = () => null, language = () => 'de', setLanguage = null, permissionChanged = () => {}, authenticated = () => true, composer = null, documentId = crypto.randomUUID() }) {
+export function createChatAdapter({ ui, sessions, input, config, source = null, loadSessions, reloadPolicy, providers = () => [], allowed = () => [], mcp = () => [], mcpObservation = () => null, theme = () => null, language = () => 'de', setLanguage = null, permissionChanged = () => {}, authenticated = () => true, authenticationKnown = () => true, composer = null, documentId = crypto.randomUUID() }) {
   for (const store of [ui, sessions, input]) {
     if (typeof store?.getState !== 'function' || typeof store?.subscribe !== 'function') throw new Error('Incompatible chat store');
   }
@@ -188,7 +188,8 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
     // Source builds report committed history readiness. The older distribution
     // retains the native host's markup and project-binding checks.
     return { version: 1, ready: true, presentationReady: source ? source.presentationReady?.() === true : true,
-      authenticated: authenticated(), canExport: typeof source?.exportThread === 'function', canManage: typeof source?.manageSession === 'function', documentId, sessionId: value.currentSessionId ?? null,
+      authenticated: authenticated(), authenticationKnown: authenticationKnown(),
+      canExport: typeof source?.exportThread === 'function', canManage: typeof source?.manageSession === 'function', documentId, sessionId: value.currentSessionId ?? null,
       directory: value.currentSessionDirectory ?? null, epoch, creating, providers: providers(), allowedProviders: allowed(), mcp: mcp(), mcpObservation: mcpObservation(),
       manualAttachmentPending: !!pending && pending.id !== 'Aktiver Baustein' && pending.data?.mode !== 'following',
       model: model?.currentProviderId && model?.currentModelId ? model.currentProviderId + '/' + model.currentModelId : null,
@@ -372,6 +373,7 @@ export async function installEmbeddedChat(scope = window, preferredLanguage = nu
   const initialLanguage = preferredLanguage ?? (hasStoredLanguage && ['de', 'en'].includes(existingLanguage) ? existingLanguage : 'de');
   chat.df?.getState().setLocale?.(initialLanguage);
   let signedIn = false;
+  let authKnown = false;
   let connectedProviders = [];
   let enabledProviders = [];
   let connectedMcp = [];
@@ -388,12 +390,20 @@ export async function installEmbeddedChat(scope = window, preferredLanguage = nu
       let response;
       try { response = await scope.fetch('/auth/session', { redirect: 'error', signal: AbortSignal.timeout(4000) }); }
       catch { mcpStale = true; return; }
-      if (response.status === 401 || response.status === 403) {
-        signedIn = false; connectedProviders = []; enabledProviders = []; resetMcp(null);
+      let authenticated = false;
+      if (response.ok) {
+        try {
+          const session = await response.json();
+          if (typeof session?.authenticated !== 'boolean') { mcpStale = true; return; }
+          authenticated = session.authenticated;
+        } catch { mcpStale = true; return; }
+      } else if (response.status !== 401 && response.status !== 403) { mcpStale = true; return; }
+      authKnown = true;
+      signedIn = authenticated;
+      if (!signedIn) {
+        connectedProviders = []; enabledProviders = []; resetMcp(null);
         return;
       }
-      if (!response.ok) { mcpStale = true; return; }
-      signedIn = true;
       const directory = currentDirectory();
       if (typeof directory !== 'string' || !/^(?:[a-z]:[\\/]|\/)/i.test(directory)) { connectedProviders = []; enabledProviders = []; resetMcp(null); return; }
       if (mcpDirectory !== directory) { resetMcp(directory); enabledProviders = []; }
@@ -460,7 +470,8 @@ export async function installEmbeddedChat(scope = window, preferredLanguage = nu
     theme: () => readTheme(scope), composer: source ? null : composerChips(scope),
     language: () => chat.df.getState().locale,
     setLanguage: locale => chat.df.getState().setLocale(locale),
-    permissionChanged: allowed => { composerAllowed = allowed; markComposer(); }, authenticated: () => signedIn });
+    permissionChanged: allowed => { composerAllowed = allowed; markComposer(); },
+    authenticated: () => signedIn, authenticationKnown: () => authKnown });
   Object.defineProperty(scope, '__twinCatChat', { value: adapter, configurable: false, writable: false });
   scope.document.documentElement.dataset.twincatEmbedded = 'true';
   const style = scope.document.createElement('style');

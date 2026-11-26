@@ -68,6 +68,18 @@ function Invoke-Private([string]$name,[object[]]$arguments=@()){$control.GetType
 $window=$null
 try{
  $assembly=[Reflection.Assembly]::LoadFrom($HostAssembly)
+ $bundleStream=$assembly.GetManifestResourceStream('TwinCatAssistant.EmbeddedChat.js')
+ if($null -eq $bundleStream){throw 'The tested host is missing TwinCatAssistant.EmbeddedChat.js.'}
+ $bundleReader=[IO.StreamReader]::new($bundleStream)
+ try {
+  $bundleSha256=(Get-FileHash -InputStream $bundleStream -Algorithm SHA256).Hash.ToLowerInvariant()
+  $bundleStream.Position=0
+  $bundle=$bundleReader.ReadToEnd()
+ } finally { $bundleReader.Dispose() }
+ $bundlePath=Join-Path $root 'native/IdeHost/obj/EmbeddedChat.js'
+ if(Test-Path -LiteralPath $bundlePath -PathType Leaf){
+  Check ($bundleSha256 -eq (Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash) 'host embedded adapter SHA-256 matches the generated bundle'
+ }
  $shell=[Reflection.Assembly]::LoadFrom($global:projectFixtureReferences['Microsoft.VisualStudio.Shell.15.0'])
  $thread=$shell.GetType('Microsoft.VisualStudio.Shell.ThreadHelper');$thread.GetMethod('SetUIThread',[Reflection.BindingFlags]'Static,NonPublic,Public').Invoke($null,@())
  $contextType=$thread.GetField('_joinableTaskContextCache',[Reflection.BindingFlags]'Static,NonPublic').FieldType
@@ -237,16 +249,52 @@ try{
  $deadline=[DateTime]::UtcNow.AddSeconds(30)
  do{Await ([Threading.Tasks.Task]::Delay(100))|Out-Null;$ok=Await($core.ExecuteScriptAsync('!!window.__twinCatSource'))}while($ok -ne 'true' -and [DateTime]::UtcNow -lt $deadline)
  Check ($ok -eq 'true') 'source contract loaded'
- $bundleReader=[IO.StreamReader]::new($assembly.GetManifestResourceStream('TwinCatAssistant.EmbeddedChat.js'))
- try { $bundle=$bundleReader.ReadToEnd() } finally { $bundleReader.Dispose() }
+ Await ($core.ExecuteScriptAsync(@'
+window.__fixtureAuthUnavailable = true;
+const fixtureFetch = window.fetch;
+window.fetch = function(path, options) {
+  if (window.__fixtureAuthUnavailable && path === '/auth/session' && options?.redirect === 'error') {
+    return Promise.resolve(new Response(null, { status: 503 }));
+  }
+  return fixtureFetch.call(this, path, options);
+};
+'@))|Out-Null
  Await ($core.ExecuteScriptAsync($bundle+';window.__fixtureInstall=false;TwinCatEmbedded.installEmbeddedChat().then(()=>window.__fixtureInstall=true);'))|Out-Null
  $deadline=[DateTime]::UtcNow.AddSeconds(30)
- do{Await ([Threading.Tasks.Task]::Delay(100))|Out-Null;$ok=Await($core.ExecuteScriptAsync('window.__fixtureInstall && window.__twinCatChat.state().authenticated'))}while($ok -ne 'true' -and [DateTime]::UtcNow -lt $deadline)
- Check ($ok -eq 'true') 'synthetic local chat authenticated'
- Check ((Await ($core.ExecuteScriptAsync('new URLSearchParams(location.search).get("surface") === "desktop" && window.__OPENCHAMBER_SURFACE__ === "desktop"'))) -eq 'true') 'the source app boots in explicit desktop mode'
+ do{Await ([Threading.Tasks.Task]::Delay(100))|Out-Null;$ok=Await($core.ExecuteScriptAsync('window.__fixtureInstall === true'))}while($ok -ne 'true' -and [DateTime]::UtcNow -lt $deadline)
+ Check ($ok -eq 'true') 'embedded adapter installs while the first authentication poll returns HTTP 503'
  $connection=Field '_chatConnection';$generation=$connection.Begin();$connection.Navigating([UInt64]1);$connection.Completed([UInt64]1,$true,200,$null)
  Put '_chatAdapterReady' $true
- $selection=Await (Invoke-Private 'ReadChatSelectionAsync' ([object[]]@($false)));Put '_chatSelection' $selection
+ $unknownSelection=Await (Invoke-Private 'ReadChatSelectionAsync' ([object[]]@($false)))
+ Check ($null -ne $unknownSelection -and !$unknownSelection.authenticated -and $unknownSelection.authenticationKnown -eq $false -and $unknownSelection.mcpObservation.stale) 'native selection reads the first authentication failure as unknown'
+ $originalSelection=Field '_chatSelection';$originalAttempts=Field '_signInAttempts'
+ $originalCredentials=Field '_chatCredentials';$originalKnowledgeChecked=Field '_knowledgeChecked'
+ try {
+  Put '_automating' $false;Put '_knowledgeChecked' ([DateTime]::UtcNow)
+  Put '_chatSelection' $unknownSelection;Put '_signInAttempts' 0
+  Await (Invoke-Private 'RunAutomationAsync')|Out-Null
+  Check ((Field '_signInAttempts') -eq 0 -and !(Invoke-Private 'CanPresentChat') -and !(Field '_chatPresented')) 'unknown authentication keeps startup covered without attempting sign-in'
+  $confirmedSelection=[Activator]::CreateInstance($unknownSelection.GetType())
+  $confirmedSelection.authenticated=$false
+  $confirmedSelection.authenticationKnown=$true
+  # Exercise the recovery branch without reloading the shared fixture document.
+  $missingCredentials=[Activator]::CreateInstance($originalCredentials.GetType(),[object[]]@([string]$FixtureDirectory))
+  Put '_chatCredentials' $missingCredentials;Put '_chatSelection' $confirmedSelection
+  Await (Invoke-Private 'RunAutomationAsync')|Out-Null
+  Check ((Field '_signInAttempts') -eq 1) 'confirmed sign-out attempts sign-in recovery'
+ } finally {
+  Put '_automating' $true;Put '_knowledgeChecked' $originalKnowledgeChecked
+  Put '_chatCredentials' $originalCredentials;Put '_chatSelection' $originalSelection;Put '_signInAttempts' $originalAttempts
+ }
+ Await ($core.ExecuteScriptAsync('window.__fixtureAuthUnavailable=false;window.fetch=fixtureFetch;'))|Out-Null
+ $deadline=[DateTime]::UtcNow.AddSeconds(15)
+ do{
+  Await ([Threading.Tasks.Task]::Delay(100))|Out-Null
+  $selection=Await (Invoke-Private 'ReadChatSelectionAsync' ([object[]]@($false)))
+ }while(!$selection.authenticated -and [DateTime]::UtcNow -lt $deadline)
+ Check ($selection.authenticated -and $selection.authenticationKnown -eq $true -and $selection.documentId -ceq $unknownSelection.documentId -and (Field '_signInAttempts') -eq 0) 'real OpenChamber authentication recovers in the same WebView document without sign-in retries'
+ Check ((Await ($core.ExecuteScriptAsync('new URLSearchParams(location.search).get("surface") === "desktop" && window.__OPENCHAMBER_SURFACE__ === "desktop"'))) -eq 'true') 'the source app boots in explicit desktop mode'
+ Put '_chatSelection' $selection
  Await ($core.ExecuteScriptAsync('window.__fixtureHoldMount=true;const originalQuery=document.querySelector.bind(document);document.querySelector=function(s){return window.__fixtureHoldMount && s.replace(/"/g,"")==="[data-testid=chat-input],.oc-draft-center"?null:originalQuery(s);};'))|Out-Null
  Await (Invoke-Private 'NewChatAsync' ([object[]]@($true)))|Out-Null
  Check ((Field '_chatBinding').IsGeneral -eq $true) 'valid chat metadata binds before the composer mounts'
@@ -472,5 +520,5 @@ try{
  Poll-ChatHealth
  Check ((Field '_chatHealthFailures') -eq 0 -and $connection.Phase -eq 'failed' -and !$healthTimer.IsEnabled -and $reconnectTimer.IsEnabled) 'a dead owned session immediately schedules reconnect even when the port is healthy'
  $reconnectTimer.Stop()
- [pscustomobject]@{passed=$checks.Count;checks=@($checks);hostSha256=(Get-FileHash -LiteralPath $HostAssembly -Algorithm SHA256).Hash.ToLowerInvariant();installedIdeAcceptance=$false}|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $OutputDirectory 'result.json') -Encoding UTF8
+ [pscustomobject]@{passed=$checks.Count;checks=@($checks);hostSha256=(Get-FileHash -LiteralPath $HostAssembly -Algorithm SHA256).Hash.ToLowerInvariant();embeddedChatSha256=$bundleSha256;installedIdeAcceptance=$false}|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $OutputDirectory 'result.json') -Encoding UTF8
 }finally{if($control){$control.Dispose()};if($window){$window.Close()};[AppDomain]::CurrentDomain.remove_AssemblyResolve($resolver);$env:TWINCAT_ASSISTANT_TEST_CONFIG=$oldOverride}

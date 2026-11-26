@@ -90,6 +90,7 @@ namespace TwinCatAssistant.Native
         public bool canExport;
         public bool canManage;
         public bool authenticated;
+        public bool? authenticationKnown;
         public string language;
         public string sessionId;
         public string directory;

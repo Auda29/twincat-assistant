@@ -30,7 +30,7 @@ function fixture(options = {}) {
 }
 const item = { providerId: 'twincat-assistant', id: 'snapshot-one', title: 'FB_Motor / PLC_A', url: 'http://127.0.0.1:3123/', text: 'synthetic ST snapshot' };
 
-async function authenticationFixture(t, initialStatus = 200) {
+async function authenticationFixture(t, initialResult = 200) {
   const { ui, sessions, input } = fixture();
   const config = store({ loadProviders() {}, providers: [{ id: 'openai' }] });
   const locale = store({ locale: 'de', setLocale: next => locale.set({ locale: next }) });
@@ -40,7 +40,7 @@ async function authenticationFixture(t, initialStatus = 200) {
     '/api/config': [{ info: { experimental: { policies: [{ action: 'provider.use', effect: 'allow', resource: 'openai' }] } } }],
     '/api/mcp': [{ name: 'knowledge', status: { status: 'connected' } }],
   };
-  let authResult = initialStatus;
+  let authResult = initialResult;
   let authPoll;
   const originalObserver = Object.getOwnPropertyDescriptor(globalThis, 'MutationObserver');
   Object.defineProperty(globalThis, 'MutationObserver', { configurable: true, value: class { observe() {} } });
@@ -60,6 +60,8 @@ async function authenticationFixture(t, initialStatus = 200) {
     async fetch(path) {
       if (path === '/auth/session') {
         if (authResult instanceof Error) throw authResult;
+        if (authResult instanceof Response) return authResult;
+        if (authResult === 200) return Response.json({ authenticated: true });
         return new Response(null, { status: authResult });
       }
       assert.ok(path in metadata, path);
@@ -73,15 +75,40 @@ async function authenticationFixture(t, initialStatus = 200) {
   };
 }
 
+const authenticationFailures = {
+  'HTTP 503': () => 503,
+  TimeoutError: () => new DOMException('Timed out', 'TimeoutError'),
+  TypeError: () => new TypeError('Network error'),
+  'invalid JSON': () => new Response('{'),
+  'missing authenticated field': () => Response.json({}),
+  'non-boolean authenticated field': () => Response.json({ authenticated: 'true' }),
+};
+
+for (const [name, failure] of Object.entries(authenticationFailures)) {
+  test(`initial ${name} leaves authentication unknown until a successful poll`, async t => {
+    const { state, poll } = await authenticationFixture(t, failure());
+    assert.equal(state().authenticated, false);
+    assert.equal(state().authenticationKnown, false);
+    assert.deepEqual(state().mcpObservation, { directory: '/isolated', observed: false, stale: true });
+
+    await poll(Response.json({ authenticated: true }));
+    assert.equal(state().authenticated, true);
+    assert.equal(state().authenticationKnown, true);
+    assert.deepEqual(state().mcpObservation, { directory: '/isolated', observed: true, stale: false });
+  });
+}
+
 test('transient authentication failures retain sign-in and mark MCP status stale', async t => {
   const { state, poll } = await authenticationFixture(t);
   const established = state();
   assert.equal(established.authenticated, true);
+  assert.equal(established.authenticationKnown, true);
   assert.deepEqual(established.mcpObservation, { directory: '/isolated', observed: true, stale: false });
-  for (const failure of [new DOMException('Timed out', 'TimeoutError'), new TypeError('Network error'), 503]) {
-    await poll(failure);
+  for (const failure of Object.values(authenticationFailures)) {
+    await poll(failure());
     const current = state();
     assert.equal(current.authenticated, true);
+    assert.equal(current.authenticationKnown, true);
     assert.deepEqual(current.providers, established.providers);
     assert.deepEqual(current.allowedProviders, established.allowedProviders);
     assert.deepEqual(current.mcp, established.mcp);
@@ -91,15 +118,16 @@ test('transient authentication failures retain sign-in and mark MCP status stale
   }
 });
 
-test('a confirmed 401 or 403 clears sign-in, providers and MCP status', async t => {
+test('HTTP 401, HTTP 403 and HTTP 200 with authenticated false clear sign-in, providers and MCP status', async t => {
   const { state, poll } = await authenticationFixture(t);
-  for (const status of [401, 403]) {
+  for (const response of [401, 403, Response.json({ authenticated: false })]) {
     assert.deepEqual(state().providers, [{ id: 'openai', name: 'openai' }]);
     assert.deepEqual(state().allowedProviders, ['openai']);
     assert.deepEqual(state().mcp, [{ name: 'knowledge', status: 'connected' }]);
-    await poll(status);
+    await poll(response);
     const current = state();
     assert.equal(current.authenticated, false);
+    assert.equal(current.authenticationKnown, true);
     assert.deepEqual(current.providers, []);
     assert.deepEqual(current.allowedProviders, []);
     assert.deepEqual(current.mcp, []);
@@ -108,10 +136,21 @@ test('a confirmed 401 or 403 clears sign-in, providers and MCP status', async t 
   }
 });
 
-test('initial HTTP 401 leaves the adapter unauthenticated', async t => {
-  const { state } = await authenticationFixture(t, 401);
-  assert.equal(state().authenticated, false);
-});
+for (const [name, response] of [['HTTP 401', 401], ['HTTP 200 with authenticated false', Response.json({ authenticated: false })]]) {
+  test(`initial ${name} confirms the adapter is signed out`, async t => {
+    const { state, poll } = await authenticationFixture(t, response);
+    const signedOut = state();
+    assert.equal(signedOut.authenticated, false);
+    assert.equal(signedOut.authenticationKnown, true);
+    assert.deepEqual(signedOut.providers, []);
+    assert.deepEqual(signedOut.allowedProviders, []);
+    assert.deepEqual(signedOut.mcp, []);
+    assert.deepEqual(signedOut.mcpObservation, { directory: '/isolated', observed: false, stale: true });
+    await poll(503);
+    assert.equal(state().authenticated, false);
+    assert.equal(state().authenticationKnown, true);
+  });
+}
 
 test('DE/EN switching changes only locale, preserving selection, drafts, attachments and consent', () => {
   let locale = 'de';
