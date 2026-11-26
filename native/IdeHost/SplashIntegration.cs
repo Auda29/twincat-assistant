@@ -82,6 +82,7 @@ namespace TwinCatAssistant.Native
         {
             // After automatic sign-in retries, allow manual login. Do not wait
             // for authenticated history on the sign-in screen itself.
+            if (_chatSelection?.authenticationKnown == false) return false;
             if (_chatSelection?.authenticated != true) return _signInAttempts >= 3;
             if (!_chatSelection.presentationReady || _chatActionPending) return false;
             if (_chatProject == null) return !_chatSelection.IsSelected || CanPromptCurrentChat();

@@ -269,6 +269,7 @@ window.fetch = function(path, options) {
  Check ($null -ne $unknownSelection -and !$unknownSelection.authenticated -and $unknownSelection.authenticationKnown -eq $false -and $unknownSelection.mcpObservation.stale) 'native selection reads the first authentication failure as unknown'
  $originalSelection=Field '_chatSelection';$originalAttempts=Field '_signInAttempts'
  $originalCredentials=Field '_chatCredentials';$originalKnowledgeChecked=Field '_knowledgeChecked'
+ $originalPresented=Field '_chatPresented';$originalAutomating=Field '_automating'
  try {
   Put '_automating' $false;Put '_knowledgeChecked' ([DateTime]::UtcNow)
   Put '_chatSelection' $unknownSelection;Put '_signInAttempts' 0
@@ -282,9 +283,23 @@ window.fetch = function(path, options) {
   Put '_chatCredentials' $missingCredentials;Put '_chatSelection' $confirmedSelection
   Await (Invoke-Private 'RunAutomationAsync')|Out-Null
   Check ((Field '_signInAttempts') -eq 1) 'confirmed sign-out attempts sign-in recovery'
+
+  Put '_signInAttempts' 3;Put '_chatSelection' $unknownSelection;Put '_chatPresented' $false
+  $canPresentUnknown=Invoke-Private 'CanPresentChat'
+  Invoke-Private 'RenderLoading'|Out-Null
+  Check (!$canPresentUnknown -and !(Field '_chatPresented') -and (Field '_splash').Visibility -eq 'Visible') 'unknown authentication keeps startup covered after three sign-in attempts'
+  Put '_chatSelection' $confirmedSelection
+  Check (Invoke-Private 'CanPresentChat') 'confirmed sign-out allows manual login after three sign-in attempts'
+  $unreadySelection=[Activator]::CreateInstance($unknownSelection.GetType())
+  $unreadySelection.authenticated=$true
+  $unreadySelection.authenticationKnown=$true
+  $unreadySelection.presentationReady=$false
+  Put '_chatSelection' $unreadySelection
+  Check (!(Invoke-Private 'CanPresentChat')) 'recovered authentication waits for presentation readiness after three sign-in attempts'
  } finally {
-  Put '_automating' $true;Put '_knowledgeChecked' $originalKnowledgeChecked
+  Put '_automating' $originalAutomating;Put '_knowledgeChecked' $originalKnowledgeChecked
   Put '_chatCredentials' $originalCredentials;Put '_chatSelection' $originalSelection;Put '_signInAttempts' $originalAttempts
+  Put '_chatPresented' $originalPresented
  }
  Await ($core.ExecuteScriptAsync('window.__fixtureAuthUnavailable=false;window.fetch=fixtureFetch;'))|Out-Null
  $deadline=[DateTime]::UtcNow.AddSeconds(15)
