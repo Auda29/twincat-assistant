@@ -491,5 +491,15 @@ Before is on the left, after is on the right. Approve this change?</value></data
   <data name="EngineeringSourceCreateImplementation" xml:space="preserve"><value>Initial implementation</value></data>
   <data name="EngineeringSourceCreateDone" xml:space="preserve"><value>Created {0}. TwinCAT wrote the object file or updated the owning POU file. Project changes remain pending save.</value></data>
   <data name="EngineeringSourceCreateUnknown" xml:space="preserve"><value>Creation outcome is unknown. Operation {0}. Inspect the PLC project before continuing. Creation has no source journal entry.</value></data>
+  <data name="EngineeringSourceCreateRecover" xml:space="preserve"><value>Review unknown PLC creation</value></data>
+  <data name="EngineeringSourceCreateRecoveryPrompt" xml:space="preserve"><value>TwinCAT may have partially created the object in the PLC project tree or on disk. The outcome is unknown.
+
+Operation ID: {0}
+Target in the PLC project tree: {1}
+PLC project file: {2}
+
+Confirm only after you have manually inspected both the PLC project tree and the files on disk. Acknowledging this outcome unblocks source changes and builds.</value></data>
+  <data name="EngineeringSourceCreateInspected" xml:space="preserve"><value>I inspected the project tree and files</value></data>
+  <data name="EngineeringSourceCreateAcknowledged" xml:space="preserve"><value>Inspection acknowledged for creation operation {0}. The source recovery block is cleared.</value></data>
   <data name="EngineeringSourceRollbackUnsaved" xml:space="preserve"><value>Rollback was blocked by unsaved editor changes. Save the open document in TwinCAT before retrying.</value></data>
 </root>

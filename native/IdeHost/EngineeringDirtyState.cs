@@ -84,11 +84,12 @@ namespace TwinCatAssistant.Native
             uint item;
             if (!SourceItem(hierarchy, path, out item)) return null;
             List<OpenSource> before;
-            if (!ScanSource(rdt, path, hierarchy, out before)) return null;
+            if (!ScanSource(rdt, path, hierarchy, item, out before)) return null;
             var wasDirty = before.Exists(entry => entry.Dirty == true);
             var beforeUnknown = before.Exists(entry => !entry.Dirty.HasValue || !entry.InBoundHierarchy);
             bool? itemState = null;
             var useDte = false;
+            List<OpenDteDocument> dteBefore = null;
             if (before.Count == 0)
             {
                 var persist = hierarchy as IVsPersistHierarchyItem2; int dirty;
@@ -99,7 +100,7 @@ namespace TwinCatAssistant.Native
                 {
                     // TwinCAT can require RDT docdata for closed source items.
                     useDte = true;
-                    var observed = ScanDteSource(dte, path);
+                    var observed = ScanDteSource(dte, path, out dteBefore);
                     if (observed != false) return observed;
                 }
                 else return null;
@@ -110,7 +111,7 @@ namespace TwinCatAssistant.Native
                 || !SameCom(hierarchy, laterHierarchy) || !ProjectIdentity(hierarchy, projectFile)
                 || !SourceItem(hierarchy, path, out laterItem) || laterItem != item) return null;
             List<OpenSource> after;
-            if (!ScanSource(rdt, path, hierarchy, out after)) return null;
+            if (!ScanSource(rdt, path, hierarchy, item, out after)) return null;
             if (!SolutionFile(solution, out solutionAfter) || !SamePath(solutionBefore, solutionAfter)
                 || solution.GetProjectOfUniqueName(uniqueName, out laterHierarchy) != VSConstants.S_OK
                 || !SameCom(hierarchy, laterHierarchy) || !ProjectIdentity(hierarchy, projectFile)
@@ -124,12 +125,11 @@ namespace TwinCatAssistant.Native
             if (useDte ? secondHr != VSConstants.E_POINTER
                 : secondHr != VSConstants.S_OK || (secondDirty != 0 && secondDirty != 1) || itemState != (secondDirty != 0)) return null;
             if (!ProjectIdentity(hierarchy, projectFile) || !SourceItem(hierarchy, path, out laterItem) || laterItem != item) return null;
-            List<OpenSource> final;
-            if (!ScanSource(rdt, path, hierarchy, out final)) return null;
-            if (final.Count != 0) return null;
+            if (!ScanSource(rdt, path, hierarchy, item, out var final) || final.Count != 0) return null;
             if (useDte)
             {
-                var observed = ScanDteSource(dte, path);
+                var observed = ScanDteSource(dte, path, out var dteAfter);
+                if (!observed.HasValue || !SameOpenDteDocuments(dteBefore, dteAfter)) return null;
                 if (observed != false) return observed;
                 itemState = false;
             }
@@ -159,7 +159,7 @@ namespace TwinCatAssistant.Native
             internal uint Cookie, Item; internal IntPtr Data; internal string Moniker;
             internal IVsHierarchy Hierarchy; internal bool InBoundHierarchy; internal bool? Dirty;
         }
-        private static bool ScanSource(IVsRunningDocumentTable rdt, string path, IVsHierarchy bound, out List<OpenSource> found)
+        private static bool ScanSource(IVsRunningDocumentTable rdt, string path, IVsHierarchy bound, uint boundItem, out List<OpenSource> found)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             found = new List<OpenSource>(); IEnumRunningDocuments enumerator;
@@ -175,7 +175,8 @@ namespace TwinCatAssistant.Native
                 try
                 {
                     if (hr != VSConstants.S_OK || string.IsNullOrEmpty(moniker) || data == IntPtr.Zero) return false;
-                    if (!MatchesSourceMoniker(moniker, path)) continue;
+                    var exact = SamePath(moniker, path);
+                    if (!exact && !MatchesSourceMember(moniker, path)) continue;
                     var entry = new OpenSource { Cookie = one[0], Item = item, Data = data, Moniker = moniker,
                         Hierarchy = hierarchy, InBoundHierarchy = SameCom(hierarchy, bound) };
                     int dirty;
@@ -190,34 +191,73 @@ namespace TwinCatAssistant.Native
                             || !SameCom(foundHierarchy, hierarchy)) return false;
                     }
                     finally { if (foundData != IntPtr.Zero) Marshal.Release(foundData); }
+                    if (!exact && File.Exists(moniker) && (!entry.InBoundHierarchy || item != boundItem))
+                    {
+                        // A physical file can collide with a member moniker. Only
+                        // positive item ownership makes a dirty entry conclusive.
+                        if (entry.Dirty != false) return false;
+                        continue;
+                    }
                     found.Add(entry);
                 }
                 finally { if (data != IntPtr.Zero) Marshal.Release(data); }
             }
             return false;
         }
-        private static bool MatchesSourceMoniker(string moniker, string path)
+        private static bool MatchesSourceMember(string moniker, string path)
         {
-            return SamePath(moniker, path) || (moniker != null && moniker.Length > path.Length
-                && moniker[path.Length] == ';' && SamePath(moniker.Substring(0, path.Length), path) && !File.Exists(moniker));
+            return moniker.Length > path.Length && moniker[path.Length] == ';'
+                && SamePath(moniker.Substring(0, path.Length), path);
         }
 
-        private static bool? ScanDteSource(DTE dte, string path)
+        private sealed class OpenDteDocument
+        {
+            internal Document Document;
+            internal string Moniker;
+            internal bool Saved;
+        }
+
+        private static bool? ScanDteSource(DTE dte, string path, out List<OpenDteDocument> snapshot)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            snapshot = null;
             var documents = dte?.Documents;
             if (documents == null) return null;
             var count = documents.Count;
             if (count < 0 || count > 512) return null;
+            var found = new List<OpenDteDocument>(count);
             var dirty = false;
             for (int index = 1; index <= count; index++)
             {
                 var document = documents.Item(index);
                 if (document == null) return null;
                 var moniker = document.FullName;
-                if (MatchesSourceMoniker(moniker, path) && !document.Saved) dirty = true;
+                var saved = document.Saved;
+                if (string.IsNullOrWhiteSpace(moniker)) return null;
+                found.Add(new OpenDteDocument { Document = document, Moniker = moniker, Saved = saved });
+                if (saved) continue;
+                if (SamePath(moniker, path)) dirty = true;
+                else if (MatchesSourceMember(moniker, path))
+                {
+                    if (File.Exists(moniker)) return null;
+                    dirty = true;
+                }
             }
-            return documents.Count == count ? dirty : (bool?)null;
+            if (documents.Count != count) return null;
+            snapshot = found;
+            return dirty;
+        }
+
+        private static bool SameOpenDteDocuments(List<OpenDteDocument> left, List<OpenDteDocument> right)
+        {
+            if (left.Count != right.Count) return false;
+            for (int index = 0; index < left.Count; index++)
+            {
+                var first = left[index]; var other = right[index];
+                if (!SameCom(first.Document, other.Document) || first.Moniker != other.Moniker || first.Saved != other.Saved)
+                    return false;
+            }
+            return true;
         }
 
         private static bool SameOpenSources(List<OpenSource> left, List<OpenSource> right)

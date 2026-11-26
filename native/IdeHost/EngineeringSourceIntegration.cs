@@ -44,6 +44,7 @@ namespace TwinCatAssistant.Native
 
         private void BuildEngineeringSourcePanel()
         {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
             var panel = new StackPanel { Margin = new Thickness(0, 5, 0, 5) };
             panel.Children.Add(new TextBlock { Text = HostText.Get("EngineeringSourceScope"), TextWrapping = TextWrapping.Wrap });
             var row = new WrapPanel();
@@ -60,22 +61,31 @@ namespace TwinCatAssistant.Native
             panel.Children.Add(_sourceStatus);
             var expander = new Expander { Header = HostText.Get("EngineeringSourceTitle"), Content = panel, Margin = new Thickness(8, 2, 8, 4) };
             _toolbar.Children.Add(expander);
-            _sourceTargets.SelectionChanged += (s, e) => { InvalidateSourcePreview(); _sourceBefore.Clear(); UpdateSourceButtons(); };
-            _sourceProposed.TextChanged += (s, e) => { if (!_sourceSettingText) InvalidateSourcePreview(); UpdateSourceButtons(); };
+            _sourceTargets.SelectionChanged += (s, e) =>
+            {
+                Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+                InvalidateSourcePreview(); _sourceBefore.Clear(); UpdateSourceButtons();
+            };
+            _sourceProposed.TextChanged += (s, e) =>
+            {
+                Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+                if (!_sourceSettingText) InvalidateSourcePreview();
+                UpdateSourceButtons();
+            };
             EngineeringSourceSessionChanged();
         }
 
         private void EngineeringSourceContextChanged()
         {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
             InvalidateSourcePreview();
-            if (_sourceStatus == null) return;
             if (_engineeringProjectSuspended) _sourceStatus.Text = HostText.Get("EngineeringSourceContext");
             UpdateSourceButtons();
         }
         private void EngineeringSourceSessionChanged()
         {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
             InvalidateSourcePreview(); _sourceApplied = null; _sourceJournal = Guid.Empty; _sourceMoniker = null;
-            if (_sourceTargets == null) return;
             _sourceTargets.Items.Clear(); _sourceBefore.Clear();
             _sourceSettingText = true; _sourceProposed.Clear(); _sourceSettingText = false;
             _sourceStatus.Text = EngineeringSourceGuard.HasUnresolved
@@ -86,6 +96,11 @@ namespace TwinCatAssistant.Native
         private void InvalidateSourcePreview() { _sourcePreview = null; _engineering?.RevokeApproval(); }
         private void UpdateSourceButtons()
         {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+            var recoverCreation = !_disposed && EngineeringSourceGuard.UnknownSourceCreation != null;
+            if (_sourceRecoveryButton != null)
+                _sourceRecoveryButton.Visibility = recoverCreation ? Visibility.Visible : Visibility.Collapsed;
+            UpdateEngineeringBuildButton();
             if (_sourceDiscover == null) return;
             var ready = !_disposed && _engineering != null && !_engineeringProjectSuspended && !_sourceBusy;
             var unblocked = ready && !EngineeringSourceGuard.HasUnresolved;
@@ -93,7 +108,9 @@ namespace TwinCatAssistant.Native
             _sourcePreviewButton.IsEnabled = unblocked && _sourceTargets.SelectedItem is SourceTarget;
             _sourceApply.IsEnabled = unblocked && !_engineeringBusy && !EngineeringBuildGuard.HasUnresolved && _sourcePreview != null;
             _sourceRollback.IsEnabled = unblocked && !_engineeringBusy && !EngineeringBuildGuard.HasUnresolved && _sourceApplied != null && _sourceJournal != Guid.Empty;
-            _sourceReconcile.IsEnabled = ready && EngineeringSourceGuard.HasUnresolved && sourceGuardJournal != Guid.Empty && _engineering.Binding != null && sourceGuardSession == _engineering.Binding.SessionId;
+            _sourceReconcile.Content = HostText.Get(recoverCreation ? "EngineeringSourceCreateRecover" : "EngineeringSourceReconcile");
+            _sourceReconcile.IsEnabled = recoverCreation || (ready && EngineeringSourceGuard.HasUnresolved && sourceGuardJournal != Guid.Empty
+                && _engineering.Binding != null && sourceGuardSession == _engineering.Binding.SessionId);
         }
         private string ActiveSourceMoniker()
         {
@@ -254,7 +271,13 @@ namespace TwinCatAssistant.Native
                     if (!rollback) { _sourceApplied = p; _sourceJournal = operation; } else { _sourceApplied = null; _sourceJournal = Guid.Empty; }
                     _sourceStatus.Text = SourceDoneStatus(operation, sourceGuardJournal, p.Source);
                 }
-                else if (status == "refused" || status == "conflict" || status == "unsupported") { EngineeringSourceGuard.Reconcile(operation); _sourceStatus.Text = HostText.Get("EngineeringSourceRefused"); }
+                else if (status == "refused" || status == "conflict" || status == "unsupported")
+                {
+                    EngineeringSourceGuard.Reconcile(operation);
+                    if (status == "conflict" && rollback && EngineeringProviderSession.Text(envelope, "error") == "unsaved_editor_changes")
+                        ShowRollbackUnsavedWarning();
+                    else _sourceStatus.Text = HostText.Get("EngineeringSourceRefused");
+                }
                 else throw new InvalidOperationException();
             }
             catch { _sourceStatus.Text = EngineeringSourceGuard.HasUnresolved ? SourceUnknownStatus(EngineeringSourceGuard.OperationId) : HostText.Get("EngineeringSourceUnavailable"); }
@@ -263,6 +286,11 @@ namespace TwinCatAssistant.Native
         private async Task ReconcileSourceAsync()
         {
             await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (EngineeringSourceGuard.UnknownSourceCreation is EngineeringSourceCreation creation)
+            {
+                AcknowledgeSourceCreation(creation);
+                return;
+            }
             var session = _engineering; var operation = EngineeringSourceGuard.OperationId; var journal = sourceGuardJournal;
             if (_sourceBusy || operation == Guid.Empty || journal == Guid.Empty || session?.Binding == null || session.Binding.SessionId != sourceGuardSession) return;
             _sourceBusy = true; UpdateSourceButtons();
@@ -280,6 +308,37 @@ namespace TwinCatAssistant.Native
             }
             catch { _sourceStatus.Text = HostText.Format("EngineeringSourceUnknown", new object[] { operation.ToString("D"), journal.ToString("D") }); }
             finally { _sourceBusy = false; UpdateSourceButtons(); }
+        }
+
+        private void AcknowledgeSourceCreation(EngineeringSourceCreation creation)
+        {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+            if (_disposed) return;
+            var dialog = new Window { Title = HostText.Get("EngineeringSourceCreateRecover"), Width = 580,
+                SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+            var panel = new StackPanel { Margin = new Thickness(12) };
+            dialog.Content = panel;
+            panel.Children.Add(new ScrollViewer { MaxHeight = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Content = new TextBlock { TextWrapping = TextWrapping.Wrap,
+                    Text = HostText.Format("EngineeringSourceCreateRecoveryPrompt", new object[] { creation.OperationId.ToString("D"), creation.TargetPath, creation.ProjectFile }) } });
+            var buttons = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0) };
+            panel.Children.Add(buttons);
+            buttons.Children.Add(new Button { Content = HostText.Get("EngineeringSourceCancel"), Margin = new Thickness(4), IsCancel = true });
+            var acknowledge = Button(HostText.Get("EngineeringSourceCreateInspected"), () => dialog.DialogResult = true);
+            buttons.Children.Add(acknowledge);
+
+            var confirmed = dialog.ShowDialog() == true;
+            if (_disposed || !EngineeringSourceGuard.AcknowledgeSourceCreation(creation, confirmed)) return;
+            _sourceStatus.Text = HostText.Format("EngineeringSourceCreateAcknowledged", new object[] { creation.OperationId.ToString("D") });
+            UpdateSourceButtons();
+            Notify(_sourceStatus.Text);
+        }
+
+        private void ShowRollbackUnsavedWarning()
+        {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+            _sourceStatus.Text = HostText.Get("EngineeringSourceRollbackUnsaved");
+            Notify(_sourceStatus.Text, "warning");
         }
         private static bool ValidSourceJournal(Dictionary<string, object> result, SourcePreview p, Guid journal)
         { return result != null && EngineeringProviderSession.Text(result, "journalOperationId") == journal.ToString("D") && EngineeringProviderSession.Text(result, "previewOperationId") == p.PreviewId.ToString("D") && EngineeringProviderSession.Text(result, "objectId") == p.ObjectId && EngineeringProviderSession.Text(result, "section") == p.Section && EngineeringProviderSession.Text(result, "beforeText") == p.Before && EngineeringProviderSession.Text(result, "proposedText") == p.After && EngineeringProviderSession.Text(result, "baselineDigest") == p.Baseline && EngineeringProviderSession.Text(result, "proposedDigest") == p.Proposed && EngineeringProviderSession.Text(result, "projectRevision") == p.Revision && result.ContainsKey("rollbackSubmitted"); }

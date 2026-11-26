@@ -44,6 +44,8 @@ internal static class EngineeringDirtyStateProbe
     {
         internal string Moniker;
         internal IVsHierarchy Hierarchy;
+        internal uint Item = 7;
+        internal int Dirty = 1;
         internal int ScanCount;
         internal int AppearOnScan = 1;
         private sealed class Enumerator : IEnumRunningDocuments
@@ -52,26 +54,26 @@ internal static class EngineeringDirtyStateProbe
             public int Next(uint count, uint[] entries, out uint fetched)
             { fetched = HasEntry ? 1u : 0; entries[0] = 1; HasEntry = false; return fetched == 0 ? VSConstants.S_FALSE : 0; }
         }
-        public int IsDocDataDirty(out int dirty) { dirty = 1; return 0; }
+        public int IsDocDataDirty(out int dirty) { dirty = Dirty; return 0; }
         public int GetRunningDocumentsEnum(out IEnumRunningDocuments entries)
         { entries = new Enumerator { HasEntry = ++ScanCount >= AppearOnScan && Moniker != null }; return 0; }
         public int GetDocumentInfo(uint cookie, out uint flags, out uint reads, out uint edits, out string moniker,
             out IVsHierarchy hierarchy, out uint item, out IntPtr data)
         {
-            flags = reads = edits = 0; moniker = Moniker; hierarchy = Hierarchy; item = 7;
+            flags = reads = edits = 0; moniker = Moniker; hierarchy = Hierarchy; item = Item;
             data = Marshal.GetIUnknownForObject(this); return 0;
         }
         public int FindAndLockDocument(uint flags, string moniker, out IVsHierarchy hierarchy, out uint item, out IntPtr data, out uint cookie)
         {
-            hierarchy = Hierarchy; item = 7; cookie = Moniker == moniker ? 1u : 0u;
+            hierarchy = Hierarchy; item = Item; cookie = Moniker == moniker ? 1u : 0u;
             data = cookie == 1 ? Marshal.GetIUnknownForObject(this) : IntPtr.Zero; return 0;
         }
     }
 
     public static int Main()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "EngineeringDirtyState-" + Guid.NewGuid().ToString("N"));
-        var source = Path.Combine(directory, "Plant;Line.TcIO");
+        var directory = Path.Combine(Path.GetTempPath(), "EngineeringDirtyState;" + Guid.NewGuid().ToString("N"));
+        var source = Path.Combine(directory, "MAIN.TcPOU");
         var member = source + ";Check";
         Directory.CreateDirectory(directory);
         try
@@ -88,21 +90,42 @@ internal static class EngineeringDirtyStateProbe
                 checks++;
             }
 
-            Check(false, State(dte), "Closed TcIO E_POINTER uses bounded DTE scan");
+            Check(false, State(dte), "Closed POU E_POINTER uses bounded DTE scan");
             Check(null, State(null), "Unavailable DTE fails closed");
             Check(null, State(new DTE()), "Unavailable Documents fails closed");
-            dte.Documents.Items.Add(new Document { FullName = source, Saved = false });
+            var document = new Document { Saved = false };
+            dte.Documents.Items.Add(document);
+            Check(null, State(dte), "Null DTE moniker fails closed");
+            document.FullName = "";
+            Check(null, State(dte), "Empty DTE moniker fails closed");
+            document.FullName = source;
             Check(true, State(dte), "Exact moniker with a semicolon is dirty");
-            dte.Documents.Items[0].FullName = member;
+            document.Saved = true;
+            Check(false, State(dte), "Exact moniker with a semicolon is clean");
+            document.FullName = member;
+            document.Saved = false;
             Check(true, State(dte), "Member moniker with a semicolon in the source name is dirty");
             File.WriteAllText(member, "");
-            Check(false, State(dte), "Separate physical file is excluded from DTE scan");
+            Check(null, State(dte), "Unsaved physical collision in DTE fails closed");
+            document.Saved = true;
+            Check(false, State(dte), "Saved physical collision in DTE is clean");
             rdt.Moniker = member;
-            Check(false, State(dte), "Separate physical file is excluded from RDT scan");
+            Check(true, State(dte), "Dirty colliding RDT moniker is a member with exact item ownership");
+            rdt.Item++;
+            Check(null, State(dte), "Dirty colliding RDT moniker without exact item ownership fails closed");
+            rdt.Dirty = 2;
+            Check(null, State(dte), "Unknown colliding RDT moniker without exact item ownership fails closed");
+            rdt.Dirty = 0;
+            Check(false, State(dte), "Clean colliding RDT moniker without exact item ownership is clean");
+            rdt.Item--;
+            rdt.Dirty = 1;
             File.Delete(member);
             Check(true, State(dte), "RDT matches member moniker with a semicolon in the source name");
             rdt.Moniker = source;
             Check(true, State(dte), "RDT matches exact moniker with a semicolon");
+            rdt.Dirty = 0;
+            Check(false, State(dte), "RDT exact moniker with a semicolon is clean");
+            rdt.Dirty = 1;
             rdt.AppearOnScan = 2;
             dte.Documents.Items.Clear();
             Check(null, State(dte), "RDT match appearing on recheck invalidates closed proof");
@@ -112,12 +135,21 @@ internal static class EngineeringDirtyStateProbe
             dte.Documents.ReadCount = () => 513;
             Check(null, State(dte), "Oversized DTE collection fails closed");
             dte.Documents.ReadCount = () => 512;
-            dte.Documents.ReadItem = _ => new Document { FullName = source, Saved = true };
+            for (int index = 0; index < 512; index++)
+                dte.Documents.Items.Add(new Document { FullName = Path.Combine(directory, index + ".txt"), Saved = true });
             Check(false, State(dte), "Complete DTE scan accepts 512 documents");
             dte.Documents.ReadItem = _ => throw new COMException();
             Check(null, State(dte), "COM failure in DTE scan fails closed");
-            dte.Documents.ReadItem = _ => new Document { FullName = source, Saved = rdt.ScanCount == 1 };
-            Check(true, State(dte), "Second DTE scan observes newly unsaved text");
+            dte.Documents.ReadCount = () => 1;
+            document.FullName = source;
+            dte.Documents.ReadItem = _ => rdt.ScanCount == 1 ? document : new Document { FullName = source, Saved = true };
+            Check(null, State(dte), "Replacement DTE document with the same moniker fails closed");
+            dte.Documents.ReadItem = _ => { document.FullName = rdt.ScanCount == 1 ? source : member; return document; };
+            Check(null, State(dte), "Renamed DTE document with the same identity fails closed");
+            dte.Documents.ReadItem = _ => { document.FullName = source; document.Saved = rdt.ScanCount == 1; return document; };
+            Check(null, State(dte), "DTE saved state changing between passes fails closed");
+            dte.Documents.ReadCount = () => rdt.ScanCount == 1 ? 1 : 0;
+            Check(null, State(dte), "DTE document removed between passes fails closed");
             hierarchy.HResult = () => VSConstants.S_OK;
             Check(false, State(null), "S_OK clean preserves existing closed-source route");
             hierarchy.Dirty = 1;

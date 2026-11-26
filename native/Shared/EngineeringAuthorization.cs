@@ -4,22 +4,65 @@ using System.Text;
 
 namespace TwinCatAssistant.Native
 {
+    internal sealed class EngineeringSourceCreation
+    {
+        internal readonly Guid OperationId;
+        internal readonly string ProjectFile, TargetPath;
+
+        internal EngineeringSourceCreation(Guid operationId, string projectFile, string targetPath)
+        {
+            if (string.IsNullOrWhiteSpace(projectFile) || string.IsNullOrWhiteSpace(targetPath))
+                throw new ArgumentException("Source creation requires a project and a target path.");
+            OperationId = operationId;
+            ProjectFile = projectFile;
+            TargetPath = targetPath;
+        }
+    }
+
     // Kept for the IDE process lifetime by AssistantControl. Losing a view or
-    // provider is not evidence that an already submitted build has finished.
+    // provider is not evidence that an already submitted operation has finished.
     internal sealed class EngineeringOperationGuard
     {
         private readonly object gate = new object();
         private Guid operation;
+        private EngineeringSourceCreation creation;
+        private bool creationUnknown;
         internal Guid OperationId { get { lock (gate) return operation; } }
         internal bool HasUnresolved { get { return OperationId != Guid.Empty; } }
-        internal bool TryBegin(Guid id)
+        internal EngineeringSourceCreation UnknownSourceCreation { get { lock (gate) return creationUnknown ? creation : null; } }
+        internal bool TryBegin(Guid id, EngineeringSourceCreation sourceCreation = null)
         {
-            if (id == Guid.Empty) throw new ArgumentException("An operation identity is required.");
-            lock (gate) { if (operation != Guid.Empty) return false; operation = id; return true; }
+            if (id == Guid.Empty || (sourceCreation != null && sourceCreation.OperationId != id))
+                throw new ArgumentException("A matching operation identity is required.");
+            lock (gate)
+            {
+                if (operation != Guid.Empty) return false;
+                operation = id;
+                creation = sourceCreation;
+                return true;
+            }
+        }
+        internal void MarkSourceCreationUnknown(Guid id)
+        {
+            lock (gate) { if (creation != null && operation == id) creationUnknown = true; }
+        }
+        internal bool AcknowledgeSourceCreation(EngineeringSourceCreation inspected, bool confirmed)
+        {
+            lock (gate)
+            {
+                return confirmed && creationUnknown && ReferenceEquals(inspected, creation) && Reconcile(inspected.OperationId);
+            }
         }
         internal bool Reconcile(Guid id)
         {
-            lock (gate) { if (id == Guid.Empty || operation != id) return false; operation = Guid.Empty; return true; }
+            lock (gate)
+            {
+                if (id == Guid.Empty || operation != id) return false;
+                operation = Guid.Empty;
+                creation = null;
+                creationUnknown = false;
+                return true;
+            }
         }
     }
 

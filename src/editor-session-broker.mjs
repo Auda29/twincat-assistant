@@ -4,7 +4,8 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { isAbsolute, win32 } from 'node:path';
 import { ownedEngineeringProfile } from './editor-tools.mjs';
 export { EDITOR_TOOL_NAMES } from './editor-tools.mjs';
-const FRAME_LIMIT = 2 * 1024 * 1024;
+// The MCP child returns provider JSON in structuredContent and as formatted text.
+const FRAME_LIMIT = 5 * 1024 * 1024;
 const REQUEST_LIMIT = 1024 * 1024;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const CHAT_ID = /^[a-zA-Z0-9_:-]{1,160}$/;

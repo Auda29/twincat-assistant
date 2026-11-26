@@ -131,19 +131,21 @@ namespace TwinCatAssistant.Native
                 if (kind == "build.start")
                 {
                     if (!EngineeringBuildGuard.TryBegin(id)) return false;
+                    pending.Approved = true;
                     _engineeringBuildId = id; _engineeringBusy = true; _engineeringUncertain = false;
                     _engineeringBuildButton.IsEnabled = false; SetEngineeringStatus("EngineeringStarting");
                 }
                 else
                 {
-                    if (!EngineeringSourceGuard.TryBegin(id)) return false;
+                    var creation = kind == "source.create" ? new EngineeringSourceCreation(id, pending.Binding.ProjectFile, target) : null;
+                    if (!EngineeringSourceGuard.TryBegin(id, creation)) return false;
                     sourceGuardSession = pending.Binding.SessionId;
                     sourceGuardJournal = kind == "source.create" ? Guid.Empty : kind == "source.rollback" ? journalId : id;
                     sourceGuardKind = kind; sourceGuardPreview = source; _sourceBusy = true;
+                    pending.Approved = true;
                     _sourceStatus.Text = SourceUnknownStatus(id);
                     UpdateSourceButtons();
                 }
-                pending.Approved = true;
                 return true;
             }
             catch { return false; }
@@ -293,12 +295,13 @@ namespace TwinCatAssistant.Native
                     attempt.Token.ThrowIfCancellationRequested();
                     if (_disposed || session != _engineering || !binding.Same(session.Binding)) throw new InvalidOperationException("Engineering context changed.");
                     if (parsed.Approved) HandleEditorMutationResponse(parsed, envelope, response);
+                    else if (parsed.Operation == "source.rollback" && EditorText(envelope, "status", 32) == "conflict"
+                        && EditorText(envelope, "error", 64) == "unsaved_editor_changes") ShowRollbackUnsavedWarning();
                     else if (parsed.Operation == "session.describe")
                     {
                         _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(response, binding, parsed.Id,
                             out _engineeringConfiguration, out _engineeringPlatform);
-                        _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringBusy && !_engineeringUncertain
-                            && !_engineeringProjectSuspended && !EngineeringBuildGuard.HasUnresolved && !EngineeringSourceGuard.HasUnresolved;
+                        UpdateEngineeringBuildButton();
                         SetEngineeringCapabilityStatus(response, binding, parsed.Id);
                     }
                     else if (parsed.Operation == "operation.get" || parsed.Operation == "operation.cancel" || parsed.Operation == "diagnostics.read" || parsed.Operation == "output.read")
@@ -366,10 +369,10 @@ namespace TwinCatAssistant.Native
             else if (status == "refused" || status == "conflict" || status == "unsupported")
             {
                 EngineeringSourceGuard.Reconcile(request.Id);
-                var unsavedRollback = request.Operation == "source.rollback" && EditorText(envelope, "error", 64) == "unsaved_editor_changes";
-                _sourceStatus.Text = HostText.Get(unsavedRollback ? "EngineeringSourceRollbackUnsaved" : "EngineeringSourceRefused");
                 _sourceBusy = false; UpdateSourceButtons();
-                if (unsavedRollback) Notify(_sourceStatus.Text, "warning");
+                if (request.Operation == "source.rollback" && status == "conflict"
+                    && EditorText(envelope, "error", 64) == "unsaved_editor_changes") ShowRollbackUnsavedWarning();
+                else _sourceStatus.Text = HostText.Get("EngineeringSourceRefused");
             }
             else throw new InvalidOperationException();
         }
@@ -429,22 +432,25 @@ namespace TwinCatAssistant.Native
         private void FinishEditorBuild()
         {
             ThreadHelper.ThrowIfNotOnUIThread(); _engineeringBusy = false; _engineeringCancelButton.Visibility = Visibility.Collapsed;
-            _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringProjectSuspended && !_engineeringUncertain
-                && !EngineeringBuildGuard.HasUnresolved && !EngineeringSourceGuard.HasUnresolved; UpdateSourceButtons();
+            UpdateSourceButtons();
         }
         private void MarkEditorUnknown(EditorRequest request)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (request.Session != _engineering || _disposed) return;
-            if (request.Operation == "build.start" && EngineeringBuildGuard.OperationId == request.Id)
-            { _engineeringUncertain = true; SetEngineeringStatus("EngineeringUnknown"); FinishEditorBuild(); }
-            else if (EngineeringSourceGuard.OperationId == request.Id)
+            if (request.Operation == "build.start")
             {
-                _sourceBusy = false;
-                _sourceStatus.Text = SourceUnknownStatus(request.Id);
-                UpdateSourceButtons();
-                if (request.Operation == "source.create") Notify(_sourceStatus.Text, "error");
+                if (!_disposed && request.Session == _engineering && EngineeringBuildGuard.OperationId == request.Id)
+                { _engineeringUncertain = true; SetEngineeringStatus("EngineeringUnknown"); FinishEditorBuild(); }
+                return;
             }
+            if (EngineeringSourceGuard.OperationId != request.Id) return;
+            var creation = request.Operation == "source.create";
+            if (creation) EngineeringSourceGuard.MarkSourceCreationUnknown(request.Id);
+            if (_disposed) return;
+            _sourceBusy = false;
+            _sourceStatus.Text = SourceUnknownStatus(request.Id);
+            UpdateSourceButtons();
+            if (creation) Notify(_sourceStatus.Text, "error");
         }
         private static EditorRequest EditorParseRequest(string json, EngineeringBinding binding)
         {

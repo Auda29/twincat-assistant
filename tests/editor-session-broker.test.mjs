@@ -84,7 +84,7 @@ test('native Editor and Debug children expose mutually exclusive capabilities', 
   }
 });
 
-test('Editor broker enforces 1 MiB requests and 2 MiB child frames in UTF-8 bytes', { timeout: 15000 }, async () => {
+test('Editor broker accepts large discovery and enforces 1 MiB requests and 5 MiB child frames in UTF-8 bytes', { timeout: 15000 }, async () => {
   const broker = await startEditorSession({ ...options(), profile: 'editor' });
   const callCreate = args => call('plc_source_create', 'ses_editor_1', args);
   try {
@@ -93,9 +93,16 @@ test('Editor broker enforces 1 MiB requests and 2 MiB child frames in UTF-8 byte
     const accepted = await rpc(broker, 'tools/call', callCreate({ declarationText: largeRequest }));
     assert.equal(JSON.parse(accepted.value.result.content[0].text).arguments.declarationText, largeRequest);
     await assert.rejects(rpc(broker, 'tools/call', callCreate({ declarationText: '\u00e9'.repeat(512 * 1024) })));
-    const max = await rpc(broker, 'tools/call', callCreate({ responseFrameBytes: 2 * 1024 * 1024 }));
-    assert.ok(max.value.result.content[0].text.length > 1024 * 1024);
-    await assert.rejects(rpc(broker, 'tools/call', callCreate({ responseFrameBytes: 2 * 1024 * 1024 + 1 })));
+    const discovery = await rpc(broker, 'tools/call', call('plc_source_targets', 'ses_editor_1', { largeDiscovery: true }));
+    const { structuredContent, content } = discovery.value.result;
+    assert.equal(structuredContent.result.targets.length, 500);
+    assert.ok(Buffer.byteLength(JSON.stringify(structuredContent)) < 1024 * 1024);
+    assert.ok(Buffer.byteLength(JSON.stringify(discovery.value)) > 2 * 1024 * 1024);
+    assert.deepEqual(JSON.parse(content[0].text), structuredContent);
+    const max = await rpc(broker, 'tools/call', callCreate({ responseFrameBytes: 5 * 1024 * 1024 }));
+    assert.ok(max.value.result.content[0].text.length > 4 * 1024 * 1024);
+    await assert.rejects(rpc(broker, 'tools/call', callCreate({ responseFrameBytes: 5 * 1024 * 1024 + 1 })));
+    assert.throws(() => broker.configuration());
   } finally { await broker.close(); }
 });
 

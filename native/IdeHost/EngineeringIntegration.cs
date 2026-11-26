@@ -36,6 +36,7 @@ namespace TwinCatAssistant.Native
         private static readonly EngineeringOperationGuard EngineeringBuildGuard = new EngineeringOperationGuard();
         private Guid _engineeringBuildId;
         private Button _engineeringBuildButton, _engineeringCancelButton, _engineeringRefreshButton;
+        private Button _sourceRecoveryButton;
         private readonly TextBlock _engineeringStatus = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 3, 0, 3), VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBox _engineeringOutput = new TextBox { IsReadOnly = true, AcceptsReturn = true, MaxHeight = 160, TextWrapping = TextWrapping.NoWrap,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -68,12 +69,18 @@ namespace TwinCatAssistant.Native
             panel.Children.Add(actions); panel.Children.Add(_engineeringDetails);
             // Technical controls belong to opt-in diagnostics, not above the chat.
             _diagnosticAdvanced.Children.Add(panel);
+            // Recovery must also be reachable with diagnostics and the manual source panel closed.
+            _sourceRecoveryButton = Secondary(AsyncButton(HostText.Get("EngineeringSourceCreateRecover"), ReconcileSourceAsync));
+            var recovery = new WrapPanel { Margin = new Thickness(8, 0, 8, 0) };
+            recovery.Children.Add(_sourceRecoveryButton);
+            _toolbar.Children.Add(recovery);
             _engineeringRefreshDelay.Tick += async (sender, args) =>
             {
                 _engineeringRefreshDelay.Stop();
                 await RefreshEngineeringCapabilitiesAsync();
             };
             SetEngineeringStatus("EngineeringNoProject");
+            UpdateSourceButtons();
             if (EngineeringProviderSession.DevelopmentSourceAccess) BuildEngineeringSourcePanel();
         }
 
@@ -105,8 +112,7 @@ namespace TwinCatAssistant.Native
                 var wasSuspended = _engineeringProjectSuspended;
                 _engineeringProjectSuspended = false;
                 _engineering?.ResumeApprovals();
-                _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringBusy
-                    && !_engineeringUncertain && !EngineeringBuildGuard.HasUnresolved;
+                UpdateEngineeringBuildButton();
                 if (wasSuspended)
                 {
                     EngineeringSourceContextChanged();
@@ -172,14 +178,22 @@ namespace TwinCatAssistant.Native
                 if (_disposed || cancellation.IsCancellationRequested || epoch != _engineeringEpoch || session != _engineering) return;
                 _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(description, session.Binding, describeId,
                     out _engineeringConfiguration, out _engineeringPlatform);
-                _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringProjectSuspended
-                    && !_engineeringUncertain && !EngineeringBuildGuard.HasUnresolved;
+                UpdateEngineeringBuildButton();
                 SetEngineeringCapabilityStatus(description, session.Binding, describeId);
             }
             catch
             {
                 if (!_disposed && epoch == _engineeringEpoch) { DisposeEngineering(); SetEngineeringStatus("EngineeringUnavailable"); }
             }
+        }
+
+        private void UpdateEngineeringBuildButton()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_engineeringBuildButton != null)
+                _engineeringBuildButton.IsEnabled = !_disposed && _engineering != null && _engineeringPlcBuildVerified
+                    && !_engineeringBusy && !_sourceBusy && !_engineeringProjectSuspended && !_engineeringUncertain
+                    && !EngineeringBuildGuard.HasUnresolved && !EngineeringSourceGuard.HasUnresolved;
         }
 
         private void DisposeEngineering()
@@ -276,8 +290,6 @@ namespace TwinCatAssistant.Native
                 {
                     _engineeringBusy = false;
                     UpdateSourceButtons();
-                    _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringUncertain
-                        && !_engineeringProjectSuspended && !EngineeringBuildGuard.HasUnresolved;
                     _engineeringCancelButton.Visibility = Visibility.Collapsed;
                 }
             }
@@ -311,7 +323,7 @@ namespace TwinCatAssistant.Native
                     || capabilityGeneration != _engineeringCapabilityGeneration) return;
                 _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(response, session.Binding, id,
                     out _engineeringConfiguration, out _engineeringPlatform);
-                _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringUncertain && !EngineeringBuildGuard.HasUnresolved;
+                UpdateEngineeringBuildButton();
                 SetEngineeringCapabilityStatus(response, session.Binding, id);
             }
             catch { if (session == _engineering) SetEngineeringStatus("EngineeringUnavailable"); }

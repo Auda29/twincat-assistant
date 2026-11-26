@@ -67,6 +67,33 @@ internal static class EngineeringAuthorizationTests
         Check(!unresolved.Reconcile(Guid.NewGuid()) && unresolved.OperationId == build, "Unrelated terminal evidence cannot clear the guard");
         Check(unresolved.Reconcile(build) && !unresolved.HasUnresolved, "Exact terminal evidence clears the guard");
         Check(unresolved.TryBegin(Guid.NewGuid()), "A later operation can start after reconciliation");
+
+        var sourceGuard = new EngineeringOperationGuard();
+        var create = Create("fb");
+        var recovery = new EngineeringSourceCreation(create.OperationId, binding.ProjectFile, create.TargetObjectId);
+        Check(sourceGuard.TryBegin(create.OperationId, recovery), "Source creation reserves the guard");
+        Check(sourceGuard.UnknownSourceCreation == null && !sourceGuard.AcknowledgeSourceCreation(recovery, true),
+            "Recovery cannot acknowledge an in-flight creation");
+        sourceGuard.MarkSourceCreationUnknown(Guid.NewGuid());
+        Check(sourceGuard.UnknownSourceCreation == null, "An unrelated failure cannot mark the creation unknown");
+        sourceGuard.MarkSourceCreationUnknown(create.OperationId);
+        var inspected = sourceGuard.UnknownSourceCreation;
+        Check(inspected.OperationId == create.OperationId && inspected.ProjectFile == binding.ProjectFile
+            && inspected.TargetPath == create.TargetObjectId, "Recovery exposes the exact operation, project and target");
+        Check(!sourceGuard.TryBegin(apply.OperationId) && !sourceGuard.AcknowledgeSourceCreation(inspected, false)
+            && sourceGuard.HasUnresolved, "Cancelling recovery keeps source changes blocked");
+        Check(!sourceGuard.AcknowledgeSourceCreation(new EngineeringSourceCreation(create.OperationId, binding.ProjectFile, "POUs^Other"), true),
+            "Recovery requires the exact inspected creation");
+        Check(sourceGuard.AcknowledgeSourceCreation(inspected, true) && !sourceGuard.HasUnresolved
+            && sourceGuard.UnknownSourceCreation == null, "Explicit acknowledgment clears the unknown outcome guard");
+        Check(sourceGuard.TryBegin(apply.OperationId) && !sourceGuard.AcknowledgeSourceCreation(inspected, true)
+            && sourceGuard.OperationId == apply.OperationId, "Stale confirmation cannot clear a later operation");
+        var next = Create("fb");
+        sourceGuard.Reconcile(apply.OperationId);
+        Check(sourceGuard.TryBegin(next.OperationId, new EngineeringSourceCreation(next.OperationId, binding.ProjectFile, next.TargetObjectId))
+            && sourceGuard.Reconcile(next.OperationId), "Terminal result clears in-flight creation");
+        sourceGuard.MarkSourceCreationUnknown(next.OperationId);
+        Check(sourceGuard.UnknownSourceCreation == null, "A late failure cannot reopen a resolved creation");
         return count;
     }
 }

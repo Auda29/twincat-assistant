@@ -491,5 +491,15 @@ Links vorher, rechts nachher. Nur diese Änderung freigeben?</value></data>
   <data name="EngineeringSourceCreateImplementation" xml:space="preserve"><value>Initiale Implementierung</value></data>
   <data name="EngineeringSourceCreateDone" xml:space="preserve"><value>{0} wurde erstellt. TwinCAT hat die Objektdatei geschrieben oder die Datei der zugehörigen POU aktualisiert. Projektänderungen bleiben bis zum Speichern offen.</value></data>
   <data name="EngineeringSourceCreateUnknown" xml:space="preserve"><value>Das Ergebnis der Erstellung ist unbekannt. Vorgang {0}. Vor dem Fortfahren das PLC-Projekt prüfen. Für die Erstellung gibt es keinen Quelltext-Journaleintrag.</value></data>
+  <data name="EngineeringSourceCreateRecover" xml:space="preserve"><value>PLC-Erstellung mit unbekanntem Ergebnis prüfen</value></data>
+  <data name="EngineeringSourceCreateRecoveryPrompt" xml:space="preserve"><value>TwinCAT hat das Objekt möglicherweise teilweise im PLC-Projektbaum oder auf dem Datenträger angelegt. Das Ergebnis ist unbekannt.
+
+Vorgangs-ID: {0}
+Ziel im PLC-Projektbaum: {1}
+PLC-Projektdatei: {2}
+
+Bestätigen Sie erst, nachdem Sie den PLC-Projektbaum und die Dateien auf dem Datenträger manuell geprüft haben. Die Bestätigung hebt die Sperre für Quelltextänderungen und Builds auf.</value></data>
+  <data name="EngineeringSourceCreateInspected" xml:space="preserve"><value>Ich habe den Projektbaum und die Dateien geprüft</value></data>
+  <data name="EngineeringSourceCreateAcknowledged" xml:space="preserve"><value>Prüfung des Erstellungsvorgangs {0} bestätigt. Die Sperre für diesen Vorgang wurde aufgehoben.</value></data>
   <data name="EngineeringSourceRollbackUnsaved" xml:space="preserve"><value>Ungespeicherte Editoränderungen blockieren das Rückgängigmachen. Vor einem erneuten Versuch das geöffnete Dokument in TwinCAT speichern.</value></data>
 </root>

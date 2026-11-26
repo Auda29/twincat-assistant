@@ -17,7 +17,8 @@ namespace TwinCatAssistant.Native
     // Owns exactly one dedicated engineering child and the private host transport.
     internal sealed class EngineeringMcpChild : IDisposable
     {
-        private const int BootstrapLimit = 4096, MessageLimit = 2 * 1024 * 1024;
+        private const int BootstrapLimit = 4096, RequestFrameLimit = 2 * 1024 * 1024, ArgumentLimit = 1024 * 1024;
+        private const int MessageLimit = 5 * 1024 * 1024; // Includes both MCP representations of the provider response.
         private static readonly UTF8Encoding Utf8 = new UTF8Encoding(false, true);
         private readonly SemaphoreSlim calls = new SemaphoreSlim(1, 1);
         private readonly object sync = new object();
@@ -77,7 +78,7 @@ namespace TwinCatAssistant.Native
 
         internal async Task<string> CallToolAsync(string name, string argumentsJson, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(name) || name.Length > 256 || argumentsJson == null || Utf8.GetByteCount(argumentsJson) > MessageLimit / 2)
+            if (string.IsNullOrEmpty(name) || name.Length > 256 || argumentsJson == null || Utf8.GetByteCount(argumentsJson) > ArgumentLimit)
                 throw new ArgumentException("Invalid engineering tool call.");
             object arguments = Json().DeserializeObject(argumentsJson);
             if (!(arguments is Dictionary<string, object>)) throw new ArgumentException("Tool arguments must be an object.");
@@ -112,7 +113,7 @@ namespace TwinCatAssistant.Native
                 || !response.TryGetValue("result", out result) || result == null) throw new IOException("Invalid engineering MCP response.");
             return result;
         }
-        private Task SendAsync(object message, CancellationToken cancellation) { return WriteLineAsync(Json().Serialize(message), MessageLimit, cancellation); }
+        private Task SendAsync(object message, CancellationToken cancellation) { return WriteLineAsync(Json().Serialize(message), RequestFrameLimit, cancellation); }
         private async Task WriteLineAsync(string line, int limit, CancellationToken cancellation)
         {
             byte[] bytes = Utf8.GetBytes(line + "\n");
