@@ -50,6 +50,8 @@ namespace TwinCatAssistant.Native
 
     internal sealed class EngineeringAction
     {
+        internal const string EmptyDigest = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
         internal readonly EngineeringBinding Binding;
         internal readonly Guid OperationId;
         internal readonly string Operation, TargetObjectId, Section, PreviewId, JournalId;
@@ -60,16 +62,31 @@ namespace TwinCatAssistant.Native
             string requestDigest, string baseline, string proposed)
         {
             if (binding == null || operationId == Guid.Empty || expires.Kind != DateTimeKind.Utc || !Digest(requestDigest)
-                || (operation != "build.start" && operation != "source.apply" && operation != "source.rollback"))
+                || (operation != "build.start" && !IsSourceMutation(operation)))
                 throw new ArgumentException("An exact native action is required.");
             if (operation != "build.start" && (string.IsNullOrWhiteSpace(target) || string.IsNullOrWhiteSpace(section)
                 || !Digest(baseline) || !Digest(proposed)
-                || (operation == "source.apply" ? string.IsNullOrWhiteSpace(preview) : string.IsNullOrWhiteSpace(journal))))
+                || (operation == "source.create"
+                    ? !IsCreateKind(section) || preview != null || journal != null || baseline != EmptyDigest
+                    : string.IsNullOrWhiteSpace(preview) || (operation == "source.apply" ? journal != null : string.IsNullOrWhiteSpace(journal)))))
                 throw new ArgumentException("An exact source action is required.");
             Binding = binding; OperationId = operationId; Operation = operation;
             TargetObjectId = target; Section = section; PreviewId = preview; JournalId = journal;
             ExpiresUtc = expires; RequestDigest = requestDigest; BaselineDigest = baseline; ProposedDigest = proposed;
         }
+        internal static bool IsSourceMutation(string operation)
+        { return operation == "source.apply" || operation == "source.rollback" || operation == "source.create"; }
+
+        internal static bool IsCreateKind(string kind)
+        {
+            switch (kind)
+            {
+                case "fb": case "prg": case "fun": case "method": case "action":
+                case "property": case "dut_struct": case "gvl": return true;
+                default: return false;
+            }
+        }
+
         private static bool Digest(string value)
         {
             if (value == null || value.Length != 64) return false;

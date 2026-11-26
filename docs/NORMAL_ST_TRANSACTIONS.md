@@ -1,8 +1,14 @@
-# Normal TwinCAT ST write transaction blocker
+# Structured Text transaction paths
 
-Live normal ST discovery, read and preview are implemented. Apply and rollback
-remain unavailable for that route. This is a concrete adapter limitation, not a
-missing permission toggle or a reason to treat a preview as an applied change.
+Beta 11 uses Engineering MCP 0.5.9 to discover, read, preview, edit and roll
+back supported ST sections through the TwinCAT Automation Interface. It can
+also create supported ST objects after native approval. Automation Interface
+edits may persist directly to disk. Creation writes the object file or updates
+the owning POU file immediately, with changes to the `.plcproj` pending save.
+
+An open supported XML buffer can still apply an approved, conditional edit in
+memory. The attached native TwinCAT ST text-document fallback remains read-only.
+The observations below describe that fallback and the reason it stays read-only.
 
 ## Examined host
 
@@ -45,11 +51,10 @@ Static-IL research identifiers retained outside the repository were 060019A6
 060019AA (change) and 060019AB (recovery). These identify the examined binary,
 not a supported public API contract.
 
-## What is needed next
+## Acceptance boundary
 
-A vendor-supported exact-slot transaction and synchronization contract, or an
-independently validated editor adapter with equivalent baseline/version,
-conditional edit, cancellation and rollback guarantees, is required before
-normal-ST writes can be enabled. Existing XML-buffer transactions do not imply
-that contract. Live acceptance is also required after a suitable adapter exists.
-The broader P1 write requirement remains open; the PR does not claim completion.
+A writable attached ST buffer would require an exact-slot transaction and a
+synchronization contract that can preserve the reviewed baseline through
+submission and rollback. Beta 11 uses Automation Interface object operations
+with project and object identity, dirty-state and post-image checks. The
+supported installed host still needs separate live acceptance.

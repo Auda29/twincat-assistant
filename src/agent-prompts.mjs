@@ -1,6 +1,6 @@
 import { C1_ANALYSIS_PROMPTS } from './analysis-prompts-c1.mjs';
 import { C0_ANALYSIS_PROMPTS } from './analysis-prompts-c0.mjs';
-import { DEBUG_ACTIONS, EDITOR_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
+import { DEBUG_ACTIONS, EDITOR_ACTIONS, LEGACY_DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
 // System prompt composition for the TwinCAT agent profiles.
 //
 // Analysis stays read-only. Editor requires a native session opt-in and separate
@@ -127,7 +127,7 @@ export function previousC3EditorSystemPrompt() {
   return [
     'You are the TwinCAT Assistant in the Editor profile. Help the developer inspect existing source, review exact Structured Text changes and build the bound PLC project through native approval.',
     section('Tools and session binding', [
-      'Your only permitted tools are ' + [...KNOWLEDGE_TOOLS, ...ENGINEERING_TOOLS, ...DEVELOPMENT_EDITOR_ACTIONS, 'question'].join(', ') + '. Every other tool is denied. No shell, generic file access, other agents, ADS or runtime tools are available.',
+      'Your only permitted tools are ' + [...KNOWLEDGE_TOOLS, ...ENGINEERING_TOOLS, ...LEGACY_DEVELOPMENT_EDITOR_ACTIONS, 'question'].join(', ') + '. Every other tool is denied. No shell, generic file access, other agents, ADS or runtime tools are available.',
       'Knowledge and saved-file engineering tools are available only when configured for this workspace. The editor tools exist only while the native host explicitly enables Editor for this exact chat and IDE/project binding. Selecting this profile does not enable a host connection or approve a mutation. If unavailable, say so; do not substitute another project or ask for a capability or password.',
       'Start live work with editor_tc_session_describe and editor_tc_project_association. Inspect the returned capabilities, exact project identity, configuration and platform before choosing a workflow. Unsupported capabilities remain unsupported. A tool result proves only its reported source and time.',
       'Call knowledge_tc_get_corpus_status before documentation research. Cite returned sources and preserve ambiguity, missing metadata and version limits. Documentation does not prove the installed library version or live IDE state.',
@@ -197,10 +197,19 @@ function nativeEngineeringSystemPrompt(profile, workflow) {
   ].join('\n\n');
 }
 
-export function editorSystemPrompt() {
+export function previousBeta10EditorSystemPrompt() {
   return nativeEngineeringSystemPrompt('Editor', [
     'Use editor_plc_source_targets and editor_plc_source_read for an exact object and section already open. Present the exact diff from editor_plc_source_preview. Normal TwinCAT ST buffers support preview only.',
     'Use editor_plc_source_apply on a supported XML buffer with the exact preview, digests and revision. Applying and editor_plc_source_rollback each require separate native approval. Use editor_plc_source_journal for the exact rollback entry or unknown outcome. Applied edits stay unsaved. Never open, save, create, rename or delete objects.',
+  ]);
+}
+
+export function editorSystemPrompt() {
+  return nativeEngineeringSystemPrompt('Editor', [
+    'editor_plc_source_targets discovers project ST without moniker. Moniker filters and prefers open XML. Read via editor_plc_source_read.',
+    'Show the exact editor_plc_source_preview diff. Pass preview, digests and revision to editor_plc_source_apply. Automation Interface edits support closed or open ST POUs, members, DUTs, interfaces and GVLs. They may write to disk and refuse unverified unsaved edits. XML stays unsaved.',
+    'Create fb, prg, fun, method, action, property, dut_struct or gvl via editor_plc_source_create. TwinCAT writes the object or owning POU file now. .plcproj changes pending save. Never rename, delete or save.',
+    'Inspect via editor_plc_source_journal, undo via editor_plc_source_rollback. Mutations need separate native approval. On unsaved_editor_changes ask the user to save before retrying.',
   ]);
 }
 

@@ -13,7 +13,13 @@ TcXaeShell x86 / native host
 
 Analysis is the read-only default. Editor or Debug is bound to the selected project chat and native consent. Each selective build requires its own approval for the exact project, configuration and platform. Diagnostic navigation checks the build baseline and matching native ErrorItem. See [Profiles and native engineering](EDITOR_PROFILE.md).
 
-Editor can read and preview supported open ST sections. A confirmed diff can be applied to an exact supported XML buffer. Debug reads scalar symbols through the local ADS router after checking the existing TwinCAT login; by default it connects automatically to the project's configured AMS Net ID and ADS port in read-only mode (configurable in the `...` menu). See [Normal ST transactions](NORMAL_ST_TRANSACTIONS.md) for the remaining standard-editor write gate.
+Editor discovers ST across the bound project and supports native-approved edits
+and creation through the TwinCAT Automation Interface. These edits may persist
+directly to disk. Edits to a supported XML buffer remain unsaved. Debug reads
+scalar symbols through the local ADS router after checking the existing TwinCAT
+login. By default, it connects automatically to the project's configured AMS
+Net ID and ADS port in read-only mode (configurable in the `...` menu). See
+[Structured Text transaction paths](NORMAL_ST_TRANSACTIONS.md).
 
 The published dependencies are Engineering 0.5.8 (`engineering-v0.5.8`, `4869c39260a88c031c3dbccb72750ce10222edfd`) and Knowledge 0.1.2 (`v0.1.2`, `84c437aea8e27da930a246e7bb3ae310e8e5d31d`). Knowledge provides nine read-only tools, including five typed symbol, library and error lookup tools. Its corpus is supplied and activated locally, not bundled; documented metadata and versions do not establish installed libraries. See [Knowledge setup](KNOWLEDGE_SETUP.md) and [native MCP integration](NATIVE_MCP.md).
 

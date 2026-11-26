@@ -20,7 +20,8 @@ namespace TwinCatAssistant.Native
         };
 
         private static readonly string[] TwinCatNames = {
-            "ITcSysManager", "ITcSmTreeItem", "ITcSysManager7", "ITcConfigManager"
+            "ITcSysManager", "ITcSmTreeItem", "ITcSysManager7", "ITcConfigManager",
+            "ITcProjectRoot", "ITcPlcDeclaration", "ITcPlcImplementation"
         };
 
         internal static Func<string, Type> Capture()

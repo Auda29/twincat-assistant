@@ -10,17 +10,32 @@ chat, project or runtime owner revokes the grant.
 | Profile | Access |
 | --- | --- |
 | Analysis | Read-only project and documentation tools. |
-| Editor | Source discovery, read and preview, approved XML-buffer changes, and selective builds. |
+| Editor | Project-wide ST discovery, read and preview, approved source edits and object creation, and selective builds. |
 | Debug | Read-only ADS samples from the connected PLC target and selective builds. |
 
 ## Editor
 
 Select **Editor** in the composer and approve the project chat. Ask the
-Assistant for a diff against the already-open document. Source changes can
-only be applied to the exact supported XML buffer after native confirmation
-of the diff and baseline. The resulting buffer remains unsaved. The normal
-TwinCAT ST editor can show a read-only preview. An unknown or conflicting
-result requires reconciliation before another mutation.
+Assistant to find a Structured Text object in the bound project or limit
+discovery to a file. Review the exact before and proposed text in the native
+approval dialog.
+
+- TwinCAT Automation Interface edits support closed and open ST POUs,
+  members, DUTs, interfaces and GVLs. Changes may persist directly to disk.
+  The provider refuses conflicting or unverified unsaved editor changes.
+- Edits to a supported open XML editor buffer remain unsaved.
+- The creation dialog shows the project tree path, kind, options and initial
+  text. Supported creation kinds are `fb`, `prg`, `fun`, `method`, `action`,
+  `property`, `dut_struct` and `gvl`. TwinCAT writes the object file or updates
+  the owning POU file immediately. Changes to the `.plcproj` remain pending save.
+- Applied edits have a session journal and can be rolled back after another
+  native approval if the current content still matches the applied change.
+  When rollback reports `unsaved_editor_changes`, save the open document in
+  TwinCAT before requesting another attempt. Creation has no source journal.
+  If any mutation reports an unknown outcome, inspect the project before
+  continuing and do not retry that operation.
+
+Editor has no rename, delete, save or PLC runtime operations.
 
 ## Debug
 
@@ -83,6 +98,6 @@ host build events, dirty-state interfaces, editor synchronization and ErrorItem
 navigation still require a separately authorized live check. No operator IDE,
 PLC project, provider login or corpus was used during implementation.
 
-The remaining normal-ST write blocker is documented in
+The attached native ST buffer and Automation Interface boundaries are documented in
 [NORMAL_ST_TRANSACTIONS.md](NORMAL_ST_TRANSACTIONS.md). The three-project
 integration record is [MCP_P1_INTEGRATION_20261112.md](MCP_P1_INTEGRATION_20261112.md).

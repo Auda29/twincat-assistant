@@ -33,8 +33,8 @@ The Analysis configuration denies `*` and allows only `READ_TOOLS` plus `questio
 | --- | --- |
 | General chat (native) | 9 `knowledge_tc_*` tools, `question`; "No PLC project is connected" |
 | Project chat | Knowledge tools, 9 `engineering_*` tools for the saved files of one `.plcproj`, `question` |
-| Editor | Knowledge and saved-project tools, native source preview and approved XML-buffer edits, and separately approved PLC builds |
-| Debug | Knowledge and saved-project tools, approved read-only ADS samples, and separately approved PLC builds |
+| Editor | Knowledge and saved-project tools, 16 native tools for ST discovery, read, preview, approved edits and creation, journal and rollback, and separately approved PLC builds |
+| Debug | Knowledge and saved-project tools, 11 native tools for read-only ADS samples and separately approved PLC builds |
 | Operator CLI with global engineering | As the project chat, described as operator-configured saved files |
 | Without knowledge | No documentation citations; answers marked as not verified |
 
@@ -42,8 +42,18 @@ The Analysis configuration denies `*` and allows only `READ_TOOLS` plus `questio
 separately. Methods, actions and properties are separate objects with a
 `qualifiedName`. `engineering_plc_search_code` returns single lines with section
 and line number. This was checked in the engineering checkout at
-`3c303837e6d6f72bec1b9d38e778a7c32c61ae5c`. No tool reads or verifies the
-current editor buffer.
+`3c303837e6d6f72bec1b9d38e778a7c32c61ae5c`. Analysis has no tool that verifies the current editor buffer.
+
+Editor discovers ST targets across the bound PLC project when no moniker is
+supplied. A moniker filters discovery and prefers supported open XML buffers.
+The prompt distinguishes Automation Interface edits that may persist to disk,
+unsaved XML-buffer changes and creations that write object files immediately
+while project changes remain pending save. It directs rollback through the
+session journal, asks for a manual save when rollback reports
+`unsaved_editor_changes`, and bars retries of unknown outcomes.
+
+The managed upgrade matcher retains the exact C3, Beta 6, Beta 9 and Beta 10
+Editor policies and historical prompt variants.
 
 ## Renderer findings
 

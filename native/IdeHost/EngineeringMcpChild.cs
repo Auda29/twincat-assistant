@@ -17,7 +17,7 @@ namespace TwinCatAssistant.Native
     // Owns exactly one dedicated engineering child and the private host transport.
     internal sealed class EngineeringMcpChild : IDisposable
     {
-        private const int BootstrapLimit = 4096, MessageLimit = 512 * 1024;
+        private const int BootstrapLimit = 4096, MessageLimit = 2 * 1024 * 1024;
         private static readonly UTF8Encoding Utf8 = new UTF8Encoding(false, true);
         private readonly SemaphoreSlim calls = new SemaphoreSlim(1, 1);
         private readonly object sync = new object();

@@ -21,7 +21,7 @@ project and POU to a conversation that you can return to later.
 - Search locally installed Beckhoff InfoSys documentation and open the
   matching articles with sources through the Knowledge MCP. Look up documented
   symbols, libraries and error codes with explicit ambiguity and missing fields.
-- Preview changes in **Editor** and approve a diff for a supported XML buffer.
+- Review and approve Structured Text edits and new PLC objects in **Editor**.
 - Use **Debug** to sample live PLC symbols read-only from an existing TwinCAT login (connects automatically to the configured PLC target by default; configurable in the `...` menu).
 - Approve a selective PLC build from Editor or Debug and inspect its diagnostics.
 - Keep conversations associated with their PLC project, switch between
@@ -43,7 +43,7 @@ installed Beckhoff InfoSys help.
 1. Close TcXaeShell, verify the downloaded setup checksum and double-click the
    EXE. Confirm UAC with your normal Windows account. The setup window handles
    installation and managed updates without Git, npm or compilation. See the
-   [release notes](docs/releases/native-v0.2.0-beta.10.md), and the separate
+   [release notes](docs/releases/native-v0.2.0-beta.11.md), and the separate
    [migration notes for old unpackaged prototypes](docs/PROTOTYPE_PROFILE_MIGRATION_20261109.md).
 2. Open the TwinCAT Assistant tool window, connect your model provider and
    select a model in the chat.
@@ -52,7 +52,7 @@ installed Beckhoff InfoSys help.
 4. For documentation questions, use **Knowledge search** to discover and prepare
    your installed InfoSys help. See [documentation setup](docs/KNOWLEDGE_SETUP.md).
 5. In a bound project chat, choose **Editor** or **Debug** in the composer.
-   Follow the native consent dialog and confirm each requested build or edit.
+   Follow the native consent dialog and confirm each requested build, edit or creation.
    See the [profile guide](docs/EDITOR_PROFILE.md).
 
 The native host has separate x86 and amd64 builds. Live IDE testing currently
@@ -64,12 +64,13 @@ For development builds, use the [development setup](docs/INSTALLATION.md) and
 
 ## Beta scope
 
-Analysis reads project code and documentation. Editor can apply an approved
-diff to a supported open XML buffer. The resulting change remains unsaved.
-The standard TwinCAT ST editor supports live read and preview when its exact
-section is available. Debug reads approved scalar symbols from an
-operator-confirmed ADS endpoint of the already logged-in PLC. Editor and
-Debug can each request a separately approved selective PLC build.
+Analysis reads project code and documentation. Editor discovers Structured Text
+across the bound PLC project. Each edit or new object requires separate native
+approval. Automation Interface edits may persist directly to disk. Edits to a
+supported open XML buffer remain unsaved. Creating an object writes its file
+or updates its owning POU file immediately, with project changes pending save.
+Debug reads scalar symbols from the already logged-in PLC. Editor and Debug can
+each request a separately approved selective PLC build.
 
 PLC activation, download, Online Change and runtime control are outside the
 profile permissions. Installed-host workflow acceptance and extraction
@@ -91,7 +92,7 @@ two dedicated local MCP services.
 | Assistant Host | Native tool window, IDE context and WebView2 integration | C# / WPF |
 | Assistant Chat | Messages, input, attachments and conversation display | [OpenChamber](https://github.com/openchamber/openchamber) |
 | Assistant Core | Model providers, agent execution, MCP client and conversation storage | [OpenCode](https://github.com/anomalyco/opencode) |
-| Engineering MCP 0.5.8 | Saved project analysis, bound builds, Editor and Debug | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.8) |
+| Engineering MCP 0.5.9 | Saved project analysis, bound builds, Editor and Debug | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.9) |
 | Knowledge MCP 0.1.2 | Nine documentation tools, including symbol/library/error lookup | [Released package](https://github.com/Auda29/twincat-knowledge-mcp/releases/tag/v0.1.2) |
 
 Model execution and MCP processes run outside the IDE. Documentation, generated
@@ -99,6 +100,7 @@ indexes and user project files are not bundled with the application.
 
 ## Documentation
 
+- [0.2.0 Beta 11 — Structured Text edits and object creation](docs/releases/native-v0.2.0-beta.11.md)
 - [0.2.0 Beta 10 — automatic read-only Debug connection and Engineering 0.5.8](docs/releases/native-v0.2.0-beta.10.md)
 - [0.2.0 Beta 9 — Engineering 0.5.7 PLC association and COM invocation fixes](docs/releases/native-v0.2.0-beta.9.md)
 - [0.2.0 Beta 8 — unified composer profile menu and Debug diagnostics](docs/releases/native-v0.2.0-beta.8.md)

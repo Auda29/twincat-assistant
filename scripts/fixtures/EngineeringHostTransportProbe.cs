@@ -12,7 +12,7 @@ using TwinCatAssistant.Native;
 internal static class EngineeringHostTransportProbe
 {
     static int calls;
-    static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = 1024 * 1024 };
+    static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = 2 * 1024 * 1024 + 4096 };
     static string Hex(byte[] bytes) { return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant(); }
     static byte[] Unhex(string s) { var b = new byte[s.Length / 2]; for (int i = 0; i < b.Length; i++) b[i] = Convert.ToByte(s.Substring(i * 2, 2), 16); return b; }
     static string Hash(string s) { using (var h = SHA256.Create()) return Hex(h.ComputeHash(Encoding.UTF8.GetBytes(s))); }
@@ -46,9 +46,10 @@ internal static class EngineeringHostTransportProbe
                 if (mode == "malformed") { Write(writer, "{\"protocolVersion\":1,\"request\":\"\\q\",\"proof\":\"x\"}"); return reader.ReadLine(); }
                 proof = Sign(host.Capability, Transcript("request", session, server, client, Hash(request)));
                 if (mode == "bad-request") proof = new string('0', 64);
-                Write(writer, Json.Serialize(new { protocolVersion = 1, request = request, proof = proof }));
+                try { Write(writer, Json.Serialize(new { protocolVersion = 1, request = request, proof = proof })); }
+                catch (IOException) { if (mode == "oversized") return null; throw; }
                 string result = reader.ReadLine();
-                if (mode == "bad-request") return result;
+                if (mode == "bad-request" || mode == "oversized") return result;
                 Check(result != null && !result.Contains(host.Capability), "Secret leaked in response.");
                 var response = Json.Deserialize<Dictionary<string, string>>(result);
                 Check(response["proof"] == Sign(host.Capability, Transcript("response", session, server, client, Hash(response["response"]))), "Invalid response proof.");
@@ -80,6 +81,14 @@ internal static class EngineeringHostTransportProbe
             }
             Check(calls == 1, "Rejected request reached handler.");
             Check(Exchange(host, "valid", request) == request, "Server wedged after invalid frame.");
+            var maximum = "{\"text\":\"" + new string('\u00e9', EngineeringHostTransport.MaxPayload / 2 - 6) + "a\"}";
+            Check(Encoding.UTF8.GetByteCount(maximum) == EngineeringHostTransport.MaxPayload, "Invalid payload fixture length.");
+            Check(Exchange(host, "valid", maximum) == maximum, "A 1 MiB payload did not round-trip.");
+            Check(Exchange(host, "oversized", maximum + " ") == null, "Oversized inner payload accepted.");
+            var escaped = "{\"text\":\"" + new string('\\', EngineeringHostTransport.MaxPayload - 12) + "a\"}";
+            Check(Encoding.UTF8.GetByteCount(escaped) == EngineeringHostTransport.MaxPayload, "Invalid escaped fixture length.");
+            Check(Exchange(host, "oversized", escaped) == null, "Oversized authenticated frame accepted.");
+            Check(calls == 3, "An oversized authenticated request reached the handler.");
             using (var waiting = new NamedPipeClientStream(".", host.PipeName, PipeDirection.InOut))
             {
                 waiting.Connect(5000);
@@ -88,7 +97,7 @@ internal static class EngineeringHostTransportProbe
                     Check(reader.ReadLine() != null, "Missing greeting.");
                     var clock = System.Diagnostics.Stopwatch.StartNew();
                     Check(reader.ReadLine() == null, "Idle connection was not closed.");
-                    Check(clock.Elapsed.TotalSeconds >= 25 && clock.Elapsed.TotalSeconds < 40, "Unexpected idle timeout.");
+                    Check(clock.Elapsed.TotalSeconds >= 125 && clock.Elapsed.TotalSeconds < 145, "Unexpected idle timeout.");
                 }
             }
             using (var idle = new NamedPipeClientStream(".", host.PipeName, PipeDirection.InOut))

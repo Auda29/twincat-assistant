@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +27,7 @@ namespace TwinCatAssistant.Native
             internal long Generation;
             internal Dictionary<string, object> Arguments;
             internal bool Approved;
+            internal Dictionary<string, object> Creation;
             internal CancellationToken Cancellation;
         }
         private readonly ConcurrentDictionary<Guid, EditorRequest> _editorRequests = new ConcurrentDictionary<Guid, EditorRequest>();
@@ -85,15 +87,25 @@ namespace TwinCatAssistant.Native
                         || proposed != EditorText(pending.Arguments, "proposedDigest", 64)) return false;
                     var revision = EditorText(pending.Arguments, "projectRevision", 1024);
                     var before = EditorProperty(providerApproval, "BeforeText") as string; var after = EditorProperty(providerApproval, "ProposedText") as string;
-                    if (string.IsNullOrEmpty(revision) || before == null || after == null || before.Length > 16384 || after.Length > 16384) return false;
+                    if (string.IsNullOrEmpty(revision) || before == null || after == null || before.Length > SourceTextLimit || after.Length > SourceTextLimit) return false;
                     var separator = target.IndexOf('|');
                     if (separator <= 0 || !Guid.TryParseExact(preview, "D", out var previewId)) return false;
                     var moniker = target.Substring(0, separator);
-                    // Provider has already validated the exact source target and live buffer.
+                    var parts = target.Split('|');
+                    if ((parts.Length != 2 && parts.Length != 3) || parts.Any(string.IsNullOrWhiteSpace)) return false;
                     source = new SourcePreview { ObjectId = target, Section = section, Revision = revision, Moniker = moniker, PreviewId = previewId,
+                        Source = parts.Length == 2 ? AutomationSource : LiveBufferSource,
                         Before = rollback ? after : before, After = rollback ? before : after,
                         Baseline = rollback ? proposed : baseline, Proposed = rollback ? baseline : proposed };
                     if (rollback && !Guid.TryParseExact(journal, "D", out journalId)) return false;
+                }
+                else if (kind == "source.create")
+                {
+                    var payload = EditorProperty(providerApproval, "ProposedText") as string;
+                    if (preview != null || journal != null || baseline != EngineeringAction.EmptyDigest
+                        || (EditorProperty(providerApproval, "BeforeText") as string) != "") return false;
+                    pending.Creation = ValidateSourceCreation(pending.Arguments, target, section, payload, proposed);
+                    if (pending.Creation == null) return false;
                 }
                 else return false;
                 lock (EditorSeenGate)
@@ -109,6 +121,7 @@ namespace TwinCatAssistant.Native
                     var text = HostText.Format("EngineeringConfirm", new object[] { pending.Binding.SolutionFile, target, configuration, platform });
                     confirmed = ConfirmEditorBuild(text, verifyView);
                 }
+                else if (kind == "source.create") confirmed = ConfirmSourceCreate(target, pending.Creation, verifyView);
                 else confirmed = ConfirmSource(source, kind == "source.rollback", verifyView);
                 if (!confirmed || pending.Cancellation.IsCancellationRequested || pending.Generation != _editorGeneration
                     || !EditorProfileIsCurrent() || _engineeringProjectSuspended || pending.Session != _engineering
@@ -124,15 +137,98 @@ namespace TwinCatAssistant.Native
                 else
                 {
                     if (!EngineeringSourceGuard.TryBegin(id)) return false;
-                    sourceGuardSession = pending.Binding.SessionId; sourceGuardJournal = kind == "source.rollback" ? journalId : id;
+                    sourceGuardSession = pending.Binding.SessionId;
+                    sourceGuardJournal = kind == "source.create" ? Guid.Empty : kind == "source.rollback" ? journalId : id;
                     sourceGuardKind = kind; sourceGuardPreview = source; _sourceBusy = true;
-                    _sourceStatus.Text = HostText.Format("EngineeringSourceUnknown", new object[] { id.ToString("D"), sourceGuardJournal.ToString("D") });
+                    _sourceStatus.Text = SourceUnknownStatus(id);
                     UpdateSourceButtons();
                 }
                 pending.Approved = true;
                 return true;
             }
             catch { return false; }
+        }
+
+        private static Dictionary<string, object> ValidateSourceCreation(Dictionary<string, object> args,
+            string target, string kind, string payload, string digest)
+        {
+            var parent = EditorText(args, "parentPath", 512);
+            var name = EditorText(args, "name", 64);
+            var returnType = EditorText(args, "returnType", 64);
+            var access = EditorText(args, "access", 16);
+            var declaration = EditorText(args, "declarationText", SourceTextLimit);
+            var implementation = EditorText(args, "implementationText", SourceTextLimit);
+            var hasGet = args.TryGetValue("createGet", out var get);
+            var hasSet = args.TryGetValue("createSet", out var set);
+            var memberWithAccess = kind == "method" || kind == "property";
+            if (!EngineeringAction.IsCreateKind(kind) || kind != EditorText(args, "kind", 16)
+                || !EditorTreePath(target) || !EditorTreePath(parent) || !EditorSourceIdentifier(name) || target != parent + "^" + name
+                || args.Keys.Except(new[] { "parentPath", "name", "kind", "returnType", "access", "createGet", "createSet",
+                    "declarationText", "implementationText", "approvalExpiresUtc" }, StringComparer.Ordinal).Any()
+                || (args.ContainsKey("returnType") ? (!memberWithAccess && kind != "fun") || !EditorSourceIdentifier(returnType) : kind == "fun" || kind == "property")
+                || (args.ContainsKey("access") && (!memberWithAccess || (access != "PUBLIC" && access != "PRIVATE" && access != "PROTECTED" && access != "INTERNAL")))
+                || ((hasGet || hasSet) && kind != "property") || (hasGet && !(get is bool)) || (hasSet && !(set is bool))
+                || (args.ContainsKey("declarationText") && (kind == "action" || declaration == null || declaration.IndexOf('\0') >= 0))
+                || (args.ContainsKey("implementationText") && (kind == "dut_struct" || kind == "gvl" || kind == "property"
+                    || implementation == null || implementation.IndexOf('\0') >= 0))
+                || ((Equals(get, true) || Equals(set, true)) && !EditorTreePath(target + "^Get"))) return null;
+
+            // Reconstruct the provider's ordered payload, including its defaults
+            // and newline normalization, before presenting the approved content.
+            var canonical = new JavaScriptSerializer { MaxJsonLength = EngineeringHostTransport.MaxPayload }.Serialize(new {
+                parentPath = parent, name, kind, returnType, access = memberWithAccess ? access ?? "PUBLIC" : null,
+                createGet = Equals(get, true), createSet = Equals(set, true),
+                declarationText = NormalizeSourceText(declaration), implementationText = NormalizeSourceText(implementation)
+            });
+            if (payload != canonical || !SourceDigest(digest) || EngineeringAction.HashRequest(payload) != digest) return null;
+            return EditorJson(payload, EngineeringHostTransport.MaxPayload);
+        }
+
+        private static bool EditorSourceIdentifier(string value)
+        { return value != null && Regex.IsMatch(value, @"\A[A-Za-z_][A-Za-z0-9_]{0,63}\z", RegexOptions.CultureInvariant); }
+
+        private static bool EditorTreePath(string value)
+        {
+            return !string.IsNullOrEmpty(value) && value.Length <= 512 && value.Count(c => c == '^') < 32
+                && value.Split('^').All(part => part.Length > 0 && part.Trim() == part && part != "." && part != ".."
+                    && part.IndexOfAny(new[] { '\\', '/', ':', '|' }) < 0 && !part.Any(char.IsControl));
+        }
+
+        private static bool ConfirmSourceCreate(string target, Dictionary<string, object> creation, Func<Task<bool>> verifyView)
+        {
+            var window = new Window { Title = HostText.Get("EngineeringSourceCreateTitle"), Width = 780, Height = 650,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen };
+            var panel = new DockPanel { Margin = new Thickness(12) };
+            window.Content = panel;
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            DockPanel.SetDock(buttons, Dock.Bottom);
+            panel.Children.Add(buttons);
+            buttons.Children.Add(new Button { Content = HostText.Get("EngineeringSourceCancel"), Margin = new Thickness(4), MinWidth = 100, IsCancel = true });
+            var approve = new Button { Content = HostText.Get("EngineeringSourceCreateButton"), Margin = new Thickness(4), MinWidth = 100 };
+            buttons.Children.Add(approve);
+            BindEngineeringConfirmation(window, approve, verifyView);
+
+            var review = new StackPanel();
+            panel.Children.Add(new ScrollViewer { Content = review, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+            review.Children.Add(new TextBlock { Text = HostText.Format("EngineeringSourceCreateSummary", new object[] { target, creation["kind"] }),
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+            foreach (var key in new[] { "returnType", "access", "createGet", "createSet" })
+            {
+                if (creation[key] == null || ((key == "createGet" || key == "createSet") && !Equals(creation["kind"], "property"))) continue;
+                var value = creation[key] is bool enabled ? (enabled ? "true" : "false") : (string)creation[key];
+                review.Children.Add(new TextBlock { Text = key + " = " + value, TextWrapping = TextWrapping.Wrap });
+            }
+            review.Children.Add(new TextBlock { Text = HostText.Get("EngineeringSourceCreatePersistence"),
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 8) });
+            foreach (var key in new[] { "declarationText", "implementationText" })
+            {
+                if (!(creation[key] is string code)) continue;
+                review.Children.Add(new TextBlock { Text = HostText.Get(key == "declarationText" ? "EngineeringSourceCreateDeclaration" : "EngineeringSourceCreateImplementation") });
+                review.Children.Add(new TextBox { Text = code, IsReadOnly = true, AcceptsReturn = true, MinHeight = 70, MaxHeight = 195,
+                    FontFamily = new System.Windows.Media.FontFamily("Consolas"), TextWrapping = TextWrapping.NoWrap,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto });
+            }
+            return window.ShowDialog() == true;
         }
 
         private static bool ConfirmEditorBuild(string text, Func<Task<bool>> verifyView)
@@ -183,46 +279,47 @@ namespace TwinCatAssistant.Native
                 throw new InvalidOperationException("The active profile does not allow source operations.");
             using (var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
             {
-            attempt.CancelAfter(TimeSpan.FromSeconds(20));
-            parsed.Session = session; parsed.Binding = binding; parsed.Raw = request; parsed.Cancellation = attempt.Token;
-            parsed.Generation = generation;
-            var mutation = parsed.Operation == "build.start" || parsed.Operation == "source.apply" || parsed.Operation == "source.rollback";
-            if (mutation && !_editorRequests.TryAdd(parsed.Id, parsed)) throw new InvalidOperationException("Operation is already in flight.");
-            try
-            {
-                var response = await EngineeringDispatchBoundedAsync(session, request, attempt.Token).ConfigureAwait(false);
-                var envelope = EditorParseResponse(response, binding, parsed.Id);
-                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                attempt.Token.ThrowIfCancellationRequested();
-                if (_disposed || session != _engineering || !binding.Same(session.Binding)) throw new InvalidOperationException("Engineering context changed.");
-                if (parsed.Approved) HandleEditorMutationResponse(parsed, envelope, response);
-                else if (parsed.Operation == "session.describe")
+                var mutation = parsed.Operation == "build.start" || EngineeringAction.IsSourceMutation(parsed.Operation);
+                var timeoutSeconds = mutation ? 125 : 20;
+                attempt.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
+                parsed.Session = session; parsed.Binding = binding; parsed.Raw = request; parsed.Cancellation = attempt.Token;
+                parsed.Generation = generation;
+                if (mutation && !_editorRequests.TryAdd(parsed.Id, parsed)) throw new InvalidOperationException("Operation is already in flight.");
+                try
                 {
-                    _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(response, binding, parsed.Id,
-                        out _engineeringConfiguration, out _engineeringPlatform);
-                    _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringBusy && !_engineeringUncertain
-                        && !_engineeringProjectSuspended && !EngineeringBuildGuard.HasUnresolved && !EngineeringSourceGuard.HasUnresolved;
-                    SetEngineeringCapabilityStatus(response, binding, parsed.Id);
+                    var response = await EngineeringDispatchBoundedAsync(session, request, attempt.Token, timeoutSeconds).ConfigureAwait(false);
+                    var envelope = EditorParseResponse(response, binding, parsed.Id);
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    attempt.Token.ThrowIfCancellationRequested();
+                    if (_disposed || session != _engineering || !binding.Same(session.Binding)) throw new InvalidOperationException("Engineering context changed.");
+                    if (parsed.Approved) HandleEditorMutationResponse(parsed, envelope, response);
+                    else if (parsed.Operation == "session.describe")
+                    {
+                        _engineeringPlcBuildVerified = EngineeringSupportsPlcOnlyBuild(response, binding, parsed.Id,
+                            out _engineeringConfiguration, out _engineeringPlatform);
+                        _engineeringBuildButton.IsEnabled = _engineeringPlcBuildVerified && !_engineeringBusy && !_engineeringUncertain
+                            && !_engineeringProjectSuspended && !EngineeringBuildGuard.HasUnresolved && !EngineeringSourceGuard.HasUnresolved;
+                        SetEngineeringCapabilityStatus(response, binding, parsed.Id);
+                    }
+                    else if (parsed.Operation == "operation.get" || parsed.Operation == "operation.cancel" || parsed.Operation == "diagnostics.read" || parsed.Operation == "output.read")
+                    {
+                        Guid build;
+                        if (Guid.TryParseExact(EditorText(parsed.Arguments, "targetOperationId", 36), "D", out build) && build == EngineeringBuildGuard.OperationId && build == _engineeringBuildId)
+                            RenderEngineeringResponse(session, build, parsed.Id, response);
+                    }
+                    else if (parsed.Operation == "source.journal") ReconcileEditorSourceJournal(parsed, envelope);
+                    if (generation != _editorGeneration
+                        || (parsed.Operation != "session.ping" && !await VerifyEngineeringEditorViewAsync(generation, cancellation)))
+                        throw new InvalidOperationException("Engineering grant changed.");
+                    return response;
                 }
-                else if (parsed.Operation == "operation.get" || parsed.Operation == "operation.cancel" || parsed.Operation == "diagnostics.read" || parsed.Operation == "output.read")
+                catch
                 {
-                    Guid build;
-                    if (Guid.TryParseExact(EditorText(parsed.Arguments, "targetOperationId", 36), "D", out build) && build == EngineeringBuildGuard.OperationId && build == _engineeringBuildId)
-                        RenderEngineeringResponse(session, build, parsed.Id, response);
+                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                    if (parsed.Approved) MarkEditorUnknown(parsed);
+                    throw;
                 }
-                else if (parsed.Operation == "source.journal") ReconcileEditorSourceJournal(parsed, envelope);
-                if (generation != _editorGeneration
-                    || (parsed.Operation != "session.ping" && !await VerifyEngineeringEditorViewAsync(generation, cancellation)))
-                    throw new InvalidOperationException("Engineering grant changed.");
-                return response;
-            }
-            catch
-            {
-                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                if (parsed.Approved) MarkEditorUnknown(parsed);
-                throw;
-            }
-            finally { if (mutation) _editorRequests.TryRemove(parsed.Id, out _); }
+                finally { if (mutation) _editorRequests.TryRemove(parsed.Id, out _); }
             }
         }
         private void HandleEditorMutationResponse(EditorRequest request, Dictionary<string, object> envelope, string response)
@@ -241,21 +338,49 @@ namespace TwinCatAssistant.Native
             var result = EditorObject(envelope, "result"); var provenance = EditorObject(envelope, "provenance");
             if (status == "succeeded")
             {
-                if (EngineeringSourceGuard.OperationId != request.Id || sourceGuardPreview == null
-                    || EditorText(provenance, "source", 32) != "liveBuffer" || EditorText(result, "source", 32) != "liveBuffer"
+                if (request.Operation == "source.create")
+                {
+                    var kind = EditorText(request.Creation, "kind", 16);
+                    var target = EditorText(request.Creation, "parentPath", 512) + "^" + EditorText(request.Creation, "name", 64);
+                    if (!SourceProvenanceMatches(result, provenance, AutomationSource, "fileWrittenProjectPendingSave")
+                        || EditorText(result, "treePath", 512) != target || !MatchesCreatedKind(kind, EditorText(result, "kind", 16)))
+                        throw new InvalidOperationException("Unverified source creation.");
+                    EngineeringSourceGuard.Reconcile(request.Id);
+                    _sourceStatus.Text = HostText.Format("EngineeringSourceCreateDone", new object[] { target });
+                    _sourceBusy = false; UpdateSourceButtons();
+                    Notify(_sourceStatus.Text);
+                    return;
+                }
+                if (sourceGuardPreview == null || !SourceProvenanceMatches(result, provenance, sourceGuardPreview.Source)
                     || EditorText(result, "journalOperationId", 36) != sourceGuardJournal.ToString("D")
                     || EditorText(result, "baselineDigest", 64) != EditorText(request.Arguments, "baselineDigest", 64)
                     || EditorText(result, "proposedDigest", 64) != EditorText(request.Arguments, "proposedDigest", 64)) throw new InvalidOperationException();
                 EngineeringSourceGuard.Reconcile(request.Id);
                 if (request.Operation == "source.apply") { _sourceApplied = sourceGuardPreview; _sourceJournal = request.Id; }
                 else { _sourceApplied = null; _sourceJournal = Guid.Empty; }
-                _sourceStatus.Text = HostText.Format("EngineeringSourceDone", new object[] { request.Id.ToString("D"), sourceGuardJournal.ToString("D") });
+                _sourceStatus.Text = SourceDoneStatus(request.Id, sourceGuardJournal, sourceGuardPreview.Source);
+                _sourceBusy = false; UpdateSourceButtons();
+                if (sourceGuardPreview.Source == AutomationSource) Notify(_sourceStatus.Text);
+                return;
             }
             else if (status == "refused" || status == "conflict" || status == "unsupported")
-            { EngineeringSourceGuard.Reconcile(request.Id); _sourceStatus.Text = HostText.Get("EngineeringSourceRefused"); }
+            {
+                EngineeringSourceGuard.Reconcile(request.Id);
+                var unsavedRollback = request.Operation == "source.rollback" && EditorText(envelope, "error", 64) == "unsaved_editor_changes";
+                _sourceStatus.Text = HostText.Get(unsavedRollback ? "EngineeringSourceRollbackUnsaved" : "EngineeringSourceRefused");
+                _sourceBusy = false; UpdateSourceButtons();
+                if (unsavedRollback) Notify(_sourceStatus.Text, "warning");
+            }
             else throw new InvalidOperationException();
-            _sourceBusy = false; UpdateSourceButtons();
         }
+        private static bool MatchesCreatedKind(string requested, string observed)
+        {
+            // Engineering 0.5.9 describes created objects with the discovery
+            // catalog's kinds, where POUs and DUTs share their respective labels.
+            return requested == observed || (observed == "pou" && (requested == "fb" || requested == "prg" || requested == "fun"))
+                || (observed == "dut" && requested == "dut_struct");
+        }
+
         private void ReconcileEditorSourceJournal(EditorRequest request, Dictionary<string, object> envelope)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -314,11 +439,16 @@ namespace TwinCatAssistant.Native
             if (request.Operation == "build.start" && EngineeringBuildGuard.OperationId == request.Id)
             { _engineeringUncertain = true; SetEngineeringStatus("EngineeringUnknown"); FinishEditorBuild(); }
             else if (EngineeringSourceGuard.OperationId == request.Id)
-            { _sourceBusy = false; _sourceStatus.Text = HostText.Format("EngineeringSourceUnknown", new object[] { request.Id.ToString("D"), sourceGuardJournal.ToString("D") }); UpdateSourceButtons(); }
+            {
+                _sourceBusy = false;
+                _sourceStatus.Text = SourceUnknownStatus(request.Id);
+                UpdateSourceButtons();
+                if (request.Operation == "source.create") Notify(_sourceStatus.Text, "error");
+            }
         }
         private static EditorRequest EditorParseRequest(string json, EngineeringBinding binding)
         {
-            var envelope = EditorJson(json, 256 * 1024); object version, expectedValue, argsValue;
+            var envelope = EditorJson(json, EngineeringHostTransport.MaxPayload); object version, expectedValue, argsValue;
             if (!EditorKeys(envelope, "protocolVersion", "sessionId", "operationId", "operation", "expected", "arguments") || binding == null
                 || !envelope.TryGetValue("protocolVersion", out version) || !Equals(version, 1)
                 || EditorText(envelope, "sessionId", 36) != binding.SessionId.ToString("D")
@@ -330,7 +460,7 @@ namespace TwinCatAssistant.Native
         }
         private static Dictionary<string, object> EditorParseResponse(string json, EngineeringBinding binding, Guid id)
         {
-            var envelope = EditorJson(json, 512 * 1024); object version;
+            var envelope = EditorJson(json, EngineeringHostTransport.MaxPayload); object version;
             if (envelope == null || binding == null || !envelope.TryGetValue("protocolVersion", out version) || !Equals(version, 1)
                 || EditorText(envelope, "sessionId", 36) != binding.SessionId.ToString("D") || EditorText(envelope, "operationId", 36) != id.ToString("D")
                 || string.IsNullOrEmpty(EditorText(envelope, "status", 32))) throw new InvalidOperationException("Uncorrelated provider response.");

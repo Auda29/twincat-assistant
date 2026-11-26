@@ -71,8 +71,8 @@ test('revocation and child exit fail closed without retrying a pending call', { 
 
 test('native Editor and Debug children expose mutually exclusive capabilities', { timeout: 15000 }, async () => {
   for (const [profile, allowed, denied] of [
-    ['editor', 'plc_source_apply', 'plc_debug_read'],
-    ['debug', 'plc_debug_read', 'plc_source_apply'],
+    ['editor', 'plc_source_create', 'plc_debug_read'],
+    ['debug', 'plc_debug_read', 'plc_source_create'],
   ]) {
     const broker = await startEditorSession({ ...options(), profile });
     try {
@@ -82,6 +82,21 @@ test('native Editor and Debug children expose mutually exclusive capabilities', 
         assert.ok((await rpc(broker, 'tools/call', request)).value.error);
     } finally { await broker.close(); }
   }
+});
+
+test('Editor broker enforces 1 MiB requests and 2 MiB child frames in UTF-8 bytes', { timeout: 15000 }, async () => {
+  const broker = await startEditorSession({ ...options(), profile: 'editor' });
+  const callCreate = args => call('plc_source_create', 'ses_editor_1', args);
+  try {
+    assert.equal(broker.configuration().timeout.execution, 135000);
+    const largeRequest = '\u00e9'.repeat(450 * 1024);
+    const accepted = await rpc(broker, 'tools/call', callCreate({ declarationText: largeRequest }));
+    assert.equal(JSON.parse(accepted.value.result.content[0].text).arguments.declarationText, largeRequest);
+    await assert.rejects(rpc(broker, 'tools/call', callCreate({ declarationText: '\u00e9'.repeat(512 * 1024) })));
+    const max = await rpc(broker, 'tools/call', callCreate({ responseFrameBytes: 2 * 1024 * 1024 }));
+    assert.ok(max.value.result.content[0].text.length > 1024 * 1024);
+    await assert.rejects(rpc(broker, 'tools/call', callCreate({ responseFrameBytes: 2 * 1024 * 1024 + 1 })));
+  } finally { await broker.close(); }
 });
 
 test('protected registration keeps frontend authentication in a memory-only Core override and revokes before deletion', { timeout: 15000 }, async () => {

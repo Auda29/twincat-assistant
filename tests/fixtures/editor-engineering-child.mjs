@@ -26,6 +26,11 @@ lines.on('line', line => {
       secretInEnvironment: Object.values(process.env).some(arg => arg.includes(bootstrap.capability)),
       inheritedSentinel: Boolean(process.env.TC_EDITOR_TEST_PRIVATE),
     }) }] };
+    if (value.params.arguments.responseFrameBytes) {
+      result = { content: [{ type: 'text', text: '' }] };
+      const overhead = Buffer.byteLength(JSON.stringify({ jsonrpc: '2.0', id: value.id, result }) + '\n');
+      result.content[0].text = 'x'.repeat(value.params.arguments.responseFrameBytes - overhead);
+    }
     if (value.params.arguments.delay) { setTimeout(() => send({ jsonrpc: '2.0', id: value.id, result }), 150); return; }
   }
   send({ jsonrpc: '2.0', id: value.id, result });

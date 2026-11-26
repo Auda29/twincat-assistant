@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Globalization;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,11 +15,13 @@ namespace TwinCatAssistant.Native
     public sealed partial class AssistantControl
     {
         private static readonly EngineeringOperationGuard EngineeringSourceGuard = new EngineeringOperationGuard();
+        private const int SourceTextLimit = 65536;
+        private const string AutomationSource = "automationInterface", LiveBufferSource = "liveBuffer", AttachedSource = "liveAttachedDocument";
         private static Guid sourceGuardSession, sourceGuardJournal;
         private static string sourceGuardKind;
         private static SourcePreview sourceGuardPreview;
         private readonly ComboBox _sourceTargets = new ComboBox { MinWidth = 200, Margin = new Thickness(0, 3, 4, 3) };
-        private readonly TextBox _sourceProposed = new TextBox { AcceptsReturn = true, AcceptsTab = true, MaxLength = 16384, MinHeight = 100, MaxHeight = 240, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, TextWrapping = TextWrapping.NoWrap };
+        private readonly TextBox _sourceProposed = new TextBox { AcceptsReturn = true, AcceptsTab = true, MaxLength = SourceTextLimit, MinHeight = 100, MaxHeight = 240, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, TextWrapping = TextWrapping.NoWrap };
         private readonly TextBox _sourceBefore = new TextBox { IsReadOnly = true, AcceptsReturn = true, MinHeight = 80, MaxHeight = 180, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, TextWrapping = TextWrapping.NoWrap };
         private readonly TextBox _sourceStatus = new TextBox { IsReadOnly = true, TextWrapping = TextWrapping.Wrap, BorderThickness = new Thickness(0), Margin = new Thickness(0, 4, 0, 4) };
         private Button _sourceDiscover, _sourceRead, _sourcePreviewButton, _sourceApply, _sourceRollback, _sourceReconcile;
@@ -30,12 +33,12 @@ namespace TwinCatAssistant.Native
 
         private sealed class SourceTarget
         {
-            internal string ObjectId, Section, Name;
+            internal string ObjectId, Section, Name, Source;
             public override string ToString() { return Name + " — " + Section; }
         }
         private sealed class SourcePreview
         {
-            internal string ObjectId, Section, Before, After, Baseline, Proposed, Revision, Moniker;
+            internal string ObjectId, Section, Before, After, Baseline, Proposed, Revision, Moniker, Source;
             internal Guid PreviewId;
         }
 
@@ -76,7 +79,7 @@ namespace TwinCatAssistant.Native
             _sourceTargets.Items.Clear(); _sourceBefore.Clear();
             _sourceSettingText = true; _sourceProposed.Clear(); _sourceSettingText = false;
             _sourceStatus.Text = EngineeringSourceGuard.HasUnresolved
-                ? HostText.Format("EngineeringSourceUnknown", new object[] { EngineeringSourceGuard.OperationId.ToString("D"), sourceGuardJournal.ToString("D") })
+                ? SourceUnknownStatus(EngineeringSourceGuard.OperationId)
                 : HostText.Get("EngineeringSourceSessionOnly");
             UpdateSourceButtons();
         }
@@ -90,7 +93,7 @@ namespace TwinCatAssistant.Native
             _sourcePreviewButton.IsEnabled = unblocked && _sourceTargets.SelectedItem is SourceTarget;
             _sourceApply.IsEnabled = unblocked && !_engineeringBusy && !EngineeringBuildGuard.HasUnresolved && _sourcePreview != null;
             _sourceRollback.IsEnabled = unblocked && !_engineeringBusy && !EngineeringBuildGuard.HasUnresolved && _sourceApplied != null && _sourceJournal != Guid.Empty;
-            _sourceReconcile.IsEnabled = ready && EngineeringSourceGuard.HasUnresolved && _engineering.Binding != null && sourceGuardSession == _engineering.Binding.SessionId;
+            _sourceReconcile.IsEnabled = ready && EngineeringSourceGuard.HasUnresolved && sourceGuardJournal != Guid.Empty && _engineering.Binding != null && sourceGuardSession == _engineering.Binding.SessionId;
         }
         private string ActiveSourceMoniker()
         {
@@ -100,8 +103,18 @@ namespace TwinCatAssistant.Native
             var frame = frameObject as IVsWindowFrame;
             if (frame == null || ErrorHandler.Failed(frame.GetProperty((int)__VSFPROPID.VSFPROPID_pszMkDocument, out monikerObject))) return null;
             var moniker = monikerObject as string;
-            if (moniker != null && moniker.IndexOf(';') >= 0) moniker = moniker.Substring(0, moniker.IndexOf(';'));
-            try { return !string.IsNullOrEmpty(moniker) && Path.IsPathRooted(moniker) && moniker.EndsWith(".TcPOU", StringComparison.OrdinalIgnoreCase) && Path.GetFullPath(moniker) == moniker ? moniker : null; }
+            try
+            {
+                if (string.IsNullOrEmpty(moniker) || !Path.IsPathRooted(moniker) || Path.GetFullPath(moniker) != moniker) return null;
+                if (EngineeringDirtyState.IsPlcSource(Path.GetExtension(moniker))) return moniker;
+                if (File.Exists(moniker)) return null;
+                for (var sep = moniker.LastIndexOf(';'); sep > 0; sep = moniker.LastIndexOf(';', sep - 1))
+                {
+                    var path = moniker.Substring(0, sep);
+                    if (EngineeringDirtyState.IsPlcSource(Path.GetExtension(path)) && File.Exists(path)) return path;
+                }
+                return null;
+            }
             catch { return null; }
         }
         private bool SourceCurrent(EngineeringProviderSession session, string moniker)
@@ -118,23 +131,37 @@ namespace TwinCatAssistant.Native
                 var id = Guid.NewGuid(); var result = await SourceCallAsync(session, id, "source.targets", new { moniker }, _engineeringLifetime.Token);
                 if (!SourceCurrent(session, moniker)) return;
                 object entries, count, truncated;
-                if (EngineeringProviderSession.Text(result, "moniker") != moniker || EngineeringProviderSession.Text(result, "source") != "liveBuffer"
+                var source = EngineeringProviderSession.Text(result, "source");
+                var automation = source == AutomationSource;
+                if (!string.Equals(EngineeringProviderSession.Text(result, "moniker"), moniker, StringComparison.OrdinalIgnoreCase)
                     || !result.TryGetValue("truncated", out truncated) || !Equals(truncated, false) || !result.TryGetValue("targets", out entries) || !(entries is object[] rows)
-                    || rows.Length > 64 || !result.TryGetValue("count", out count) || !Equals(count, rows.Length) || !SourceRevision(EngineeringProviderSession.Text(result, "projectRevision"))) throw new InvalidOperationException();
+                    || rows.Length > (automation ? 512 : 64) || !result.TryGetValue("count", out count) || !Equals(count, rows.Length)
+                    || (!automation && !SourceRevision(EngineeringProviderSession.Text(result, "projectRevision")))) throw new InvalidOperationException();
                 if (EngineeringProviderSession.Text(result, "sourceMode") == "customStReadOnly")
                 {
                     object apply;
                     if (EngineeringProviderSession.Text(result, "identitySource") != "persistedObjectMetadataAndNativeView"
                         || !result.TryGetValue("applySupported", out apply) || !Equals(apply, false)) throw new InvalidOperationException();
                 }
-                else if (!SourceDigest(EngineeringProviderSession.Text(result, "bufferDigest"))) throw new InvalidOperationException();
+                else if (!automation && !SourceDigest(EngineeringProviderSession.Text(result, "bufferDigest"))) throw new InvalidOperationException();
                 var targets = new List<SourceTarget>();
                 foreach (var item in rows)
                 {
                     var target = item as Dictionary<string, object>; var objectId = EngineeringProviderSession.Text(target, "objectId"); var name = EngineeringProviderSession.Text(target, "qualifiedName"); var kind = EngineeringProviderSession.Text(target, "kind"); object sections;
-                    if (target == null || string.IsNullOrEmpty(objectId) || objectId.Length > 1024 || !ValidSourceObjectId(moniker, objectId, name) || string.IsNullOrEmpty(name) || name.Length > 512 || (kind != "pou" && kind != "method" && kind != "action") || !target.TryGetValue("sections", out sections) || !(sections is object[] list) || list.Length < 1 || list.Length > 2) throw new InvalidOperationException();
+                    if (target == null || string.IsNullOrEmpty(objectId) || objectId.Length > 1024 || string.IsNullOrEmpty(name) || name.Length > 512
+                        || !target.TryGetValue("sections", out sections) || !(sections is object[] list) || list.Length < 1 || list.Length > 2)
+                        throw new InvalidOperationException();
+                    if (automation)
+                    {
+                        var path = EngineeringProviderSession.Text(target, "physicalFile");
+                        var treePath = EngineeringProviderSession.Text(target, "treePath");
+                        if (!string.Equals(path, moniker, StringComparison.OrdinalIgnoreCase) || !EditorTreePath(treePath)
+                            || objectId != path + "|" + treePath || EngineeringProviderSession.Text(target, "language") != "ST"
+                            || EngineeringProviderSession.Text(target, "source") != AutomationSource) throw new InvalidOperationException();
+                    }
+                    else if (!ValidSourceObjectId(moniker, objectId, name) || (kind != "pou" && kind != "method" && kind != "action")) throw new InvalidOperationException();
                     var seen = new HashSet<string>();
-                    foreach (var value in list) { var section = value as string; if ((section != "declaration" && section != "implementation") || !seen.Add(section)) throw new InvalidOperationException(); targets.Add(new SourceTarget { ObjectId = objectId, Name = name, Section = section }); }
+                    foreach (var value in list) { var section = value as string; if ((section != "declaration" && section != "implementation") || !seen.Add(section)) throw new InvalidOperationException(); targets.Add(new SourceTarget { ObjectId = objectId, Name = name, Section = section, Source = source }); }
                 }
                 _sourceMoniker = moniker; foreach (var target in targets) _sourceTargets.Items.Add(target);
                 if (targets.Count > 0) _sourceTargets.SelectedIndex = 0;
@@ -153,7 +180,7 @@ namespace TwinCatAssistant.Native
             {
                 var result = await SourceCallAsync(session, Guid.NewGuid(), "source.read", new { objectId = target.ObjectId, section = target.Section }, _engineeringLifetime.Token);
                 var text = EngineeringProviderSession.Text(result, "text"); object truncated;
-                if (!SourceCurrent(session, moniker) || _sourceTargets.SelectedItem != target || EngineeringProviderSession.Text(result, "objectId") != target.ObjectId || EngineeringProviderSession.Text(result, "section") != target.Section || EngineeringProviderSession.Text(result, "source") != "liveBuffer" || !result.TryGetValue("truncated", out truncated) || !Equals(truncated, false) || text == null || text.Length > 16384 || !SourceDigest(EngineeringProviderSession.Text(result, "bufferDigest") ?? EngineeringProviderSession.Text(result, "documentDigest")) || !SourceRevision(EngineeringProviderSession.Text(result, "projectRevision"))) throw new InvalidOperationException();
+                if (!SourceCurrent(session, moniker) || _sourceTargets.SelectedItem != target || EngineeringProviderSession.Text(result, "objectId") != target.ObjectId || EngineeringProviderSession.Text(result, "section") != target.Section || EngineeringProviderSession.Text(result, "source") != target.Source || !result.TryGetValue("truncated", out truncated) || !Equals(truncated, false) || text == null || text.Length > SourceTextLimit || !SourceDigest(EngineeringProviderSession.Text(result, "bufferDigest") ?? EngineeringProviderSession.Text(result, "documentDigest")) || !SourceRevision(EngineeringProviderSession.Text(result, "projectRevision"))) throw new InvalidOperationException();
                 _sourceBefore.Text = text; _sourceSettingText = true; _sourceProposed.Text = text; _sourceSettingText = false;
                 _sourceStatus.Text = HostText.Get("EngineeringSourceReadReady");
             }
@@ -164,7 +191,7 @@ namespace TwinCatAssistant.Native
         {
             await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var session = _engineering; var target = _sourceTargets.SelectedItem as SourceTarget; var moniker = _sourceMoniker; var proposed = _sourceProposed.Text;
-            if (_sourceBusy || target == null || proposed.Length > 16384 || EngineeringSourceGuard.HasUnresolved || !SourceCurrent(session, moniker)) return;
+            if (_sourceBusy || target == null || proposed.Length > SourceTextLimit || EngineeringSourceGuard.HasUnresolved || !SourceCurrent(session, moniker)) return;
             _sourceBusy = true; InvalidateSourcePreview(); UpdateSourceButtons();
             try
             {
@@ -175,7 +202,7 @@ namespace TwinCatAssistant.Native
                 {
                     if (!SourceCurrent(session, moniker) || _sourceTargets.SelectedItem != target || _sourceProposed.Text != proposed
                         || EngineeringProviderSession.Text(result, "objectId") != target.ObjectId || EngineeringProviderSession.Text(result, "section") != target.Section
-                        || before == null || before.Length > 16384 || after != proposed || !SourceDigest(EngineeringProviderSession.Text(result, "documentDigest"))
+                        || before == null || before.Length > SourceTextLimit || after != proposed || !SourceDigest(EngineeringProviderSession.Text(result, "documentDigest"))
                         || !SourceDigest(EngineeringProviderSession.Text(result, "proposedDocumentDigest")) || !SourceRevision(revision)
                         || !result.ContainsKey("atomicWriteSupported") || !Equals(result["atomicWriteSupported"], false)
                         || result.ContainsKey("previewOperationId") || result.ContainsKey("baselineDigest")) throw new InvalidOperationException();
@@ -184,8 +211,8 @@ namespace TwinCatAssistant.Native
                     _sourceStatus.Text = HostText.Get("EngineeringSourceStPreviewOnly");
                     return;
                 }
-                if (!SourceCurrent(session, moniker) || _sourceTargets.SelectedItem != target || _sourceProposed.Text != proposed || EngineeringProviderSession.Text(result, "previewOperationId") != id.ToString("D") || EngineeringProviderSession.Text(result, "objectId") != target.ObjectId || EngineeringProviderSession.Text(result, "section") != target.Section || EngineeringProviderSession.Text(result, "source") != "liveBuffer" || !result.TryGetValue("truncated", out truncated) || !Equals(truncated, false) || before == null || before.Length > 16384 || after != proposed || !SourceDigest(baseline) || !SourceDigest(digest) || !SourceRevision(revision)) throw new InvalidOperationException();
-                _sourceBefore.Text = before; _sourcePreview = new SourcePreview { ObjectId = target.ObjectId, Section = target.Section, Before = before, After = after, Baseline = baseline, Proposed = digest, Revision = revision, PreviewId = id, Moniker = moniker };
+                if (!SourceCurrent(session, moniker) || _sourceTargets.SelectedItem != target || _sourceProposed.Text != proposed || EngineeringProviderSession.Text(result, "previewOperationId") != id.ToString("D") || EngineeringProviderSession.Text(result, "objectId") != target.ObjectId || EngineeringProviderSession.Text(result, "section") != target.Section || EngineeringProviderSession.Text(result, "source") != target.Source || !result.TryGetValue("truncated", out truncated) || !Equals(truncated, false) || before == null || before.Length > SourceTextLimit || after != (target.Source == AutomationSource ? NormalizeSourceText(proposed) : proposed) || !SourceDigest(baseline) || !SourceDigest(digest) || !SourceRevision(revision)) throw new InvalidOperationException();
+                _sourceBefore.Text = before; _sourcePreview = new SourcePreview { ObjectId = target.ObjectId, Section = target.Section, Before = before, After = after, Baseline = baseline, Proposed = digest, Revision = revision, PreviewId = id, Moniker = moniker, Source = target.Source };
                 _sourceStatus.Text = HostText.Get("EngineeringSourcePreviewReady");
             }
             catch { _sourceStatus.Text = HostText.Get("EngineeringSourceUnavailable"); }
@@ -206,9 +233,9 @@ namespace TwinCatAssistant.Native
                     var check = await SourceCallAsync(session, Guid.NewGuid(), "source.journal", new { journalId = journal.ToString("D") }, _engineeringLifetime.Token);
                     if (!ValidSourceJournal(check, p, journal) || EngineeringProviderSession.Text(check, "outcome") != "succeeded" || !Equals(check["rollbackSubmitted"], false)) throw new InvalidOperationException();
                 }
-                if (!SourceCurrent(session, p.Moniker) || (!rollback && (_sourcePreview != p || _sourceProposed.Text != p.After))) return;
+                if (!SourceCurrent(session, p.Moniker) || (!rollback && (_sourcePreview != p || (p.Source == AutomationSource ? NormalizeSourceText(_sourceProposed.Text) : _sourceProposed.Text) != p.After))) return;
                 if (!ConfirmSource(p, rollback)) return;
-                if (!SourceCurrent(session, p.Moniker) || (!rollback && (_sourcePreview != p || _sourceProposed.Text != p.After))) return;
+                if (!SourceCurrent(session, p.Moniker) || (!rollback && (_sourcePreview != p || (p.Source == AutomationSource ? NormalizeSourceText(_sourceProposed.Text) : _sourceProposed.Text) != p.After))) return;
                 var operation = Guid.NewGuid(); var expires = DateTime.UtcNow.AddSeconds(90); var baseline = rollback ? p.Proposed : p.Baseline; var proposed = rollback ? p.Baseline : p.Proposed;
                 var kind = rollback ? "source.rollback" : "source.apply";
                 var request = rollback ? session.CreateRequest(kind, operation, new { journalId = journal.ToString("D"), approvalExpiresUtc = expires.ToString("o"), baselineDigest = baseline, proposedDigest = proposed, projectRevision = p.Revision }) : session.CreateRequest(kind, operation, new { previewId = p.PreviewId.ToString("D"), approvalExpiresUtc = expires.ToString("o"), baselineDigest = baseline, proposedDigest = proposed, projectRevision = p.Revision });
@@ -222,22 +249,22 @@ namespace TwinCatAssistant.Native
                 var result = envelope.TryGetValue("result", out resultValue) ? resultValue as Dictionary<string, object> : null;
                 if (status == "succeeded")
                 {
-                    if (EngineeringProviderSession.Text(envelope["provenance"] as Dictionary<string, object>, "source") != "liveBuffer" || result == null || EngineeringProviderSession.Text(result, "journalOperationId") != sourceGuardJournal.ToString("D") || EngineeringProviderSession.Text(result, "baselineDigest") != baseline || EngineeringProviderSession.Text(result, "proposedDigest") != proposed || EngineeringProviderSession.Text(result, "source") != "liveBuffer") throw new InvalidOperationException();
+                    if (!SourceProvenanceMatches(result, envelope["provenance"] as Dictionary<string, object>, p.Source) || EngineeringProviderSession.Text(result, "journalOperationId") != sourceGuardJournal.ToString("D") || EngineeringProviderSession.Text(result, "baselineDigest") != baseline || EngineeringProviderSession.Text(result, "proposedDigest") != proposed) throw new InvalidOperationException();
                     EngineeringSourceGuard.Reconcile(operation);
                     if (!rollback) { _sourceApplied = p; _sourceJournal = operation; } else { _sourceApplied = null; _sourceJournal = Guid.Empty; }
-                    _sourceStatus.Text = HostText.Format("EngineeringSourceDone", new object[] { operation.ToString("D"), sourceGuardJournal.ToString("D") });
+                    _sourceStatus.Text = SourceDoneStatus(operation, sourceGuardJournal, p.Source);
                 }
                 else if (status == "refused" || status == "conflict" || status == "unsupported") { EngineeringSourceGuard.Reconcile(operation); _sourceStatus.Text = HostText.Get("EngineeringSourceRefused"); }
                 else throw new InvalidOperationException();
             }
-            catch { _sourceStatus.Text = EngineeringSourceGuard.HasUnresolved ? HostText.Format("EngineeringSourceUnknown", new object[] { EngineeringSourceGuard.OperationId.ToString("D"), sourceGuardJournal.ToString("D") }) : HostText.Get("EngineeringSourceUnavailable"); }
+            catch { _sourceStatus.Text = EngineeringSourceGuard.HasUnresolved ? SourceUnknownStatus(EngineeringSourceGuard.OperationId) : HostText.Get("EngineeringSourceUnavailable"); }
             finally { session?.RevokeApproval(); _sourceBusy = false; UpdateSourceButtons(); }
         }
         private async Task ReconcileSourceAsync()
         {
             await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             var session = _engineering; var operation = EngineeringSourceGuard.OperationId; var journal = sourceGuardJournal;
-            if (_sourceBusy || operation == Guid.Empty || session?.Binding == null || session.Binding.SessionId != sourceGuardSession) return;
+            if (_sourceBusy || operation == Guid.Empty || journal == Guid.Empty || session?.Binding == null || session.Binding.SessionId != sourceGuardSession) return;
             _sourceBusy = true; UpdateSourceButtons();
             try
             {
@@ -262,6 +289,30 @@ namespace TwinCatAssistant.Native
             return parts.Length == 3 && parts[0] == moniker && parts[2] == name && Guid.TryParseExact(parts[1], "D", out parsed)
                 && parsed != Guid.Empty && parts[1] == parsed.ToString("D");
         }
+        private static string NormalizeSourceText(string text) { return text?.Replace("\r\n", "\n").Replace('\r', '\n'); }
+
+        private static bool SourceProvenanceMatches(Dictionary<string, object> result, Dictionary<string, object> provenance,
+            string source, string automationPersistence = "mayPersistToDisk")
+        {
+            return (source == LiveBufferSource || source == AutomationSource)
+                && EngineeringProviderSession.Text(result, "source") == source && EngineeringProviderSession.Text(provenance, "source") == source
+                && (source != AutomationSource || (EngineeringProviderSession.Text(result, "persistence") == automationPersistence
+                    && EngineeringProviderSession.Text(provenance, "persistence") == automationPersistence));
+        }
+
+        private static string SourceUnknownStatus(Guid operation)
+        {
+            return sourceGuardKind == "source.create"
+                ? HostText.Format("EngineeringSourceCreateUnknown", new object[] { operation.ToString("D") })
+                : HostText.Format("EngineeringSourceUnknown", new object[] { operation.ToString("D"), sourceGuardJournal.ToString("D") });
+        }
+
+        private static string SourceDoneStatus(Guid operation, Guid journal, string source)
+        {
+            return HostText.Format(source == AutomationSource ? "EngineeringSourceAutomationDone" : "EngineeringSourceDone",
+                new object[] { operation.ToString("D"), journal.ToString("D") });
+        }
+
         private static bool SourceDigest(string s) { if (s == null || s.Length != 64) return false; foreach (var c in s) if (!(c >= '0' && c <= '9') && !(c >= 'a' && c <= 'f')) return false; return true; }
         private static bool SourceRevision(string s) { return !string.IsNullOrEmpty(s) && s.Length <= 1024; }
         private static async Task<Dictionary<string, object>> SourceCallAsync(EngineeringProviderSession session, Guid id, string operation, object args, CancellationToken cancellation)
@@ -272,15 +323,20 @@ namespace TwinCatAssistant.Native
             {
                 var dirty = EngineeringProviderSession.Text(result, "dirtyState");
                 var provenance = envelope["provenance"] as Dictionary<string, object>;
-                if ((dirty != "clean" && dirty != "dirty") || EngineeringProviderSession.Text(provenance, "source") != "liveBuffer"
-                    || EngineeringProviderSession.Text(provenance, "dirtyState") != dirty) throw new InvalidOperationException();
+                var source = EngineeringProviderSession.Text(result, "source");
+                var fromAttachment = source == AttachedSource && EngineeringProviderSession.Text(result, "sourceMode") == "customStReadOnly"
+                    && EngineeringProviderSession.Text(provenance, "source") == AttachedSource;
+                if (!fromAttachment && !SourceProvenanceMatches(result, provenance, source)) throw new InvalidOperationException();
+                if (!(source == AutomationSource && operation == "source.targets")
+                    && ((dirty != "clean" && dirty != "dirty" && (source != AutomationSource || dirty != "unknown"))
+                        || EngineeringProviderSession.Text(provenance, "dirtyState") != dirty)) throw new InvalidOperationException();
             }
             return result;
         }
         private static async Task<Dictionary<string, object>> SourceEnvelopeAsync(EngineeringProviderSession session, Guid id, string request, CancellationToken cancellation)
         {
             var binding = session.Binding; var response = await EngineeringDispatchBoundedAsync(session, request, cancellation);
-            if (response == null || response.Length > 512 * 1024 || binding == null || !binding.Same(session.Binding)) throw new InvalidOperationException();
+            if (response == null || new UTF8Encoding(false, true).GetByteCount(response) > EngineeringHostTransport.MaxPayload || binding == null || !binding.Same(session.Binding)) throw new InvalidOperationException();
             var envelope = EngineeringProviderSession.Json().DeserializeObject(response) as Dictionary<string, object>; object version;
             if (envelope == null || !envelope.TryGetValue("protocolVersion", out version) || !Equals(version, 1) || EngineeringProviderSession.Text(envelope, "sessionId") != binding.SessionId.ToString("D") || EngineeringProviderSession.Text(envelope, "operationId") != id.ToString("D")) throw new InvalidOperationException();
             object provenanceObject, contextObject, pid; DateTime started;
@@ -299,7 +355,7 @@ namespace TwinCatAssistant.Native
         {
             var window = new Window { Title = HostText.Get(rollback ? "EngineeringSourceRollback" : "EngineeringSourceApply"), Width = 780, Height = 650, WindowStartupLocation = WindowStartupLocation.CenterScreen };
             var panel = new DockPanel { Margin = new Thickness(12) }; window.Content = panel;
-            var label = new TextBlock { Text = HostText.Format("EngineeringSourceConfirm", new object[] { p.ObjectId, p.Section, p.Revision }), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) }; DockPanel.SetDock(label, Dock.Top); panel.Children.Add(label);
+            var label = new TextBlock { Text = HostText.Format("EngineeringSourceConfirm", new object[] { p.ObjectId, p.Section, p.Revision }) + "\n" + HostText.Get(p.Source == AutomationSource ? "EngineeringSourceAutomationConfirm" : "EngineeringSourceBufferConfirm"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) }; DockPanel.SetDock(label, Dock.Top); panel.Children.Add(label);
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right }; DockPanel.SetDock(buttons, Dock.Bottom); panel.Children.Add(buttons);
             var cancel = new Button { Content = HostText.Get("EngineeringSourceCancel"), Margin = new Thickness(4), MinWidth = 100, IsCancel = true }; var approve = new Button { Content = HostText.Get("EngineeringSourceConfirmButton"), Margin = new Thickness(4), MinWidth = 100 }; BindEngineeringConfirmation(window, approve, verifyView); buttons.Children.Add(cancel); buttons.Children.Add(approve);
             var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition()); panel.Children.Add(grid);

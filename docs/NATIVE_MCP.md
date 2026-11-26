@@ -1,6 +1,6 @@
 # Native MCP integration
 
-Beta 10 uses published Knowledge 0.1.2 and Engineering 0.5.8, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Analysis retains saved-file and documentation reads. Editor adds native source operations, and Debug adds automatic (configurable) read-only ADS sampling for the connected PLC target. Both profiles require separate native approval for each build. See [release notes](releases/native-v0.2.0-beta.10.md) and [Profiles and native engineering](EDITOR_PROFILE.md).
+Beta 11 uses published Knowledge 0.1.2 and Engineering 0.5.9, pinned in [knowledge-lock.json](../upstream/knowledge-lock.json) and [engineering-lock.json](../upstream/engineering-lock.json). Analysis retains saved-file and documentation reads. Editor adds native source operations, and Debug adds automatic (configurable) read-only ADS sampling for the connected PLC target. Both profiles require separate native approval for each build. See [release notes](releases/native-v0.2.0-beta.11.md) and [Profiles and native engineering](EDITOR_PROFILE.md).
 
 Native 0.1.9 adds [automatic documentation setup](KNOWLEDGE_SETUP.md). Users can
 prepare installed Beckhoff help from **Wissenssuche einrichten**; a manual TOML
@@ -137,7 +137,7 @@ project files through the reviewed read tools. Opening a project does not submit
 source to a model. **Attach** separately stages the supported active POU's
 Automation Interface snapshot; optional automatic attachment remains off by
 default. This snapshot is not verified unsaved editor-buffer text and can differ
-from the saved files returned by engineering tools. Analysis is read-only. Editor and Debug require native approval for each selective build. Editor changes require approval of the exact diff and apply only to supported XML buffers. Debug reads only approved scalar symbols from the operator-confirmed PLC endpoint. Shell
+from the saved files returned by engineering tools. Analysis is read-only. Editor and Debug require native approval for each selective build. Editor changes require approval of the exact diff or creation. Automation Interface edits may persist to disk, and creations write object files immediately with project changes pending save. Supported open XML buffers remain unsaved after edits. Debug reads only approved scalar symbols from the operator-confirmed PLC endpoint. Shell
 and general filesystem tools remain denied by the existing agent policy.
 
 ## Historical verification (0.1.8)

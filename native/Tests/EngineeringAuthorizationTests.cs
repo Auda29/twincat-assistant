@@ -36,6 +36,29 @@ internal static class EngineeringAuthorizationTests
         Check(EngineeringAction.HashRequest("é") != EngineeringAction.HashRequest("e"), "Digest binds exact UTF8 bytes");
         try { store.Grant(new EngineeringAction(binding, Guid.NewGuid(), "build.start", null, null, null, null, now.AddMinutes(3), digest, null, null), now); throw new Exception("Overlong approval accepted"); }
         catch (ArgumentException) { count++; }
+        EngineeringAction Create(string kind, string target = "POUs^FB_Test", string preview = null,
+            string journal = null, string baseline = EngineeringAction.EmptyDigest, string proposed = null)
+        {
+            return new EngineeringAction(binding, Guid.NewGuid(), "source.create", target, kind, preview, journal,
+                now.AddSeconds(30), digest, baseline, proposed ?? digest);
+        }
+        foreach (var kind in new[] { "fb", "prg", "fun", "method", "action", "property", "dut_struct", "gvl" })
+        {
+            var creation = Create(kind);
+            store.Grant(creation, now);
+            Check(store.Consume(creation, binding, now) && !store.Consume(creation, binding, now), "Creation is one-shot for " + kind);
+        }
+        foreach (var invalid in new Action[] {
+            () => Create("dut"), () => Create("fb", target: " "), () => Create("fb", preview: ""),
+            () => Create("fb", journal: "journal"), () => Create("fb", baseline: digest), () => Create("fb", proposed: "invalid"),
+            () => new EngineeringAction(binding, Guid.NewGuid(), "source.apply", "target", "implementation", "preview", "journal", now, digest, digest, digest),
+            () => new EngineeringAction(binding, Guid.NewGuid(), "source.rollback", "target", "implementation", null, "journal", now, digest, digest, digest),
+            () => new EngineeringAction(binding, Guid.NewGuid(), "source.rollback", "target", "implementation", "preview", null, now, digest, digest, digest),
+        })
+        {
+            try { invalid(); throw new Exception("Invalid source action accepted"); }
+            catch (ArgumentException) { count++; }
+        }
         var unresolved = new EngineeringOperationGuard();
         var build = Guid.NewGuid();
         Check(unresolved.TryBegin(build), "First native operation reserves the guard");

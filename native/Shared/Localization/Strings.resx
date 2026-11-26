@@ -423,7 +423,7 @@ Es wird nichts gespeichert. Bei ungespeicherten Änderungen oder unklarer Zuordn
   <data name="EngineeringPlcBuildUnavailable" xml:space="preserve"><value>PLC-spezifischer Build nicht verfügbar. Ein umfassenderer TwinCAT-Projekt-Build ist nicht freigegeben.</value></data>
   <data name="EngineeringPlcBuildUnavailableReason" xml:space="preserve"><value>PLC-Build nicht verfügbar. Ursache: {0}.</value></data>
   <data name="EngineeringSourceTitle" xml:space="preserve"><value>Quelltext im Editor (manuell)</value></data>
-  <data name="EngineeringSourceScope" xml:space="preserve"><value>Unterstützte angehängte TwinCAT-ST-Editoren live lesen und Änderungen vorab ansehen. Freigegebene Änderungen benötigen eine verifizierte XML-Textpuffertransaktion. Keine automatische Speicherung. Vorschau und Journal bestehen nur während dieser Sitzung; keine Wiederherstellung nach Absturz.</value></data>
+  <data name="EngineeringSourceScope" xml:space="preserve"><value>Unterstützten TwinCAT-ST-Quelltext lesen und Änderungen vorab ansehen. Freigegebene Änderungen über die Automation Interface können direkt auf die Festplatte geschrieben werden. Änderungen an einem unterstützten XML-Puffer bleiben ungespeichert. Vorschau und Journal gelten nur für diese Sitzung.</value></data>
   <data name="EngineeringSourceDiscover" xml:space="preserve"><value>Aktives Dokument prüfen</value></data>
   <data name="EngineeringSourceRead" xml:space="preserve"><value>Lesen</value></data>
   <data name="EngineeringSourcePreview" xml:space="preserve"><value>Vorschau</value></data>
@@ -450,7 +450,7 @@ Links vorher, rechts nachher. Nur diese Änderung freigeben?</value></data>
   <data name="EngineeringSourceConfirmButton" xml:space="preserve"><value>Freigeben</value></data>
   <data name="EngineeringEditorEnable" xml:space="preserve"><value>Editor für diesen Chat aktivieren</value></data>
   <data name="EngineeringEditorDisable" xml:space="preserve"><value>Zur Analyse zurückkehren</value></data>
-  <data name="EngineeringEditorConsent" xml:space="preserve"><value>Projektgebundene Live-Werkzeuge für diesen Chat aktivieren? Jeder Build und jede Quelltextänderung benötigt eine eigene native Bestätigung. Kein automatisches Speichern, Aktivieren oder Herunterladen. Nicht unterstützte Editor-Schreibtransaktionen bleiben gesperrt.</value></data>
+  <data name="EngineeringEditorConsent" xml:space="preserve"><value>Projektgebundene Editor-Werkzeuge für diesen Chat aktivieren? Jede Änderung an Structured Text, jede Objekterstellung und jeder lokale PLC-Build erfordert eine eigene native Freigabe. Änderungen über die Automation Interface können direkt auf die Festplatte geschrieben werden. Beim Erstellen eines PLC-Objekts wird seine Datei sofort geschrieben oder die Datei der zugehörigen POU sofort aktualisiert. Projektänderungen bleiben bis zum Speichern offen. Aktionen an der PLC-Laufzeit bleiben gesperrt.</value></data>
   <data name="EngineeringEditorUnavailable" xml:space="preserve"><value>Editor nicht verfügbar. Einen gebundenen Projektchat in der von diesem Fenster gestarteten Laufzeit auswählen.</value></data>
   <data name="EngineeringEditorEnabled" xml:space="preserve"><value>Editor für diesen Chat aktiviert. Builds und Änderungen benötigen eine native Freigabe.</value></data>
   <data name="EngineeringSourceStPreviewOnly" xml:space="preserve"><value>Live-ST-Vorschau bereit. Dieser Editor bietet keine verifizierte atomare Schreibtransaktion; Übernehmen ist nicht verfügbar.</value></data>
@@ -480,4 +480,16 @@ Links vorher, rechts nachher. Nur diese Änderung freigeben?</value></data>
   <data name="AutoDebugDisabled" xml:space="preserve"><value>Automatisches Debug ist aus. Bei der Auswahl von Debug werden Ziel, ADS-Port und Symbole wieder manuell bestätigt.</value></data>
   <data name="EngineeringDebugEnabledAuto" xml:space="preserve"><value>Debug ist für alle Symbole dieses Chats schreibgeschützt aktiv ({0}, Port {1}). Builds brauchen eine eigene Freigabe.</value></data>
   <data name="EngineeringDebugStatusAuto" xml:space="preserve"><value>Debug ist für das verbundene PLC-Ziel schreibgeschützt aktiv. Builds brauchen eine eigene Freigabe.</value></data>
+  <data name="EngineeringSourceBufferConfirm" xml:space="preserve"><value>Diese Änderung bleibt im ungespeicherten XML-Editorpuffer.</value></data>
+  <data name="EngineeringSourceAutomationConfirm" xml:space="preserve"><value>Änderungen über die TwinCAT Automation Interface können direkt auf die Festplatte geschrieben werden.</value></data>
+  <data name="EngineeringSourceAutomationDone" xml:space="preserve"><value>Abgeschlossen. Vorgang {0}, Journal {1}. Änderungen über die TwinCAT Automation Interface können direkt auf die Festplatte geschrieben werden.</value></data>
+  <data name="EngineeringSourceCreateTitle" xml:space="preserve"><value>Structured-Text-Objekt erstellen</value></data>
+  <data name="EngineeringSourceCreateSummary" xml:space="preserve"><value>{1} unter {0} erstellen?</value></data>
+  <data name="EngineeringSourceCreatePersistence" xml:space="preserve"><value>TwinCAT schreibt die Objektdatei sofort oder aktualisiert die Datei der zugehörigen POU sofort. Änderungen an der .plcproj bleiben bis zum Speichern offen.</value></data>
+  <data name="EngineeringSourceCreateButton" xml:space="preserve"><value>Erstellung freigeben</value></data>
+  <data name="EngineeringSourceCreateDeclaration" xml:space="preserve"><value>Initiale Deklaration</value></data>
+  <data name="EngineeringSourceCreateImplementation" xml:space="preserve"><value>Initiale Implementierung</value></data>
+  <data name="EngineeringSourceCreateDone" xml:space="preserve"><value>{0} wurde erstellt. TwinCAT hat die Objektdatei geschrieben oder die Datei der zugehörigen POU aktualisiert. Projektänderungen bleiben bis zum Speichern offen.</value></data>
+  <data name="EngineeringSourceCreateUnknown" xml:space="preserve"><value>Das Ergebnis der Erstellung ist unbekannt. Vorgang {0}. Vor dem Fortfahren das PLC-Projekt prüfen. Für die Erstellung gibt es keinen Quelltext-Journaleintrag.</value></data>
+  <data name="EngineeringSourceRollbackUnsaved" xml:space="preserve"><value>Ungespeicherte Editoränderungen blockieren das Rückgängigmachen. Vor einem erneuten Versuch das geöffnete Dokument in TwinCAT speichern.</value></data>
 </root>

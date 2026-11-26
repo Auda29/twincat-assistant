@@ -18,8 +18,9 @@ namespace TwinCatAssistant.Native
     // One private capability per instance. The owner must only deliver it over a trusted channel.
     internal sealed class EngineeringHostTransport : IDisposable
     {
-        private const int MaxFrame = 256 * 1024;
-        private const int MaxResponse = 512 * 1024;
+        internal const int MaxPayload = 1024 * 1024;
+        private const int MaxFrame = 2 * 1024 * 1024;
+        private const int MaxJsonLength = MaxFrame + 4096;
         private const int MaxConnections = 4;
         private static readonly UTF8Encoding StrictUtf8 = new UTF8Encoding(false, true);
         private readonly Func<string, CancellationToken, Task<string>> handler;
@@ -95,20 +96,21 @@ namespace TwinCatAssistant.Native
         {
             using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(stop.Token))
             {
-                timeout.CancelAfter(TimeSpan.FromSeconds(30));
+                timeout.CancelAfter(TimeSpan.FromSeconds(130));
                 using (timeout.Token.Register(() => { try { pipe.Dispose(); } catch (ObjectDisposedException) { } }))
                 {
                     try
                     {
                         string serverNonce = Hex(RandomBytes(32));
-                        var serializer = new JavaScriptSerializer { MaxJsonLength = MaxResponse + 4096 };
+                        var serializer = new JavaScriptSerializer { MaxJsonLength = MaxJsonLength };
                         await WriteFrame(pipe, serializer.Serialize(new { protocolVersion = 1, sessionId = SessionId, serverNonce = serverNonce }), 4096, timeout.Token).ConfigureAwait(false);
                         var hello = ParseObject(await ReadFrame(pipe, 4096, timeout.Token).ConfigureAwait(false), "clientNonce", "proof");
                         if (hello == null || !IsHex(hello["clientNonce"]) || !CheckProof(hello["proof"], Transcript("client", serverNonce, hello["clientNonce"], null))) return;
                         string clientNonce = hello["clientNonce"];
                         await WriteFrame(pipe, serializer.Serialize(new { proof = Sign(Transcript("server", serverNonce, clientNonce, null)) }), 4096, timeout.Token).ConfigureAwait(false);
                         var message = ParseObject(await ReadFrame(pipe, MaxFrame, timeout.Token).ConfigureAwait(false), "protocolVersion", "request", "proof");
-                        if (message == null || message["protocolVersion"] != "1" || !CheckProof(message["proof"], Transcript("request", serverNonce, clientNonce, Hash(message["request"])))) return;
+                        if (message == null || message["protocolVersion"] != "1"
+                            || StrictUtf8.GetByteCount(message["request"]) > MaxPayload || !CheckProof(message["proof"], Transcript("request", serverNonce, clientNonce, Hash(message["request"])))) return;
                         await handlerSlots.WaitAsync(timeout.Token).ConfigureAwait(false);
                         Task<string> work;
                         try { work = handler(message["request"], timeout.Token); if (work == null) throw new InvalidOperationException("Handler returned no task."); }
@@ -117,9 +119,9 @@ namespace TwinCatAssistant.Native
                         if (await Task.WhenAny(work, Task.Delay(Timeout.Infinite, timeout.Token)).ConfigureAwait(false) != work) return;
                         var response = await work.ConfigureAwait(false);
                         timeout.Token.ThrowIfCancellationRequested();
-                        if (response == null || StrictUtf8.GetByteCount(response) > MaxResponse) return;
+                        if (response == null || StrictUtf8.GetByteCount(response) > MaxPayload) return;
                         string encoded = serializer.Serialize(new { response = response, proof = Sign(Transcript("response", serverNonce, clientNonce, Hash(response))) });
-                        await WriteFrame(pipe, encoded, MaxResponse, timeout.Token).ConfigureAwait(false);
+                        await WriteFrame(pipe, encoded, MaxFrame, timeout.Token).ConfigureAwait(false);
                     }
                     catch (Exception) { /* Do not disclose handler errors or capability material to clients. */ }
                     finally { Remove(pipe); slots.Release(); }
@@ -213,7 +215,7 @@ namespace TwinCatAssistant.Native
                 if (c == '\\') { escaped = true; continue; }
                 if (c == '"')
                 {
-                    var serializer = new JavaScriptSerializer { MaxJsonLength = MaxFrame };
+                    var serializer = new JavaScriptSerializer { MaxJsonLength = MaxJsonLength };
                     return serializer.Deserialize<string>(s.Substring(start, i - start));
                 }
                 if (c < 0x20) throw new ArgumentException();

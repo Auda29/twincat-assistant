@@ -4,8 +4,8 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { isAbsolute, win32 } from 'node:path';
 import { ownedEngineeringProfile } from './editor-tools.mjs';
 export { EDITOR_TOOL_NAMES } from './editor-tools.mjs';
-const FRAME_LIMIT = 512 * 1024;
-const REQUEST_LIMIT = 256 * 1024;
+const FRAME_LIMIT = 2 * 1024 * 1024;
+const REQUEST_LIMIT = 1024 * 1024;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const CHAT_ID = /^[a-zA-Z0-9_:-]{1,160}$/;
 const unavailable = () => new Error('Editor session unavailable; do not retry a submitted mutation.');
@@ -84,7 +84,7 @@ async function ownedEngineering({ node, entrypoint, bootstrap, workspace }, prof
     let timer;
     try {
       const result = new Promise((resolve, reject) => { pending = { resolve, reject }; });
-      timer = setTimeout(stop, 60000);
+      timer = setTimeout(stop, 130000);
       child.stdin.write(bytes, () => bytes.fill(0));
       return await result;
     } finally { clearTimeout(timer); }
@@ -138,7 +138,7 @@ export async function startEditorSession(options, signal) {
   const expectedAuthorization = Buffer.from('Bearer ' + token);
   let closing = false, closeWork, origin, active = 0;
   const sockets = new Set();
-  const server = createServer({ maxHeaderSize: 8192, requestTimeout: 65000, headersTimeout: 5000 }, (req, res) => {
+  const server = createServer({ maxHeaderSize: 8192, requestTimeout: 135000, headersTimeout: 5000 }, (req, res) => {
     const finish = (status, value) => {
       if (res.destroyed) return;
       res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
@@ -217,7 +217,7 @@ export async function startEditorSession(options, signal) {
       configuration() {
         if (closing) throw unavailable();
         return { type: 'remote', url: origin + '/mcp', oauth: false, protocol: 'legacy', codemode: false,
-          headers: { Authorization: 'Bearer ' + token }, timeout: { startup: 15000, catalog: 15000, execution: 65000 } };
+          headers: { Authorization: 'Bearer ' + token }, timeout: { startup: 15000, catalog: 15000, execution: 135000 } };
       },
     });
   } catch { await close(); throw unavailable(); }

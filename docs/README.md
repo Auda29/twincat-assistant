@@ -10,7 +10,10 @@ and exit gates. The current planning branch describes the
 [OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
 Native acceptance and future engineering write milestones remain separate.
 
-Current release [0.2.0 Beta 10](releases/native-v0.2.0-beta.10.md) updates Engineering MCP to `0.5.8` and connects **Debug** automatically (read-only) to the logged-in PLC's configured AMS Net ID and ADS port without a manual modal dialog, with an opt-out toggle in the `...` menu. The [latest release](https://github.com/Auda29/twincat-assistant/releases/latest) includes the installer, checksums and provenance.
+[0.2.0 Beta 11](releases/native-v0.2.0-beta.11.md) adopts Engineering MCP 0.5.9
+for project-wide Structured Text discovery and native-approved edits and
+object creation. The [latest published release](https://github.com/Auda29/twincat-assistant/releases/latest)
+includes the installer, checksums and provenance.
 
 Previous release: [0.2.0 Beta 9](releases/native-v0.2.0-beta.9.md), updating Engineering MCP to `0.5.7` with TwinCAT `<PlcProjectDef>` association and COM invocation fixes.
 
@@ -22,7 +25,7 @@ Previous release: [0.2.0 Beta 6](releases/native-v0.2.0-beta.6.md), with Windows
 
 Previous release: [0.2.0 Beta 5](releases/native-v0.2.0-beta.5.md), with the initial optional build tools, typed Knowledge tools and pinned-history fix.
 
-Start with [Profiles and approvals](EDITOR_PROFILE.md), [Knowledge setup](KNOWLEDGE_SETUP.md) and [current status](STATUS.md). The released inputs are Engineering 0.5.8 and Knowledge 0.1.2. The [MCP-first integration record](MCP_P1_INTEGRATION_20261112.md) retains private-development evidence, separately from active release scope.
+Start with [Profiles and approvals](EDITOR_PROFILE.md), [Knowledge setup](KNOWLEDGE_SETUP.md) and [current status](STATUS.md). The released inputs are Engineering 0.5.9 and Knowledge 0.1.2. The [MCP-first integration record](MCP_P1_INTEGRATION_20261112.md) retains private-development evidence, separately from active release scope.
 
 Previous release: [0.2.0 Beta 4](releases/native-v0.2.0-beta.4.md), including startup/member-context hardening and the Knowledge validation overlay.
 

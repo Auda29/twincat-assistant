@@ -421,12 +421,12 @@ namespace TwinCatAssistant.Native
             catch { return null; }
         }
 
-        private static async Task<string> EngineeringDispatchBoundedAsync(EngineeringProviderSession session, string request, CancellationToken cancellation)
+        private static async Task<string> EngineeringDispatchBoundedAsync(EngineeringProviderSession session, string request, CancellationToken cancellation, int timeoutSeconds = 20)
         {
             using (var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
             {
                 var dispatch = session.DispatchAsync(request, attempt.Token);
-                var deadline = Task.Delay(TimeSpan.FromSeconds(20), cancellation);
+                var deadline = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cancellation);
                 if (await Task.WhenAny(dispatch, deadline) != dispatch)
                 {
                     attempt.Cancel();

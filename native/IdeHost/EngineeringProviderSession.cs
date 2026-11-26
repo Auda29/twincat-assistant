@@ -138,7 +138,7 @@ namespace TwinCatAssistant.Native
             {
                 if (approvalsSuspended) { authorization.Revoke(); return false; }
                 var operation = (string)Property(request, "Operation");
-                if (operation != "build.start" && (!sourceAccess || (operation != "source.apply" && operation != "source.rollback"))) return false;
+                if (operation != "build.start" && (!sourceAccess || !EngineeringAction.IsSourceMutation(operation))) return false;
                 var expected = Property(request, "Expected");
                 var exact = new EngineeringBinding((Guid)Property(expected, "SessionId"), (int)Property(expected, "IdePid"),
                     (DateTime)Property(expected, "IdeStartedUtc"), (string)Property(expected, "SolutionFile"),

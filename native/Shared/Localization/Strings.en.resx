@@ -423,7 +423,7 @@ Nothing is saved. Unsaved changes or uncertain project identity refuse the build
   <data name="EngineeringPlcBuildUnavailable" xml:space="preserve"><value>PLC-only build unavailable. A broader TwinCAT project build is not approved.</value></data>
   <data name="EngineeringPlcBuildUnavailableReason" xml:space="preserve"><value>PLC build unavailable. Reason: {0}.</value></data>
   <data name="EngineeringSourceTitle" xml:space="preserve"><value>Editor source (manual)</value></data>
-  <data name="EngineeringSourceScope" xml:space="preserve"><value>Read and preview supported attached TwinCAT ST editors. Approved changes require a verified XML text-buffer transaction. Changes are not saved automatically. Previews and the journal exist only for this session; they do not provide crash recovery.</value></data>
+  <data name="EngineeringSourceScope" xml:space="preserve"><value>Read and preview supported TwinCAT ST source. Approved Automation Interface edits may persist directly to disk. Edits to a supported XML buffer remain unsaved. Previews and journals are session-scoped.</value></data>
   <data name="EngineeringSourceDiscover" xml:space="preserve"><value>Inspect active document</value></data>
   <data name="EngineeringSourceRead" xml:space="preserve"><value>Read</value></data>
   <data name="EngineeringSourcePreview" xml:space="preserve"><value>Preview</value></data>
@@ -450,7 +450,7 @@ Before is on the left, after is on the right. Approve this change?</value></data
   <data name="EngineeringSourceConfirmButton" xml:space="preserve"><value>Approve</value></data>
   <data name="EngineeringEditorEnable" xml:space="preserve"><value>Enable Editor for this chat</value></data>
   <data name="EngineeringEditorDisable" xml:space="preserve"><value>Return to Analysis</value></data>
-  <data name="EngineeringEditorConsent" xml:space="preserve"><value>Enable project-bound live tools for this chat? Each build or source change still requires a separate native confirmation. No automatic save, activation or download. Unsupported editor write transactions remain refused.</value></data>
+  <data name="EngineeringEditorConsent" xml:space="preserve"><value>Enable project-bound Editor tools for this chat? Each Structured Text edit, object creation and local PLC build requires separate native approval. Automation Interface edits may persist directly to disk. Creating a PLC object writes its file or updates the owning POU file immediately, with project changes pending save. PLC runtime actions remain blocked.</value></data>
   <data name="EngineeringEditorUnavailable" xml:space="preserve"><value>Editor is unavailable. Select a bound project chat in the runtime owned by this window.</value></data>
   <data name="EngineeringEditorEnabled" xml:space="preserve"><value>Editor enabled for this chat. Builds and changes require native approval.</value></data>
   <data name="DebugCaption" xml:space="preserve"><value>TwinCAT Assistant — Debug</value></data>
@@ -480,4 +480,16 @@ Before is on the left, after is on the right. Approve this change?</value></data
   <data name="AutoDebugDisabled" xml:space="preserve"><value>Automatic Debug is off. Selecting Debug will ask you to confirm the target, ADS port and symbols manually.</value></data>
   <data name="EngineeringDebugEnabledAuto" xml:space="preserve"><value>Debug is active in read-only mode for all symbols in this chat ({0}, port {1}). Builds require separate approval.</value></data>
   <data name="EngineeringDebugStatusAuto" xml:space="preserve"><value>Debug is active in read-only mode for the connected PLC target. Builds require separate approval.</value></data>
+  <data name="EngineeringSourceBufferConfirm" xml:space="preserve"><value>This change remains in the unsaved XML editor buffer.</value></data>
+  <data name="EngineeringSourceAutomationConfirm" xml:space="preserve"><value>TwinCAT Automation Interface edits may persist directly to disk.</value></data>
+  <data name="EngineeringSourceAutomationDone" xml:space="preserve"><value>Completed. Operation {0}, journal {1}. TwinCAT Automation Interface edits may persist directly to disk.</value></data>
+  <data name="EngineeringSourceCreateTitle" xml:space="preserve"><value>Create Structured Text object</value></data>
+  <data name="EngineeringSourceCreateSummary" xml:space="preserve"><value>Create {1} at {0}?</value></data>
+  <data name="EngineeringSourceCreatePersistence" xml:space="preserve"><value>TwinCAT immediately writes the object file or updates the owning POU file. Changes to the .plcproj remain pending save.</value></data>
+  <data name="EngineeringSourceCreateButton" xml:space="preserve"><value>Approve creation</value></data>
+  <data name="EngineeringSourceCreateDeclaration" xml:space="preserve"><value>Initial declaration</value></data>
+  <data name="EngineeringSourceCreateImplementation" xml:space="preserve"><value>Initial implementation</value></data>
+  <data name="EngineeringSourceCreateDone" xml:space="preserve"><value>Created {0}. TwinCAT wrote the object file or updated the owning POU file. Project changes remain pending save.</value></data>
+  <data name="EngineeringSourceCreateUnknown" xml:space="preserve"><value>Creation outcome is unknown. Operation {0}. Inspect the PLC project before continuing. Creation has no source journal entry.</value></data>
+  <data name="EngineeringSourceRollbackUnsaved" xml:space="preserve"><value>Rollback was blocked by unsaved editor changes. Save the open document in TwinCAT before retrying.</value></data>
 </root>

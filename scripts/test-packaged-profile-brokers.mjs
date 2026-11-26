@@ -47,7 +47,14 @@ const server = createServer(socket => {
       else if (request.operation === 'debug.context' && ++debugContextCalls === 2) {
         result = { loggedIn: true, grantId: '00000000-0000-0000-0000-000000000001', amsNetId: '1.2.3.4.5.6', adsPort: 851, symbolScope: 'all' };
       }
-      assert.ok(['session.ping', 'source.preview', 'debug.context'].includes(request.operation));
+      else if (request.operation === 'source.create') {
+        const { approvalExpiresUtc, ...creation } = request.arguments;
+        const remaining = Date.parse(approvalExpiresUtc) - Date.now();
+        assert.ok(remaining > 80000 && remaining <= 90000);
+        assert.deepEqual(creation, { parentPath: 'POUs', name: 'FB_Fixture', kind: 'fb' });
+        result = { source: 'automationInterface', persistence: 'fileWrittenProjectPendingSave', treePath: 'POUs^FB_Fixture', kind: 'pou' };
+      }
+      assert.ok(['session.ping', 'source.preview', 'source.create', 'debug.context'].includes(request.operation));
       const response = JSON.stringify({ protocolVersion: 1, sessionId, operationId: request.operationId,
         status: result ? 'succeeded' : 'unsupported', provenance: {}, result });
       socket.end(JSON.stringify({ response, proof: mac('response', response) }) + '\n');
@@ -73,6 +80,9 @@ try {
       assert.deepEqual(response.result.tools.map(tool => tool.name).sort(), [...ownedEngineeringProfile(profile).names].sort());
       const preview = await rpc(broker, 'tools/call', call('plc_source_preview', { objectId: 'fixture', section: 'implementation', proposedText: '' }));
       assert.equal(Boolean(preview.result), profile === 'editor');
+      const creation = await rpc(broker, 'tools/call', call('plc_source_create', { parentPath: 'POUs', name: 'FB_Fixture', kind: 'fb' }));
+      assert.equal(Boolean(creation.result), profile === 'editor');
+      if (profile === 'editor') assert.match(creation.result.content[0].text, /fileWrittenProjectPendingSave/);
       const state = await rpc(broker, 'tools/call', call('plc_debug_state'));
       assert.equal(Boolean(state.result), profile === 'debug');
       if (profile === 'debug') {
@@ -82,7 +92,7 @@ try {
       }
     } finally { await broker.close(); }
   }
-  assert.deepEqual(observed, ['session.ping', 'session.ping', 'source.preview', 'session.ping', 'debug.context', 'debug.context']);
+  assert.deepEqual(observed, ['session.ping', 'session.ping', 'source.preview', 'source.create', 'session.ping', 'debug.context', 'debug.context']);
   console.log('Packaged build, Editor and Debug brokers passed catalog and bound operation checks.');
 } finally {
   server.close();

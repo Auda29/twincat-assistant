@@ -70,7 +70,8 @@ test('Editor and Debug have separate native permissions while Analysis remains t
   for (const action of ['bash', 'read', 'edit', 'write', 'webfetch', 'task', 'plc_write', 'editor_plc_write', 'editor_tc_activate_configuration'])
     for (const profile of Object.keys(config.agents)) assert.equal(effect(profile, action), 'deny');
   assert.equal(EDITOR_ACTIONS.length, 9);
-  assert.equal(DEVELOPMENT_EDITOR_ACTIONS.length, 15);
+  assert.equal(DEVELOPMENT_EDITOR_ACTIONS.length, 16);
+  assert.ok(DEVELOPMENT_EDITOR_ACTIONS.includes("editor_plc_source_create"));
   assert.equal(DEBUG_ACTIONS.length, 11);
   const editor = editorSystemPrompt(), debug = debugSystemPrompt();
   for (const prompt of [editor, debug]) {
@@ -84,25 +85,33 @@ test('Editor and Debug have separate native permissions while Analysis remains t
     assert.ok(debug.includes(action), action);
     assert.ok(!editor.includes(action), action);
   }
-  assert.match(editor, /Normal TwinCAT ST buffers support preview only/);
+  assert.match(editor, /Automation Interface edits support closed or open ST/);
+  assert.match(editor, /\.plcproj changes pending save/);
+  assert.match(editor, /unsaved_editor_changes/);
   assert.match(debug, /Read exact symbol names permitted by that scope/);
   const pair = { version: 1, before: { settings: {}, config }, after: { settings: {}, config } };
   assert.ok(Buffer.byteLength(JSON.stringify(pair) + '\n') <= 65536, 'profile recovery retains its existing bounded JSON reader');
 });
 
-test('exact Beta 6 and Beta 9 profiles upgrade with untouched operator state and unrecognized changes are refused', async () => {
+test('exact Beta 6, Beta 9 and Beta 10 profiles upgrade with untouched operator state and unrecognized changes are refused', async () => {
   const parent = await mkdtemp(join(tmpdir(), 'tc-editor-migration-'));
   try {
     const root = join(parent, 'state');
     const paths = await initializeState(root, {});
-    const [c3, prior, beta9] = previousOpenCodeConfigs({});
+    const [c3, prior, beta9, beta10] = previousOpenCodeConfigs({});
     // Captured from the complete C3 configuration before the release policy changed.
     assert.equal(digest(JSON.stringify(c3)), '20c17e3a5926246aba19528a039fa0fb7d9c393cb0a19c2457cda63c9b645cd2');
     assert.equal(await verifyProfileConfiguration(c3, {}), false);
     assert.equal(prior.agents[EDITOR_PROFILE].permissions.filter(rule => rule.action.startsWith('editor_')).length, 9);
     assert.equal(await verifyProfileConfiguration(prior, {}), false);
     assert.match(beta9.agents[DEBUG_PROFILE].system, /Read only approved exact symbol names/);
-    assert.equal(await verifyProfileConfiguration(beta9, {}), false);
+    // Captured independently from the base commit's historical Beta 9 and current Beta 10 generators.
+    assert.equal(digest(JSON.stringify(beta9)), '573e8f3e176d84204eb1c1aa5e90272407829ac6c2d2941fd78223c4c6b128bd');
+    assert.equal(digest(JSON.stringify(beta10)), '36d56dc0564f4f35340cbaf44d81f3980f1d8d6f22d7c8bdf9e551af5adf2ae0');
+    for (const config of [beta9, beta10]) {
+      assert.equal(config.agents[EDITOR_PROFILE].permissions.filter(rule => rule.action.startsWith('editor_')).length, 15);
+      assert.equal(await verifyProfileConfiguration(config, {}), false);
+    }
     for (const mutate of [
       value => value.permissions.push({ action: 'editor_plc_source_apply', resource: '*', effect: 'allow' }),
       value => value.agents[ANALYSIS_PROFILE].system += ' extra',
@@ -111,15 +120,13 @@ test('exact Beta 6 and Beta 9 profiles upgrade with untouched operator state and
       const foreign = structuredClone(prior); mutate(foreign);
       await assert.rejects(verifyProfileConfiguration(foreign, {}), /policy mismatch/);
     }
-    await writeFile(paths.configPath, JSON.stringify(beta9, null, 2) + '\n');
     await writeFile(join(paths.data, 'sentinel'), 'unchanged');
-    assert.equal((await inspectState(root)).configurationCurrent, false);
-    assert.equal(await upgradeProfileConfiguration(root), true);
-    assert.equal((await inspectState(root)).configurationCurrent, true);
-    await writeFile(paths.configPath, JSON.stringify(prior, null, 2) + '\n');
-    assert.equal((await inspectState(root)).configurationCurrent, false);
-    assert.equal(await upgradeProfileConfiguration(root), true);
-    assert.equal((await inspectState(root)).configurationCurrent, true);
+    for (const config of [prior, beta9, beta10]) {
+      await writeFile(paths.configPath, JSON.stringify(config, null, 2) + '\n');
+      assert.equal((await inspectState(root)).configurationCurrent, false);
+      assert.equal(await upgradeProfileConfiguration(root), true);
+      assert.equal((await inspectState(root)).configurationCurrent, true);
+    }
     assert.equal(await readFile(join(paths.data, 'sentinel'), 'utf8'), 'unchanged');
     assert.equal(await upgradeProfileConfiguration(root), false);
   } finally { await rm(parent, { recursive: true, force: true }); }

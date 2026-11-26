@@ -17,6 +17,9 @@ namespace EnvDTE80 {
     public interface SolutionConfiguration2 : EnvDTE.SolutionConfiguration { }
 }
 namespace TCatSysManagerLib {
+    public interface ITcProjectRoot { }
+    public interface ITcPlcDeclaration { }
+    public interface ITcPlcImplementation { }
     public interface ITcSysManager { }
     public interface ITcSmTreeItem { }
     public interface PrivateTestInterface { }
@@ -74,6 +77,9 @@ internal static class EngineeringFactoryProbe {
         Check(captured("EnvDTE80.SolutionConfiguration2") == typeof(EnvDTE80.SolutionConfiguration2));
         Check(captured("TCatSysManagerLib.ITcSysManager") == typeof(TCatSysManagerLib.ITcSysManager));
         Check(captured("EnvDTE.Project") == null);
+        Check(captured("TCatSysManagerLib.ITcProjectRoot") == typeof(TCatSysManagerLib.ITcProjectRoot));
+        Check(captured("TCatSysManagerLib.ITcPlcDeclaration") == typeof(TCatSysManagerLib.ITcPlcDeclaration));
+        Check(captured("TCatSysManagerLib.ITcPlcImplementation") == typeof(TCatSysManagerLib.ITcPlcImplementation));
         Check(captured("TCatSysManagerLib.PrivateTestInterface") == null);
         Check(captured("envdte.dte") == null);
         var assembly=Assembly.GetExecutingAssembly();
@@ -135,8 +141,10 @@ internal static class EngineeringFactoryProbe {
         Func<string,object> buffer=name=>{throw new Exception("Source callback invoked");};
         Func<string,string,object> section=(name,part)=>{throw new Exception("Section callback invoked");};
         using(var session=new EngineeringProviderSession(candidate,new object(),p=>false,binding,new SynchronizationContext(),buffer,p=>false,section,null,map)) {
-            Check(calls==29);
-            Check(requested.Contains("TCatSysManagerLib.ITcSysManager") && requested.Contains("EnvDTE80.SolutionConfiguration2"));
+            Check(calls==32);
+            foreach (var name in new[] { "EnvDTE80.SolutionConfiguration2", "TCatSysManagerLib.ITcSysManager",
+                "TCatSysManagerLib.ITcProjectRoot", "TCatSysManagerLib.ITcPlcDeclaration", "TCatSysManagerLib.ITcPlcImplementation" })
+                Check(requested.Contains(name));
             for(int i=0;i<2;i++) {
                 var operation=Guid.NewGuid();
                 var request=session.CreateRequest("session.ping",operation,new {});
@@ -150,13 +158,13 @@ internal static class EngineeringFactoryProbe {
             var result=(Dictionary<string,object>)detail["result"];
             var caps=(Dictionary<string,object>)result["capabilities"];
             Check((string)caps["plcBuild"]=="unsupported");
-            foreach(var key in new[]{"sourceRead","sourcePreview","sourceApply","sourceRollback"}) Check((string)caps[key]=="unsupported");
+            foreach(var key in new[]{"sourceRead","sourcePreview","sourceApply","sourceRollback","sourceCreate"}) Check((string)caps[key]=="unsupported");
             var source=session.CreateRequest("source.read",Guid.NewGuid(),new {});
             try { session.DispatchAsync(source,CancellationToken.None); throw new Exception("Source request accepted"); }
             catch(InvalidOperationException) {checks++;}
-            Check(calls==29);
+            Check(calls==32);
         }
-        Console.WriteLine("PASS actual candidate factory9 host wire: "+checks+" assertions, all 29 bindings unavailable by design; no COM/IDE/build/source operation");
+        Console.WriteLine("PASS actual candidate factory9 host wire: "+checks+" assertions, all 32 bindings unavailable by design; no COM/IDE/build/source operation");
         return 0;
     }
 }
