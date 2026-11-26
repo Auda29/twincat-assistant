@@ -482,6 +482,13 @@ namespace TwinCatAssistant.Native
                 text = _mcpFailureMessage; tone = "Error"; action = HostText.Get("H046");
                 command = () => { _mcpFailureKey = null; DismissNotice(); KickAutomation(); };
             }
+            else if (EngineeringSourceGuard.UnknownSourceCreation is EngineeringSourceCreation unknownCreation)
+            {
+                text = HostText.Format("EngineeringSourceCreateUnknown", new object[] { unknownCreation.OperationId.ToString("D") });
+                tone = "Error";
+                action = HostText.Get("EngineeringSourceCreateRecover");
+                command = () => RunAction(ReconcileSourceAsync);
+            }
             else if (_noticeText != null) { text = _noticeText; tone = _noticeTone == "error" ? "Error" : _noticeTone == "warning" ? "Warning" : "Neutral"; action = _noticeActionLabel; command = _noticeAction; dismissable = true; }
             else if (foreign)
             {

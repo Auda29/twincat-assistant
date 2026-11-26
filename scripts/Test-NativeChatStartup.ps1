@@ -86,6 +86,32 @@ try{
  Check ((Is-InDiagnosticTools (Field '_engineeringBuildButton')) -and (Is-InDiagnosticTools (Field '_engineeringRefreshButton')) -and (Is-InDiagnosticTools (Field '_engineeringStatus')) -and (Field '_diagnostics').Visibility -eq 'Collapsed') 'build controls and technical readiness are confined to opt-in advanced diagnostics'
  Check ((Field '_toolbar').Children.Count -eq 4) 'normal chat has no build toolbar or separate profile banner'
  Check (!(Field '_engineeringEditorEnabled')) 'the chat opens in Analysis without an engineering grant'
+ Check ((Is-InDiagnosticTools (Field '_sourceRecoveryButton')) -and (Field '_sourceRecoveryButton').Visibility -eq 'Collapsed') 'source recovery is hidden in advanced diagnostics until a creation outcome is unknown'
+ $sourceGuard=$control.GetType().GetField('EngineeringSourceGuard',[Reflection.BindingFlags]'Static,NonPublic').GetValue($null)
+ $sourceGuardType=$sourceGuard.GetType()
+ $creationId=[Guid]::NewGuid()
+ $creationType=$assembly.GetType('TwinCatAssistant.Native.EngineeringSourceCreation')
+ $creation=$creationType.GetConstructors($flags)[0].Invoke(@($creationId,'C:\Synthetic\Original.plcproj','POUs^Synthetic'))
+ $requestType=$control.GetType().GetNestedType('EditorRequest',[Reflection.BindingFlags]'NonPublic')
+ $request=[Activator]::CreateInstance($requestType,$true)
+ $requestType.GetField('Id',$flags).SetValue($request,$creationId)
+ $requestType.GetField('Operation',$flags).SetValue($request,'source.create')
+ $hostText=$assembly.GetType('TwinCatAssistant.Native.HostText')
+ $recoveryText=$hostText.GetMethod('Format').Invoke($null,[object[]]@('EngineeringSourceCreateUnknown',[object[]]@($creationId.ToString('D'))))
+ $recoveryLabel=$hostText.GetMethod('Get').Invoke($null,@('EngineeringSourceCreateRecover'))
+ Check ($sourceGuardType.GetMethod('TryBegin',$flags).Invoke($sourceGuard,@($creationId,$creation))) 'synthetic source creation reserves the process-wide guard'
+ try {
+  Invoke-Private 'MarkEditorUnknown' @($request)
+  Check ((Field '_toolbar').Children.Count -eq 4 -and (Field '_diagnostics').Visibility -eq 'Collapsed' -and (Field '_banner').Visibility -eq 'Visible' -and (Field '_bannerText').Text -ceq $recoveryText -and (Field '_banner').Background.Color -eq $control.Resources['Tc.ErrorSurface'].Color) 'unknown creation immediately shows an error banner with diagnostics closed and four toolbar children'
+  Check ((Field '_bannerAction').Visibility -eq 'Visible' -and (Field '_bannerAction').Content -ceq $recoveryLabel -and $null -ne (Field '_bannerCommand') -and (Field '_bannerDismiss').Visibility -eq 'Collapsed' -and $null -eq (Field '_noticeText')) 'unknown creation offers a recovery action without a dismissable notice'
+  $otherProject=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeProjectIdentity'),@($PID,'C:\Synthetic\Other.sln','C:\Synthetic\Other.plcproj'))
+  Invoke-Private 'RenderProjectContext' @($otherProject,$null)
+  Check ((Field '_bannerText').Text -ceq $recoveryText -and (Field '_bannerAction').Content -ceq $recoveryLabel -and (Field '_sourceRecoveryButton').Visibility -eq 'Visible') 'source recovery survives a project switch'
+ } finally {
+  $null=$sourceGuardType.GetMethod('Reconcile',$flags).Invoke($sourceGuard,@($creationId))
+  Invoke-Private 'RenderProjectContext' @($null,$null)
+ }
+ Check ((Field '_banner').Visibility -eq 'Collapsed' -and (Field '_sourceRecoveryButton').Visibility -eq 'Collapsed') 'source recovery is hidden after the creation guard clears'
  $parseOnline=$control.GetType().GetMethod('ParseDebugLogin',[Reflection.BindingFlags]'Static,NonPublic')
  Add-Type -AssemblyName System.Web.Extensions
  $serializer=New-Object System.Web.Script.Serialization.JavaScriptSerializer
@@ -259,7 +285,7 @@ try{
  $operationGuard=$control.GetType().GetField('EngineeringBuildGuard',$flags -bor [Reflection.BindingFlags]::Static).GetValue($null)
  $guardType=$operationGuard.GetType()
  $buildId=[Guid]::NewGuid()
- Check ($guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))) 'synthetic operation reserves the process-wide engineering guard'
+ Check ($guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId,$null))) 'synthetic operation reserves the process-wide engineering guard'
  try {
   Put '_engineeringProject' $project;Put '_engineeringBusy' $true;Put '_engineeringUncertain' $true;Put '_engineeringBuildId' $buildId
   $epoch=Field '_engineeringEpoch'
@@ -313,7 +339,7 @@ try{
   if($hasResult){$reply.result=@{buildOperationId=$build.ToString('D');cancellationRequested=$true};$reply.output=$null;$reply.diagnostics=@()}
   return $reply|ConvertTo-Json -Depth 8 -Compress
  }
- $buildId=[Guid]::NewGuid();$null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))
+ $buildId=[Guid]::NewGuid();$null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId,$null))
  try{
   $request=[Guid]::NewGuid()
   $observing=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'unknown' $true)))
@@ -322,11 +348,11 @@ try{
   $observing=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'succeeded' $true)))
   Check (!$observing -and !$guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'later correlated completion reconciles a cancellation request'
   foreach($case in @(@{status='conflict';hasResult=$false},@{status='refused';hasResult=$true})){
-   $null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))
+   $null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId,$null))
    $null=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$buildId,([string](Build-Response $buildId $buildId $case.status $case.hasResult)))
    Check (!$guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) ('validated pre-submission '+$case.status+' does not leave an unresolved build')
   }
-  $null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId))
+  $null=$guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($buildId,$null))
   $request=[Guid]::NewGuid()
   $null=Invoke-Private 'RenderEngineeringResponse' @($renderSession,$buildId,$request,([string](Build-Response $buildId $request 'conflict' $false)))
   Check ($guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'a later observation conflict cannot clear a submitted build'
@@ -357,7 +383,7 @@ try{
  Invoke-Private 'SetEngineeringCapabilityStatus' @([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId)|Out-Null
  Check ((Field '_engineeringStatus').Text.Contains($capability.result.buildUnavailableReason) -and !(Field '_engineeringBuildButton').IsEnabled) 'native build readiness shows the actual reason without enabling a build'
  $reasonGuardId=[Guid]::NewGuid()
- Check ($guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($reasonGuardId))) 'synthetic unresolved operation reserves the guard before a readiness refresh'
+ Check ($guardType.GetMethod('TryBegin',$flags).Invoke($operationGuard,@($reasonGuardId,$null))) 'synthetic unresolved operation reserves the guard before a readiness refresh'
  try {
   Invoke-Private 'SetEngineeringCapabilityStatus' @([string]($capability|ConvertTo-Json -Depth 8 -Compress),$binding,$capabilityId)|Out-Null
   Check (!(Field '_engineeringStatus').Text.Contains($capability.result.buildUnavailableReason) -and $guardType.GetProperty('HasUnresolved',$flags).GetValue($operationGuard,$null)) 'an unavailable reason cannot replace unresolved-operation status or clear its guard'

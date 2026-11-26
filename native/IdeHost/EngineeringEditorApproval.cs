@@ -450,7 +450,7 @@ namespace TwinCatAssistant.Native
             _sourceBusy = false;
             _sourceStatus.Text = SourceUnknownStatus(request.Id);
             UpdateSourceButtons();
-            if (creation) Notify(_sourceStatus.Text, "error");
+            if (creation) RenderChatBinding();
         }
         private static EditorRequest EditorParseRequest(string json, EngineeringBinding binding)
         {

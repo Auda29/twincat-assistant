@@ -55,10 +55,15 @@ namespace TwinCatAssistant.Native
             _engineeringBuildButton = Secondary(AsyncButton(HostText.Get("EngineeringBuild"), StartEngineeringBuildAsync));
             _engineeringCancelButton = Secondary(AsyncButton(HostText.Get("EngineeringCancel"), CancelEngineeringBuildAsync));
             _engineeringRefreshButton = Secondary(AsyncButton(HostText.Get("EngineeringRefresh"), RefreshEngineeringCapabilitiesAsync));
+            _sourceRecoveryButton = Secondary(AsyncButton(HostText.Get("EngineeringSourceCreateRecover"), ReconcileSourceAsync));
             _engineeringBuildButton.IsEnabled = false;
             _engineeringCancelButton.Visibility = Visibility.Collapsed;
             var actions = new WrapPanel();
-            actions.Children.Add(_engineeringBuildButton); actions.Children.Add(_engineeringCancelButton); actions.Children.Add(_engineeringRefreshButton); actions.Children.Add(_engineeringStatus);
+            actions.Children.Add(_engineeringBuildButton);
+            actions.Children.Add(_engineeringCancelButton);
+            actions.Children.Add(_engineeringRefreshButton);
+            actions.Children.Add(_sourceRecoveryButton);
+            actions.Children.Add(_engineeringStatus);
             var details = new StackPanel();
             details.Children.Add(new TextBlock { Text = HostText.Get("EngineeringNavigationUnavailable"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) });
             details.Children.Add(new ScrollViewer { Content = _engineeringRows, MaxHeight = 160, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
@@ -69,11 +74,6 @@ namespace TwinCatAssistant.Native
             panel.Children.Add(actions); panel.Children.Add(_engineeringDetails);
             // Technical controls belong to opt-in diagnostics, not above the chat.
             _diagnosticAdvanced.Children.Add(panel);
-            // Recovery must also be reachable with diagnostics and the manual source panel closed.
-            _sourceRecoveryButton = Secondary(AsyncButton(HostText.Get("EngineeringSourceCreateRecover"), ReconcileSourceAsync));
-            var recovery = new WrapPanel { Margin = new Thickness(8, 0, 8, 0) };
-            recovery.Children.Add(_sourceRecoveryButton);
-            _toolbar.Children.Add(recovery);
             _engineeringRefreshDelay.Tick += async (sender, args) =>
             {
                 _engineeringRefreshDelay.Stop();
