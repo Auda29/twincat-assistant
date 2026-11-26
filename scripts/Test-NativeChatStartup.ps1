@@ -99,16 +99,38 @@ try{
  $hostText=$assembly.GetType('TwinCatAssistant.Native.HostText')
  $recoveryText=$hostText.GetMethod('Format').Invoke($null,[object[]]@('EngineeringSourceCreateUnknown',[object[]]@($creationId.ToString('D'))))
  $recoveryLabel=$hostText.GetMethod('Get').Invoke($null,@('EngineeringSourceCreateRecover'))
+ $acknowledgedText=$hostText.GetMethod('Format').Invoke($null,[object[]]@('EngineeringSourceCreateAcknowledged',[object[]]@($creationId.ToString('D'))))
+ $acknowledgeLabel=$hostText.GetMethod('Get').Invoke($null,@('EngineeringSourceCreateInspected'))
  Check ($sourceGuardType.GetMethod('TryBegin',$flags).Invoke($sourceGuard,@($creationId,$creation))) 'synthetic source creation reserves the process-wide guard'
  try {
+  Put '_holdingView' $true
   Invoke-Private 'MarkEditorUnknown' @($request)
-  Check ((Field '_toolbar').Children.Count -eq 4 -and (Field '_diagnostics').Visibility -eq 'Collapsed' -and (Field '_banner').Visibility -eq 'Visible' -and (Field '_bannerText').Text -ceq $recoveryText -and (Field '_banner').Background.Color -eq $control.Resources['Tc.ErrorSurface'].Color) 'unknown creation immediately shows an error banner with diagnostics closed and four toolbar children'
+  Check ((Field '_holdingView') -and (Field '_toolbar').Children.Count -eq 4 -and (Field '_diagnostics').Visibility -eq 'Collapsed' -and (Field '_banner').Visibility -eq 'Visible' -and (Field '_bannerText').Text -ceq $recoveryText -and (Field '_banner').Background.Color -eq $control.Resources['Tc.ErrorSurface'].Color) 'unknown creation immediately shows an error banner during the view hold with four toolbar children'
   Check ((Field '_bannerAction').Visibility -eq 'Visible' -and (Field '_bannerAction').Content -ceq $recoveryLabel -and $null -ne (Field '_bannerCommand') -and (Field '_bannerDismiss').Visibility -eq 'Collapsed' -and $null -eq (Field '_noticeText')) 'unknown creation offers a recovery action without a dismissable notice'
+  Put '_holdingView' $false
   $otherProject=[Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeProjectIdentity'),@($PID,'C:\Synthetic\Other.sln','C:\Synthetic\Other.plcproj'))
   Invoke-Private 'RenderProjectContext' @($otherProject,$null)
   Check ((Field '_bannerText').Text -ceq $recoveryText -and (Field '_bannerAction').Content -ceq $recoveryLabel -and (Field '_sourceRecoveryButton').Visibility -eq 'Visible') 'source recovery survives a project switch'
+  Put '_holdingView' $true
+  # Click the real acknowledgement button inside the recovery dialog's dispatcher frame.
+  $acknowledge=[Windows.Threading.Dispatcher]::CurrentDispatcher.BeginInvoke([Action]{
+   $dialog=@([Windows.PresentationSource]::CurrentSources | ForEach-Object {$_.RootVisual} | Where-Object {$_ -is [Windows.Window] -and $_.IsVisible})[0]
+   if(!$dialog){throw 'Source recovery dialog was not shown'}
+   try {
+    if($dialog.Title -cne $recoveryLabel){throw 'Unexpected source recovery dialog title'}
+    $button=$dialog.Content.Children[1].Children | Where-Object {$_.Content -ceq $acknowledgeLabel}
+    if(!$button){throw 'Source recovery acknowledgement button was not shown'}
+    $button.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+   } finally {if($dialog.IsVisible){$dialog.Close()}}
+  })
+  Await (Invoke-Private 'ReconcileSourceAsync')|Out-Null
+  Await $acknowledge.Task|Out-Null
+  Check ((Field '_holdingView') -and (Field '_toolbar').Children.Count -eq 4 -and (Field '_banner').Visibility -eq 'Visible' -and (Field '_bannerText').Text -ceq $acknowledgedText -and (Field '_bannerAction').Visibility -eq 'Collapsed' -and $null -eq (Field '_bannerCommand')) 'acknowledgement immediately replaces the recovery banner during the view hold with four toolbar children'
+  Check (!$sourceGuardType.GetProperty('HasUnresolved',$flags).GetValue($sourceGuard,$null) -and (Field '_sourceRecoveryButton').Visibility -eq 'Collapsed') 'acknowledgement clears the source guard and hides diagnostic recovery'
  } finally {
+  Put '_holdingView' $false
   $null=$sourceGuardType.GetMethod('Reconcile',$flags).Invoke($sourceGuard,@($creationId))
+  Call 'DismissNotice'|Out-Null
   Invoke-Private 'RenderProjectContext' @($null,$null)
  }
  Check ((Field '_banner').Visibility -eq 'Collapsed' -and (Field '_sourceRecoveryButton').Visibility -eq 'Collapsed') 'source recovery is hidden after the creation guard clears'

@@ -331,8 +331,8 @@ namespace TwinCatAssistant.Native
             if (_disposed || !EngineeringSourceGuard.AcknowledgeSourceCreation(creation, confirmed)) return;
             _sourceStatus.Text = HostText.Format("EngineeringSourceCreateAcknowledged", new object[] { creation.OperationId.ToString("D") });
             UpdateSourceButtons();
-            // Notify refreshes the banner after the guard has cleared.
             Notify(_sourceStatus.Text);
+            RefreshBanner();
         }
 
         private void ShowRollbackUnsavedWarning()

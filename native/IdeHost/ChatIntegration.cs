@@ -466,6 +466,16 @@ namespace TwinCatAssistant.Native
             }
         }
 
+        private void RefreshBanner()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (_attachPouButton == null || _disposed) return;
+            var ready = (!_chatActionPending || _autoAttaching) && _chatAdapterReady && _chatSelection?.authenticated == true;
+            var identity = _chatProject;
+            var foreign = _chatSelection?.IsSelected == true && _chatBinding != null && !_chatBinding.IsGeneral && identity != null && !_chatBinding.SameProjectContext(identity);
+            RenderBanner(ready, identity, foreign);
+        }
+
         private void RenderBanner(bool ready, NativeProjectIdentity identity, bool foreign)
         {
             string text = null, tone = "Neutral", action = null;
