@@ -69,8 +69,7 @@ namespace TwinCatAssistant.Native
         }
 
         // A source may have several live member documents under one physical
-        // file. Only a complete, stable RDT scan can establish that none is
-        // open. An unregistered document is never assumed clean.
+        // file. Establish cleanliness with stable RDT and DTE observations.
         private static bool? ReadSource(IVsRunningDocumentTable rdt, DTE dte, Func<Type, object> getService,
             string path, string projectFile)
         {
@@ -88,22 +87,20 @@ namespace TwinCatAssistant.Native
             var wasDirty = before.Exists(entry => entry.Dirty == true);
             var beforeUnknown = before.Exists(entry => !entry.Dirty.HasValue || !entry.InBoundHierarchy);
             bool? itemState = null;
-            var useDte = false;
-            List<OpenDteDocument> dteBefore = null;
             if (before.Count == 0)
             {
                 var persist = hierarchy as IVsPersistHierarchyItem2; int dirty;
                 if (persist == null) return null;
                 var hr = persist.IsItemDirty(item, IntPtr.Zero, out dirty);
                 if (hr == VSConstants.S_OK && (dirty == 0 || dirty == 1)) itemState = dirty != 0;
-                else if (hr == VSConstants.E_POINTER)
-                {
-                    // TwinCAT can require RDT docdata for closed source items.
-                    useDte = true;
-                    var observed = ScanDteSource(dte, path, out dteBefore);
-                    if (observed != false) return observed;
-                }
-                else return null;
+                // TwinCAT can require RDT docdata for closed source items.
+                else if (hr != VSConstants.E_POINTER) return null;
+            }
+            List<OpenDteDocument> dteBefore = null;
+            if (!wasDirty && !beforeUnknown && itemState != true)
+            {
+                var observed = ScanDteSource(dte, path, out dteBefore);
+                if (observed != false) return observed;
             }
             string solutionAfter; IVsHierarchy laterHierarchy; uint laterItem;
             if (!SolutionFile(solution, out solutionAfter) || !SamePath(solutionBefore, solutionAfter)
@@ -118,26 +115,26 @@ namespace TwinCatAssistant.Native
                 || !SourceItem(hierarchy, path, out laterItem) || laterItem != item || !SameOpenSources(before, after)) return null;
             if (wasDirty || after.Exists(entry => entry.Dirty == true)) return true;
             if (beforeUnknown || after.Exists(entry => !entry.Dirty.HasValue || !entry.InBoundHierarchy)) return null;
-            if (before.Count != 0) return false;
-            var secondPersist = hierarchy as IVsPersistHierarchyItem2; int secondDirty;
-            if (secondPersist == null) return null;
-            var secondHr = secondPersist.IsItemDirty(item, IntPtr.Zero, out secondDirty);
-            if (useDte ? secondHr != VSConstants.E_POINTER
-                : secondHr != VSConstants.S_OK || (secondDirty != 0 && secondDirty != 1) || itemState != (secondDirty != 0)) return null;
-            if (!ProjectIdentity(hierarchy, projectFile) || !SourceItem(hierarchy, path, out laterItem) || laterItem != item) return null;
-            if (!ScanSource(rdt, path, hierarchy, item, out var final) || final.Count != 0) return null;
-            if (useDte)
+            if (before.Count == 0)
+            {
+                var persist = (IVsPersistHierarchyItem2)hierarchy;
+                var hr = persist.IsItemDirty(item, IntPtr.Zero, out var dirty);
+                if (!itemState.HasValue ? hr != VSConstants.E_POINTER
+                    : hr != VSConstants.S_OK || (dirty != 0 && dirty != 1) || itemState != (dirty != 0)) return null;
+                if (!ProjectIdentity(hierarchy, projectFile) || !SourceItem(hierarchy, path, out laterItem) || laterItem != item) return null;
+                if (!ScanSource(rdt, path, hierarchy, item, out var final) || final.Count != 0) return null;
+            }
+            if (itemState != true)
             {
                 var observed = ScanDteSource(dte, path, out var dteAfter);
-                if (!observed.HasValue || !SameOpenDteDocuments(dteBefore, dteAfter)) return null;
                 if (observed != false) return observed;
-                itemState = false;
+                if (!SameOpenDteDocuments(dteBefore, dteAfter)) return null;
             }
             if (!SolutionFile(solution, out solutionAfter) || !SamePath(solutionBefore, solutionAfter)
                 || solution.GetProjectOfUniqueName(uniqueName, out laterHierarchy) != VSConstants.S_OK
                 || !SameCom(hierarchy, laterHierarchy) || !ProjectIdentity(hierarchy, projectFile)
                 || !SourceItem(hierarchy, path, out laterItem) || laterItem != item) return null;
-            return itemState;
+            return itemState == true;
         }
 
         private static bool SourceItem(IVsHierarchy hierarchy, string path, out uint item)

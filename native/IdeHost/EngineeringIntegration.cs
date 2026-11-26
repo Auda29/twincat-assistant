@@ -249,15 +249,17 @@ namespace TwinCatAssistant.Native
             if (MessageBox.Show(confirmation, HostText.Get("EngineeringBuild"), MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
             // A modal dialog can pump IDE events. Never use a context from before it.
             if (_disposed || session != _engineering || !binding.Same(session.Binding) || _engineeringProjectSuspended
+                || !_engineeringPlcBuildVerified || _engineeringBusy || _engineeringUncertain || _sourceBusy
+                || EngineeringBuildGuard.HasUnresolved || EngineeringSourceGuard.HasUnresolved
                 || configuration != _engineeringConfiguration || platform != _engineeringPlatform) return;
             var lifetime = _engineeringLifetime.Token;
+            var build = Guid.NewGuid();
+            if (!EngineeringBuildGuard.TryBegin(build)) return;
             _engineeringBusy = true;
+            _engineeringBuildId = build;
             UpdateSourceButtons();
             _engineeringBuildButton.IsEnabled = false;
             _engineeringOutput.Clear(); _engineeringRows.Children.Clear(); _engineeringDetails.Visibility = Visibility.Collapsed;
-            _engineeringBuildId = Guid.NewGuid();
-            var build = _engineeringBuildId;
-            if (!EngineeringBuildGuard.TryBegin(build)) { _engineeringBusy = false; return; }
             try
             {
                 var expires = DateTime.UtcNow.AddSeconds(90);

@@ -38,4 +38,13 @@ Offline verification covers profile migration, catalog isolation, framed
 transport and native policy. Against a simulated native pipe, the published
 Engineering runtime returned 500 source targets in a roughly 2.1 MiB MCP
 response and completed a source creation request after a 32-second approval
-delay. Installed TwinCAT workflow acceptance remains pending.
+delay.
+
+An earlier isolated live COM run on TwinCAT 3.1.4024.78 x86 passed six
+synthetic cases. `EngineeringDirtyState` observed clean closed `.TcPOU`,
+`.TcDUT` and `.TcGVL` files through the DTE fallback after `E_POINTER`. It
+detected unsaved `ImplementationText` edits on closed and open source files
+and observed a clean state after saving. With `EngineeringProvider` 0.5.10,
+`source.read`, `source.preview` and `source.apply` completed for a closed
+`MAIN.TcPOU`. End-to-end manual chat acceptance in the installed VSIX remains
+pending.
