@@ -358,6 +358,12 @@ namespace TwinCatAssistant.Native
 
     public sealed class NativeChatSession : IDisposable
     {
+        private static readonly HttpClient ReadinessClient = new HttpClient(new HttpClientHandler
+        {
+            UseProxy = false,
+            AllowAutoRedirect = false,
+            UseCookies = false
+        }) { Timeout = Timeout.InfiniteTimeSpan };
         private readonly SemaphoreSlim _editorControl = new SemaphoreSlim(1, 1);
         private bool _editorControlBroken;
         private Process _process;
@@ -454,10 +460,9 @@ namespace TwinCatAssistant.Native
             if (port < 1024 || port > 65535) return false;
             try
             {
-                using (var cancel = new CancellationTokenSource(1500))
-                using (var handler = new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false, UseCookies = false })
-                using (var client = new HttpClient(handler))
-                using (var response = await client.GetAsync("http://127.0.0.1:" + port + "/auth/session", HttpCompletionOption.ResponseHeadersRead, cancel.Token))
+                using (var cancel = new CancellationTokenSource(4000))
+                using (var request = new HttpRequestMessage(HttpMethod.Get, "http://127.0.0.1:" + port + "/auth/session"))
+                using (var response = await ReadinessClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancel.Token))
                 {
                     if (response.StatusCode != HttpStatusCode.Unauthorized) return false;
                     using (var stream = await response.Content.ReadAsStreamAsync())

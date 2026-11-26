@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { allowedProviders, createChatAdapter, consentProviders, mcpStates, storedProjectSessions } from '../src/embedded-chat.mjs';
+import { allowedProviders, createChatAdapter, consentProviders, installEmbeddedChat, mcpStates, storedProjectSessions } from '../src/embedded-chat.mjs';
 
 test('native MCP status discloses only reviewed server names and connection states', () => {
   assert.deepEqual(mcpStates([{ name:'knowledge', status:{status:'connected'} },
@@ -29,6 +29,89 @@ function fixture(options = {}) {
   return { ui, sessions, input, adapter: createChatAdapter({ ui, sessions, input, documentId: 'fixture-document', ...options }) };
 }
 const item = { providerId: 'twincat-assistant', id: 'snapshot-one', title: 'FB_Motor / PLC_A', url: 'http://127.0.0.1:3123/', text: 'synthetic ST snapshot' };
+
+async function authenticationFixture(t, initialStatus = 200) {
+  const { ui, sessions, input } = fixture();
+  const config = store({ loadProviders() {}, providers: [{ id: 'openai' }] });
+  const locale = store({ locale: 'de', setLocale: next => locale.set({ locale: next }) });
+  const metadata = {
+    '/api/integration': [],
+    '/api/websearch/provider': [],
+    '/api/config': [{ info: { experimental: { policies: [{ action: 'provider.use', effect: 'allow', resource: 'openai' }] } } }],
+    '/api/mcp': [{ name: 'knowledge', status: { status: 'connected' } }],
+  };
+  let authResult = initialStatus;
+  let authPoll;
+  const originalObserver = Object.getOwnPropertyDescriptor(globalThis, 'MutationObserver');
+  Object.defineProperty(globalThis, 'MutationObserver', { configurable: true, value: class { observe() {} } });
+  t.after(() => {
+    if (originalObserver) Object.defineProperty(globalThis, 'MutationObserver', originalObserver);
+    else delete globalThis.MutationObserver;
+  });
+  const scope = {
+    location: { protocol: 'http:', hostname: '127.0.0.1' },
+    __twinCatSource: { version: 1, stores: { ui, sessions, input, config, locale }, activate() {}, composer: () => ({ references: [] }) },
+    document: {
+      documentElement: { dataset: {} }, head: { append() {} },
+      createElement: () => ({}), querySelector: () => null, querySelectorAll: () => [],
+    },
+    addEventListener() {},
+    setInterval(callback) { authPoll = callback; },
+    async fetch(path) {
+      if (path === '/auth/session') {
+        if (authResult instanceof Error) throw authResult;
+        return new Response(null, { status: authResult });
+      }
+      assert.ok(path in metadata, path);
+      return Response.json(metadata[path]);
+    },
+  };
+  await installEmbeddedChat(scope);
+  return {
+    state: () => scope.__twinCatChat.state(),
+    async poll(result) { authResult = result; await authPoll(); },
+  };
+}
+
+test('transient authentication failures retain sign-in and mark MCP status stale', async t => {
+  const { state, poll } = await authenticationFixture(t);
+  const established = state();
+  assert.equal(established.authenticated, true);
+  assert.deepEqual(established.mcpObservation, { directory: '/isolated', observed: true, stale: false });
+  for (const failure of [new DOMException('Timed out', 'TimeoutError'), new TypeError('Network error'), 503]) {
+    await poll(failure);
+    const current = state();
+    assert.equal(current.authenticated, true);
+    assert.deepEqual(current.providers, established.providers);
+    assert.deepEqual(current.allowedProviders, established.allowedProviders);
+    assert.deepEqual(current.mcp, established.mcp);
+    assert.deepEqual(current.mcpObservation, { ...established.mcpObservation, stale: true });
+    await poll(200);
+    assert.equal(state().mcpObservation.stale, false);
+  }
+});
+
+test('a confirmed 401 or 403 clears sign-in, providers and MCP status', async t => {
+  const { state, poll } = await authenticationFixture(t);
+  for (const status of [401, 403]) {
+    assert.deepEqual(state().providers, [{ id: 'openai', name: 'openai' }]);
+    assert.deepEqual(state().allowedProviders, ['openai']);
+    assert.deepEqual(state().mcp, [{ name: 'knowledge', status: 'connected' }]);
+    await poll(status);
+    const current = state();
+    assert.equal(current.authenticated, false);
+    assert.deepEqual(current.providers, []);
+    assert.deepEqual(current.allowedProviders, []);
+    assert.deepEqual(current.mcp, []);
+    assert.deepEqual(current.mcpObservation, { directory: '/isolated', observed: false, stale: true });
+    await poll(200);
+  }
+});
+
+test('initial HTTP 401 leaves the adapter unauthenticated', async t => {
+  const { state } = await authenticationFixture(t, 401);
+  assert.equal(state().authenticated, false);
+});
 
 test('DE/EN switching changes only locale, preserving selection, drafts, attachments and consent', () => {
   let locale = 'de';

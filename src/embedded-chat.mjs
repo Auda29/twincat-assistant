@@ -385,9 +385,15 @@ export async function installEmbeddedChat(scope = window, preferredLanguage = nu
     if (refreshingAuthentication) return;
     refreshingAuthentication = true;
     try {
-      try { signedIn = (await scope.fetch('/auth/session', { redirect: 'error', signal: AbortSignal.timeout(1500) })).ok; }
-      catch { signedIn = false; mcpStale = true; return; }
-      if (!signedIn) { connectedProviders = []; enabledProviders = []; resetMcp(null); return; }
+      let response;
+      try { response = await scope.fetch('/auth/session', { redirect: 'error', signal: AbortSignal.timeout(4000) }); }
+      catch { mcpStale = true; return; }
+      if (response.status === 401 || response.status === 403) {
+        signedIn = false; connectedProviders = []; enabledProviders = []; resetMcp(null);
+        return;
+      }
+      if (!response.ok) { mcpStale = true; return; }
+      signedIn = true;
       const directory = currentDirectory();
       if (typeof directory !== 'string' || !/^(?:[a-z]:[\\/]|\/)/i.test(directory)) { connectedProviders = []; enabledProviders = []; resetMcp(null); return; }
       if (mcpDirectory !== directory) { resetMcp(directory); enabledProviders = []; }

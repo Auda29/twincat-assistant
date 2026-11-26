@@ -5,6 +5,15 @@ project and create new ST objects, with native approval for each mutation.
 
 ## Changes since Beta 10
 
+- Keep the chat open through brief local service interruptions. The native
+  health check reuses HTTP connections, allows four seconds per check, and
+  starts reconnecting after three consecutive failures. An owned chat service
+  exit triggers recovery immediately.
+- Preserve chat sign-in through temporary authentication timeouts, network
+  errors, and server errors while marking MCP status as stale. An HTTP 401 or
+  403 still triggers sign-in recovery.
+- Keep the embedded chat in desktop mode when resizing the tool window or
+  toggling the Project Chat sidebar on touch-capable systems.
 - Discover ST POUs, members, DUTs, interfaces and GVLs without first opening
   their files. Filter by moniker to prefer a supported open XML buffer.
 - Review exact diff text before applying or rolling back an edit. Automation

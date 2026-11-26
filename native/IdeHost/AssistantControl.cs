@@ -71,6 +71,7 @@ namespace TwinCatAssistant.Native
         private readonly DispatcherTimer _chatHealth;
         private NativeChatSession _chatSession;
         private bool _checkingChatHealth, _setupMissing;
+        private int _chatHealthFailures;
         private long _navigationGeneration;
         private readonly TextBlock _diagnosticStatus = new TextBlock { TextWrapping = TextWrapping.Wrap };
         private readonly TextBlock _inventoryStatus = new TextBlock { Text = HostText.Get("H006"), TextWrapping = TextWrapping.Wrap };
@@ -510,6 +511,7 @@ namespace TwinCatAssistant.Native
                 return;
             }
             _connecting = true;
+            _chatHealthFailures = 0;
             _setupMissing = false;
             ResetLoading();
             _chatAdapterReady = false; _chatSelection = null; _chatBinding = null;
@@ -623,7 +625,7 @@ namespace TwinCatAssistant.Native
                 await SignInBrowserAsync(port);
                 if (_disposed) return;
                 _navigationGeneration = generation;
-                _browser.CoreWebView2.Navigate(origin.AbsoluteUri);
+                _browser.CoreWebView2.Navigate(ChatNavigationUrl(origin));
                 _chatHealth.Start();
             }
             catch
@@ -676,6 +678,8 @@ namespace TwinCatAssistant.Native
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_disposed || !ReferenceEquals(sender, _browser.CoreWebView2) || _navigationGeneration != _chatConnection.Generation) return;
+            if (args.NavigationId != _chatConnection.NavigationId) return;
+            _chatHealthFailures = 0;
             _chatConnection.Completed(args.NavigationId, args.IsSuccess, args.HttpStatusCode, args.WebErrorStatus.ToString());
             ShowChatStatus();
             if (args.IsSuccess && args.NavigationId == _chatConnection.NavigationId && args.HttpStatusCode >= 200 && args.HttpStatusCode < 400)
@@ -707,9 +711,8 @@ namespace TwinCatAssistant.Native
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
                 if (_disposed || _chatSession != session) return;
-                _chatConnection.Fail(_chatConnection.Generation, HostText.Get("H040"));
-                ShowChatStatus();
-                ScheduleChatReconnect();
+                _chatHealthFailures = 0;
+                FailChatHealth("H040");
             }
             catch { /* The dispatcher may already be shutting down. */ }
         }
@@ -721,27 +724,45 @@ namespace TwinCatAssistant.Native
                 if (_disposed || _checkingChatHealth || _connecting || _origin == null) return;
                 _checkingChatHealth = true;
                 var generation = _chatConnection.Generation;
+                var documentGeneration = _chatDocumentGeneration;
                 try
                 {
-                    if (!await NativeChatSession.IsProtectedServiceReadyAsync(_origin.Port) && !_disposed && generation == _chatConnection.Generation)
+                    if (_chatSession != null && !_chatSession.IsRunning)
                     {
-                        _chatConnection.Fail(generation, HostText.Get("H041"));
-                        ShowChatStatus();
-                        _chatHealth.Stop();
-                        ScheduleChatReconnect();
+                        _chatHealthFailures = 0;
+                        FailChatHealth("H040");
+                        return;
                     }
-                    else if (!_disposed && generation == _chatConnection.Generation)
+
+                    var ready = await NativeChatSession.IsProtectedServiceReadyAsync(_origin.Port);
+                    if (_disposed || !_chatHealth.IsEnabled || generation != _chatConnection.Generation || documentGeneration != _chatDocumentGeneration) return;
+                    if (!ready)
                     {
-                        await PollChatSelectionAsync();
-                        ShowChatStatus();
-                        RefreshSidebar(false);
+                        if (++_chatHealthFailures >= 3) FailChatHealth("H041");
+                        return;
                     }
+
+                    _chatHealthFailures = 0;
+                    await PollChatSelectionAsync();
+                    ShowChatStatus();
+                    RefreshSidebar(false);
                 }
                 finally { _checkingChatHealth = false; }
             }
             catch { }
         }
 #pragma warning restore VSTHRD100
+
+        private void FailChatHealth(string messageKey)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            _chatHealth.Stop();
+            _chatConnection.Fail(_chatConnection.Generation, HostText.Get(messageKey));
+            ShowChatStatus();
+            ScheduleChatReconnect();
+        }
+
+        internal static string ChatNavigationUrl(Uri origin) => origin.AbsoluteUri + "?surface=desktop";
 
         private bool Allowed(string url)
         {

@@ -76,6 +76,12 @@ try{
  $context=[Activator]::CreateInstance($contextType)
  $thread.GetField('_joinableTaskContextCache',[Reflection.BindingFlags]'Static,NonPublic').SetValue($null,$context)
  Make-Control
+ $chatNavigationUrl=$control.GetType().GetMethod('ChatNavigationUrl',[Reflection.BindingFlags]'Static,NonPublic')
+ $testOrigin=[Uri]'http://127.0.0.1:3123/'
+ Put '_origin' $testOrigin
+ $testUrl=$chatNavigationUrl.Invoke($null,@($testOrigin))
+ Check ($testUrl -ceq 'http://127.0.0.1:3123/?surface=desktop') 'chat navigation explicitly pins the desktop surface'
+ Check ((Invoke-Private 'Allowed' @($testUrl)) -and (Invoke-Private 'AllowedResource' @($testUrl))) 'desktop surface URL passes the navigation and resource origin checks'
  function Is-InDiagnosticTools($element) {
   for($depth=0;$null -ne $element -and $depth -lt 20;$depth++){
    if([object]::ReferenceEquals($element,(Field '_diagnosticAdvanced'))){return $true}
@@ -227,15 +233,17 @@ try{
  $core=$browser.CoreWebView2
  (Field '_chatCredentials').Save('synthetic-product-ui-only-not-an-operator-credential')
  Check ((Await(Invoke-Private 'SignInBrowserAsync' ([object[]]@([int]([Uri]$origin).Port)))) -eq $true) 'synthetic native login accepted before navigation'
- $core.Navigate($origin)
+ $core.Navigate($chatNavigationUrl.Invoke($null,@([Uri]$origin)))
  $deadline=[DateTime]::UtcNow.AddSeconds(30)
  do{Await ([Threading.Tasks.Task]::Delay(100))|Out-Null;$ok=Await($core.ExecuteScriptAsync('!!window.__twinCatSource'))}while($ok -ne 'true' -and [DateTime]::UtcNow -lt $deadline)
  Check ($ok -eq 'true') 'source contract loaded'
- $bundle=[IO.File]::ReadAllText((Join-Path $root 'native/IdeHost/obj/EmbeddedChat.js'))
+ $bundleReader=[IO.StreamReader]::new($assembly.GetManifestResourceStream('TwinCatAssistant.EmbeddedChat.js'))
+ try { $bundle=$bundleReader.ReadToEnd() } finally { $bundleReader.Dispose() }
  Await ($core.ExecuteScriptAsync($bundle+';window.__fixtureInstall=false;TwinCatEmbedded.installEmbeddedChat().then(()=>window.__fixtureInstall=true);'))|Out-Null
  $deadline=[DateTime]::UtcNow.AddSeconds(30)
  do{Await ([Threading.Tasks.Task]::Delay(100))|Out-Null;$ok=Await($core.ExecuteScriptAsync('window.__fixtureInstall && window.__twinCatChat.state().authenticated'))}while($ok -ne 'true' -and [DateTime]::UtcNow -lt $deadline)
  Check ($ok -eq 'true') 'synthetic local chat authenticated'
+ Check ((Await ($core.ExecuteScriptAsync('new URLSearchParams(location.search).get("surface") === "desktop" && window.__OPENCHAMBER_SURFACE__ === "desktop"'))) -eq 'true') 'the source app boots in explicit desktop mode'
  $connection=Field '_chatConnection';$generation=$connection.Begin();$connection.Navigating([UInt64]1);$connection.Completed([UInt64]1,$true,200,$null)
  Put '_chatAdapterReady' $true
  $selection=Await (Invoke-Private 'ReadChatSelectionAsync' ([object[]]@($false)));Put '_chatSelection' $selection
@@ -432,5 +440,37 @@ try{
  $capability.result.buildUnavailableReason='association_interop_unavailable';$capability.result.capabilities.plcBuild='supported'
  Check ($null -eq (Read-BuildReason)) 'a supported response cannot carry an unavailable reason into the UI'
  Check ($null -eq $reasonMethod.Invoke($null,@('{invalid',$binding,$capabilityId))) 'malformed preflight evidence has no displayed reason'
+
+ function Poll-ChatHealth {
+  Invoke-Private 'CheckChatHealth' @($null,[EventArgs]::Empty)
+  $deadline=[DateTime]::UtcNow.AddSeconds(10)
+  while((Field '_checkingChatHealth') -and [DateTime]::UtcNow -lt $deadline){$null=Await ([Threading.Tasks.Task]::Delay(10))}
+  if(Field '_checkingChatHealth'){throw 'Health probe did not complete'}
+ }
+ $healthTimer=Field '_chatHealth';$reconnectTimer=Field '_chatReconnect'
+ $healthTimer.Interval=[TimeSpan]::FromMinutes(1)
+ $healthTimer.Start()
+ # Port 80 is rejected by the readiness probe before any network request.
+ Put '_origin' ([Uri]'http://127.0.0.1:80/')
+ foreach($failure in 1..2){
+  Poll-ChatHealth
+  Check ((Field '_chatHealthFailures') -eq $failure -and $connection.PageLoaded -and (Field '_chatPresented') -and $browser.Visibility -eq 'Visible' -and $healthTimer.IsEnabled -and !$reconnectTimer.IsEnabled) "health failure $failure keeps the presented chat alive"
+ }
+ Put '_origin' $fixtureUri
+ Poll-ChatHealth
+ Check ((Field '_chatHealthFailures') -eq 0 -and $connection.PageLoaded -and !$reconnectTimer.IsEnabled) 'a successful health probe clears the consecutive failure count'
+ Put '_origin' ([Uri]'http://127.0.0.1:80/')
+ Poll-ChatHealth;Poll-ChatHealth
+ Check ((Field '_chatHealthFailures') -eq 2 -and $connection.PageLoaded) 'a successful probe separates failure streaks'
+ Poll-ChatHealth
+ Check ((Field '_chatHealthFailures') -eq 3 -and $connection.Phase -eq 'failed' -and $browser.Visibility -eq 'Collapsed' -and !$healthTimer.IsEnabled -and $reconnectTimer.IsEnabled) 'three consecutive failures collapse chat and schedule reconnect'
+ $reconnectTimer.Stop()
+ $null=$connection.Begin();$connection.Navigating([UInt64]2);$connection.Completed([UInt64]2,$true,200,$null)
+ Put '_origin' $fixtureUri
+ Put '_chatSession' ([Activator]::CreateInstance($assembly.GetType('TwinCatAssistant.Native.NativeChatSession')))
+ $healthTimer.Start()
+ Poll-ChatHealth
+ Check ((Field '_chatHealthFailures') -eq 0 -and $connection.Phase -eq 'failed' -and !$healthTimer.IsEnabled -and $reconnectTimer.IsEnabled) 'a dead owned session immediately schedules reconnect even when the port is healthy'
+ $reconnectTimer.Stop()
  [pscustomobject]@{passed=$checks.Count;checks=@($checks);hostSha256=(Get-FileHash -LiteralPath $HostAssembly -Algorithm SHA256).Hash.ToLowerInvariant();installedIdeAcceptance=$false}|ConvertTo-Json -Depth 4|Set-Content -LiteralPath (Join-Path $OutputDirectory 'result.json') -Encoding UTF8
 }finally{if($control){$control.Dispose()};if($window){$window.Close()};[AppDomain]::CurrentDomain.remove_AssemblyResolve($resolver);$env:TWINCAT_ASSISTANT_TEST_CONFIG=$oldOverride}
