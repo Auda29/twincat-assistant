@@ -35,7 +35,7 @@ components remain and can be retained while the missing component is retried
 individually. An explicitly supplied license and digest are a reviewed input,
 not a machine determination of copyright or redistribution permission.
 
-The Engineering input requires a detached checkout of `engineering-v0.5.10`.
+The Engineering input requires a detached checkout of `engineering-v0.5.11`.
 The checked-out HEAD must match the revision in `upstream/engineering-lock.json`.
 For a release pin, the script verifies the published runtime/source archives,
 receipt and three profile catalogs against the lock, then uses the published

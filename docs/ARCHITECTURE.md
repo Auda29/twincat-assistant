@@ -21,7 +21,7 @@ login. By default, it connects automatically to the project's configured AMS
 Net ID and ADS port in read-only mode (configurable in the `...` menu). See
 [Structured Text transaction paths](NORMAL_ST_TRANSACTIONS.md).
 
-The published dependencies are Engineering 0.5.10 (`engineering-v0.5.10`, `c90e8ad571c2b3c8e37809c9cad93be180468183`) and Knowledge 0.1.2 (`v0.1.2`, `84c437aea8e27da930a246e7bb3ae310e8e5d31d`). Knowledge provides nine read-only tools, including five typed symbol, library and error lookup tools. Its corpus is supplied and activated locally, not bundled; documented metadata and versions do not establish installed libraries. See [Knowledge setup](KNOWLEDGE_SETUP.md) and [native MCP integration](NATIVE_MCP.md).
+The published dependencies are Engineering 0.5.11 (`engineering-v0.5.11`, `8193e35986aceede26e11ea1f2d5ca7790bc557e`) and Knowledge 0.1.2 (`v0.1.2`, `84c437aea8e27da930a246e7bb3ae310e8e5d31d`). Knowledge provides nine read-only tools, including five typed symbol, library and error lookup tools. Its corpus is supplied and activated locally, not bundled; documented metadata and versions do not establish installed libraries. See [Knowledge setup](KNOWLEDGE_SETUP.md) and [native MCP integration](NATIVE_MCP.md).
 
 The native integration uses authenticated local transport, project-bound sessions and explicit disclosure for source attachments. General chat has Knowledge but no project engineering tools. General shell and filesystem mutation are denied by policy. The profiles do not grant PLC activation, download, online change, variable forcing, or runtime start/stop.
 

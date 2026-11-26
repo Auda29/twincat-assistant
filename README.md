@@ -92,7 +92,7 @@ two dedicated local MCP services.
 | Assistant Host | Native tool window, IDE context and WebView2 integration | C# / WPF |
 | Assistant Chat | Messages, input, attachments and conversation display | [OpenChamber](https://github.com/openchamber/openchamber) |
 | Assistant Core | Model providers, agent execution, MCP client and conversation storage | [OpenCode](https://github.com/anomalyco/opencode) |
-| Engineering MCP 0.5.10 | Saved project analysis, bound builds, Editor and Debug | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.10) |
+| Engineering MCP 0.5.11 | Saved project analysis, bound builds, Editor and Debug | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.11) |
 | Knowledge MCP 0.1.2 | Nine documentation tools, including symbol/library/error lookup | [Released package](https://github.com/Auda29/twincat-knowledge-mcp/releases/tag/v0.1.2) |
 
 Model execution and MCP processes run outside the IDE. Documentation, generated

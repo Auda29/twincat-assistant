@@ -14,8 +14,8 @@ project and create new ST objects, with native approval for each mutation.
   struct DUT or GVL through a dedicated approval dialog. TwinCAT writes the
   object file or updates the owning POU file immediately. Changes to the
   `.plcproj` remain pending save. Creation has no source journal entry.
-- Adopt published Engineering MCP `0.5.10` (`engineering-v0.5.10`,
-  `c90e8ad571c2b3c8e37809c9cad93be180468183`). The Editor catalog has 16 tools.
+- Adopt published Engineering MCP `0.5.11` (`engineering-v0.5.11`,
+  `8193e35986aceede26e11ea1f2d5ca7790bc557e`). The Editor catalog has 16 tools.
   Build retains 9 tools and Debug retains 11.
 - Support ST sections up to 65,536 characters, 1 MiB inner requests and
   responses, and 2 MiB authenticated frames. Engineering MCP tool approvals
@@ -46,5 +46,6 @@ synthetic cases. `EngineeringDirtyState` observed clean closed `.TcPOU`,
 detected unsaved `ImplementationText` edits on closed and open source files
 and observed a clean state after saving. With `EngineeringProvider` 0.5.10,
 `source.read`, `source.preview` and `source.apply` completed for a closed
-`MAIN.TcPOU`. End-to-end manual chat acceptance in the installed VSIX remains
+`MAIN.TcPOU`. The native provider source tree is identical in Engineering
+0.5.10 and 0.5.11. End-to-end manual chat acceptance in the installed VSIX remains
 pending.
