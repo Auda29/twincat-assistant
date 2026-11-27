@@ -12126,15 +12126,15 @@
     "changes": [
       [
         "import { useConfigStore } from \"@/stores/useConfigStore\"",
-        "import { useConfigStore } from \"@/stores/useConfigStore\"\nimport { isSelectedTwinCatChat, isTwinCatEmbedded, requireTwinCatProfileSettled, twinCatActiveProfile, twinCatSource, TWINCAT_ANALYSIS_PROFILE } from \"@/lib/twincat/twincat\""
+        "import { useConfigStore } from \"@/stores/useConfigStore\"\nimport { checkTwinCatSendTarget, isTwinCatEmbedded, requireTwinCatProfileSettled, twinCatActiveProfile, twinCatSource, TWINCAT_ANALYSIS_PROFILE } from \"@/lib/twincat/twincat\""
       ],
       [
         "  const requestDirectory = params.directory ?? undefined\n  // The session",
-        "  const requestDirectory = params.directory ?? undefined\n  const embedded = isTwinCatEmbedded()\n  if (embedded) requireTwinCatProfileSettled()\n  // The session"
+        "  const requestDirectory = params.directory ?? undefined\n  const embedded = isTwinCatEmbedded()\n  const checkTwinCatTarget = () => checkTwinCatSendTarget(params.sessionId, requestDirectory, params.requireSelectedChat)\n  if (embedded) checkTwinCatTarget()\n  // The session"
       ],
       [
         "  // The command route takes no skill attachments,",
-        "  // Use the same live profile in the explicit request and its synthetic context.\n  // Refresh after asynchronous command lookup or connection readiness.\n  const matchesTwinCatChat = () => isSelectedTwinCatChat(params.sessionId, requestDirectory)\n  const validateProfile = embedded ? () => {\n    requireTwinCatProfileSettled()\n    const currentAgent = matchesTwinCatChat() ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    if (currentAgent !== selection.agent) throw new Error(\"TwinCAT profile changed before dispatch\")\n  } : undefined\n  const refreshTwinCatSelection = () => {\n    if (!embedded) return\n    requireTwinCatProfileSettled()\n    const sameChat = matchesTwinCatChat()\n    selection.agent = sameChat ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    contextItems.unshift(...twinCatSource.contextTexts(params.sessionId, selection.agent, sameChat)\n      .map(text => ({ text, metadata: undefined })))\n  }\n  // The command route takes no skill attachments,"
+        "  // Use the same live profile in the explicit request and its synthetic context.\n  // Refresh after asynchronous command lookup or connection readiness.\n  const validateProfile = embedded ? () => {\n    const currentAgent = checkTwinCatTarget() ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    if (currentAgent !== selection.agent) throw new Error(\"TwinCAT profile changed before dispatch\")\n  } : undefined\n  const refreshTwinCatSelection = () => {\n    if (!embedded) return\n    const sameChat = checkTwinCatTarget()\n    selection.agent = sameChat ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    contextItems.unshift(...twinCatSource.contextTexts(params.sessionId, selection.agent, sameChat)\n      .map(text => ({ text, metadata: undefined })))\n  }\n  // The command route takes no skill attachments,"
       ],
       [
         "      params.appendSubmissions?.()\n      const commandContext",
@@ -12163,6 +12163,18 @@
       [
         "agent: selection.agent,\n        command: cmdName,",
         "agent: selection.agent,\n        validateProfile,\n        command: cmdName,"
+      ],
+      [
+        "export async function routeMessage(params: {\n  runtimeKey?: string",
+        "export async function routeMessage(params: {\n  runtimeKey?: string\n  requireSelectedChat?: boolean"
+      ],
+      [
+        "type SendMessageOptions = {\n  target?: CapturedSendTarget",
+        "type SendMessageOptions = {\n  target?: CapturedSendTarget\n  requireSelectedChat?: boolean"
+      ],
+      [
+        "    const messageRoute = await routeMessage({\n      runtimeKey: capturedTarget?.runtimeKey,",
+        "    const messageRoute = await routeMessage({\n      runtimeKey: capturedTarget?.runtimeKey,\n      requireSelectedChat: options?.requireSelectedChat,"
       ]
     ]
   },
@@ -12211,7 +12223,7 @@
       ],
       [
         "    assertProviderCircuitClosed(params.providerID)\n\n    const admitSynthetic",
-        "    assertProviderCircuitClosed(params.providerID)\n    let profileInvalidated = false\n    const validateProfile = () => {\n      try {\n        if (policy) {\n          policy.requireSettled()\n          if (agent !== policy.profileForChat(params.id, params.directory)) throw new Error(\"TwinCAT profile changed before dispatch\")\n        }\n        params.validateProfile?.()\n      } catch (error) {\n        profileInvalidated = true\n        throw error\n      }\n    }\n\n    const admitSynthetic"
+        "    assertProviderCircuitClosed(params.providerID)\n    let profileInvalidated = false\n    const validateProfile = () => {\n      try {\n        params.validateProfile?.()\n        if (policy) {\n          policy.requireSettled()\n          if (agent !== policy.profileForChat(params.id, params.directory)) throw new Error(\"TwinCAT profile changed before dispatch\")\n        }\n      } catch (error) {\n        profileInvalidated = true\n        throw error\n      }\n    }\n\n    const admitSynthetic"
       ],
       [
         "      if (!(error instanceof Error && isDefiniteTransportFailure(error))) {\n        recordProviderError",
@@ -12223,7 +12235,7 @@
       ],
       [
         "  }): Promise<string> {\n    this.assertRuntimeUnchanged(params.runtimeKey)\n\n    // Context ids are minted before the prompt's,",
-        "  }): Promise<string> {\n    const policy = getTwinCatSendPolicy()\n    policy?.requireSettled()\n    this.assertRuntimeUnchanged(params.runtimeKey)\n    const agent = policy ? policy.profileForChat(params.id, params.directory) : params.agent\n\n    // Context ids are minted before the prompt's,"
+        "  }): Promise<string> {\n    params.validateProfile?.()\n    const policy = getTwinCatSendPolicy()\n    policy?.requireSettled()\n    this.assertRuntimeUnchanged(params.runtimeKey)\n    const agent = policy ? policy.profileForChat(params.id, params.directory) : params.agent\n\n    // Context ids are minted before the prompt's,"
       ],
       [
         "    const context = (params.context ?? [])\n",
@@ -12266,7 +12278,7 @@
     "changes": [
       [
         "import { useSessionUIStore } from '@/sync/session-ui-store';",
-        "import { useSessionUIStore } from '@/sync/session-ui-store';\nimport { isSelectedTwinCatChat, isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatProfilePending } from '@/lib/twincat/twincat';"
+        "import { useSessionUIStore } from '@/sync/session-ui-store';\nimport { isSelectedTwinCatChat, isTwinCatSendDeferred, isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatProfilePending } from '@/lib/twincat/twincat';"
       ],
       [
         "  const queuedMessages = useMessageQueueStore((state) => state.queuedMessages);",
@@ -12279,6 +12291,14 @@
       [
         "  }, [enabled, queuedMessages, sessionStatusRecord,",
         "  }, [enabled, profileSwitchPending, selectedSessionId, selectedDirectory, queuedMessages, sessionStatusRecord,"
+      ],
+      [
+        "    { target, historySubmissions: payload.historySubmissions },",
+        "    { target, historySubmissions: payload.historySubmissions, requireSelectedChat: isTwinCatEmbedded() },"
+      ],
+      [
+        "      } catch (error) {\n        console.warn('[queue] queued auto-send failed:', error);",
+        "      } catch (error) {\n        if (isTwinCatSendDeferred(error)) {\n          sendFailuresRef.current.delete(targetKey);\n          // Selection may have returned while this attempt was still in flight.\n          setRetryTick((value) => value + 1);\n          return;\n        }\n        console.warn('[queue] queued auto-send failed:', error);"
       ]
     ]
   },

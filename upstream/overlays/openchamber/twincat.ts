@@ -103,6 +103,18 @@ export function isSelectedTwinCatChat(sessionId: string, directory?: string | nu
   return current.currentSessionId === sessionId
     && (directory == null || normalizePath(current.currentSessionDirectory ?? '') === normalizePath(directory));
 }
+export function checkTwinCatSendTarget(sessionId: string, directory?: string | null, requireSelectedChat = false) {
+  requireTwinCatProfileSettled();
+  const selected = isSelectedTwinCatChat(sessionId, directory);
+  if (requireSelectedChat && !selected) {
+    throw Object.assign(new Error('TwinCAT chat selection changed before dispatch'), { code: 'twincat_chat_selection_changed' as const });
+  }
+  return selected;
+}
+export function isTwinCatSendDeferred(error: unknown) {
+  return error instanceof Error && 'code' in error
+    && (error.code === 'twincat_chat_selection_changed' || error.code === 'twincat_profile_switch_pending');
+}
 export function twinCatProfileForChat(sessionId: string, directory?: string | null) {
   return isSelectedTwinCatChat(sessionId, directory) ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE;
 }
