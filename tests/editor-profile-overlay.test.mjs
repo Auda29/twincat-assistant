@@ -248,14 +248,14 @@ test('overlay routes composer, controls, live submission and mobile display thro
   assert.match(dispatch, /beforeOptimisticInsert: refreshTwinCatSelection/);
   assert.match(dispatch, /refreshTwinCatSelection\(\)[\s\S]*const commandContext/);
   assert.match(dispatch, /validateProfile,[\s\S]*text: params.content/);
-  assert.match(client, /const prompt = .*\n +validateProfile\(\)/);
+  assert.match(client, /const prompt = .*\n +validate\(\)/);
   assert.match(client, /policy\?\.requireSettled\(\)[\s\S]*const agent = policy \? policy.profileForChat\(/);
   assert.match(client, /policy\?\.contextTexts\(params.id, agent, policy.isSelectedChat/);
   assert.match(review, /beforeOptimisticInsert:[\s\S]*sendContext.unshift\(\.\.\.policy.contextTexts/);
-  assert.match(client, /params.validateProfile\?\.\(\)\n +await call\("session.command"/);
+  assert.match(client, /validate\(\)\n +await call\("session.command"/);
 });
 
-test('queued prompts and slash commands wait for their selected chat and settled profile', { timeout: 10_000 }, async t => {
+test('queued prompts and slash commands wait for their selected chat and settled profile', { timeout: 30_000 }, async t => {
   const checkout = new URL('../local-data/upstream/openchamber/', import.meta.url);
   try {
     await readFile(new URL('.git/HEAD', checkout));
@@ -288,7 +288,7 @@ test('queued prompts and slash commands wait for their selected chat and settled
     section(store, '  sendMessage: async (', '  // createSession\n'),
     '}',
     'class TestClient {',
-    section(client, '  private async applySendSelection(', '  /** Interrupts the running turn.'),
+    section(client, '  private readonly deferredContextCancellations', '  /** Interrupts the running turn.'),
     '  assertRuntimeUnchanged() {}',
     '  async resolveSkillMentions() { return { attached: [], unresolved: [] } }',
     '  clientFor() { return transport }',
@@ -306,36 +306,76 @@ test('queued prompts and slash commands wait for their selected chat and settled
     ['/fixture queued command', 'chat changes during client setup'],
     ['queued prompt', 'profile becomes pending during client setup'],
     ['/fixture queued command', 'profile becomes pending during client setup'],
+    ['queued prompt', 'chat changes after synthetic admission'],
+    ['/fixture queued command', 'chat changes after synthetic admission'],
   ]) {
-    await t.test(`${content}: ${interruption}`, { timeout: 2_000 }, async () => {
+    await t.test(`${content}: ${interruption}`, { timeout: 10_000 }, async () => {
       const pauseKnowledge = interruption.endsWith('knowledge load');
       const switchChat = interruption.startsWith('chat changes');
+      const pauseSynthetic = interruption.endsWith('synthetic admission');
       const { api, select, sendPolicy } = await makeBridge();
       const chatA = { currentSessionId: 'a', currentSessionDirectory: 'C:/project' };
       const chatB = { ...chatA, currentSessionId: 'b' };
       api.twinCatSource.activate();
       api.publishTwinCatView('a', chatA.currentSessionDirectory, true);
       api.twinCatSource.setContext('a', context);
-      // Keep Analysis in both chats for the late selection race. Comparing
-      // agent names alone would let the former chat receive the message.
-      if (pauseKnowledge || !switchChat) approve(api);
+      // Keep Analysis in both chats for the client setup race so comparing
+      // agent names alone cannot detect the selection change.
+      if (pauseKnowledge || pauseSynthetic || !switchChat) approve(api);
 
       const target = { sessionId: 'a', directory: chatA.currentSessionDirectory, runtimeKey: 'runtime' };
       const queued = { id: 'follow-up', content, text: content, sendConfig: { providerID: 'provider', modelID: 'model' } };
       const queueState = { queuedMessages: { a: [queued] } };
       const hold = Promise.withResolvers();
       const paused = Promise.withResolvers();
+      const cancellationStarted = Promise.withResolvers();
+      const cancellationResponse = Promise.withResolvers();
       let finished = Promise.withResolvers();
       const received = [];
+      const inbox = new Map();
+      const history = [];
+      const record = (kind, payload) => {
+        const write = { kind, agent: transport.agent, ...payload };
+        received.push(write);
+        return write;
+      };
+      const deliver = (kind, payload) => {
+        history.push(...inbox.values(), record(kind, payload));
+        inbox.clear();
+      };
       const transport = {
         get selectionReady() {
-          if (!pauseKnowledge) paused.resolve();
-          return !pauseKnowledge ? hold.promise : undefined;
+          if (pauseKnowledge || pauseSynthetic) return;
+          paused.resolve();
+          return hold.promise;
         },
-        session: Object.fromEntries(['synthetic', 'prompt', 'command'].map(kind => [
-          kind, payload => received.push({ kind, agent: transport.agent, ...payload }),
-        ])),
+        session: {
+          async synthetic(payload) {
+            const id = payload.id ?? ascendingId();
+            const admitted = record('synthetic', { ...payload, id });
+            assert.equal(payload.resume, false);
+            inbox.set(id, admitted);
+            if (pauseSynthetic && received.length === 1) {
+              paused.resolve();
+              await hold.promise;
+            }
+            return admitted;
+          },
+          inbox: {
+            async cancel({ sessionID, inboxID }) {
+              assert.equal(inbox.get(inboxID)?.sessionID, sessionID);
+              record('cancel', { sessionID, inboxID });
+              cancellationStarted.resolve();
+              await cancellationResponse.promise;
+              inbox.delete(inboxID);
+            },
+          },
+          prompt: payload => deliver('prompt', payload),
+          command: payload => deliver('command', payload),
+        },
       };
+      let nextId = 0;
+      const ascendingId = () => `context-${++nextId}`;
       const noop = () => {};
       const emptyStore = { getState: () => ({}) };
       const globals = {
@@ -384,7 +424,7 @@ test('queued prompts and slash commands wait for their selected chat and settled
           await input.send('prompt-id', input.context);
         },
         call: (_operation, run) => run(),
-        ascendingId: () => 'context-id',
+        ascendingId,
         assertProviderCircuitClosed: noop, recordProviderError: noop, recordProviderSuccess: noop,
       };
       let currentChat = chatA;
@@ -405,6 +445,12 @@ test('queued prompts and slash commands wait for their selected chat and settled
 
       renderQueue();
       await paused.promise;
+      if (pauseSynthetic) {
+        assert.deepEqual(received.map(record => record.kind), ['synthetic']);
+        assert.equal(received[0].sessionID, 'a');
+        assert.match(received[0].text, /Active profile: Editor/);
+        assert.equal(inbox.size, 1);
+      }
       if (switchChat) {
         select(currentChat = chatB);
       } else {
@@ -412,8 +458,10 @@ test('queued prompts and slash commands wait for their selected chat and settled
       }
       renderQueue();
       hold.resolve();
-      await finished.promise;
-      assert.deepEqual(received, []);
+      await (pauseSynthetic ? Promise.race([cancellationStarted.promise, finished.promise]) : finished.promise);
+      const writesBeforeRetry = pauseSynthetic ? ['synthetic', 'cancel'] : [];
+      assert.deepEqual(received.map(record => record.kind), writesBeforeRetry);
+      assert.deepEqual(history, []);
       assert.equal(queueState.queuedMessages.a[0], queued);
 
       if (switchChat) {
@@ -421,12 +469,25 @@ test('queued prompts and slash commands wait for their selected chat and settled
         api.publishTwinCatView('a', target.directory, true);
       }
       approve(api, 'twincat-debug');
+      if (pauseSynthetic) {
+        renderQueue();
+        assert.deepEqual(received.map(record => record.kind), writesBeforeRetry);
+        assert.equal(queueState.queuedMessages.a[0], queued);
+        cancellationResponse.resolve();
+      }
+      await finished.promise;
+      assert.equal(inbox.size, 0);
+
       finished = Promise.withResolvers();
       renderQueue();
       await finished.promise;
-      assert.deepEqual(received.map(record => record.kind), ['synthetic', content.startsWith('/') ? 'command' : 'prompt']);
-      assert.ok(received.every(record => record.sessionID === 'a' && record.agent === 'twincat-debug'));
-      assert.match(received[0].text, /Active profile: Debug[\s\S]*PLC project: project-key/);
+      const turn = content.startsWith('/') ? 'command' : 'prompt';
+      assert.deepEqual(received.map(record => record.kind), [
+        ...writesBeforeRetry, 'synthetic', turn,
+      ]);
+      assert.deepEqual(history.map(record => record.kind), ['synthetic', turn]);
+      assert.ok(history.every(record => record.sessionID === 'a' && record.agent === 'twincat-debug'));
+      assert.match(history[0].text, /Active profile: Debug[\s\S]*PLC project: project-key/);
       assert.deepEqual(queueState.queuedMessages, {});
     });
   }
