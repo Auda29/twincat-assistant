@@ -36,7 +36,7 @@ chat after one-time [native chat configuration](NATIVE_CHAT.md#development-setup
 | OpenChamber web / SDK | `2.1.1` |
 | OpenCode CLI / schema | `2.0.23` |
 | Knowledge MCP | `0.1.2`, `84c437aea8e27da930a246e7bb3ae310e8e5d31d` |
-| Engineering monorepo MCP | `engineering-v0.5.12`, `419816d8335ca857926751dd189ec8b48ba8e7a1` |
+| Engineering monorepo MCP | `engineering-v0.5.13`, `aee9b6d5c39dc7b03b87725e8fec61199c29f689` |
 
 Root and `upstream/` npm lockfiles pin their own dependencies. MCP source trees
 are deliberately not vendored. Review upstream licenses before redistribution.
@@ -102,7 +102,7 @@ git clone https://github.com/Auda29/twincat-knowledge-mcp.git local-data/upstrea
 git -C local-data/upstream/knowledge checkout --detach v0.1.2
 (cd local-data/upstream/knowledge && uv sync --frozen --no-dev --python 3.13)
 git clone https://github.com/Auda29/twincat-mcp-mono.git local-data/upstream/engineering
-git -C local-data/upstream/engineering checkout --detach engineering-v0.5.12
+git -C local-data/upstream/engineering checkout --detach engineering-v0.5.13
 (cd local-data/upstream/engineering && npm ci --no-audit --no-fund && npm run build)
 ```
 

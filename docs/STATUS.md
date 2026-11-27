@@ -1,11 +1,13 @@
 # Implementation status
 
 **Beta 12.** Application `0.2.0-beta.12` / native `0.2.0.18`.
-[Beta 12](releases/native-v0.2.0-beta.12.md) adopts Engineering MCP 0.5.12 with
+[Beta 12](releases/native-v0.2.0-beta.12.md) adopts Engineering MCP 0.5.13 with
 read-only Debug waits and watches, separate dynamic Editor and Debug tool
 names, color-highlighted side-by-side source approvals, reliable profile
-switching and corrected selective build preflight. Installed-host workflow
-acceptance remains open.
+switching and corrected selective build preflight. An isolated live run on
+TwinCAT 3.1.4024.78 x86 verified clean and unsaved project detection and a
+selective build with 0 errors on a standard zero-import PLC project.
+Installed-host workflow acceptance remains open.
 
 **Beta 11.** Application `0.2.0-beta.11` / native `0.2.0.17`.
 Adopts Engineering MCP 0.5.11 for project-wide Structured Text discovery,

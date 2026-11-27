@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
   "repository": "Auda29/twincat-mcp-mono",
-  "tag": "engineering-v0.5.12",
-  "version": "0.5.12",
-  "revision": "419816d8335ca857926751dd189ec8b48ba8e7a1",
-  "sourceTreeSha256": "6db399e31e7feebdbd3132711a2cd0b3d8264eb3a69df1857c5c822314c986d8",
+  "tag": "engineering-v0.5.13",
+  "version": "0.5.13",
+  "revision": "aee9b6d5c39dc7b03b87725e8fec61199c29f689",
+  "sourceTreeSha256": "520b1f5f8ff0d89c928132536e4e7f8cca8f6840c4f14ed201823004751e96cc",
   "moduleVersion": "1.0.0.0",
   "catalogs": {
     "build": {
@@ -22,16 +22,16 @@
   },
   "releaseArtifacts": [
     {
-      "name": "engineering-v0.5.12-runtime-win-x86.zip",
-      "sha256": "28a537740c81e9e5e6e85d0ef8144dcac98ce6493b437e8e61fd1d09c8930bfb"
+      "name": "engineering-v0.5.13-runtime-win-x86.zip",
+      "sha256": "3979a4a74f620cad9e1d83bfdb80c4e227dee1fc06c51cd68a14cac07685b71a"
     },
     {
-      "name": "engineering-v0.5.12-sources.zip",
-      "sha256": "bddd15cfe5575af4707fb8a35aaee133404a8a4496f6be9a1f6264e4c181154f"
+      "name": "engineering-v0.5.13-sources.zip",
+      "sha256": "2cba6b0936f913d644068d3518c7ae9f62c814cd1daba032b20f97d0f8b08711"
     },
     {
-      "name": "engineering-v0.5.12-receipt.json",
-      "sha256": "9981f7cfb2c0d799e8639631d2554431748a0b459ed86687d937f8a9f667d24d"
+      "name": "engineering-v0.5.13-receipt.json",
+      "sha256": "2c125f009406c0cddeed624ec9694ffdc1a1a41060e33bb9a5eb50032667b2d3"
     },
     {
       "name": "engineering-catalog.json",

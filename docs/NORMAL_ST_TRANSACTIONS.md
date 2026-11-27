@@ -1,6 +1,6 @@
 # Structured Text transaction paths
 
-Beta 12 uses Engineering MCP 0.5.12 to discover, read, preview, edit and roll
+Beta 12 uses Engineering MCP 0.5.13 to discover, read, preview, edit and roll
 back supported ST sections through the TwinCAT Automation Interface. It can
 also create supported ST objects after native approval. Automation Interface
 edits may persist directly to disk. Creation writes the object file or updates

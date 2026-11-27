@@ -1,7 +1,7 @@
 # Profiles and native engineering
 
 Choose the profile in the chat composer. Analysis is the default.
-These profiles apply to TwinCAT Assistant 0.2.0 Beta 12 with Engineering MCP 0.5.12.
+These profiles apply to TwinCAT Assistant 0.2.0 Beta 12 with Engineering MCP 0.5.13.
 To use Editor or Debug, open a chat for the active PLC project in this
 Assistant window. With the PLC project selected in TwinCAT, click **+**
 in the Assistant to create a chat for that project. Selecting Editor or
@@ -21,7 +21,7 @@ Assistant to find a Structured Text object in the bound project or limit
 discovery to a file. Review the exact before and proposed text in the native
 side-by-side approval dialog, with additions and removals highlighted in color.
 
-Engineering MCP 0.5.12 sends tool approvals with a 90-second expiry, within
+Engineering MCP 0.5.13 sends tool approvals with a 90-second expiry, within
 the native host's 120-second ceiling. The Engineering MCP client and native
 host allow 125 seconds for a mutation. The pipe exchange allows 130 seconds.
 The broker allows 150 seconds for a child exchange and 155 seconds for MCP
