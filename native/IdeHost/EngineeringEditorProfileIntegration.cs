@@ -21,6 +21,7 @@ namespace TwinCatAssistant.Native
         private NativeChatSession _editorOwner;
         private Task _editorRevocation = Task.CompletedTask;
         private bool _editorToggleRequested;
+        private SettledChatProfileRequest _settledProfileRequest;
         internal event Action EngineeringEditorModeChanged;
         internal bool EngineeringEditorProfileEnabled { get { return _engineeringEditorEnabled; } }
         internal string EngineeringProfileCaption => _activeEngineeringProfile == "debug" ? "DebugCaption"
@@ -67,6 +68,9 @@ namespace TwinCatAssistant.Native
             {
                 var fresh = await ReadChatSelectionAsync(includeProfileRequest: true);
                 if (_disposed || documentGeneration != _chatDocumentGeneration || !request.Matches(selection, fresh)) return;
+                if (_settledProfileRequest != null && await _settledProfileRequest.TryRetryAcknowledgementAsync(
+                    fresh, documentGeneration, settled => FinishChatProfileRequestAsync(settled))) return;
+                _settledProfileRequest = null;
                 var handled = false;
                 try
                 {
@@ -83,9 +87,12 @@ namespace TwinCatAssistant.Native
                 finally
                 {
                     // The success path publishes the grant and acknowledges in
-                    // one script. On failure, acknowledge only this request.
+                    // one script. Retry a failed acknowledgement without repeating consent.
                     if (handled && documentGeneration == _chatDocumentGeneration)
+                    {
+                        _settledProfileRequest = new SettledChatProfileRequest(selection, documentGeneration);
                         await FinishChatProfileRequestAsync(selection);
+                    }
                 }
             }
             catch { } // A navigation or WebView failure leaves an unread request retryable until expiry.

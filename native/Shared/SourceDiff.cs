@@ -15,8 +15,11 @@ namespace TwinCatAssistant.Native
         internal int HighlightStart { get; }
         internal int LeftHighlightLength { get; }
         internal int RightHighlightLength { get; }
+        internal string LeftEndingLabel { get; }
+        internal string RightEndingLabel { get; }
 
-        internal SourceDiffRow(SourceDiffKind kind, int? left, string leftText, int? right, string rightText)
+        internal SourceDiffRow(SourceDiffKind kind, int? left, string leftText, int? right, string rightText,
+            string leftEnding = null, string rightEnding = null)
         {
             Kind = kind;
             LeftLineNumber = left;
@@ -28,6 +31,11 @@ namespace TwinCatAssistant.Native
                 if (kind == SourceDiffKind.Removed) LeftHighlightLength = leftText.Length;
                 if (kind == SourceDiffKind.Added) RightHighlightLength = rightText.Length;
                 return;
+            }
+            if (leftEnding != rightEnding)
+            {
+                LeftEndingLabel = EndingLabel(leftEnding);
+                RightEndingLabel = EndingLabel(rightEnding);
             }
 
             int prefix = 0, suffix = 0;
@@ -42,12 +50,28 @@ namespace TwinCatAssistant.Native
             LeftHighlightLength = leftText.Length - prefix - suffix;
             RightHighlightLength = rightText.Length - prefix - suffix;
         }
+
+        private static string EndingLabel(string ending) => ending == "\r\n" ? " [CRLF]"
+            : ending == "\n" ? " [LF]" : ending == "\r" ? " [CR]" : " [EOF]";
     }
 
     internal sealed class SourceDiff
     {
         private const int MaxEditDistance = 512;
         private const int MaxMatchedLineVisits = 2_000_000;
+        private static readonly char[] LineBreaks = { '\r', '\n' };
+
+        private readonly struct SourceLine
+        {
+            internal readonly string Text, Ending;
+
+            internal SourceLine(string text, string ending)
+            {
+                Text = text;
+                Ending = ending;
+            }
+        }
+
         internal IReadOnlyList<SourceDiffRow> Rows { get; }
         internal IReadOnlyList<int> HunkRowIndices { get; }
         internal int? FirstChangedRowIndex => HunkRowIndices.Count == 0 ? (int?)null : HunkRowIndices[0];
@@ -78,12 +102,12 @@ namespace TwinCatAssistant.Native
             var right = Lines(after);
             var rows = new List<SourceDiffRow>(Math.Max(left.Length, right.Length));
             int start = 0, leftEnd = left.Length, rightEnd = right.Length;
-            while (start < leftEnd && start < rightEnd && left[start] == right[start])
+            while (start < leftEnd && start < rightEnd && left[start].Text == right[start].Text)
             {
                 Align(rows, left, start, start + 1, right, start, start + 1);
                 start++;
             }
-            while (leftEnd > start && rightEnd > start && left[leftEnd - 1] == right[rightEnd - 1])
+            while (leftEnd > start && rightEnd > start && left[leftEnd - 1].Text == right[rightEnd - 1].Text)
             {
                 leftEnd--;
                 rightEnd--;
@@ -100,7 +124,7 @@ namespace TwinCatAssistant.Native
                     foreach (var (x, y) in matches)
                     {
                         Align(rows, left, leftStart, x, right, rightStart, y);
-                        rows.Add(new SourceDiffRow(SourceDiffKind.Unchanged, x + 1, left[x], y + 1, right[y]));
+                        rows.Add(AlignedRow(left[x], x, right[y], y));
                         leftStart = x + 1;
                         rightStart = y + 1;
                     }
@@ -113,7 +137,7 @@ namespace TwinCatAssistant.Native
 
         // Myers furthest-reaching diagonals. Cap both the edit trace and the
         // work spent following matching lines in highly repetitive sections.
-        private static List<(int Left, int Right)> FindMatches(string[] left, string[] right, int start, int n, int m)
+        private static List<(int Left, int Right)> FindMatches(SourceLine[] left, SourceLine[] right, int start, int n, int m)
         {
             if (Math.Abs(n - m) > MaxEditDistance) return null;
             int limit = Math.Min(n + m, MaxEditDistance);
@@ -128,7 +152,7 @@ namespace TwinCatAssistant.Native
                     int previous = PreviousDiagonal(furthest, center, distance, diagonal);
                     int x = furthest[center + previous] + (previous < diagonal ? 1 : 0);
                     int y = x - diagonal;
-                    while (x < n && y < m && left[start + x] == right[start + y])
+                    while (x < n && y < m && left[start + x].Text == right[start + y].Text)
                     {
                         if (--remainingVisits == 0) return null;
                         x++;
@@ -167,24 +191,43 @@ namespace TwinCatAssistant.Native
                 ? diagonal + 1 : diagonal - 1;
         }
 
-        private static string[] Lines(string value)
+        private static SourceLine[] Lines(string value)
         {
-            return string.IsNullOrEmpty(value) ? Array.Empty<string>()
-                : value.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            if (string.IsNullOrEmpty(value)) return Array.Empty<SourceLine>();
+            var lines = new List<SourceLine>();
+            int start = 0;
+            while (start < value.Length)
+            {
+                int end = value.IndexOfAny(LineBreaks, start);
+                if (end < 0)
+                {
+                    lines.Add(new SourceLine(value.Substring(start), ""));
+                    break;
+                }
+                int length = value[end] == '\r' && end + 1 < value.Length && value[end + 1] == '\n' ? 2 : 1;
+                lines.Add(new SourceLine(value.Substring(start, end - start), value.Substring(end, length)));
+                start = end + length;
+            }
+            return lines.ToArray();
         }
 
-        private static void Align(List<SourceDiffRow> rows, string[] left, int i, int leftEnd,
-            string[] right, int j, int rightEnd)
+        private static SourceDiffRow AlignedRow(SourceLine left, int i, SourceLine right, int j)
+        {
+            var kind = left.Text == right.Text && left.Ending == right.Ending ? SourceDiffKind.Unchanged : SourceDiffKind.Modified;
+            return new SourceDiffRow(kind, i + 1, left.Text, j + 1, right.Text, left.Ending, right.Ending);
+        }
+
+        private static void Align(List<SourceDiffRow> rows, SourceLine[] left, int i, int leftEnd,
+            SourceLine[] right, int j, int rightEnd)
         {
             while (i < leftEnd && j < rightEnd)
             {
-                var kind = left[i] == right[j] ? SourceDiffKind.Unchanged : SourceDiffKind.Modified;
-                rows.Add(new SourceDiffRow(kind, i + 1, left[i], j + 1, right[j]));
+                rows.Add(AlignedRow(left[i], i, right[j], j));
                 i++;
                 j++;
             }
-            for (; i < leftEnd; i++) rows.Add(new SourceDiffRow(SourceDiffKind.Removed, i + 1, left[i], null, null));
-            for (; j < rightEnd; j++) rows.Add(new SourceDiffRow(SourceDiffKind.Added, null, null, j + 1, right[j]));
+            for (; i < leftEnd; i++) rows.Add(new SourceDiffRow(SourceDiffKind.Removed, i + 1, left[i].Text, null, null));
+            for (; j < rightEnd; j++) rows.Add(new SourceDiffRow(SourceDiffKind.Added, null, null, j + 1, right[j].Text));
         }
     }
 }

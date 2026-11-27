@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace TwinCatAssistant.Native
 {
@@ -127,6 +128,30 @@ namespace TwinCatAssistant.Native
                 && fresh.sessionId == selected.sessionId && fresh.documentId == selected.documentId
                 && fresh.epoch == selected.epoch && fresh.directory == selected.directory
                 && fresh.profileRequest?.id == id && fresh.profileRequest.profile == profile;
+        }
+    }
+
+    internal sealed class SettledChatProfileRequest
+    {
+        private readonly long _generation, _epoch, _id;
+        private readonly string _documentId;
+
+        internal SettledChatProfileRequest(ChatSelection selection, long generation)
+        {
+            _generation = generation;
+            _documentId = selection.documentId;
+            _epoch = selection.epoch;
+            _id = selection.profileRequest.id;
+        }
+
+        // A settled request only needs acknowledgement, even if that attempt also fails.
+        internal async Task<bool> TryRetryAcknowledgementAsync(ChatSelection selection, long generation,
+            Func<ChatSelection, Task> acknowledge)
+        {
+            if (generation != _generation || selection.documentId != _documentId
+                || selection.epoch != _epoch || selection.profileRequest?.id != _id) return false;
+            await acknowledge(selection);
+            return true;
         }
     }
 

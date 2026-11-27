@@ -74,9 +74,11 @@ export async function startNativeChat(request, signal, report, options = {}) {
     if (request.mcpConfig) await configureNativeMcp(state, request.mcpConfig);
     else if ((await inspectState(state)).settings.engineering)
       throw new Error('Native project access requires project-scoped MCP setup, not a global engineering backend');
-    return prepareRuntimeLaunch(state, {
+    const launch = await prepareRuntimeLaunch(state, {
       runtime: options.runtime, port,
     }, { ...process.env, OPENCHAMBER_UI_PASSWORD: request.password });
+    launch.env.TWINCAT_ASSISTANT_NATIVE_CHAT = '1';
+    return launch;
   });
   const { state, port } = request;
   const owner = new AbortController();

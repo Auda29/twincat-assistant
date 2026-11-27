@@ -665,6 +665,8 @@ const globalMessageStreamHub = createGlobalMessageStreamHub({
 // Queued follow-up messages are delivered by the server so a closed tab or a
 // dropped connection no longer strands them (VS Code keeps its UI-side queue).
 const messageQueueRuntime = createMessageQueueRuntime({
+    // Only the embedded view can select a live TwinCAT profile and its context.
+    enabled: process.env.TWINCAT_ASSISTANT_NATIVE_CHAT !== '1',
     globalEventHub: globalMessageStreamHub,
     buildOpenCodeUrl,
     getOpenCodeAuthHeaders,

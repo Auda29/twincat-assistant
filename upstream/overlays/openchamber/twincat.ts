@@ -3,7 +3,7 @@ import { useConfigStore } from '@/stores/useConfigStore';
 import { useSessionUIStore } from '@/sync/session-ui-store';
 import { useInputStore } from '@/sync/input-store';
 import { useI18nStore } from '@/lib/i18n';
-import { opencodeClient } from '@/lib/opencode/client';
+import { opencodeClient, setTwinCatSendPolicy } from '@/lib/opencode/client';
 import { z } from 'zod';
 import type { ComposerReference } from '@/components/chat/composer/composerReferences';
 import { buildExportFilename, formatSessionAsMarkdown, type SessionMessageRecord } from '@/lib/exportSession';
@@ -17,6 +17,7 @@ import { registerSessionDirectory } from '@/sync/sync-refs';
 import { collectSessionTitleTurns, generateSessionTitle } from '@/lib/sessionTitle';
 import { generateAndSaveSessionTitle, runSessionTitleGeneration } from '@/sync/session-title-generation';
 import { getRuntimeKey } from '@/lib/runtime-switch';
+import { normalizePath } from '@/lib/pathNormalization';
 
 function titleFailure(code: string) { return Object.assign(new Error('Chat title operation failed'), { code }); }
 export function validateTwinCatGeneratedTitle(value: string): string {
@@ -92,7 +93,18 @@ export function twinCatActiveProfile() {
 }
 export const twinCatProfilePending = () => requestedProfile !== null;
 export function requireTwinCatProfileSettled() {
-  if (twinCatProfilePending()) throw new Error(useI18nStore.getState().dictionary['chat.twincat.profile.switching']);
+  if (twinCatProfilePending()) throw Object.assign(
+    new Error(useI18nStore.getState().dictionary['chat.twincat.profile.switching']),
+    { code: 'twincat_profile_switch_pending' as const },
+  );
+}
+export function isSelectedTwinCatChat(sessionId: string, directory?: string | null) {
+  const current = useSessionUIStore.getState();
+  return current.currentSessionId === sessionId
+    && (directory == null || normalizePath(current.currentSessionDirectory ?? '') === normalizePath(directory));
+}
+export function twinCatProfileForChat(sessionId: string, directory?: string | null) {
+  return isSelectedTwinCatChat(sessionId, directory) ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE;
 }
 export function TwinCatProfilePicker() {
   const profile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);
@@ -244,7 +256,9 @@ export function publishTwinCatView(sessionId: string | null, directory: string |
     if (view !== value) return;
     const wasEligible = canRequestTwinCatProfile();
     view = null;
-    if (editorProfile || wasEligible) notifyTwinCatProfile();
+    clearProfileRequest();
+    revokeTwinCatEditor();
+    if (wasEligible) notifyTwinCatProfile();
   };
 }
 
@@ -277,6 +291,12 @@ export const twinCatSource = {
   activate() {
     if (active) return;
     active = true;
+    setTwinCatSendPolicy({
+      isSelectedChat: isSelectedTwinCatChat,
+      requireSettled: requireTwinCatProfileSettled,
+      profileForChat: twinCatProfileForChat,
+      contextTexts: twinCatContextTexts,
+    });
     // Invalidate immediately when the live selection moves, even before the
     // deferred view commits or if it later returns to the same conversation.
     useSessionUIStore.subscribe(state => {

@@ -36,6 +36,22 @@ internal static class ChatProfileRequestTests
             if (request.Matches(initial, selection) != expected) throw new InvalidOperationException(name);
             Console.WriteLine("PASS " + name);
         }
-        return cases.Length;
+        var settled = new SettledChatProfileRequest(initial, 4);
+        int acknowledgements = 0;
+        Task<bool> Acknowledge(ChatSelection selection)
+        {
+            if (selection.profileRequest.id != request.id) throw new InvalidOperationException("Wrong request acknowledged");
+            return Task.FromResult(++acknowledgements > 2);
+        }
+        var failed = Acknowledge(initial);
+        if (failed.Result || !settled.TryRetryAcknowledgementAsync(Selection(), 4, Acknowledge).Result
+            || !settled.TryRetryAcknowledgementAsync(Selection(), 4, Acknowledge).Result || acknowledgements != 3
+            || settled.TryRetryAcknowledgementAsync(Selection(id: 13), 4, Acknowledge).Result
+            || settled.TryRetryAcknowledgementAsync(Selection(epoch: 3), 4, Acknowledge).Result
+            || settled.TryRetryAcknowledgementAsync(otherDocument, 4, Acknowledge).Result
+            || settled.TryRetryAcknowledgementAsync(Selection(), 5, Acknowledge).Result)
+            throw new InvalidOperationException("Only the exact settled request retries its failed acknowledgement");
+        Console.WriteLine("PASS settled profile request retries acknowledgement only and leaves newer requests eligible for consent");
+        return cases.Length + 1;
     }
 }

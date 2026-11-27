@@ -103,6 +103,11 @@ try{
  Check ($leftRows[48].Background.Color.ToString() -eq '#FFFDECEF' -and $rightRows[48].Background.Color.ToString() -eq '#FFEBF9EE' -and $rightRows[50].Background.Color.ToString() -eq '#FFF4F6F8') 'source diff distinguishes changed rows and filler by color'
  $leftInline=@($leftRows[48].Inlines)[1];$rightInline=@($rightRows[48].Inlines)[1]
  Check ($leftInline.Text -ceq '1' -and $rightInline.Text -ceq '20' -and $leftInline.Background.Color.ToString() -eq '#FFF9C6CE' -and $rightInline.Background.Color.ToString() -eq '#FFB8EBC4') 'source diff highlights the exact before and after characters'
+ $endingDiff=$diffBuilder.Invoke($null,@("A`r`nB","A`nB",$false))
+ $endingLeft=@($endingDiff.Children[1].Children[0].Children[1].Document.Blocks)
+ $endingRight=@($endingDiff.Children[1].Children[1].Children[1].Document.Blocks)
+ $crlf=@($endingLeft[0].Inlines)[1];$lf=@($endingRight[0].Inlines)[1]
+ Check ($crlf.Text -ceq ' [CRLF]' -and $lf.Text -ceq ' [LF]' -and $crlf.Background.Color.ToString() -eq '#FFF9C6CE' -and $lf.Background.Color.ToString() -eq '#FFB8EBC4' -and $endingLeft[1].Inlines.Count -eq 1 -and $endingRight[1].Inlines.Count -eq 1) 'source diff highlights only line-ending labels on a pure CRLF to LF edit'
  $reversed=$diffBuilder.Invoke($null,@($leftSource,$rightSource,$true))
  $rollbackLeft=@($reversed.Children[1].Children[0].Children[1].Document.Blocks)
  Check (@($rollbackLeft[48].Inlines)[1].Text -ceq '20' -and $rollbackLeft[50].Background.Color.ToString() -eq '#FFF4F6F8') 'rollback reverses the source diff panes'
@@ -125,6 +130,24 @@ try{
   $rightDiff.ScrollToVerticalOffset(100)
   Await ([Threading.Tasks.Task]::Delay(100))|Out-Null
   Check ($leftDiff.HorizontalOffset -eq 150 -and $rightDiff.HorizontalOffset -eq 150 -and $leftDiff.VerticalOffset -eq 100 -and $rightDiff.VerticalOffset -eq 100) 'source pane scrolling stays synchronized on both axes'
+  $largeBefore=(0..1199|ForEach-Object { "A[$_] := 1;" }) -join "`n"
+  $largeAfter=(0..1199|ForEach-Object { if($_ % 2 -eq 0){"A[$_] := 20;"}else{"A[$_] := 1;"} }) -join "`n"
+  $layoutTime=[Diagnostics.Stopwatch]::StartNew()
+  $largeDiff=$diffBuilder.Invoke($null,@($largeBefore,$largeAfter,$false))
+  $largePane=$largeDiff.Children[1]
+  $leftSurface=$largePane.Children[0].Children[1]
+  $largeLeft=$leftSurface.Children[1]
+  $largeRight=$largePane.Children[1].Children[1].Children[1]
+  $diffWindow.Content=$largeDiff
+  $diffWindow.UpdateLayout()
+  Await ([Threading.Tasks.Task]::Delay(100))|Out-Null
+  $layoutTime.Stop()
+  Check ($largeLeft.Document.Blocks.Count -eq 19 -and $largeRight.Document.Blocks.Count -eq 19 -and $layoutTime.Elapsed.TotalSeconds -lt 3) "1,200 alternating source rows lay out in 19 blocks per pane in $($layoutTime.ElapsedMilliseconds) ms"
+  $largeNext=$largeDiff.Children[0].Children[1].Children[1].Children[0]
+  $largeNext.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Primitives.ButtonBase]::ClickEvent))
+  Await ([Threading.Tasks.Task]::Delay(100))|Out-Null
+  $rowPaint=[Windows.Media.VisualTreeHelper]::GetDrawing($leftSurface.Children[0])
+  Check ($largeLeft.VerticalOffset -eq 38 -and $largeRight.VerticalOffset -eq 38 -and $rowPaint.Children[0].Brush.Color.ToString() -eq '#FFFDECEF' -and $rowPaint.Children[1].Geometry.Bounds.Top -eq 38) 'large source diff navigation keeps alternating row colors and offsets aligned'
  } finally { $diffWindow.Close() }
  Make-Control
  $chatNavigationUrl=$control.GetType().GetMethod('ChatNavigationUrl',[Reflection.BindingFlags]'Static,NonPublic')
@@ -284,10 +307,22 @@ try{
  $core=$browser.CoreWebView2
  (Field '_chatCredentials').Save('synthetic-product-ui-only-not-an-operator-credential')
  Check ((Await(Invoke-Private 'SignInBrowserAsync' ([object[]]@([int]([Uri]$origin).Port)))) -eq $true) 'synthetic native login accepted before navigation'
+ Await ($core.AddScriptToExecuteOnDocumentCreatedAsync(@'
+window.__fixtureStartupErrors = [];
+const captureStartupError = error => {
+  if (window.__fixtureStartupErrors.length < 4) window.__fixtureStartupErrors.push(String(error?.stack ?? error).slice(0, 1600));
+};
+window.addEventListener("error", event => captureStartupError(event.error ?? event.message));
+window.addEventListener("unhandledrejection", event => captureStartupError(event.reason));
+'@))|Out-Null
  $core.Navigate($chatNavigationUrl.Invoke($null,@([Uri]$origin)))
  $deadline=[DateTime]::UtcNow.AddSeconds(30)
  do{Await ([Threading.Tasks.Task]::Delay(100))|Out-Null;$ok=Await($core.ExecuteScriptAsync('!!window.__twinCatSource'))}while($ok -ne 'true' -and [DateTime]::UtcNow -lt $deadline)
- Check ($ok -eq 'true') 'source contract loaded'
+ if($ok -ne 'true'){
+  $startupErrors=Await ($core.ExecuteScriptAsync('window.__fixtureStartupErrors ?? []'))
+  throw ('FAIL source contract loaded. Browser errors: '+$startupErrors)
+ }
+ Check $true 'source contract loaded'
  Await ($core.ExecuteScriptAsync(@'
 window.__fixtureAuthUnavailable = true;
 const fixtureFetch = window.fetch;
@@ -403,8 +438,8 @@ window.fetch = function(path, options) {
  $requested.epoch++
  Check (!(Await (Invoke-Private 'FinishChatProfileRequestAsync' @($requested,$null)))) 'stale selection cannot acknowledge a profile switch'
  $requested.epoch--
- Await ($core.ExecuteScriptAsync('window.__fixtureProfileSend=null;window.__twinCatSource.stores.sessions.getState().sendMessage("fixture","openai","fixture").then(()=>window.__fixtureProfileSend=false,()=>window.__fixtureProfileSend=true);'))|Out-Null
- Check ((Await ($core.ExecuteScriptAsync('window.__fixtureProfileSend === true'))) -eq 'true') 'the actual send path rejects submissions during pending profile approval'
+ Await ($core.ExecuteScriptAsync('window.__fixtureProfileSend=null;window.__twinCatSource.stores.sessions.getState().sendMessage("fixture","openai","fixture").then(()=>window.__fixtureProfileSend="sent",error=>window.__fixtureProfileSend=error?.code);'))|Out-Null
+ Check ((Await ($core.ExecuteScriptAsync('window.__fixtureProfileSend === "twincat_profile_switch_pending"'))) -eq 'true') 'the actual send path returns twincat_profile_switch_pending during profile approval'
  Put '_editorToggleRequested' $true
  (Field '_profilePoll').Start()
  Await ([Threading.Tasks.Task]::Delay(350))|Out-Null

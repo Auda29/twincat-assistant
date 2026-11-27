@@ -2,17 +2,28 @@
 // No IDE, installed configuration, customer source, or model request is used.
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, writeFile, open } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, open } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { resolve, join } from 'node:path';
 import { configureNativeModel } from '../src/native-chat-model.mjs';
+import { initializeState } from '../src/state.mjs';
 
 if (process.platform !== 'win32') throw new Error('Windows WPF and WebView2 are required');
 const root = fileURLToPath(new URL('../', import.meta.url));
 const fixture = join(root, 'local-data', 'chat-startup-smoke-' + randomUUID());
 await mkdir(fixture, { recursive: true });
+const state = await initializeState(join(fixture, 'state'), {});
+const legacyQueuePath = join(state.openchamber, 'message-queue.json');
+const legacyQueueItem = {
+  id: 'queued-fixture', createdAt: Date.now(), text: 'synthetic follow-up',
+  sendConfig: { providerID: 'openai', modelID: 'fixture', agent: 'twincat-editor' },
+};
+const legacyQueue = JSON.stringify({
+  version: 1, revision: 1, sessions: { ses_fixture: { directory: state.workspace, items: [legacyQueueItem] } },
+});
+await writeFile(legacyQueuePath, legacyQueue);
 const reservation = createServer();
 reservation.listen(0, '127.0.0.1');
 await once(reservation, 'listening');
@@ -41,7 +52,7 @@ const ready = new Promise((resolve, reject) => {
 });
 const timer = setTimeout(() => child.stdin.end(), 240000);
 try {
-  child.stdin.write(JSON.stringify({ state: join(fixture, 'state'), port, password }) + '\n');
+  child.stdin.write(JSON.stringify({ state: state.root, port, password }) + '\n');
   await ready;
   await configureNativeModel({ state: join(fixture, 'state'), provider: 'openai', acceptSourceDisclosure: true });
   const login = await fetch(origin + '/auth/session', {
@@ -60,6 +71,22 @@ try {
     method: 'POST', headers, body: JSON.stringify({ key: 'synthetic-not-a-real-api-key' }),
   });
   if (connected.status !== 204) throw new Error('Synthetic provider setup failed');
+  const queued = await fetch(origin + '/api/message-queue/sessions/ses_fixture/items', {
+    method: 'POST', headers, body: JSON.stringify({
+      directory: state.workspace, item: legacyQueueItem,
+    }),
+  });
+  if (queued.status !== 409 || (await queued.json()).error !== 'This runtime delivers follow-ups from the embedded chat') {
+    throw new Error('Native runtime must refuse server-owned follow-ups');
+  }
+  console.log('PASS native runtime refuses server-owned follow-ups');
+  const queueSnapshot = await fetch(origin + '/api/message-queue', { headers });
+  if (queueSnapshot.status !== 409
+      || (await queueSnapshot.json()).error !== 'This runtime delivers follow-ups from the embedded chat'
+      || await readFile(legacyQueuePath, 'utf8') !== legacyQueue) {
+    throw new Error('Native runtime must leave the old server queue on disk and out of the client projection');
+  }
+  console.log('PASS native runtime leaves persisted server follow-ups dormant');
   await fetch(origin + '/api/debug/location', { method: 'DELETE', headers });
   await writeFile(join(fixture, 'connection.json'), JSON.stringify({ origin, password }));
   const env = { ...process.env };

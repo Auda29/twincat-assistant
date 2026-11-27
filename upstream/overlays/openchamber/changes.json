@@ -17,7 +17,7 @@
       ],
       [
         "\tif (!currentSessionId && !draftOpen) {",
-        "    // Publish the committed main view, not the live selection ahead of its deferred render.\n    // Successful empty history and the existing load-error/retry surface are both settled views.\n    const twinCatViewReady = active && currentSessionId === liveSessionId\n        && currentSessionDirectory === liveSessionDirectory\n        && (currentSessionId\n            ? !draftOpen && !draftPresentationExiting && (hasRenderableSessionSnapshot || sessionMessageLoadState.status === 'error')\n            : draftOpen);\n    React.useLayoutEffect(() => {\n        if (pinned) return;\n        return publishTwinCatView(currentSessionId, currentSessionDirectory, twinCatViewReady);\n    }, [pinned, currentSessionId, currentSessionDirectory, twinCatViewReady]);\n\n\tif (!currentSessionId && !draftOpen) {"
+        "    // Publish the committed main view, not the live selection ahead of its deferred render.\n    // Successful empty history and the existing load-error/retry surface are both settled views.\n    const twinCatViewReady = active && currentSessionId === liveSessionId\n        && currentSessionDirectory === liveSessionDirectory\n        && (currentSessionId\n            ? !draftOpen && !draftPresentationExiting && (hasRenderableSessionSnapshot || sessionMessageLoadState.status === 'error')\n            : draftOpen);\n    const unpublishTwinCatView = React.useRef<(() => void) | undefined>(undefined);\n    React.useLayoutEffect(() => {\n        if (!pinned) unpublishTwinCatView.current = publishTwinCatView(currentSessionId, currentSessionDirectory, twinCatViewReady);\n    }, [pinned, currentSessionId, currentSessionDirectory, twinCatViewReady]);\n    React.useLayoutEffect(() => {\n        if (pinned) return;\n        return () => unpublishTwinCatView.current?.();\n    }, [pinned]);\n\n\tif (!currentSessionId && !draftOpen) {"
       ],
       [
         "    const workStatusPanelEnabled = useUIStore((state) => state.workStatusPanelEnabled);",
@@ -112,6 +112,18 @@
       [
         "    const handleSubmit = async (options?: SubmitOptions) => {",
         "    const handleSubmit = async (options?: SubmitOptions) => {\n        if (twinCatProfilePending()) return;"
+      ],
+      [
+        "    const handleQueueMessage = React.useCallback(async () => {",
+        "    const handleQueueMessage = React.useCallback(async () => {\n        if (twinCatProfilePending()) return;"
+      ],
+      [
+        "        // Everything attached to the composer leaves with the message:",
+        "        if (twinCatProfilePending()) return;\n\n        // Everything attached to the composer leaves with the message:"
+      ],
+      [
+        "                    agent: currentAgentName ?? undefined,",
+        "                    agent: isTwinCatEmbedded() ? undefined : currentAgentName ?? undefined,"
       ]
     ]
   },
@@ -12114,7 +12126,7 @@
     "changes": [
       [
         "import { useConfigStore } from \"@/stores/useConfigStore\"",
-        "import { useConfigStore } from \"@/stores/useConfigStore\"\nimport { isTwinCatEmbedded, requireTwinCatProfileSettled, twinCatActiveProfile, twinCatSource, TWINCAT_ANALYSIS_PROFILE } from \"@/lib/twincat/twincat\""
+        "import { useConfigStore } from \"@/stores/useConfigStore\"\nimport { isSelectedTwinCatChat, isTwinCatEmbedded, requireTwinCatProfileSettled, twinCatActiveProfile, twinCatSource, TWINCAT_ANALYSIS_PROFILE } from \"@/lib/twincat/twincat\""
       ],
       [
         "  const requestDirectory = params.directory ?? undefined\n  // The session",
@@ -12122,7 +12134,7 @@
       ],
       [
         "  // The command route takes no skill attachments,",
-        "  // Use the same live profile in the explicit request and its synthetic context.\n  // Refresh after asynchronous command lookup or connection readiness.\n  const matchesTwinCatChat = () => {\n    const current = useSessionUIStore.getState()\n    return current.currentSessionId === params.sessionId\n      && (requestDirectory === undefined || normalizePath(current.currentSessionDirectory ?? \"\") === normalizePath(requestDirectory))\n  }\n  const validateProfile = embedded ? () => {\n    requireTwinCatProfileSettled()\n    const currentAgent = matchesTwinCatChat() ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    if (currentAgent !== selection.agent) throw new Error(\"TwinCAT profile changed before dispatch\")\n  } : undefined\n  const refreshTwinCatSelection = () => {\n    if (!embedded) return\n    requireTwinCatProfileSettled()\n    const sameChat = matchesTwinCatChat()\n    selection.agent = sameChat ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    contextItems.unshift(...twinCatSource.contextTexts(params.sessionId, selection.agent, sameChat)\n      .map(text => ({ text, metadata: undefined })))\n  }\n  // The command route takes no skill attachments,"
+        "  // Use the same live profile in the explicit request and its synthetic context.\n  // Refresh after asynchronous command lookup or connection readiness.\n  const matchesTwinCatChat = () => isSelectedTwinCatChat(params.sessionId, requestDirectory)\n  const validateProfile = embedded ? () => {\n    requireTwinCatProfileSettled()\n    const currentAgent = matchesTwinCatChat() ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    if (currentAgent !== selection.agent) throw new Error(\"TwinCAT profile changed before dispatch\")\n  } : undefined\n  const refreshTwinCatSelection = () => {\n    if (!embedded) return\n    requireTwinCatProfileSettled()\n    const sameChat = matchesTwinCatChat()\n    selection.agent = sameChat ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    contextItems.unshift(...twinCatSource.contextTexts(params.sessionId, selection.agent, sameChat)\n      .map(text => ({ text, metadata: undefined })))\n  }\n  // The command route takes no skill attachments,"
       ],
       [
         "      params.appendSubmissions?.()\n      const commandContext",
@@ -12175,7 +12187,7 @@
       ],
       [
         "      await this.applySendSelection(params.id, { model: params.model, agent: params.agent }, params.directory, params.runtimeKey)",
-        "      await this.applySendSelection(params.id, { model: params.model, agent: params.agent }, params.directory, params.runtimeKey, validateProfile)"
+        "      await this.applySendSelection(params.id, { model: params.model, agent }, params.directory, params.runtimeKey, validateProfile)"
       ],
       [
         "    await this.applySendSelection(params.id, { model: params.model, agent: params.agent }, params.directory, params.runtimeKey)\n    for (const item",
@@ -12199,11 +12211,116 @@
       ],
       [
         "    assertProviderCircuitClosed(params.providerID)\n\n    const admitSynthetic",
-        "    assertProviderCircuitClosed(params.providerID)\n    let profileInvalidated = false\n    const validateProfile = () => {\n      try { params.validateProfile?.() }\n      catch (error) {\n        profileInvalidated = true\n        throw error\n      }\n    }\n\n    const admitSynthetic"
+        "    assertProviderCircuitClosed(params.providerID)\n    let profileInvalidated = false\n    const validateProfile = () => {\n      try {\n        if (policy) {\n          policy.requireSettled()\n          if (agent !== policy.profileForChat(params.id, params.directory)) throw new Error(\"TwinCAT profile changed before dispatch\")\n        }\n        params.validateProfile?.()\n      } catch (error) {\n        profileInvalidated = true\n        throw error\n      }\n    }\n\n    const admitSynthetic"
       ],
       [
         "      if (!(error instanceof Error && isDefiniteTransportFailure(error))) {\n        recordProviderError",
         "      if (!profileInvalidated && !(error instanceof Error && isDefiniteTransportFailure(error))) {\n        recordProviderError"
+      ],
+      [
+        "export type { OpenCodeClient }",
+        "export type { OpenCodeClient }\n\ntype TwinCatSendPolicy = {\n  isSelectedChat: (sessionId: string, directory?: string | null) => boolean\n  requireSettled: () => void\n  profileForChat: (sessionId: string, directory?: string | null) => string\n  contextTexts: (sessionId: string, profile: string | undefined, includeContext: boolean) => string[]\n}\nlet twinCatSendPolicy: TwinCatSendPolicy | null = null\nexport const getTwinCatSendPolicy = () => twinCatSendPolicy\n// The embedded bridge owns profile state and already depends on this client.\nexport function setTwinCatSendPolicy(policy: TwinCatSendPolicy) {\n  twinCatSendPolicy = policy\n}"
+      ],
+      [
+        "  }): Promise<string> {\n    this.assertRuntimeUnchanged(params.runtimeKey)\n\n    // Context ids are minted before the prompt's,",
+        "  }): Promise<string> {\n    const policy = getTwinCatSendPolicy()\n    policy?.requireSettled()\n    this.assertRuntimeUnchanged(params.runtimeKey)\n    const agent = policy ? policy.profileForChat(params.id, params.directory) : params.agent\n\n    // Context ids are minted before the prompt's,"
+      ],
+      [
+        "    const context = (params.context ?? [])\n",
+        "    const providedContext = params.context ?? []\n    const profileContext = policy?.contextTexts(params.id, agent, policy.isSelectedChat(params.id, params.directory)) ?? []\n    const context = [\n      ...profileContext.filter(text => !providedContext.some(item => item.text === text)).map((text): SyntheticContextInput => ({ text })),\n      ...providedContext,\n    ]\n"
+      ],
+      [
+        "      .filter((mention) => !!mention?.name)\n",
+        "      .filter((mention) => !!mention?.name && (!policy || mention.name === agent))\n"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/stores/messageQueueStore.ts",
+    "changes": [
+      [
+        "export const isServerOwnedMessageQueue = (): boolean => !isVSCodeRuntime();",
+        "export const isServerOwnedMessageQueue = (): boolean => !isVSCodeRuntime() && getTwinCatSendPolicy() === null;"
+      ],
+      [
+        "import { z } from 'zod';",
+        "import { z } from 'zod';\nimport { getTwinCatSendPolicy } from '@/lib/opencode/client';"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/apps/AppEffects.tsx",
+    "changes": [
+      [
+        "import { useQueuedMessageAutoSend } from '@/hooks/useQueuedMessageAutoSend';",
+        "import { useQueuedMessageAutoSend } from '@/hooks/useQueuedMessageAutoSend';\nimport { subscribeTwinCatEmbedding } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "  // Web, desktop, and mobile hand the queue to the OpenChamber server, which\n  // delivers it with or without a UI; only VS Code still sends from the UI.\n  useQueuedMessageAutoSend(backgroundWorkEnabled && !isServerOwnedMessageQueue());",
+        "  // TwinCAT queues need the live profile owned by the embedded view.\n  const serverOwnsQueue = React.useSyncExternalStore(subscribeTwinCatEmbedding, isServerOwnedMessageQueue, isServerOwnedMessageQueue);\n  useQueuedMessageAutoSend(backgroundWorkEnabled && !serverOwnsQueue);"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/hooks/useQueuedMessageAutoSend.ts",
+    "changes": [
+      [
+        "import { useSessionUIStore } from '@/sync/session-ui-store';",
+        "import { useSessionUIStore } from '@/sync/session-ui-store';\nimport { isSelectedTwinCatChat, isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatProfilePending } from '@/lib/twincat/twincat';"
+      ],
+      [
+        "  const queuedMessages = useMessageQueueStore((state) => state.queuedMessages);",
+        "  const profileSwitchPending = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatProfilePending, () => false);\n  const selectedSessionId = useSessionUIStore((state) => state.currentSessionId);\n  const selectedDirectory = useSessionUIStore((state) => state.currentSessionDirectory);\n  const queuedMessages = useMessageQueueStore((state) => state.queuedMessages);"
+      ],
+      [
+        "      const { sessionId } = target;\n      const targetKey = getMessageQueueKey(target);",
+        "      const { sessionId } = target;\n      if (isTwinCatEmbedded() && (twinCatProfilePending() || !isSelectedTwinCatChat(sessionId, target.directory))) return;\n      const targetKey = getMessageQueueKey(target);"
+      ],
+      [
+        "  }, [enabled, queuedMessages, sessionStatusRecord,",
+        "  }, [enabled, profileSwitchPending, selectedSessionId, selectedDirectory, queuedMessages, sessionStatusRecord,"
+      ]
+    ]
+  },
+  {
+    "file": "packages/web/server/lib/message-queue/runtime.js",
+    "changes": [
+      [
+        "  dataDir,\n  fetchImpl = fetch,",
+        "  dataDir,\n  enabled = true,\n  fetchImpl = fetch,"
+      ],
+      [
+        "    if (stopped || !queues.has(sessionId)) return;",
+        "    if (!enabled || stopped || !queues.has(sessionId)) return;"
+      ],
+      [
+        "  const start = () => {\n    const unsubscribeEvent",
+        "  const start = () => {\n    if (!enabled) return () => {};\n    const unsubscribeEvent"
+      ],
+      [
+        "  const load = () => {\n    if (!loadPromise)",
+        "  const load = () => {\n    // Reject bootstrap as well as writes so a pre-embed snapshot cannot clear the client queue.\n    if (!enabled) throw httpError(\"This runtime delivers follow-ups from the embedded chat\", 409);\n    if (!loadPromise)"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/reviewFlow.ts",
+    "changes": [
+      [
+        "import { opencodeClient } from '@/lib/opencode/client';",
+        "import { getTwinCatSendPolicy, opencodeClient } from '@/lib/opencode/client';"
+      ],
+      [
+        "  const sendContext = knowledge.text ? [{ text: knowledge.text }, ...(context ?? [])] : context;",
+        "  const sendContext = [...(context ?? [])];\n  if (knowledge.text) sendContext.unshift({ text: knowledge.text });"
+      ],
+      [
+        "    beforeOptimisticInsert: () => assertAutoReviewRuntimeStillCurrent(expectedRuntimeKey),",
+        "    beforeOptimisticInsert: () => {\n      assertAutoReviewRuntimeStillCurrent(expectedRuntimeKey);\n      const policy = getTwinCatSendPolicy();\n      if (policy) {\n        policy.requireSettled();\n        // Reserve synthetic IDs before the prompt ID so this context sorts first.\n        sendContext.unshift(...policy.contextTexts(sessionID, policy.profileForChat(sessionID, directory),\n          policy.isSelectedChat(sessionID, directory)).map(text => ({ text })));\n      }\n    },"
+      ],
+      [
+        "export const startReviewFlow = async (input: StartReviewFlowInput): Promise<void> => {",
+        "export const startReviewFlow = async (input: StartReviewFlowInput): Promise<void> => {\n  getTwinCatSendPolicy()?.requireSettled();"
       ]
     ]
   }

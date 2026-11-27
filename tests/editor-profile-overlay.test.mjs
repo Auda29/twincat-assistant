@@ -27,10 +27,11 @@ async function makeBridge() {
     } };
     const useI18nStore = Object.assign(select => select(locale), { getState: () => locale });
     const opencodeClient = stub, buildExportFilename = stub, formatSessionAsMarkdown = stub;
+    const setTwinCatSendPolicy = policy => { globalThis.__sendPolicy = policy; };
     const getChatDraftIdentityKey = stub, useGlobalSessionsStore = stub, resolveGlobalSessionDirectory = stub;
     const archiveSession = stub, unarchiveSession = stub, updateSessionTitle = stub, registerSessionDirectory = stub;
     const collectSessionTitleTurns = stub, generateSessionTitle = stub, generateAndSaveSessionTitle = stub;
-    const runSessionTitleGeneration = stub, getRuntimeKey = stub;
+    const runSessionTitleGeneration = stub, getRuntimeKey = stub, normalizePath = value => value;
   `;
   const compiled = await transform(prelude + stripped, { loader: 'ts', format: 'cjs', target: 'es2022' });
   let state = { currentSessionId: 'a', currentSessionDirectory: 'C:/project' };
@@ -43,7 +44,8 @@ async function makeBridge() {
     clearTimeout(id) { timers.delete(id); } };
   sandbox.exports = sandbox.module.exports;
   vm.runInNewContext(compiled.code, sandbox);
-  return { api: sandbox.module.exports, select(next) { state = next; for (const fn of subscribers) fn(state); },
+  return { api: sandbox.module.exports, sendPolicy: () => sandbox.__sendPolicy,
+    select(next) { state = next; for (const fn of subscribers) fn(state); },
     expire() { for (const { callback, delay } of [...timers.values()]) { assert.equal(delay, 120_000); callback(); } } };
 }
 
@@ -79,18 +81,21 @@ test('Editor requires native enable on the exact committed chat and revokes on i
   assert.deepEqual(names(api.twinCatSelectableAgents(agents)), ['twincat-readonly']);
 });
 
-test('view readiness masks Editor temporarily; project change and explicit revocation remove it', async () => {
+test('view readiness masks Editor temporarily; closing the view revokes the grant', async () => {
   const { api } = await makeBridge();
   api.twinCatSource.activate();
-  const unpublish = api.publishTwinCatView('a', 'C:/project', true);
+  api.publishTwinCatView('a', 'C:/project', true);
   api.twinCatSource.setContext('a', context);
   approve(api);
-  unpublish();
-  assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
   api.publishTwinCatView('a', 'C:/project', false);
   assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
   api.publishTwinCatView('a', 'C:/project', true);
   assert.equal(api.twinCatActiveProfile(), 'twincat-editor');
+  const unpublish = api.publishTwinCatView('a', 'C:/project', true);
+  unpublish();
+  api.publishTwinCatView('a', 'C:/project', true);
+  assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
+  approve(api);
   api.twinCatSource.setContext('a', null, context.project);
   assert.equal(api.twinCatActiveProfile(), 'twincat-readonly');
   api.twinCatSource.setContext('a', context);
@@ -120,15 +125,14 @@ test('malformed native profile requests refuse and revoke an existing grant', as
 test('requests survive repeated peeks and only the exact latest acknowledgement clears pending', async () => {
   const { api, select } = await makeBridge();
   api.twinCatSource.activate();
-  const cleanup = api.publishTwinCatView('a', 'C:/project', true);
+  api.publishTwinCatView('a', 'C:/project', true);
   api.twinCatSource.setContext('a', context);
   api.requestTwinCatProfile('twincat-editor');
   const first = api.twinCatSource.peekProfileRequest('a');
   assert.equal(first.profile, 'twincat-editor');
   assert.equal(api.twinCatSource.peekProfileRequest('a').id, first.id);
   assert.equal(api.twinCatSource.peekProfileRequest('b'), null);
-  assert.throws(api.requireTwinCatProfileSettled, /Profilwechsel/);
-  cleanup();
+  assert.throws(api.requireTwinCatProfileSettled, { message: /Profilwechsel/, code: 'twincat_profile_switch_pending' });
   api.publishTwinCatView('a', 'C:/project', false);
   api.twinCatSource.setContext('a', null, context.project);
   assert.equal(api.twinCatSource.peekProfileRequest('a'), null);
@@ -146,6 +150,15 @@ test('requests survive repeated peeks and only the exact latest acknowledgement 
   assert.equal(api.twinCatSource.ackProfileRequest('a', second.id), true);
   assert.doesNotThrow(api.requireTwinCatProfileSettled);
 
+  const cleanup = api.publishTwinCatView('a', 'C:/project', true);
+  api.requestTwinCatProfile('twincat-editor');
+  const closed = api.twinCatSource.peekProfileRequest('a');
+  cleanup();
+  api.publishTwinCatView('a', 'C:/project', true);
+  assert.equal(api.twinCatProfilePending(), false);
+  assert.equal(api.twinCatSource.peekProfileRequest('a'), null);
+  assert.equal(api.twinCatSource.setEditorProfile({ sessionId: 'a', enabled: true, requestId: closed.id }), false);
+
   api.requestTwinCatProfile('twincat-editor');
   select({ currentSessionId: 'b', currentSessionDirectory: 'C:/project' });
   select({ currentSessionId: 'a', currentSessionDirectory: 'C:/project' });
@@ -157,7 +170,8 @@ test('requests survive repeated peeks and only the exact latest acknowledgement 
 });
 
 test('profile context tracks Analysis, Editor and Debug within one conversation', async () => {
-  const { api, expire } = await makeBridge();
+  const { api, expire, sendPolicy } = await makeBridge();
+  assert.equal(sendPolicy(), undefined);
   api.twinCatSource.activate();
   api.publishTwinCatView('a', 'C:/project', true);
   api.twinCatSource.setContext('a', context, 'exact-project');
@@ -166,6 +180,9 @@ test('profile context tracks Analysis, Editor and Debug within one conversation'
   assert.match(api.twinCatContextTexts('a')[0], /Active profile: Editor \(twincat-editor\)/);
   approve(api, 'twincat-debug');
   assert.match(api.twinCatContextTexts('a')[0], /Active profile: Debug \(twincat-debug\)/);
+  assert.equal(sendPolicy().profileForChat('a', 'C:/project'), 'twincat-debug');
+  assert.equal(sendPolicy().profileForChat('a', 'C:/other'), 'twincat-readonly');
+  assert.equal(sendPolicy().profileForChat('general', 'C:/project'), 'twincat-readonly');
   assert.match(api.twinCatContextTexts('a')[0], /Earlier messages.*Current tool permissions follow the active profile/);
   assert.match(api.twinCatContextTexts('a')[0], /metadata only.*[\s\S]+contains no source code and does not verify the unsaved editor buffer/);
   assert.match(api.twinCatContextTexts('general')[0], /Active profile: Analysis/);
@@ -211,6 +228,8 @@ test('overlay routes composer, controls, live submission and mobile display thro
   const mobile = output('packages/ui/src/components/chat/MobileAgentButton.tsx');
   const dispatch = output('packages/ui/src/sync/session-ui-store.ts');
   const client = output('packages/ui/src/lib/opencode/client.ts');
+  const review = output('packages/ui/src/lib/reviewFlow.ts');
+  const queue = output('packages/ui/src/hooks/useQueuedMessageAutoSend.ts');
   assert.match(input, /currentAgentName = isTwinCatEmbedded\(\) \? twinCatProfile/);
   assert.match(controls, /if \(isTwinCatEmbedded\(\)\) return twinCatActiveProfile\(\)/);
   assert.match(controls, /agentName !== TWINCAT_ANALYSIS_PROFILE && agentName !== twinCatActiveProfile\(\)/);
@@ -219,10 +238,16 @@ test('overlay routes composer, controls, live submission and mobile display thro
   assert.match(controls, /agent.name === TWINCAT_DEBUG_PROFILE \? 'Debug'/);
   assert.match(mobile, /twinCatProfile === TWINCAT_DEBUG_PROFILE \? 'Debug'/);
   assert.match(input, /if \(twinCatProfilePending\(\)\) return/);
+  assert.match(input, /const handleQueueMessage = .*\n +if \(twinCatProfilePending\(\)\) return/);
+  assert.match(input, /agent: isTwinCatEmbedded\(\) \? undefined : currentAgentName/);
+  assert.match(queue, /twinCatProfilePending\(\) \|\| !isSelectedTwinCatChat\(sessionId, target.directory\)/);
   assert.match(dispatch, /selection.agent = sameChat \? twinCatActiveProfile\(\)/);
   assert.match(dispatch, /beforeOptimisticInsert: refreshTwinCatSelection/);
   assert.match(dispatch, /refreshTwinCatSelection\(\)[\s\S]*const commandContext/);
   assert.match(dispatch, /validateProfile,[\s\S]*text: params.content/);
   assert.match(client, /const prompt = .*\n +validateProfile\(\)/);
+  assert.match(client, /policy\?\.requireSettled\(\)[\s\S]*const agent = policy \? policy.profileForChat\(/);
+  assert.match(client, /policy\?\.contextTexts\(params.id, agent, policy.isSelectedChat/);
+  assert.match(review, /beforeOptimisticInsert:[\s\S]*sendContext.unshift\(\.\.\.policy.contextTexts/);
   assert.match(client, /params.validateProfile\?\.\(\)\n +await call\("session.command"/);
 });

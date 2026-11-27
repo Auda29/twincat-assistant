@@ -12,6 +12,7 @@ namespace TwinCatAssistant.Native
     {
         private const double LineHeight = 19;
         private const double FontSize = 13;
+        private const int GroupRowsThreshold = 256;
         private const int LinesPerLargeBlock = 64;
         private static readonly FontFamily CodeFont = new FontFamily("Consolas");
         private static readonly Brush Removed = ColorBrush(0xFD, 0xEC, 0xEF);
@@ -76,9 +77,10 @@ namespace TwinCatAssistant.Native
             };
 
             var synchronizing = false;
-            void Sync(ScrollChangedEventArgs args, RichTextBox source, RichTextBox target, Gutter gutter)
+            void Sync(ScrollChangedEventArgs args, RichTextBox source, RichTextBox target, Gutter gutter, RowBackgrounds backgrounds)
             {
                 gutter.InvalidateVisual();
+                backgrounds?.InvalidateVisual();
                 if (synchronizing || (args.VerticalChange == 0 && args.HorizontalChange == 0)) return;
                 synchronizing = true;
                 try
@@ -91,9 +93,9 @@ namespace TwinCatAssistant.Native
                 finally { synchronizing = false; }
             }
             left.Text.AddHandler(ScrollViewer.ScrollChangedEvent,
-                new ScrollChangedEventHandler((sender, args) => Sync(args, left.Text, right.Text, left.Gutter)));
+                new ScrollChangedEventHandler((sender, args) => Sync(args, left.Text, right.Text, left.Gutter, left.Backgrounds)));
             right.Text.AddHandler(ScrollViewer.ScrollChangedEvent,
-                new ScrollChangedEventHandler((sender, args) => Sync(args, right.Text, left.Text, right.Gutter)));
+                new ScrollChangedEventHandler((sender, args) => Sync(args, right.Text, left.Text, right.Gutter, right.Backgrounds)));
 
             int hunk = 0;
             void Jump(int index)
@@ -110,7 +112,8 @@ namespace TwinCatAssistant.Native
             if (diff.FirstChangedRowIndex.HasValue) Loaded += (sender, args) => Jump(0);
         }
 
-        private static (DockPanel Panel, RichTextBox Text, Gutter Gutter) Pane(SourceDiff diff, bool left, string label, ref int maxColumns)
+        private static (DockPanel Panel, RichTextBox Text, Gutter Gutter, RowBackgrounds Backgrounds) Pane(
+            SourceDiff diff, bool left, string label, ref int maxColumns)
         {
             var document = new FlowDocument
             {
@@ -119,30 +122,29 @@ namespace TwinCatAssistant.Native
                 Foreground = Brushes.Black,
                 LineHeight = LineHeight, LineStackingStrategy = LineStackingStrategy.BlockLineHeight
             };
-            // For large diffs, group adjacent lines with the same background
-            // into short paragraphs to limit WPF's block layout overhead.
-            int blockLimit = diff.Rows.Count >= 1024 ? LinesPerLargeBlock : 1;
+            // Bound the block count even when every other row changes.
+            bool groupRows = diff.Rows.Count >= GroupRowsThreshold;
+            int blockLimit = groupRows ? LinesPerLargeBlock : 1;
             int blockLines = blockLimit;
-            Brush blockBackground = null;
             Paragraph paragraph = null;
             foreach (var row in diff.Rows)
             {
                 string line = left ? row.LeftText : row.RightText;
-                Brush background = line == null ? Filler : row.Kind == SourceDiffKind.Unchanged ? null : left ? Removed : Added;
-                if (blockLines == blockLimit || background != blockBackground)
+                if (blockLines == blockLimit)
                 {
-                    paragraph = new Paragraph { Margin = new Thickness(0), Background = background };
+                    paragraph = new Paragraph { Margin = new Thickness(0), Background = groupRows ? null : RowBrush(row, left) };
                     document.Blocks.Add(paragraph);
-                    blockBackground = background;
                     blockLines = 0;
                 }
                 else paragraph.Inlines.Add(new LineBreak());
                 blockLines++;
                 if (line != null)
                 {
+                    string ending = left ? row.LeftEndingLabel : row.RightEndingLabel;
+                    var inlineBackground = left ? RemovedInline : AddedInline;
                     int columns = 0;
                     foreach (char c in line) columns += c == '\t' ? 8 : c > 127 ? 2 : 1;
-                    maxColumns = Math.Max(maxColumns, columns);
+                    maxColumns = Math.Max(maxColumns, columns + (ending?.Length ?? 0));
                     int length = left ? row.LeftHighlightLength : row.RightHighlightLength;
                     int start = row.HighlightStart;
                     if (length == 0)
@@ -152,9 +154,10 @@ namespace TwinCatAssistant.Native
                     else
                     {
                         if (start > 0) paragraph.Inlines.Add(new Run(line.Substring(0, start)));
-                        paragraph.Inlines.Add(new Run(line.Substring(start, length)) { Background = left ? RemovedInline : AddedInline });
+                        paragraph.Inlines.Add(new Run(line.Substring(start, length)) { Background = inlineBackground });
                         if (start + length < line.Length) paragraph.Inlines.Add(new Run(line.Substring(start + length)));
                     }
+                    if (ending != null) paragraph.Inlines.Add(new Run(ending) { Background = inlineBackground });
                 }
             }
             var text = new RichTextBox(document)
@@ -162,15 +165,60 @@ namespace TwinCatAssistant.Native
                 IsReadOnly = true, Padding = new Thickness(0), BorderThickness = new Thickness(0),
                 VerticalScrollBarVisibility = ScrollBarVisibility.Visible,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Visible,
-                Background = Brushes.White, IsDocumentEnabled = false
+                Background = groupRows ? Brushes.Transparent : Brushes.White, IsDocumentEnabled = false
             };
             AutomationProperties.SetName(text, label);
             var gutter = new Gutter(diff, left, text) { Width = 52, ClipToBounds = true };
             var panel = new DockPanel { Background = Filler };
             SetDock(gutter, Dock.Left);
             panel.Children.Add(gutter);
-            panel.Children.Add(text);
-            return (panel, text, gutter);
+            RowBackgrounds backgrounds = null;
+            if (groupRows)
+            {
+                var surface = new Grid { Background = Brushes.White };
+                backgrounds = new RowBackgrounds(diff, left, text) { IsHitTestVisible = false, ClipToBounds = true };
+                surface.Children.Add(backgrounds);
+                surface.Children.Add(text);
+                panel.Children.Add(surface);
+            }
+            else panel.Children.Add(text);
+            return (panel, text, gutter, backgrounds);
+        }
+
+        private static Brush RowBrush(SourceDiffRow row, bool left)
+        {
+            if (!(left ? row.LeftLineNumber : row.RightLineNumber).HasValue) return Filler;
+            return row.Kind == SourceDiffKind.Unchanged ? null : left ? Removed : Added;
+        }
+
+        private sealed class RowBackgrounds : FrameworkElement
+        {
+            private readonly SourceDiff _diff;
+            private readonly bool _left;
+            private readonly RichTextBox _text;
+
+            internal RowBackgrounds(SourceDiff diff, bool left, RichTextBox text)
+            {
+                _diff = diff;
+                _left = left;
+                _text = text;
+            }
+
+            protected override void OnRender(DrawingContext drawing)
+            {
+                double width = Math.Max(0, ActualWidth - SystemParameters.VerticalScrollBarWidth);
+                double height = Math.Max(0, ActualHeight - SystemParameters.HorizontalScrollBarHeight);
+                double offset = _text.VerticalOffset;
+                for (int i = (int)(offset / LineHeight); i < _diff.Rows.Count; i++)
+                {
+                    double y = i * LineHeight - offset;
+                    if (y >= height) break;
+                    var brush = RowBrush(_diff.Rows[i], _left);
+                    if (brush != null)
+                        drawing.DrawRectangle(brush, null, new Rect(0, Math.Max(0, y), width,
+                            Math.Min(height, y + LineHeight) - Math.Max(0, y)));
+                }
+            }
         }
 
         private sealed class Gutter : FrameworkElement

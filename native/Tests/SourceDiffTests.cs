@@ -15,12 +15,22 @@ internal static class SourceDiffTests
 
         var empty = SourceDiff.Compute("", "");
         Check(empty.Rows.Count == 0 && empty.FirstChangedRowIndex == null, "empty diff");
-        var identical = SourceDiff.Compute("A\r\nB\nC", "A\nB\r\nC");
-        Check(identical.Rows.Count == 3 && identical.Rows.All(row => row.Kind == SourceDiffKind.Unchanged)
-            && identical.HunkRowIndices.Count == 0, "LF and CRLF match");
+        var identical = SourceDiff.Compute("A\r\nB", "A\r\nB");
+        Check(identical.Rows.Count == 2 && identical.Rows.All(row => row.Kind == SourceDiffKind.Unchanged)
+            && identical.HunkRowIndices.Count == 0, "identical CRLF source has no hunks");
+        var lineEnding = SourceDiff.Compute("A\r\nB", "A\nB");
+        var endingRow = lineEnding.Rows[0];
+        Check(lineEnding.HunkRowIndices.SequenceEqual(new[] { 0 }) && lineEnding.ModifiedLines == 1
+            && endingRow.Kind == SourceDiffKind.Modified && endingRow.LeftText == "A" && endingRow.RightText == "A"
+            && endingRow.LeftHighlightLength == 0 && endingRow.RightHighlightLength == 0
+            && endingRow.LeftEndingLabel == " [CRLF]" && endingRow.RightEndingLabel == " [LF]"
+            && lineEnding.Rows[1].LeftEndingLabel == null, "pure line-ending edits label only the affected row");
+        var carriageReturn = SourceDiff.Compute("A\rB", "A\nB");
+        Check(carriageReturn.HunkRowIndices.Count == 1 && carriageReturn.Rows[0].LeftEndingLabel == " [CR]"
+            && carriageReturn.Rows[0].RightEndingLabel == " [LF]", "lone carriage returns retain their own label");
         var newline = SourceDiff.Compute("END_IF", "END_IF\r\n");
-        Check(newline.AddedLines == 1 && newline.Rows[1].RightText == "" && newline.Rows[1].LeftLineNumber == null
-            && newline.FirstChangedRowIndex == 1, "trailing newline difference");
+        Check(newline.ModifiedLines == 1 && newline.Rows[0].LeftEndingLabel == " [EOF]"
+            && newline.Rows[0].RightEndingLabel == " [CRLF]" && newline.FirstChangedRowIndex == 0, "trailing newline difference");
         var inserted = SourceDiff.Compute("", "X");
         var removed = SourceDiff.Compute("X", "");
         Check(inserted.AddedLines == 1 && inserted.Rows[0].RightLineNumber == 1 && inserted.Rows[0].RightHighlightLength == 1
@@ -73,7 +83,7 @@ internal static class SourceDiffTests
                 for (int i = 0; i < left.Length; i++)
                     for (int j = 0; j < right.Length; j++)
                         common[i + 1, j + 1] = left[i] == right[j] ? common[i, j] + 1 : Math.Max(common[i + 1, j], common[i, j + 1]);
-                if (diff.Rows.Count(row => row.Kind == SourceDiffKind.Unchanged) != common[left.Length, right.Length]
+                if (diff.Rows.Count(row => row.LeftText == row.RightText) != common[left.Length, right.Length]
                     || !diff.Rows.Where(row => row.LeftLineNumber.HasValue).Select(row => row.LeftText).SequenceEqual(left)
                     || !diff.Rows.Where(row => row.RightLineNumber.HasValue).Select(row => row.RightText).SequenceEqual(right)) return false;
             }

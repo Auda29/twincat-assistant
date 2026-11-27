@@ -665,6 +665,7 @@ namespace TwinCatAssistant.Native
             if (_disposed || !ReferenceEquals(sender, _browser.CoreWebView2) || !Allowed(args.Uri)) { args.Cancel = true; return; }
             ResetLoading();
             _chatDocumentGeneration++;
+            _settledProfileRequest = null;
             _preparedProject = null; _mcpFailureKey = null;
             _chatAdapterReady = false; _chatSelection = null; _chatBinding = null;
             RenderChatBinding();
