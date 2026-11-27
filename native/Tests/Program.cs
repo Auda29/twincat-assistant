@@ -30,4 +30,5 @@ var languageCases = HostTextTests.Run();
 var engineeringCases = EngineeringAuthorizationTests.Run();
 var diffCases = SourceDiffTests.Run();
 var profileCases = ChatProfileRequestTests.Run();
-Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases + viewStateCases + hostCases + languageCases + engineeringCases + diffCases + profileCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");
+var dirtyStateCases = OperatingSystem.IsWindows() ? EngineeringDirtyStateProbe.Run() : 0;
+Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases + viewStateCases + hostCases + languageCases + engineeringCases + diffCases + profileCases + dirtyStateCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");

@@ -43,7 +43,7 @@ installed Beckhoff InfoSys help.
 1. Close TcXaeShell, verify the downloaded setup checksum and double-click the
    EXE. Confirm UAC with your normal Windows account. The setup window handles
    installation and managed updates without Git, npm or compilation. See the
-   [release notes](docs/releases/native-v0.2.0-beta.11.md), and the separate
+   [release notes](docs/releases/native-v0.2.0-beta.12.md), and the separate
    [migration notes for old unpackaged prototypes](docs/PROTOTYPE_PROFILE_MIGRATION_20261109.md).
 2. Open the TwinCAT Assistant tool window, connect your model provider and
    select a model in the chat.
@@ -92,7 +92,7 @@ two dedicated local MCP services.
 | Assistant Host | Native tool window, IDE context and WebView2 integration | C# / WPF |
 | Assistant Chat | Messages, input, attachments and conversation display | [OpenChamber](https://github.com/openchamber/openchamber) |
 | Assistant Core | Model providers, agent execution, MCP client and conversation storage | [OpenCode](https://github.com/anomalyco/opencode) |
-| Engineering MCP 0.5.11 | Saved project analysis, bound builds, Editor and Debug | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.11) |
+| Engineering MCP 0.5.12 | Saved project analysis, bound builds, Editor and Debug | [Released runtime and sources](https://github.com/Auda29/twincat-mcp-mono/releases/tag/engineering-v0.5.12) |
 | Knowledge MCP 0.1.2 | Nine documentation tools, including symbol/library/error lookup | [Released package](https://github.com/Auda29/twincat-knowledge-mcp/releases/tag/v0.1.2) |
 
 Model execution and MCP processes run outside the IDE. Documentation, generated
@@ -100,6 +100,7 @@ indexes and user project files are not bundled with the application.
 
 ## Documentation
 
+- [0.2.0 Beta 12 — Debug watches, source diffs and selective builds](docs/releases/native-v0.2.0-beta.12.md)
 - [0.2.0 Beta 11 — Structured Text edits and object creation](docs/releases/native-v0.2.0-beta.11.md)
 - [0.2.0 Beta 10 — automatic read-only Debug connection and Engineering 0.5.8](docs/releases/native-v0.2.0-beta.10.md)
 - [0.2.0 Beta 9 — Engineering 0.5.7 PLC association and COM invocation fixes](docs/releases/native-v0.2.0-beta.9.md)

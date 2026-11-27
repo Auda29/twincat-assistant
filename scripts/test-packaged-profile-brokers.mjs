@@ -18,7 +18,7 @@ if (process.platform !== 'win32' || !runtimeDirectory || process.argv.length > 4
 const entrypoint = resolve(runtimeDirectory, 'packages/mcp/dist/index.js');
 const lock = JSON.parse(await readFile(new URL('../upstream/engineering-lock.json', import.meta.url), 'utf8'));
 const catalogs = new Map();
-for (const [profile, count] of Object.entries({ build: 9, editor: 16, debug: 11 })) {
+for (const [profile, count] of Object.entries({ build: 9, editor: 16, debug: 15 })) {
   const { path, sha256 } = lock.catalogs[profile];
   const bytes = await readFile(resolve(catalogDirectory, path));
   assert.equal(createHash('sha256').update(bytes).digest('hex'), sha256, path);

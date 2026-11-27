@@ -5,7 +5,7 @@ import test from 'node:test';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ANALYSIS_PROFILE, PREVIOUS_ANALYSIS_PROMPTS, analysisSystemPrompt } from '../src/agent-prompts.mjs';
+import { ANALYSIS_PROFILE, DEBUG_PROFILE, EDITOR_PROFILE, PREVIOUS_ANALYSIS_PROMPTS, analysisSystemPrompt } from '../src/agent-prompts.mjs';
 import { createOpenCodeConfig, previousOpenCodeConfigs, previousPolicyConfig } from '../src/config.mjs';
 import { initializeState, inspectState } from '../src/state.mjs';
 import { upgradeProfileConfiguration } from '../src/profile-update.mjs';
@@ -20,7 +20,9 @@ test('an exact earlier profile configuration is upgraded before launch; settings
   try {
     const root = join(parent, 'runtime');
     const paths = await initializeState(root, settings);
-    const previous = previousOpenCodeConfigs(settings)[1];
+    const previous = previousOpenCodeConfigs(settings).find(config =>
+      config.agents[EDITOR_PROFILE]?.permissions.some(rule => rule.action === 'editor_plc_source_create'));
+    assert.ok(previous.agents[DEBUG_PROFILE].permissions.some(rule => rule.action === 'editor_plc_debug_read'));
     await writeFile(paths.configPath, json(previous));
     const before = await readFile(paths.settingsPath);
     const chats = join(paths.openchamber, 'chats'); await mkdir(chats);

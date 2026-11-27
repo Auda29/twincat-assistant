@@ -8,7 +8,7 @@ $references = Join-Path ${env:ProgramFiles(x86)} 'Reference Assemblies/Microsoft
 $refs = @('mscorlib.dll', 'System.dll', 'System.Core.dll') | ForEach-Object { '/reference:' + (Join-Path $references $_) }
 $exe = Join-Path ([IO.Path]::GetTempPath()) ('EngineeringDirtyStateProbe-' + [guid]::NewGuid().ToString('N') + '.exe')
 try {
-    & $dotnet exec $csc /nologo /target:exe /langversion:latest "/out:$exe" $refs (Join-Path $root 'native/IdeHost/EngineeringDirtyState.cs') (Join-Path $PSScriptRoot 'fixtures/EngineeringDirtyStateProbe.cs')
+    & $dotnet exec $csc /nologo /target:exe /langversion:latest "/out:$exe" $refs (Join-Path $root 'native/IdeHost/EngineeringDirtyState.cs') (Join-Path $PSScriptRoot 'fixtures/EngineeringDirtyStateProbe.cs') (Join-Path $root 'native/Tests/DirtyEvidenceTests.cs')
     if ($LASTEXITCODE -ne 0) { throw 'Dirty-state fixture compilation failed.' }
     & $exe
     if ($LASTEXITCODE -ne 0) { throw 'Dirty-state fixture failed.' }

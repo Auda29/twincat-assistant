@@ -55,10 +55,10 @@ export async function initializeState(root, input) {
 }
 export async function verifyProfileConfiguration(actualConfig, settings) {
   const actual = JSON.stringify(actualConfig);
-  // An exact earlier managed configuration is current policy with an older
-  // Analysis prompt. It is reported for an in-place upgrade; anything else fails.
+  // Exact earlier managed permissions and prompts can be upgraded in place.
   const configurationCurrent = currentPackageSettings(settings) && actual === JSON.stringify(createOpenCodeConfig(settings));
-  let managed = currentPackageSettings(settings) && previousOpenCodeConfigs(settings).some(config => JSON.stringify(config) === actual);
+  let managed = configurationCurrent || (currentPackageSettings(settings)
+    && previousOpenCodeConfigs(settings).some(config => JSON.stringify(config) === actual));
   if (!configurationCurrent && !managed) {
     const runtime = await previousPackageRuntime(actualConfig, settings);
     if (runtime) managed = [createOpenCodeConfig(settings, runtime), ...previousOpenCodeConfigs(settings, runtime)].some(config => JSON.stringify(config) === actual);

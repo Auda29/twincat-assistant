@@ -1,6 +1,7 @@
 # Profiles and native engineering
 
 Choose the profile in the chat composer. Analysis is the default.
+These profiles apply to TwinCAT Assistant 0.2.0 Beta 12 with Engineering MCP 0.5.12.
 To use Editor or Debug, open a chat for the active PLC project in this
 Assistant window. With the PLC project selected in TwinCAT, click **+**
 in the Assistant to create a chat for that project. Selecting Editor or
@@ -9,18 +10,18 @@ chat, project or runtime owner revokes the grant.
 
 | Profile | Access |
 | --- | --- |
-| Analysis | Read-only project and documentation tools. |
-| Editor | Project-wide ST discovery, read and preview, approved source edits and object creation, and selective builds. |
-| Debug | Read-only ADS samples from the connected PLC target and selective builds. |
+| Analysis | Read-only project and documentation tools. Saved-project tools use the static `engineering` server. |
+| Editor | Project-wide ST discovery, read and preview, approved source edits and object creation, and selective builds via `engineering_editor`. |
+| Debug | Read-only ADS samples, condition waits and symbol watches from the connected PLC target, and selective builds via `engineering_debug`. |
 
 ## Editor
 
 Select **Editor** in the composer and approve the project chat. Ask the
 Assistant to find a Structured Text object in the bound project or limit
 discovery to a file. Review the exact before and proposed text in the native
-approval dialog.
+side-by-side approval dialog, with additions and removals highlighted in color.
 
-Engineering MCP 0.5.11 sends tool approvals with a 90-second expiry, within
+Engineering MCP 0.5.12 sends tool approvals with a 90-second expiry, within
 the native host's 120-second ceiling. The Engineering MCP client and native
 host allow 125 seconds for a mutation. The pipe and broker exchanges allow
 130 seconds, and the broker HTTP timeout is 135 seconds.
@@ -64,8 +65,14 @@ configuration evidence, not independent proof of a different runtime port
 after a logout/relogin between observations; re-select Debug after changing
 targets. The Debug process uses a strictly read-only ADS connection
 (`readOnly: true`, empty write allowlist, up to 8 scalar symbols per read)
-through the local ADS router and returns timestamped scalar samples. Debug does
-not offer source edits, PLC writes, breakpoints, stepping, forcing, login or
+through the local ADS router and returns timestamped scalar samples. Use
+`engineering_debug_plc_debug_wait_until` to wait up to 120 seconds for a
+condition on approved symbols. Set `stableForMs` when the condition must stay
+true for a minimum duration. Use `engineering_debug_plc_debug_watch` to
+register or reuse a bounded watch, `engineering_debug_plc_debug_list_watches`
+to see active watches and their latest observations, and
+`engineering_debug_plc_debug_unwatch` to release a watch. Debug does not
+offer source edits, PLC writes, breakpoints, stepping, forcing, login or
 runtime control.
 
 ## Builds
@@ -75,6 +82,8 @@ using the verified configuration and platform. Each build asks for separate
 native approval. Build output and diagnostics are bound to that operation.
 Diagnostic navigation requires a current native error item and the recorded
 build evidence. A build never widens to the whole TwinCAT solution.
+If build preflight reports `unsaved_project_changes`, save the pending project
+changes in TwinCAT XAE before asking for another build.
 
 The host supplies the host's compiled interop types to the provider's
 authoritative factory. An unavailable reference can still block build or
@@ -92,16 +101,16 @@ The host HMAC capability never enters that configuration, arguments, environment
 or model tools. The broker additionally checks Core's actual chat metadata.
 
 Revocation closes the native transport first and removes the temporary MCP
-registration. A broken control channel stops only this window's owned runtime,
+registration before the runtime registers the next profile. A broken control channel stops only this window's owned runtime,
 whose job reaps the broker. Pending bind generations, fresh chat epochs and
 single-flight toggling prevent late activation after a context switch.
 
 ## Acceptance still required
 
-The supported host is exactly TcXaeShell x86 / TwinCAT 3.1.4024.78. Installed
-host build events, dirty-state interfaces, editor synchronization and ErrorItem
-navigation still require a separately authorized live check. No operator IDE,
-PLC project, provider login or corpus was used during implementation.
+The supported host is exactly TcXaeShell x86 / TwinCAT 3.1.4024.78.
+The [Beta 12 release notes](releases/native-v0.2.0-beta.12.md) record the
+isolated dirty-state and preflight checks on a synthetic PLC project.
+End-to-end acceptance in the installed host remains open.
 
 The attached native ST buffer and Automation Interface boundaries are documented in
 [NORMAL_ST_TRANSACTIONS.md](NORMAL_ST_TRANSACTIONS.md). The three-project

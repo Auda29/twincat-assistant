@@ -78,6 +78,10 @@ test('native Editor and Debug children expose mutually exclusive capabilities', 
     try {
       const allowedReply = await rpc(broker, 'tools/call', call(allowed));
       assert.ok(allowedReply.value.result);
+      for (const name of ['plc_debug_wait_until', 'plc_debug_watch', 'plc_debug_unwatch', 'plc_debug_list_watches']) {
+        const reply = (await rpc(broker, 'tools/call', call(name))).value;
+        assert.ok(profile === 'debug' ? reply.result : reply.error, name);
+      }
       for (const request of [call(denied), call('plc_write'), call(allowed, 'other_chat')])
         assert.ok((await rpc(broker, 'tools/call', request)).value.error);
     } finally { await broker.close(); }
@@ -119,7 +123,7 @@ test('protected registration keeps frontend authentication in a memory-only Core
   await new Promise(resolve => service.listen(0, '127.0.0.1', resolve));
   try {
     const remove = await registerEditorSession({ origin: 'http://127.0.0.1:' + service.address().port, password: 'synthetic-password', workspace: broker.workspace, broker });
-    assert.equal(requests[1].url, '/api/experimental/mcp/editor');
+    assert.equal(requests[1].url, '/api/experimental/mcp/engineering_editor');
     assert.equal(requests[1].method, 'PUT');
     assert.equal(requests[1].body.config.oauth, false);
     assert.equal(requests[1].headers['x-opencode-directory'], encodeURIComponent(broker.workspace));
@@ -127,5 +131,6 @@ test('protected registration keeps frontend authentication in a memory-only Core
     assert.ok(!JSON.stringify(requests).includes(bootstrap().capability));
     await remove();
     assert.equal(requests[2].method, 'DELETE');
+    assert.equal(requests[2].url, requests[1].url);
   } finally { await broker.close(); await new Promise(resolve => service.close(resolve)); }
 });

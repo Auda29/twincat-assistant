@@ -1,6 +1,6 @@
 import { C1_ANALYSIS_PROMPTS } from './analysis-prompts-c1.mjs';
 import { C0_ANALYSIS_PROMPTS } from './analysis-prompts-c0.mjs';
-import { DEBUG_ACTIONS, EDITOR_ACTIONS, LEGACY_DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
+import { LEGACY_BUILD_ACTIONS, LEGACY_DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
 // System prompt composition for the TwinCAT agent profiles.
 //
 // Analysis stays read-only. Editor requires a native session opt-in and separate
@@ -163,7 +163,7 @@ export function previousC4EditorSystemPrompt() {
   return [
     'You are the TwinCAT Assistant in the Editor profile. Help the developer inspect saved or attached source and build the bound PLC project through native approval.',
     section('Tools and session binding', [
-      'Your only permitted tools are ' + [...KNOWLEDGE_TOOLS, ...ENGINEERING_TOOLS, ...EDITOR_ACTIONS, 'question'].join(', ') + '. Every other tool is denied. No shell, generic file access, other agents, ADS or runtime tools are available.',
+      'Your only permitted tools are ' + [...KNOWLEDGE_TOOLS, ...ENGINEERING_TOOLS, ...LEGACY_BUILD_ACTIONS, 'question'].join(', ') + '. Every other tool is denied. No shell, generic file access, other agents, ADS or runtime tools are available.',
       'Editor tools exist only while the native host enables Editor for this exact chat and project. Selecting this profile does not approve a build. Source editing and live buffer verification are unavailable.',
       'Start with editor_tc_session_describe and editor_tc_project_association. Inspect capabilities and exact project identity. Call knowledge_tc_get_corpus_status before documentation research.',
     ]),
@@ -180,14 +180,17 @@ export function previousC4EditorSystemPrompt() {
   ].join('\n\n');
 }
 
-function nativeEngineeringSystemPrompt(profile, workflow) {
+function nativeEngineeringSystemPrompt(profile, workflow, prefix = 'editor') {
   return [
     'You are the TwinCAT Assistant in the ' + profile + ' profile.',
-    'Use the configured documentation and saved-project tools and the granted native tools for this chat. Check editor_tc_session_describe and editor_tc_project_association for capabilities and exact project identity. Report unavailable capabilities. Call knowledge_tc_get_corpus_status before documentation research.',
+    `Use the configured documentation and saved-project tools and the granted native tools for this chat. Check ${prefix}_tc_session_describe and ${prefix}_tc_project_association for capabilities and exact project identity. Report unavailable capabilities. Call knowledge_tc_get_corpus_status before documentation research.`,
     section('Profile workflow', workflow),
     section('Builds and runtime', [
       'Use one build tool per request. A build requires separate native approval for the exact bound project, configuration and platform. Never save documents or change configuration for a build.',
-      'Check the build operation ID with editor_tc_operation_get, editor_tc_error_list and editor_tc_output_read. Report confirmed outcomes only. Do not retry an unknown outcome. Cancellation requests require a status check.',
+      ...(prefix === 'editor' ? [] : [
+        `Use ${prefix}_plc_build_project for a selective build of the bound PLC project. If build preflight reports unsaved_project_changes, ask the user to save in TwinCAT XAE before retrying.`,
+      ]),
+      `Check the build operation ID with ${prefix}_tc_operation_get, ${prefix}_tc_error_list and ${prefix}_tc_output_read. Report confirmed outcomes only. Do not retry an unknown outcome. Cancellation requests require a status check.`,
       ...SHARED_RULES.runtime,
     ]),
     section('Evidence and presentation', [
@@ -204,7 +207,7 @@ export function previousBeta10EditorSystemPrompt() {
   ]);
 }
 
-export function editorSystemPrompt() {
+export function previousBeta11EditorSystemPrompt() {
   return nativeEngineeringSystemPrompt('Editor', [
     'editor_plc_source_targets discovers project ST without moniker. Moniker filters and prefers open XML. Read via editor_plc_source_read.',
     'Show the exact editor_plc_source_preview diff. Pass preview, digests and revision to editor_plc_source_apply. Automation Interface edits support closed or open ST POUs, members, DUTs, interfaces and GVLs. They may write to disk and refuse unverified unsaved edits. XML stays unsaved.',
@@ -219,10 +222,28 @@ export function previousBeta9DebugSystemPrompt() {
   ]);
 }
 
-export function debugSystemPrompt() {
+export function previousBeta11DebugSystemPrompt() {
   return nativeEngineeringSystemPrompt('Debug', [
     'Use editor_plc_debug_state to verify an existing online session and its granted symbol scope. Read exact symbol names permitted by that scope via editor_plc_debug_read. The host chooses the endpoint. Report each scalar with its observation time. Relate values to saved code and diagnostics and mark inferences. Source edits are outside this profile’s permissions.',
   ]);
+}
+
+export function editorSystemPrompt() {
+  return nativeEngineeringSystemPrompt('Editor', [
+    'engineering_editor_plc_source_targets discovers project ST without moniker. Moniker filters and prefers open XML. Read via engineering_editor_plc_source_read.',
+    'Show the exact engineering_editor_plc_source_preview diff. Pass preview, digests and revision to engineering_editor_plc_source_apply. Automation Interface edits support closed or open ST POUs, members, DUTs, interfaces and GVLs. They may write to disk and refuse unverified unsaved edits. XML stays unsaved.',
+    'Create fb, prg, fun, method, action, property, dut_struct or gvl via engineering_editor_plc_source_create. TwinCAT writes the object or owning POU file now. .plcproj changes pending save. Never rename, delete or save.',
+    'Inspect via engineering_editor_plc_source_journal, undo via engineering_editor_plc_source_rollback. Mutations need separate native approval. On unsaved_editor_changes ask the user to save before retrying.',
+  ], 'engineering_editor');
+}
+
+export function debugSystemPrompt() {
+  return nativeEngineeringSystemPrompt('Debug', [
+    'Use engineering_debug_plc_debug_state to verify an existing online session and its granted symbol scope. Read exact symbol names permitted by that scope via engineering_debug_plc_debug_read. The host chooses the endpoint.',
+    'Use engineering_debug_plc_debug_wait_until to wait up to 120 seconds for a read-only condition, for example a position reaching its target. Set optional stableForMs when the condition must stay true for a minimum duration.',
+    'Use engineering_debug_plc_debug_watch to manage bounded symbol watches, engineering_debug_plc_debug_list_watches to inspect active watches and engineering_debug_plc_debug_unwatch to stop a watch. Keep every observation within the granted symbol scope.',
+    'Report each scalar with its observation time. Relate values to saved code and diagnostics and mark inferences. Source edits are outside this profile’s permissions.',
+  ], 'engineering_debug');
 }
 
 // Match historical C0 text to the same tool scope; never adopt a different scope.

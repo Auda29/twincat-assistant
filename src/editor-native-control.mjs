@@ -92,9 +92,8 @@ export function createEditorNativeControl(options) {
   let registration, queue = Promise.resolve(), count = 0, closing = false, closeWork;
   const maxQueued = 8;
   async function revoke() {
-    const remove = registration;
+    if (registration) await registration();
     registration = undefined;
-    if (remove) await remove();
   }
   function enqueue(command) {
     validateEditorControl(command, { packaged, applicationRoot });
@@ -112,7 +111,11 @@ export function createEditorNativeControl(options) {
           registration = await register({ origin, password, workspace: command.workspace, broker }, lifetime.signal);
           if (closing) { await revoke(); return; }
           report({ status: 'editor-ready', requestId: command.requestId });
-        } catch (error) { await broker.close().catch(() => {}); throw error; }
+        } catch (error) {
+          if (typeof error?.removeRegistration === 'function') registration = error.removeRegistration;
+          await broker.close().catch(() => {});
+          throw error;
+        }
       } catch {
         if (!closing) report({ status: 'editor-failed', requestId: command.requestId });
       }

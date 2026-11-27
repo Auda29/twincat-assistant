@@ -1,9 +1,16 @@
 # Implementation status
 
+**Beta 12.** Application `0.2.0-beta.12` / native `0.2.0.18`.
+[Beta 12](releases/native-v0.2.0-beta.12.md) adopts Engineering MCP 0.5.12 with
+read-only Debug waits and watches, separate dynamic Editor and Debug tool
+names, color-highlighted side-by-side source approvals, reliable profile
+switching and corrected selective build preflight. Installed-host workflow
+acceptance remains open.
+
 **Beta 11.** Application `0.2.0-beta.11` / native `0.2.0.17`.
-[Beta 11](releases/native-v0.2.0-beta.11.md) adopts Engineering MCP 0.5.11 for
-Automation Interface discovery, approved Structured Text edits and object
-creation. Installed-host workflow acceptance remains open.
+Adopts Engineering MCP 0.5.11 for project-wide Structured Text discovery,
+approved source edits and object creation.
+See [release scope](releases/native-v0.2.0-beta.11.md).
 
 **Beta 10.** Application `0.2.0-beta.10` / native `0.2.0.16`.
 Adopts Engineering MCP 0.5.8 (`engineering-v0.5.8`, `4869c39260a88c031c3dbccb72750ce10222edfd`) and connects **Debug** automatically (read-only, all symbols via `symbolScope: "all"`) to the logged-in PLC project's configured AMS Net ID and ADS port (`configuredAdsPort`), without a modal confirmation dialog. An opt-out toggle (**Connect Debug automatically**) is persisted in `preferences.json` (`autoDebug`, default `true`) under the `...` menu. Isolated synthetic TcXaeShell verification confirmed `configuredAdsPort` observation alongside `session.describe`, `project.association` and `project.online`. Full installed-host workflow acceptance remains open.

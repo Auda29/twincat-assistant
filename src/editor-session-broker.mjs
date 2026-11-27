@@ -214,7 +214,7 @@ export async function startEditorSession(options, signal) {
     origin = 'http://127.0.0.1:' + server.address().port;
     signal?.addEventListener('abort', close, { once: true });
     if (signal?.aborted || backend.isClosed()) { await close(); throw unavailable(); }
-    return Object.freeze({ sessionId: options.sessionId, workspace: options.workspace, url: origin + '/mcp', close,
+    return Object.freeze({ sessionId: options.sessionId, workspace: options.workspace, server: profile.server, url: origin + '/mcp', close,
       configuration() {
         if (closing) throw unavailable();
         return { type: 'remote', url: origin + '/mcp', oauth: false, protocol: 'legacy', codemode: false,
@@ -243,17 +243,21 @@ export async function registerEditorSession({ origin, password, workspace, broke
   if (!login.ok) { await broker.close(); throw unavailable(); }
   const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
   if (!cookie) { await broker.close(); throw unavailable(); }
-  const endpoint = new URL('/api/experimental/mcp/editor', url);
+  const endpoint = new URL('/api/experimental/mcp/' + broker.server, url);
   // OpenChamber forwards the directory header to Core's exact location context.
   const headers = { cookie, origin: url.origin, 'content-type': 'application/json',
     'x-opencode-directory': encodeURIComponent(workspace), 'x-opencode-directory-encoding': 'uri' };
-  async function remove() {
-    await broker.close();
+  let cleanup;
+  async function removeRegistration() {
     try {
       const response = await fetch(endpoint, { method: 'DELETE', headers, redirect: 'error', signal: AbortSignal.timeout(15000) });
       await response.body?.cancel();
       if (!response.ok && response.status !== 404) throw unavailable();
     } catch { throw new Error('Editor revoked; runtime catalog cleanup unavailable.'); }
+  }
+  function remove() {
+    if (!cleanup) cleanup = broker.close().then(removeRegistration).catch(error => { cleanup = undefined; throw error; });
+    return cleanup;
   }
   try {
     const response = await fetch(endpoint, { method: 'PUT', headers, redirect: 'error',
@@ -262,5 +266,12 @@ export async function registerEditorSession({ origin, password, workspace, broke
     await response.body?.cancel();
     if (!response.ok) throw unavailable();
     return remove;
-  } catch { await remove().catch(() => {}); throw unavailable(); }
+  } catch {
+    const error = unavailable();
+    // Core may have accepted a PUT whose response was lost. Keep the
+    // cleanup available to the owner if the immediate DELETE also fails.
+    try { await remove(); }
+    catch { error.removeRegistration = remove; }
+    throw error;
+  }
 }

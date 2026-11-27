@@ -5,6 +5,7 @@ import { C0_ANALYSIS_PROMPTS } from '../src/analysis-prompts-c0.mjs';
 import { previousAnalysisPrompts } from '../src/agent-prompts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { MAX_SETTINGS_BYTES } from '../src/state.mjs';
 import { readFile } from 'node:fs/promises';
 import { ANALYSIS_PROFILE, ANALYSIS_TOOL_NAMES, PREVIOUS_ANALYSIS_PROMPTS, SHARED_RULES, ST_FENCE, analysisSystemPrompt } from '../src/agent-prompts.mjs';
 import { READ_TOOLS, createOpenCodeConfig, previousOpenCodeConfigs } from '../src/config.mjs';
@@ -50,7 +51,7 @@ test('generated configurations carry the scope-specific prompt without widening 
   assert.equal(createOpenCodeConfig({}).agents[ANALYSIS_PROFILE].system, analysisSystemPrompt({}));
   assert.match(createOpenCodeConfig({ knowledge, engineering }).agents[ANALYSIS_PROFILE].system, /saved PLC project files configured by the operator/);
   // Fits the bounded secure JSON reader with ample room for MCP paths.
-  assert.ok(Buffer.byteLength(JSON.stringify(createOpenCodeConfig({ knowledge, engineering }), null, 2)) < 32768);
+  assert.ok(Buffer.byteLength(JSON.stringify(createOpenCodeConfig({ knowledge, engineering }), null, 2)) < MAX_SETTINGS_BYTES);
 });
 
 test('every profile scope keeps the shared rules and the read-only boundary', () => {

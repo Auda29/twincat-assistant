@@ -7,7 +7,10 @@ using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
 using TwinCatAssistant.Native;
 
-internal static class EngineeringDirtyStateProbe
+#if NET8_0
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
+internal static partial class EngineeringDirtyStateProbe
 {
     private sealed class ProjectHierarchy : IVsHierarchy, IVsProject, IPersistFileFormat, IVsPersistHierarchyItem2
     {
@@ -15,14 +18,18 @@ internal static class EngineeringDirtyStateProbe
         internal Func<int> HResult = () => VSConstants.E_POINTER;
         internal int Dirty;
         internal uint SourceItem = 7;
-        internal ProjectHierarchy(string path)
+        internal ProjectHierarchy(string path, string projectPath = null)
         {
             SourcePath = path;
-            ProjectPath = Path.Combine(Path.GetDirectoryName(path), "Fixture.plcproj");
+            ProjectPath = projectPath ?? Path.Combine(Path.GetDirectoryName(path), "Fixture.plcproj");
         }
         public int GetCurFile(out string file, out uint format) { file = ProjectPath; format = 0; return 0; }
         public int IsDirty(out int dirty) { dirty = Dirty; return 0; }
-        public int IsItemDirty(uint item, IntPtr data, out int dirty) { dirty = Dirty; return HResult(); }
+        public int IsItemDirty(uint item, IntPtr data, out int dirty)
+        {
+            if (item == VSConstants.VSITEMID_ROOT) throw new InvalidOperationException("Use IPersistFileFormat for the root");
+            dirty = Dirty; return HResult();
+        }
         public int GetCanonicalName(uint item, out string path) { path = item == VSConstants.VSITEMID_ROOT ? ProjectPath : SourcePath; return 0; }
         public int ParseCanonicalName(string path, out uint item) { item = SourceItem; return 0; }
         public int GetMkDocument(uint item, out string path) { path = SourcePath; return 0; }
@@ -33,11 +40,12 @@ internal static class EngineeringDirtyStateProbe
     private sealed class Solution : IVsSolution
     {
         internal ProjectHierarchy Hierarchy;
+        internal bool Dirty;
         public int GetProjectOfUniqueName(string name, out IVsHierarchy hierarchy)
         { hierarchy = name == Hierarchy.ProjectPath ? Hierarchy : null; return hierarchy == null ? VSConstants.S_FALSE : 0; }
         public int GetSolutionInfo(out string directory, out string file, out string options)
         { directory = Path.GetDirectoryName(Hierarchy.ProjectPath); file = Path.Combine(directory, "Fixture.sln"); options = null; return 0; }
-        public int GetProperty(int id, out object value) { value = false; return 0; }
+        public int GetProperty(int id, out object value) { value = Dirty; return id == -8004 ? 0 : VSConstants.S_FALSE; }
     }
 
     private sealed class RunningDocuments : IVsRunningDocumentTable, IVsPersistDocData
@@ -46,6 +54,17 @@ internal static class EngineeringDirtyStateProbe
         internal IVsHierarchy Hierarchy;
         internal uint Item = 7;
         internal int Dirty = 1;
+        internal int DirtyResult;
+        internal Func<RunningDocuments, RdtEntry> FindEntry, InfoEntry;
+        internal sealed class RdtEntry
+        {
+            internal uint Cookie = 1, Item = 7;
+            internal object Document;
+            internal string Path;
+            internal IVsHierarchy Hierarchy;
+            internal int Result;
+            internal IntPtr GetData() => Document == null ? IntPtr.Zero : Marshal.GetIUnknownForObject(Document);
+        }
         internal int ScanCount;
         internal int AppearOnScan = 1;
         private sealed class Enumerator : IEnumRunningDocuments
@@ -54,23 +73,38 @@ internal static class EngineeringDirtyStateProbe
             public int Next(uint count, uint[] entries, out uint fetched)
             { fetched = HasEntry ? 1u : 0; entries[0] = 1; HasEntry = false; return fetched == 0 ? VSConstants.S_FALSE : 0; }
         }
-        public int IsDocDataDirty(out int dirty) { dirty = Dirty; return 0; }
+        public int IsDocDataDirty(out int dirty) { dirty = Dirty; return DirtyResult; }
         public int GetRunningDocumentsEnum(out IEnumRunningDocuments entries)
         { entries = new Enumerator { HasEntry = ++ScanCount >= AppearOnScan && Moniker != null }; return 0; }
         public int GetDocumentInfo(uint cookie, out uint flags, out uint reads, out uint edits, out string moniker,
             out IVsHierarchy hierarchy, out uint item, out IntPtr data)
         {
+            if (InfoEntry != null)
+            {
+                var entry = InfoEntry(this);
+                flags = reads = edits = 0; moniker = entry.Path; hierarchy = entry.Hierarchy; item = entry.Item;
+                data = entry.GetData(); return entry.Result;
+            }
             flags = reads = edits = 0; moniker = Moniker; hierarchy = Hierarchy; item = Item;
             data = Marshal.GetIUnknownForObject(this); return 0;
         }
         public int FindAndLockDocument(uint flags, string moniker, out IVsHierarchy hierarchy, out uint item, out IntPtr data, out uint cookie)
         {
+            if (FindEntry != null)
+            {
+                var entry = FindEntry(this);
+                hierarchy = entry.Hierarchy; item = entry.Item; cookie = entry.Cookie;
+                data = entry.GetData(); return entry.Result;
+            }
             hierarchy = Hierarchy; item = Item; cookie = Moniker == moniker ? 1u : 0u;
             data = cookie == 1 ? Marshal.GetIUnknownForObject(this) : IntPtr.Zero; return 0;
         }
     }
 
-    public static int Main()
+#if !NET8_0
+    public static int Main() { Run(); return 0; }
+#endif
+    internal static int Run()
     {
         var directory = Path.Combine(Path.GetTempPath(), "EngineeringDirtyState;" + Guid.NewGuid().ToString("N"));
         var source = Path.Combine(directory, "MAIN.TcPOU");
@@ -176,7 +210,7 @@ internal static class EngineeringDirtyStateProbe
             hierarchy.HResult = () => { if (rdt.ScanCount == 2) hierarchy.SourceItem++; return VSConstants.E_POINTER; };
             Check(null, State(new DTE { Documents = new Documents() }), "Changed source item identity fails closed");
             Console.WriteLine("PASS engineering dirty-state observations: " + checks);
-            return 0;
+            return checks + RunProjectDirtyEvidenceTests(directory);
         }
         finally
         {

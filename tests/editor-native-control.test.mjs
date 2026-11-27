@@ -62,12 +62,18 @@ test('binds serialize, revoke prior registration first, and never disclose capab
   assert.throws(() => owner.enqueue(command()));
 });
 
-test('real broker is registered through protected runtime and revoked on owner abort', { timeout: 15000 }, async () => {
-  const events = [], reports = [];
+test('real broker switches Editor ↔ Debug without leaving an old registration and retries failed cleanup before rebinding', { timeout: 15000 }, async () => {
+  const events = [], reports = [], registered = new Set();
+  let rejectFirstDelete = true;
   const server = createServer(async (req, res) => {
     let body = ''; for await (const chunk of req) body += chunk;
     events.push({ method: req.method, url: req.url, body });
     if (req.url === '/auth/session') { res.writeHead(200, { 'set-cookie': 'fixture=session; HttpOnly' }).end('{}'); return; }
+    if (req.method === 'PUT') registered.add(req.url);
+    if (req.method === 'DELETE') {
+      if (rejectFirstDelete) { rejectFirstDelete = false; res.writeHead(503).end(); return; }
+      registered.delete(req.url);
+    }
     res.writeHead(204).end();
   });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
@@ -75,13 +81,30 @@ test('real broker is registered through protected runtime and revoked on owner a
   const owner = createEditorNativeControl({ ...opts, origin: `http://127.0.0.1:${server.address().port}`, password: 'synthetic-password',
     node: process.execPath, signal: controller.signal, report: item => reports.push(item) });
   try {
-    owner.enqueue(command());
+    const editor = { ...command(), profile: 'editor' };
+    const debug = { ...command('22222222-2222-4222-8222-222222222222'), profile: 'debug' };
+    const editorPath = '/api/experimental/mcp/engineering_editor', debugPath = '/api/experimental/mcp/engineering_debug';
+    owner.enqueue(editor);
     await until(() => reports.length === 1);
     assert.equal(reports[0].status, 'editor-ready');
-    assert.deepEqual(events.map(x => x.method), ['POST', 'PUT']);
-    assert.ok(!JSON.stringify(events).includes(bootstrap().capability));
+    assert.deepEqual([...registered], [editorPath]);
+    owner.enqueue(debug);
+    await until(() => reports.length === 2);
+    assert.equal(reports[1].status, 'editor-failed');
+    assert.deepEqual([...registered], [editorPath]);
+    owner.enqueue(debug);
+    await until(() => reports.length === 3);
+    assert.equal(reports[2].status, 'editor-ready');
+    assert.deepEqual([...registered], [debugPath]);
+    owner.enqueue(editor);
+    await until(() => reports.length === 4);
+    assert.equal(reports[3].status, 'editor-ready');
+    assert.deepEqual([...registered], [editorPath]);
     controller.abort(); await owner.close();
-    assert.deepEqual(events.map(x => x.method), ['POST', 'PUT', 'DELETE']);
+    assert.deepEqual([...registered], []);
+    assert.deepEqual(events.filter(x => x.method !== 'POST').map(x => [x.method, x.url]),
+      [['PUT', editorPath], ['DELETE', editorPath], ['DELETE', editorPath], ['PUT', debugPath],
+        ['DELETE', debugPath], ['PUT', editorPath], ['DELETE', editorPath]]);
     assert.ok(!JSON.stringify(reports).includes(bootstrap().capability));
   } finally { await owner.close(); await new Promise(resolve => server.close(resolve)); }
 });
@@ -95,6 +118,38 @@ test('failed startup reports only request ID and closes broker', async () => {
   owner.enqueue(command()); await until(() => reports.length === 1);
   assert.deepEqual(reports, [{ status: 'editor-failed', requestId: command().requestId }]);
   assert.deepEqual(events, ['closed']); await owner.close();
+});
+
+test('a failed PUT with failed cleanup is removed before switching to another profile', { timeout: 15000 }, async () => {
+  const reports = [], registered = new Set();
+  const editorPath = '/api/experimental/mcp/engineering_editor', debugPath = '/api/experimental/mcp/engineering_debug';
+  let rejectFirstDelete = true;
+  const server = createServer(async (req, res) => {
+    for await (const chunk of req) { void chunk; }
+    if (req.url === '/auth/session') { res.writeHead(200, { 'set-cookie': 'fixture=session; HttpOnly' }).end('{}'); return; }
+    if (req.method === 'PUT') {
+      registered.add(req.url);
+      res.writeHead(req.url === editorPath ? 502 : 204).end();
+      return;
+    }
+    if (rejectFirstDelete) { rejectFirstDelete = false; res.writeHead(503).end(); return; }
+    registered.delete(req.url);
+    res.writeHead(204).end();
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  const owner = createEditorNativeControl({ ...opts, origin: `http://127.0.0.1:${server.address().port}`, password: 'synthetic-password',
+    node: process.execPath, report: item => reports.push(item) });
+  try {
+    owner.enqueue({ ...command(), profile: 'editor' });
+    await until(() => reports.length === 1);
+    assert.equal(reports[0].status, 'editor-failed');
+    assert.deepEqual([...registered], [editorPath]);
+    owner.enqueue({ ...command('22222222-2222-4222-8222-222222222222'), profile: 'debug' });
+    await until(() => reports.length === 2);
+    assert.equal(reports[1].status, 'editor-ready');
+    assert.deepEqual([...registered], [debugPath]);
+  } finally { await owner.close(); await new Promise(resolve => server.close(resolve)); }
+  assert.deepEqual([...registered], []);
 });
 
 

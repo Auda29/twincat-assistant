@@ -11,6 +11,9 @@ namespace TwinCatAssistant.Native
 {
     // Engineering-only observation. Never opens, saves, or guesses that an
     // unregistered document is clean. All COM access stays on the IDE thread.
+#if NET8_0
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+#endif
     internal static class EngineeringDirtyState
     {
         private const int MaxProjects = 512, MaxItems = 4096;
@@ -25,8 +28,9 @@ namespace TwinCatAssistant.Native
                 var extension = Path.GetExtension(exactPath);
                 if (IsPlcSource(extension))
                     return ReadSource(rdt, injectedDte, getService, exactPath, boundProjectFile);
-                bool absent; var observed = ReadRdt(rdt, exactPath, out absent);
-                if (!absent) return observed;
+                var rdtBefore = ReadRdt(rdt, exactPath);
+                if (rdtBefore.State == RdtState.Observed) return rdtBefore.Dirty;
+                if (rdtBefore.State == RdtState.Unknown) return null;
                 if (!extension.Equals(".sln", StringComparison.OrdinalIgnoreCase)
                     && !extension.Equals(".plcproj", StringComparison.OrdinalIgnoreCase)
                     && !extension.Equals(".tsproj", StringComparison.OrdinalIgnoreCase)) return null;
@@ -40,10 +44,8 @@ namespace TwinCatAssistant.Native
                     object value;
                     if (solution.GetProperty(SolutionDirtyProperty, out value) != VSConstants.S_OK || !(value is bool dirty)) return null;
                     string after;
-                    bool absentAfter;
                     if (!SolutionFile(solution, out after) || !SamePath(before, after)) return null;
-                    var later = ReadRdt(rdt, exactPath, out absentAfter);
-                    return absentAfter ? dirty : later == true ? true : (bool?)null;
+                    return ConfirmFallback(rdtBefore, ReadRdt(rdt, exactPath), dirty);
                 }
                 IVsHierarchy hierarchy; string uniqueName;
                 if (!FindHierarchy(solution, injectedDte, exactPath, out hierarchy, out uniqueName)) return null;
@@ -53,9 +55,7 @@ namespace TwinCatAssistant.Native
                 if (!SolutionFile(solution, out afterSolution) || !SamePath(before, afterSolution)
                     || solution.GetProjectOfUniqueName(uniqueName, out afterHierarchy) != VSConstants.S_OK
                     || !SameCom(hierarchy, afterHierarchy) || !ReadProject(hierarchy, exactPath).Equals(state)) return null;
-                bool absentLater;
-                var rdtLater = ReadRdt(rdt, exactPath, out absentLater);
-                return absentLater ? state : rdtLater == true ? true : (bool?)null;
+                return ConfirmFallback(rdtBefore, ReadRdt(rdt, exactPath), state.Value);
             }
             catch { return null; }
         }
@@ -270,25 +270,54 @@ namespace TwinCatAssistant.Native
             return true;
         }
 
-        // 'absent' is set only by a successful lookup returning neither docdata
-        // nor cookie. A failure or partial RDT entry is not evidence of absence.
-        private static bool? ReadRdt(IVsRunningDocumentTable rdt, string path, out bool absent)
+        private enum RdtState { Unknown, Absent, Observed, NoPersistDocData }
+
+        private struct RdtObservation
+        {
+            internal RdtState State;
+            internal bool Dirty;
+            internal uint Cookie, Item;
+            internal IntPtr Data;
+            internal object Document;
+            internal IVsHierarchy Hierarchy;
+        }
+
+        private static bool? ConfirmFallback(RdtObservation before, RdtObservation after, bool dirty)
+        {
+            if (after.State == RdtState.Observed) return after.Dirty ? true : (bool?)null;
+            if (before.State != after.State) return null;
+            if (after.State == RdtState.Absent) return dirty;
+            // Keep the original docdata alive across the fallback and compare its identity.
+            if (before.Cookie == after.Cookie && before.Item == after.Item && before.Data == after.Data
+                && SameCom(before.Document, after.Document) && SameCom(before.Hierarchy, after.Hierarchy)) return dirty;
+            return null;
+        }
+
+        private static RdtObservation ReadRdt(IVsRunningDocumentTable rdt, string path)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            absent = false;
             IVsHierarchy hierarchy; uint item, cookie; IntPtr data;
             var hr = rdt.FindAndLockDocument((uint)_VSRDTFLAGS.RDT_NoLock, path, out hierarchy, out item, out data, out cookie);
             try
             {
-                if (ErrorHandler.Failed(hr)) return null;
-                if (data == IntPtr.Zero && cookie == 0) { absent = true; return null; }
-                if (data == IntPtr.Zero || cookie == 0) return null;
-                var document = Marshal.GetObjectForIUnknown(data) as IVsPersistDocData; int dirty;
-                if (document == null || document.IsDocDataDirty(out dirty) != VSConstants.S_OK || (dirty != 0 && dirty != 1)) return null;
+                if (ErrorHandler.Failed(hr)) return default;
+                if (data == IntPtr.Zero && cookie == 0) return new RdtObservation { State = RdtState.Absent };
+                if (hr != VSConstants.S_OK || data == IntPtr.Zero || cookie == 0) return default;
+                var document = Marshal.GetObjectForIUnknown(data);
+                var persist = document as IVsPersistDocData;
+                int dirty = 0;
+                if (persist != null && (persist.IsDocDataDirty(out dirty) != VSConstants.S_OK || (dirty != 0 && dirty != 1)))
+                    return default;
                 uint flags, readLocks, editLocks, currentItem; string currentPath; IVsHierarchy currentHierarchy; IntPtr currentData;
-                if (rdt.GetDocumentInfo(cookie, out flags, out readLocks, out editLocks, out currentPath, out currentHierarchy, out currentItem, out currentData) != VSConstants.S_OK)
-                { if (currentData != IntPtr.Zero) Marshal.Release(currentData); return null; }
-                try { return currentData == data && currentItem == item && SamePath(currentPath, path) && SameCom(hierarchy, currentHierarchy) ? dirty == 1 : (bool?)null; }
+                hr = rdt.GetDocumentInfo(cookie, out flags, out readLocks, out editLocks, out currentPath, out currentHierarchy, out currentItem, out currentData);
+                try
+                {
+                    if (hr != VSConstants.S_OK || currentData != data || currentItem != item
+                        || !SamePath(currentPath, path) || !SameCom(hierarchy, currentHierarchy)) return default;
+                    if (persist != null) return new RdtObservation { State = RdtState.Observed, Dirty = dirty == 1 };
+                    return new RdtObservation { State = RdtState.NoPersistDocData, Cookie = cookie, Item = item,
+                        Data = data, Document = document, Hierarchy = hierarchy };
+                }
                 finally { if (currentData != IntPtr.Zero) Marshal.Release(currentData); }
             }
             finally { if (data != IntPtr.Zero) Marshal.Release(data); }

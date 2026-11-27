@@ -19,6 +19,15 @@
   <Target Name="RequireTcXaeEnvDte80" BeforeTargets="ResolveReferences">
     <Error Condition="!Exists('$(TcXaeEnvDte80Path)')" Text="Select the installed TcXaeShell EnvDTE80 assembly with /p:TcXaeEnvDte80Path=...; the vendor assembly is never bundled." />
   </Target>
+  <Target Name="PreserveEngineeringPlatformInterop" AfterTargets="LinkVSSDKEmbeddableAssemblies">
+    <!-- VSSDK can enable embedding on the resolved reference. Engineering
+         requires the full PIA so it can reflect SolutionConfiguration2.PlatformName. -->
+    <ItemGroup>
+      <ReferencePath Update="@(ReferencePath)" Condition="'%(ReferencePath.Filename)' == 'EnvDTE80'">
+        <EmbedInteropTypes>false</EmbedInteropTypes>
+      </ReferencePath>
+    </ItemGroup>
+  </Target>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk.WindowsDesktop" />
   <Import Project="$(VsSDKInstall)/Microsoft.VsSDK.targets" Condition="Exists('$(VsSDKInstall)/Microsoft.VsSDK.targets')" />
 </Project>

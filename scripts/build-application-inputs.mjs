@@ -72,6 +72,7 @@ async function verifiedEngineeringRelease(lock, directory) {
     : receipt.sourceFeatures === 'disabled' && receipt.nativeFactory?.method === 'CreateWithHostAccess'
       && receipt.nativeFactory?.parameterCount === 7 && receipt.nativeFactory?.getTextBuffer === null;
   if (receipt.schemaVersion!==lock.schemaVersion || receipt.version!==lock.version || receipt.tag!==lock.tag || receipt.sourceCommit!==lock.revision
+      || receipt.module?.sourceTreeSha256!==lock.sourceTreeSha256
       || receipt.protocolVersion!==1 || !featureScope
       || receipt.nativeFactory?.type!=='TwinCatMcp.Engineering.Host.EngineeringProviderFactory'
       || receipt.module?.assembly!=='TwinCatMcp.Engineering.Host.dll' || receipt.module?.assemblyVersion!==lock.moduleVersion

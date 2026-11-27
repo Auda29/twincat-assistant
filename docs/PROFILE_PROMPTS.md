@@ -33,8 +33,8 @@ The Analysis configuration denies `*` and allows only `READ_TOOLS` plus `questio
 | --- | --- |
 | General chat (native) | 9 `knowledge_tc_*` tools, `question`; "No PLC project is connected" |
 | Project chat | Knowledge tools, 9 `engineering_*` tools for the saved files of one `.plcproj`, `question` |
-| Editor | Knowledge and saved-project tools, 16 native tools for ST discovery, read, preview, approved edits and creation, journal and rollback, and separately approved PLC builds |
-| Debug | Knowledge and saved-project tools, 11 native tools for read-only ADS samples and separately approved PLC builds |
+| Editor | Knowledge and saved-project tools, 16 `engineering_editor_*` tools for ST discovery, read, preview, approved edits and creation, journal and rollback, and separately approved PLC builds |
+| Debug | Knowledge and saved-project tools, 15 `engineering_debug_*` tools for read-only ADS samples, condition waits, watches and separately approved PLC builds |
 | Operator CLI with global engineering | As the project chat, described as operator-configured saved files |
 | Without knowledge | No documentation citations; answers marked as not verified |
 
@@ -52,8 +52,9 @@ while project changes remain pending save. It directs rollback through the
 session journal, asks for a manual save when rollback reports
 `unsaved_editor_changes`, and bars retries of unknown outcomes.
 
-The managed upgrade matcher retains the exact C3, Beta 6, Beta 9 and Beta 10
-Editor policies and historical prompt variants.
+The managed upgrade matcher retains the exact C3 and Beta 6–11 policies and
+historical prompt variants. The Editor and Debug prompts ask the user to save
+in TwinCAT XAE if build preflight reports `unsaved_project_changes`.
 
 ## Renderer findings
 

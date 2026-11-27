@@ -12,6 +12,8 @@
     <Compile Include="../Shared/ChatContextBinding.cs" Link="ChatContextBinding.cs" />
     <Compile Include="../Shared/SourceDiff.cs" Link="SourceDiff.cs" />
     <Compile Include="../Shared/DirtyEvidence.cs" Link="DirtyEvidence.cs" />
+    <Compile Include="../IdeHost/EngineeringDirtyState.cs" Link="EngineeringDirtyState.cs" />
+    <Compile Include="../../scripts/fixtures/EngineeringDirtyStateProbe.cs" Link="EngineeringDirtyStateProbe.cs" />
     <Compile Include="../Shared/ActiveEditorContext.cs" Link="ActiveEditorContext.cs" />
     <Compile Include="../Shared/ActivePouSource.cs" Link="ActivePouSource.cs" />
     <Compile Include="../Shared/ChatConnectionState.cs" Link="ChatConnectionState.cs" />

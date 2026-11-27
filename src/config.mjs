@@ -6,9 +6,13 @@ import {
   ANALYSIS_PROFILE, EDITOR_PROFILE, DEBUG_PROFILE, previousAnalysisPrompts, analysisSystemPrompt,
   editorSystemPrompt, debugSystemPrompt, previousBeta9DebugSystemPrompt,
   previousC3EditorSystemPrompt, previousC4EditorSystemPrompt, previousBeta10EditorSystemPrompt,
+  previousBeta11EditorSystemPrompt, previousBeta11DebugSystemPrompt,
 } from './agent-prompts.mjs';
 import { C2_ANALYSIS_PROMPTS } from './analysis-prompts-c2.mjs';
-import { DEBUG_ACTIONS, EDITOR_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS, LEGACY_DEVELOPMENT_EDITOR_ACTIONS } from './editor-tools.mjs';
+import {
+  DEBUG_ACTIONS, DEVELOPMENT_EDITOR_ACTIONS, LEGACY_BUILD_ACTIONS,
+  LEGACY_DEVELOPMENT_EDITOR_ACTIONS, BETA11_EDITOR_ACTIONS, LEGACY_DEBUG_ACTIONS,
+} from './editor-tools.mjs';
 
 function object(value, keys) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
@@ -64,7 +68,7 @@ export const READ_TOOLS = Object.freeze([
   'engineering_plc_describe_library',
 ]);
 
-function createBeta6OpenCodeConfig(settings = {}, runtime = {}) {
+function createBaseOpenCodeConfig(settings, runtime) {
   const node = runtime.node ?? process.execPath;
   const knowledgeClient = runtime.knowledgeClient ?? fileURLToPath(new URL('./knowledge-client.mjs', import.meta.url));
   settings = validateSettings(settings);
@@ -102,18 +106,11 @@ function createBeta6OpenCodeConfig(settings = {}, runtime = {}) {
         mode: 'primary', permissions,
         system: analysisSystemPrompt({ knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) }),
       },
-      [EDITOR_PROFILE]: {
-        description: 'Native-approved project builds and diagnostics',
-        mode: 'primary',
-        permissions: [...permissions, ...EDITOR_ACTIONS.map(action => ({ action, resource: '*', effect: 'allow' }))],
-        system: previousC4EditorSystemPrompt(),
-      },
     },
     experimental: {
       policies: [
         { action: 'permission', resource: '*', effect: 'deny' },
         ...[...READ_TOOLS, 'question'].map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })),
-        ...EDITOR_ACTIONS.map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })),
         { action: 'provider.use', resource: '*', effect: 'deny' },
       ],
     },
@@ -122,22 +119,21 @@ function createBeta6OpenCodeConfig(settings = {}, runtime = {}) {
   if (settings.model) config.model = settings.model;
   const provider = settings.provider ?? settings.model?.split('/')[0];
   if (provider) config.experimental.policies.push({ action: 'provider.use', resource: provider, effect: 'allow' });
-  // Validate against the pinned upstream V2 contract, not a handwritten copy.
-  Schema.decodeUnknownSync(Config.Info)(config);
   return config;
 }
 
+const editorDescription = 'Native-approved ST source edits, object creation and local PLC builds';
+const debugDescription = 'Approved live PLC reads and local PLC builds';
+
 export function createOpenCodeConfig(settings = {}, runtime = {}) {
-  return createNativeProfileConfig(settings, runtime, DEVELOPMENT_EDITOR_ACTIONS, editorSystemPrompt,
-    'Native-approved ST source edits, object creation and local PLC builds', debugSystemPrompt);
+  return createNativeProfileConfig(settings, runtime, [
+    [EDITOR_PROFILE, editorDescription, DEVELOPMENT_EDITOR_ACTIONS, editorSystemPrompt],
+    [DEBUG_PROFILE, debugDescription, DEBUG_ACTIONS, debugSystemPrompt],
+  ], [...DEVELOPMENT_EDITOR_ACTIONS, ...DEBUG_ACTIONS]);
 }
 
-function createNativeProfileConfig(settings, runtime, editorActions, editorPrompt, editorDescription, debugPrompt) {
-  const config = createBeta6OpenCodeConfig(settings, runtime);
-  const nativeAgents = [
-    [EDITOR_PROFILE, editorDescription, editorActions, editorPrompt],
-    [DEBUG_PROFILE, 'Approved live PLC reads and local PLC builds', DEBUG_ACTIONS, debugPrompt],
-  ];
+function createNativeProfileConfig(settings, runtime, nativeAgents, nativeActions) {
+  const config = createBaseOpenCodeConfig(settings, runtime);
   for (const [id, description, actions, system] of nativeAgents) {
     config.agents[id] = {
       description, mode: 'primary',
@@ -147,8 +143,6 @@ function createNativeProfileConfig(settings, runtime, editorActions, editorPromp
   }
   // Core applies these as a global ceiling. Agent policy and the ephemeral
   // native broker both enforce the narrower active catalog.
-  const nativeActions = [...new Set([...editorActions, ...DEBUG_ACTIONS])]
-    .filter(action => !EDITOR_ACTIONS.includes(action));
   const insertion = config.experimental.policies.findIndex(rule => rule.action === 'provider.use');
   config.experimental.policies.splice(insertion, 0,
     ...nativeActions.map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })));
@@ -163,10 +157,7 @@ const TYPED_KNOWLEDGE_TOOLS = new Set([
   'knowledge_tc_get_library', 'knowledge_tc_lookup_error',
 ]);
 export function previousPolicyConfig(settings = {}, runtime = {}, system, { typedKnowledge = false } = {}) {
-  const config = createBeta6OpenCodeConfig(settings, runtime);
-  delete config.agents[EDITOR_PROFILE];
-  config.experimental.policies = config.experimental.policies.filter(rule =>
-    !EDITOR_ACTIONS.some(name => rule.action === 'permission' && rule.resource === `${name}:*`));
+  const config = createBaseOpenCodeConfig(settings, runtime);
   const oldPermissions = config.permissions.filter(rule => typedKnowledge || !TYPED_KNOWLEDGE_TOOLS.has(rule.action));
   config.permissions = oldPermissions;
   config.agents[ANALYSIS_PROFILE].permissions = oldPermissions;
@@ -181,18 +172,20 @@ export function previousPolicyConfig(settings = {}, runtime = {}, system, { type
 export function previousOpenCodeConfigs(settings = {}, runtime = {}) {
   const scope = { knowledge: Boolean(settings.knowledge), engineering: Boolean(settings.engineering) };
   const c2 = C2_ANALYSIS_PROMPTS.profile[2 * Number(scope.knowledge) + Number(scope.engineering)];
-  // C3 is recognized only as its complete, exact historical configuration.
-  const c4 = createBeta6OpenCodeConfig(settings, runtime);
-  const c3 = structuredClone(c4);
-  c3.agents[EDITOR_PROFILE].description = 'Native-approved source review, unsaved buffer edits and project builds';
-  c3.agents[EDITOR_PROFILE].permissions = [...c3.permissions, ...LEGACY_DEVELOPMENT_EDITOR_ACTIONS.map(action => ({ action, resource: '*', effect: 'allow' }))];
-  c3.agents[EDITOR_PROFILE].system = previousC3EditorSystemPrompt();
-  const insertion = c3.experimental.policies.findIndex(rule => rule.action === 'provider.use');
-  c3.experimental.policies.splice(insertion, 0, ...LEGACY_DEVELOPMENT_EDITOR_ACTIONS.filter(action => !EDITOR_ACTIONS.includes(action)).map(action => ({ action: 'permission', resource: `${action}:*`, effect: 'allow' })));
-  const beta10 = createNativeProfileConfig(settings, runtime, LEGACY_DEVELOPMENT_EDITOR_ACTIONS,
-    previousBeta10EditorSystemPrompt, 'Native-approved XML buffer edits and local PLC builds', debugSystemPrompt);
-  const beta9 = structuredClone(beta10);
-  beta9.agents[DEBUG_PROFILE].system = previousBeta9DebugSystemPrompt();
-  return [c3, c4, beta9, beta10, ...previousAnalysisPrompts(scope).map(system => previousPolicyConfig(settings, runtime, system)),
+  const legacyConfig = (description, editorActions, editorPrompt, debugPrompt) => {
+    const agents = [[EDITOR_PROFILE, description, editorActions, editorPrompt]];
+    const debugActions = debugPrompt ? LEGACY_DEBUG_ACTIONS : [];
+    if (debugPrompt) agents.push([DEBUG_PROFILE, debugDescription, debugActions, debugPrompt]);
+    return createNativeProfileConfig(settings, runtime, agents, [...new Set([...LEGACY_BUILD_ACTIONS, ...editorActions, ...debugActions])]);
+  };
+  const c3 = legacyConfig('Native-approved source review, unsaved buffer edits and project builds',
+    LEGACY_DEVELOPMENT_EDITOR_ACTIONS, previousC3EditorSystemPrompt);
+  const beta6 = legacyConfig('Native-approved project builds and diagnostics', LEGACY_BUILD_ACTIONS, previousC4EditorSystemPrompt);
+  // Beta 7, 8 and 9 shipped the same managed configuration.
+  const previousEditorDescription = 'Native-approved XML buffer edits and local PLC builds';
+  const beta9 = legacyConfig(previousEditorDescription, LEGACY_DEVELOPMENT_EDITOR_ACTIONS, previousBeta10EditorSystemPrompt, previousBeta9DebugSystemPrompt);
+  const beta10 = legacyConfig(previousEditorDescription, LEGACY_DEVELOPMENT_EDITOR_ACTIONS, previousBeta10EditorSystemPrompt, previousBeta11DebugSystemPrompt);
+  const beta11 = legacyConfig(editorDescription, BETA11_EDITOR_ACTIONS, previousBeta11EditorSystemPrompt, previousBeta11DebugSystemPrompt);
+  return [c3, beta6, beta9, beta10, beta11, ...previousAnalysisPrompts(scope).map(system => previousPolicyConfig(settings, runtime, system)),
     previousPolicyConfig(settings, runtime, c2, { typedKnowledge: true })];
 }

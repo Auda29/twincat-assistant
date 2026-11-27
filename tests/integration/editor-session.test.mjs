@@ -8,7 +8,7 @@ import { randomBytes } from 'node:crypto';
 import { startNativeChat } from '../../src/native-chat.mjs';
 import { startEditorSession, registerEditorSession } from '../../src/editor-session-broker.mjs';
 
-test('pinned Core connects an ephemeral Editor MCP in only its selected location and removes it without persisting credentials', {
+test('pinned Core switches ephemeral Editor and Debug catalogs in one location without persisting credentials', {
   skip: process.platform !== 'win32', timeout: 100000,
 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'tc-editor-core-'));
@@ -23,7 +23,7 @@ test('pinned Core connects an ephemeral Editor MCP in only its selected location
   let runtime, broker, remove;
   try {
     await new Promise((resolve, reject) => {
-      runtime = startNativeChat({ state, port, password }, controller.signal, resolve, { runtime: process.env.TC_EDITOR_RUNTIME ?? 'distribution' });
+      runtime = startNativeChat({ state, port, password }, controller.signal, resolve, { runtime: process.env.TC_EDITOR_RUNTIME ?? 'source' });
       runtime.catch(reject);
     });
     const before = await readFile(join(state, 'config', 'opencode.json'), 'utf8');
@@ -33,14 +33,12 @@ test('pinned Core connects an ephemeral Editor MCP in only its selected location
       'twincat-readonly': globalConfig.agents['twincat-readonly'],
     } }));
     const hostSecret = randomBytes(32).toString('hex');
-    broker = await startEditorSession({ node: process.execPath, entrypoint: resolve('tests/fixtures/editor-engineering-child.mjs'),
-      workspace, sessionId: 'ses_core_fixture', bootstrap: { kind: 'twincat-assistant-engineering-bootstrap', protocolVersion: 1,
+    const start = profile => startEditorSession({ node: process.execPath, entrypoint: resolve('tests/fixtures/editor-engineering-child.mjs'),
+      profile, workspace, sessionId: 'ses_core_fixture', bootstrap: { kind: 'twincat-assistant-engineering-bootstrap', protocolVersion: 1,
         sessionId: '12345678-1234-1234-1234-123456789abc', capability: hostSecret,
         pipeName: '\\\\.\\pipe\\twincat-assistant-engineering-' + 'b'.repeat(64),
         expected: { idePid: 1234, ideStartedUtc: '2026-11-12T10:00:00Z', solutionFile: 'C:\\fixture\\Fixture.sln',
           projectFile: 'C:\\fixture\\PLC\\PLC.plcproj', contextEpoch: 'fixture' } } });
-    const frontendSecret = broker.configuration().headers.Authorization;
-    remove = await registerEditorSession({ origin, password, workspace, broker }, controller.signal);
     const login = await fetch(origin + '/auth/session', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ password }) });
     const cookie = login.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
     const headers = { cookie, 'x-opencode-directory': encodeURIComponent(workspace), 'x-opencode-directory-encoding': 'uri' };
@@ -56,38 +54,38 @@ test('pinned Core connects an ephemeral Editor MCP in only its selected location
     }
     assert.ok(editor && analysis && debug, 'Core must load all managed profiles: ' + agents.map(agent => agent.id ?? agent.name).join(','));
     const effect = (agent, action) => agent.permissions.findLast(rule => rule.action === '*' || rule.action === action)?.effect;
-    assert.equal(effect(editor, 'editor_tc_build_project'), 'allow');
-    assert.equal(effect(editor, 'editor_plc_source_apply'), 'allow');
-    assert.equal(effect(editor, 'editor_plc_debug_read'), 'deny');
-    assert.equal(effect(debug, 'editor_tc_build_project'), 'allow');
-    assert.equal(effect(debug, 'editor_plc_source_apply'), 'deny');
-    assert.equal(effect(debug, 'editor_plc_debug_read'), 'allow');
-    assert.equal(effect(analysis, 'editor_plc_source_apply'), 'deny');
-    assert.equal(effect(analysis, 'editor_plc_debug_read'), 'deny');
-    assert.equal(effect(analysis, 'editor_tc_build_project'), 'deny');
+    assert.equal(effect(editor, 'engineering_editor_tc_build_project'), 'allow');
+    assert.equal(effect(editor, 'engineering_editor_plc_source_apply'), 'allow');
+    assert.equal(effect(editor, 'engineering_debug_plc_debug_wait_until'), 'deny');
+    assert.equal(effect(debug, 'engineering_debug_tc_build_project'), 'allow');
+    assert.equal(effect(debug, 'engineering_editor_plc_source_apply'), 'deny');
+    assert.equal(effect(debug, 'engineering_debug_plc_debug_wait_until'), 'allow');
+    assert.equal(effect(analysis, 'engineering_editor_plc_source_apply'), 'deny');
+    assert.equal(effect(analysis, 'engineering_debug_plc_debug_read'), 'deny');
+    assert.equal(effect(analysis, 'engineering_editor_tc_build_project'), 'deny');
     assert.equal(effect(editor, 'bash'), 'deny');
-    let connected = false;
-    const deadline = Date.now() + 20000;
-    while (Date.now() < deadline) {
+    const dynamic = entry => ['editor', 'engineering_editor', 'engineering_debug'].includes(entry.name);
+    for (const profile of ['editor', 'debug', 'editor']) {
+      broker = await start(profile);
+      const secret = broker.configuration().headers.Authorization;
+      remove = await registerEditorSession({ origin, password, workspace, broker }, controller.signal);
       const response = await fetch(origin + '/api/mcp', { headers });
       assert.equal(response.status, 200);
       const body = await response.json();
-      assert.ok(!JSON.stringify(body).includes(frontendSecret));
-      connected = body.data.some(entry => entry.name === 'editor' && entry.status.status === 'connected');
-      if (connected) break;
-      await new Promise(resolve => setTimeout(resolve, 100));
+      assert.ok(!JSON.stringify(body).includes(secret));
+      const servers = body.data.filter(dynamic);
+      assert.deepEqual(servers.map(entry => entry.name), ['engineering_' + profile]);
+      assert.equal(servers[0].status.status, 'connected');
+      const config = await (await fetch(origin + '/api/config', { headers })).text();
+      assert.ok(!config.includes(secret));
+      assert.ok(!config.includes(hostSecret));
+      const foreign = await (await fetch(origin + '/api/mcp', { headers: { cookie,
+        'x-opencode-directory': encodeURIComponent(join(state, 'home', '.config', 'openchamber', 'chats')), 'x-opencode-directory-encoding': 'uri' } })).json();
+      assert.ok(!foreign.data.some(dynamic));
+      await remove(); remove = null;
+      const after = await (await fetch(origin + '/api/mcp', { headers })).json();
+      assert.ok(!after.data.some(dynamic));
     }
-    assert.ok(connected, 'Core must connect the live remote MCP after runtime registration');
-    const config = await (await fetch(origin + '/api/config', { headers })).text();
-    assert.ok(!config.includes(frontendSecret));
-    assert.ok(!config.includes(hostSecret));
-    assert.equal(await readFile(join(state, 'config', 'opencode.json'), 'utf8'), before);
-    const foreign = await (await fetch(origin + '/api/mcp', { headers: { cookie,
-      'x-opencode-directory': encodeURIComponent(join(state, 'home', '.config', 'openchamber', 'chats')), 'x-opencode-directory-encoding': 'uri' } })).json();
-    assert.ok(!foreign.data.some(entry => entry.name === 'editor'));
-    await remove(); remove = null;
-    const after = await (await fetch(origin + '/api/mcp', { headers })).json();
-    assert.ok(!after.data.some(entry => entry.name === 'editor'));
     assert.equal(await readFile(join(state, 'config', 'opencode.json'), 'utf8'), before);
   } finally {
     await remove?.().catch(() => {});
