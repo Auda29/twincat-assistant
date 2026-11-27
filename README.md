@@ -8,7 +8,7 @@ Explain Structured Text, explore PLC project code and find relevant Beckhoff
 documentation in a docked chat window. TwinCAT Assistant connects the active
 project and POU to a conversation that you can return to later.
 
-**0.2.0 Beta 10 · Analysis, Editor and Debug**
+**0.2.0 Beta 12 · Analysis, Editor and Debug**
 
 [Get started](#getting-started) · [Documentation](docs/README.md) · [Releases](https://github.com/Auda29/twincat-assistant/releases)
 
@@ -21,16 +21,38 @@ project and POU to a conversation that you can return to later.
 - Search locally installed Beckhoff InfoSys documentation and open the
   matching articles with sources through the Knowledge MCP. Look up documented
   symbols, libraries and error codes with explicit ambiguity and missing fields.
-- Review and approve Structured Text edits and new PLC objects in **Editor**.
-- Use **Debug** to sample live PLC symbols read-only from an existing TwinCAT login (connects automatically to the configured PLC target by default; configurable in the `...` menu).
+- Review Structured Text edits and rollbacks in a color-highlighted side-by-side
+  diff, and approve edits and new PLC objects in **Editor**.
+- Use **Debug** to sample and watch live PLC symbols read-only from an existing
+  TwinCAT login, or wait up to 120 seconds for a condition. It connects to the
+  configured PLC target by default; configure this in the `...` menu.
 - Approve a selective PLC build from Editor or Debug and inspect its diagnostics.
-- Keep conversations associated with their PLC project, switch between
-  project chats and use a general chat for questions without a project.
+- Keep conversations associated with their PLC project, switch profiles without
+  losing the selected chat or queued follow-ups, and use a general chat for
+  questions without a project.
 
 Host and chat support German and English with a shared, saved language choice.
 
 The chat includes model selection, streamed responses, tool activity, code
 blocks and attachments. Model requests go to the provider you configure.
+
+## New in Beta 12
+
+Engineering MCP **0.5.13** adds Debug condition waits and bounded symbol watches.
+Editor and Debug now register separate temporary tool servers, and profile
+switches preserve the current conversation and queued follow-ups. Source-edit
+and rollback approvals show additions and removals side by side.
+
+Selective build preflight recognizes saved and unsaved TwinCAT project entries,
+including standard PLC projects with no MSBuild imports. If it reports
+`unsaved_project_changes`, save the pending changes in TwinCAT XAE and request
+the build again. An isolated live run on TwinCAT 3.1.4024.78 verified detection
+and a selective build with **0 errors and 0 warnings**. Full installed-host
+workflow acceptance remains open.
+
+[Release notes and verification](docs/releases/native-v0.2.0-beta.12.md) ·
+[Checksums](https://github.com/Auda29/twincat-assistant/releases/download/native-v0.2.0-beta.12/SHA256.txt) ·
+[Build provenance](https://github.com/Auda29/twincat-assistant/releases/download/native-v0.2.0-beta.12/BUILD_PROVENANCE.json)
 
 ## Getting started
 
@@ -52,7 +74,9 @@ installed Beckhoff InfoSys help.
 4. For documentation questions, use **Knowledge search** to discover and prepare
    your installed InfoSys help. See [documentation setup](docs/KNOWLEDGE_SETUP.md).
 5. In a bound project chat, choose **Editor** or **Debug** in the composer.
-   Follow the native consent dialog and confirm each requested build, edit or creation.
+   Editor requires native consent. Debug connects read-only to the configured
+   target by default, with manual confirmation available in settings.
+   Confirm each requested build, edit, rollback or creation separately.
    See the [profile guide](docs/EDITOR_PROFILE.md).
 
 The native host has separate x86 and amd64 builds. Live IDE testing currently
@@ -69,8 +93,8 @@ across the bound PLC project. Each edit or new object requires separate native
 approval. Automation Interface edits may persist directly to disk. Edits to a
 supported open XML buffer remain unsaved. Creating an object writes its file
 or updates its owning POU file immediately, with project changes pending save.
-Debug reads scalar symbols from the already logged-in PLC. Editor and Debug can
-each request a separately approved selective PLC build.
+Debug reads and watches scalar symbols from the already logged-in PLC. Editor
+and Debug can each request a separately approved selective PLC build.
 
 PLC activation, download, Online Change and runtime control are outside the
 profile permissions. Installed-host workflow acceptance and extraction

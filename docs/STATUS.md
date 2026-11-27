@@ -1,6 +1,9 @@
 # Implementation status
 
-**Beta 12.** Application `0.2.0-beta.12` / native `0.2.0.18`.
+## Current release, 2026-11-27
+
+**Beta 12 published.** Application `0.2.0-beta.12` / native `0.2.0.18` is
+[available on GitHub](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.12).
 [Beta 12](releases/native-v0.2.0-beta.12.md) adopts Engineering MCP 0.5.13 with
 read-only Debug waits and watches, separate dynamic Editor and Debug tool
 names, color-highlighted side-by-side source approvals, reliable profile
@@ -8,6 +11,45 @@ switching and corrected selective build preflight. An isolated live run on
 TwinCAT 3.1.4024.78 x86 verified clean and unsaved project detection and a
 selective build with 0 errors on a standard zero-import PLC project.
 Installed-host workflow acceptance remains open.
+
+| Area | Released behavior and limits |
+| --- | --- |
+| Analysis | Read-only saved project and documentation tools; explicit context snapshots |
+| Editor | Project-wide ST discovery, read/preview, individually approved edits, conditional rollback and object creation |
+| Debug | Read-only scalar samples, condition waits up to 120 seconds, bounded symbol watches; existing PLC login required |
+| Builds | Individually approved selective PLC builds, build-owned output/diagnostics and guarded native navigation; no implicit saving or deployment |
+| Chat and UI | Persistent project/general chats, DE/EN language, profile changes preserving the selected chat and queued follow-ups |
+| Delivery | Windows x64 installer for TcXaeShell 15 x86 / TwinCAT 3.1.4024.78; Engineering 0.5.13 and Knowledge 0.1.2 |
+
+The release tag and build source are
+`201a9f0ccbbbc099ef5edc6a3675168c2f70536b`. The official
+`scripts/Build-Release.ps1` local Windows pipeline passed all **23 stages**,
+including packaged startup with both MCPs, restart/state preservation, installer
+recovery fixtures and extraction verification of **21,623 files**. All three
+published assets matched the local files by size and SHA-256. The published
+[build provenance](https://github.com/Auda29/twincat-assistant/releases/download/native-v0.2.0-beta.12/BUILD_PROVENANCE.json)
+records `local-windows-source-build`, `sourceClean: true`,
+`realHostInstallation: false` and `realProviderLogin: false`.
+
+The pre-release checks passed 230 Node tests, 1,343 native regressions,
+122 WPF/WebView2 startup checks and three backend startup checks.
+The [release notes](releases/native-v0.2.0-beta.12.md) separate these checks from
+the isolated live TwinCAT proof. GitHub Pages built both language pages from
+the release commit.
+
+Remaining work includes full installed-host Editor/Debug/build workflows,
+diagnostic navigation, lifecycle/provider-login/update/rollback acceptance,
+real-corpus extraction quality and performance, and real-host 4026/Shell64
+compatibility. Inline completion is not implemented. PLC activation, download,
+Online Change, variable writes/forcing and runtime control are outside the
+profile permissions. See [Roadmap](ROADMAP.md) for exit gates.
+
+## Historical release and development evidence
+
+The entries below describe their original versions and test conditions. In
+particular, references to inactive source tools, unimplemented builds or
+unpublished installers do not describe Beta 12. The current release summary
+above and [profile guide](EDITOR_PROFILE.md) define the active scope.
 
 **Beta 11.** Application `0.2.0-beta.11` / native `0.2.0.17`.
 Adopts Engineering MCP 0.5.11 for project-wide Structured Text discovery,
@@ -343,7 +385,7 @@ Computer Use fails with
 `native pipe unavailable` / `os error 2`; component checks remain separate evidence.
 See [the integration contract](CHAT_INTEGRATION.md).
 
-## Current position and next action
+## Historical position and next action, pre-beta
 
 - `feat/twincat-runtime-ui` now builds the pinned OpenCode implementation
   unchanged and connects the existing OpenChamber composer through a source
@@ -597,7 +639,7 @@ clone private MCP repositories, or validate unsaved editors/model answers. A
 green lifecycle job is not native acceptance. See
 [security audit](SECURITY_AUDIT.md) for release blockers.
 
-## Not implemented / external acceptance required
+## Historical prototype gaps / external acceptance required
 
 - Complete x86 lifecycle/focus/resize/cold-start acceptance beyond the confirmed
   smoke test; actual installation and all native acceptance in TcXaeShell64.

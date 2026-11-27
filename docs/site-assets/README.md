@@ -20,10 +20,15 @@ Both languages label it as an illustration and link to the real screenshot
 section. It is independent of the unchanged original PNG.
 
 Release links and current capability text refer to published
-`native-v0.2.0-beta.5`, including Engineering 0.5.3 and Knowledge 0.1.2.
-Analysis remains read-only; project-bound build tools require explicit native
-approval. The source-editor development is retained but inactive. The original
-screenshot remains dated 2026-11-11 and is not presented as Beta 5 acceptance.
-The package version is `0.2.0-beta.5`, and the
+`native-v0.2.0-beta.12`, including Engineering 0.5.13 and Knowledge 0.1.2.
+Analysis remains read-only. Editor supports approved ST edits, conditional
+rollback and object creation. Debug reads and watches scalar symbols and waits
+for conditions. Each selective build requires separate native approval.
+Profile switches preserve the selected chat and queued follow-ups.
+Both pages link to the published installer, checksums and build provenance.
+They distinguish the isolated live TwinCAT build proof from the still-open
+installed-host workflow acceptance. The original screenshot remains dated
+2026-11-11 and is not presented as Beta 12 acceptance.
+The package version is `0.2.0-beta.12`, and the
 supported installation target is TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on
 Windows x64. Shell64/4026 is preparation only, not an accepted installation.

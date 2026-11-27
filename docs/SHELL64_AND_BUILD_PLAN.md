@@ -1,12 +1,15 @@
 # Shell64 preparation and build diagnostics
 
-## Current checkpoint, 2026-11-12
+## Current checkpoint, 2026-11-27
 
-[Beta 5](releases/native-v0.2.0-beta.5.md) implements selective PLC builds,
+[Beta 12](releases/native-v0.2.0-beta.12.md) implements selective PLC builds,
 build-owned diagnostics and guarded native navigation on the eligible
-4024.78 / TcXaeShell 15 x86 host. Each build needs native approval; installed-host
-acceptance remains open. See [Build tools](EDITOR_PROFILE.md) for the current
-scope and [Roadmap](ROADMAP.md) for remaining work.
+4024.78 / TcXaeShell 15 x86 host. Each build needs native approval. An isolated
+live run verified saved/unsaved project detection and a successful selective
+build on a standard zero-import PLC project through Engineering 0.5.13.
+Installed-host workflow and diagnostic-navigation acceptance remain open.
+See [profiles and builds](EDITOR_PROFILE.md) for the current scope and
+[Roadmap](ROADMAP.md) for remaining work.
 
 4026/Shell64 remains a separate, disabled installation target. The operator has
 identified an IPC reporting TwinCAT 4026.26; that does not prove extension loading,

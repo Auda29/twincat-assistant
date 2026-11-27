@@ -1,5 +1,8 @@
 # TwinCAT Assistant 0.2.0 Beta 12
 
+Published on **2026-11-27** as [TwinCAT Assistant 0.2.0 Beta 12](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.12).
+Application `0.2.0-beta.12` uses native version `0.2.0.18`.
+
 ## Changes since Beta 11
 
 - Beta 12 includes four additional read-only Debug tools through Engineering
@@ -31,10 +34,25 @@
 
 ## Installation and verification
 
-Application version `0.2.0-beta.12` uses native version `0.2.0.18`. The
-supported target is TwinCAT 3.1.4024.78 with TcXaeShell 15 x86 on Windows x64.
-See the [installation guide](../INSTALLATION.md) and
-[profile guide](../EDITOR_PROFILE.md).
+The supported target is TwinCAT 3.1.4024.78 with TcXaeShell 15 x86 on Windows x64.
+.NET 8 runtime, .NET Framework, WebView2 and access to a supported model provider
+are required. TwinCAT 4026 / Shell64 is not an enabled installer target.
+
+1. Download the installer and `SHA256.txt` linked below. Compare the setup hash
+   with `Get-FileHash -Algorithm SHA256 <path-to-installer>` before running it.
+2. Close TcXaeShell and run the setup EXE. Confirm UAC with the Windows account
+   that uses the Assistant. Update a managed installation in its existing
+   directory; no uninstall, Git checkout, npm or local compilation is required.
+   Old unpackaged prototypes have separate
+   [migration instructions](../PROTOTYPE_PROFILE_MIGRATION_20261109.md).
+3. Reopen TwinCAT, open the Assistant window, connect your provider and select a
+   model. For documentation search, prepare your local InfoSys help through
+   [Knowledge setup](../KNOWLEDGE_SETUP.md).
+4. Use Analysis for read-only questions. Select Editor or Debug in a bound
+   project chat as described in the [profile guide](../EDITOR_PROFILE.md).
+   Each edit, rollback, creation and build requires separate native approval.
+
+See the [development installation guide](../INSTALLATION.md) for source builds.
 
 The release pins `engineering-v0.5.13` at
 `aee9b6d5c39dc7b03b87725e8fec61199c29f689` with native source tree SHA-256
@@ -71,3 +89,25 @@ exited. The pre-existing TcXaeShell and WindowsHost retained their PIDs and
 start times, and the temporary directory was removed. The build ran offline
 against the synthetic project. Installed-host workflow acceptance remains
 open.
+
+## Published build and downloads
+
+The release tag and installer source are
+`201a9f0ccbbbc099ef5edc6a3675168c2f70536b`. The complete official
+`scripts/Build-Release.ps1` pipeline exited successfully after all **23 stages**,
+including packaged startup with both MCPs, restart/state preservation,
+installer recovery fixtures and extraction verification of **21,623 files**.
+This was a local Windows source build, not a hosted installer build.
+
+- [Windows x64 installer](https://github.com/Auda29/twincat-assistant/releases/download/native-v0.2.0-beta.12/TwinCAT-Assistant-0.2.0-beta.12-x64-setup.exe)
+- [SHA-256 checksums](https://github.com/Auda29/twincat-assistant/releases/download/native-v0.2.0-beta.12/SHA256.txt)
+- [Build provenance](https://github.com/Auda29/twincat-assistant/releases/download/native-v0.2.0-beta.12/BUILD_PROVENANCE.json)
+
+All three published downloads matched the local release files by size and
+SHA-256. The installer is 217,273,856 bytes with SHA-256
+`7e41cb09d4ea18a195be51b5a6a92414f8a716fc2c460cb7c3196980a95439ec`.
+Provenance records the verified Engineering 0.5.13 and Knowledge 0.1.2 pins,
+`sourceClean: true`, `realHostInstallation: false` and `realProviderLogin: false`.
+The release process did not install the application or perform a real provider
+login. Full installed-host workflows, real update/rollback with retained login,
+and real-corpus extraction quality/performance remain open.

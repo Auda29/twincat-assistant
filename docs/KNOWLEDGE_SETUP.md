@@ -100,7 +100,9 @@ In an earlier local test with a German 49,970-article package, the adapter measu
 searches across separate clients, and 452 milliseconds to open a returned topic.
 Exactly one backend started. Full validation on a fresh runtime start remains
 an upstream cost; this change removes repeated loads within that runtime rather
-than bypassing package validation. These historical measurements do not establish Beta 5 typed extraction quality or performance on an operator corpus.
+than bypassing package validation. These historical measurements do not establish
+the released Knowledge 0.1.2 typed extraction quality or performance on an
+operator corpus.
 
 ## Open investigation: slow Knowledge connection
 
@@ -108,7 +110,8 @@ Status: still open. The [2026-11-02 investigation](KNOWLEDGE_STARTUP_INVESTIGATI
 attributes most startup time to full-corpus validation, documents a tested local
 Knowledge optimization and explains the earlier fixture's two backend starts.
 At that historical checkpoint, the candidate still needed about a minute and
-was not installed. That is not the installation status of published Beta 5.
+was not installed. That checkpoint does not describe the current published
+[Beta 12 release](releases/native-v0.2.0-beta.12.md).
 The historical operator-profile write attribution also remains open.
 
 Originally recorded on 2026-10-30. The recording

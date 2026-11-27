@@ -180,4 +180,6 @@ All fixtures use isolated state, synthetic PLC files and synthetic provider
 credentials. They make no model request. Passing these tests does not prove
 installed IDE lifecycle behavior, actual documentation quality, live unsaved
 buffer semantics, PLC compilation or machine behavior. Operator acceptance with
-a real activated corpus and the supported live x86 host remains open. See the Beta 5 release scope for current evidence and constraints.
+a real activated corpus and the supported live x86 host remains open. These
+fixture limits are separate from the isolated live build verification recorded
+in the [Beta 12 release scope](releases/native-v0.2.0-beta.12.md).

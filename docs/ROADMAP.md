@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Priorities updated: **2026-11-12**. Older implementation/milestone snapshots retain
+Release status reconciled: **2026-11-27**. Older implementation/milestone snapshots retain
 their dates. [Status](STATUS.md) records evidence; this document defines work order
 and exit gates. [MVP](MVP.md) describes the eventual product, not current prototype
 permissions. No delivery dates or effort estimates are committed.
@@ -8,6 +8,45 @@ permissions. No delivery dates or effort estimates are committed.
 The [solution startup investigation](SOLUTION_STARTUP_INVESTIGATION.md) remains
 open. Host acceptance must include cold startup with restored PLC editors and the
 Assistant window. The observed toolbox wait has not been attributed to Assistant.
+
+## Current release and remaining work
+
+[Beta 12](releases/native-v0.2.0-beta.12.md) is published for TwinCAT 3.1.4024.78 /
+TcXaeShell 15 x86. It includes the packaged installer, persistent project chats,
+shared German/English UI, Analysis, approved ST editing/rollback and object
+creation in Editor, and read-only Debug samples, condition waits and watches.
+Editor and Debug support separately approved selective builds and build-owned
+diagnostics. Engineering is pinned to 0.5.13 and Knowledge to 0.1.2.
+
+The complete local source-to-installer pipeline passes all 23 stages. An isolated
+live TwinCAT run verifies saved/unsaved project detection and a selective build
+with 0 errors and 0 warnings. These checks do not close the installed-host gates.
+
+Remaining work and exit gates:
+
+- **Installed-host acceptance:** exercise Editor edits/creation/rollback, Debug
+  waits/watches, profile changes with queued follow-ups, builds and diagnostic
+  navigation in the installed application. Verify provider login, managed
+  update/rollback with retained conversations and credentials, cold startup,
+  restored editors and multiple-IDE isolation.
+- **Knowledge acceptance:** verify typed extraction quality, citations and
+  startup/search performance on a real operator corpus. Earlier local corpus
+  measurements do not establish acceptance for the released typed tools.
+- **TwinCAT 4026 / TcXaeShell64:** keep the installation target disabled until
+  extension loading, editor/context behavior, chat, both MCPs and engineering
+  operations pass on the exact real host. Full Visual Studio 2022 integration
+  follows Shell64 under the previously agreed host priority.
+- **Inline completion:** remains unimplemented. Define its editor support,
+  context/disclosure contract, latency and explicit accept/discard behavior
+  before implementation.
+
+The original priority list below remains the product scope. Items 5 (Editor)
+and 6 (localization) now ship in the x86 beta, with the acceptance limits above;
+item 7 (inline completion) remains future work. Earlier claims that source tools
+were disabled describe their dated releases. See [current status](STATUS.md)
+and [profiles](EDITOR_PROFILE.md) for the active scope.
+
+## Historical priorities and checkpoints
 
 ## Agreed priorities (2026-11-02)
 
@@ -161,7 +200,7 @@ Editor profile and inline completion build on it. The
 [Knowledge startup investigation](KNOWLEDGE_STARTUP_INVESTIGATION.md) remains
 separate and open. Write/compiler milestones retain their own acceptance.
 
-## Current implementation branch
+## Historical implementation branch, 2026-10-29
 
 As of 2026-10-29, `feat/twincat-runtime-ui` builds the pinned OpenCode source
 unchanged and adds a source contract to OpenChamber's existing composer. Project
@@ -171,7 +210,7 @@ and context/attachment observations are implemented. See
 [stepwise plan](TWINCAT_RUNTIME_UI_PLAN.md). Selecting modules to remove remains
 a joint next step. Native installation and engineering milestones stay separate.
 
-## Where we are now
+## Historical track status, pre-beta
 
 | Track | State | Evidence / next gate |
 | --- | --- | --- |

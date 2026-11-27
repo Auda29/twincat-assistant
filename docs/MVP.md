@@ -2,15 +2,19 @@
 
 ## Current delivery boundary
 
-This document remains the native product acceptance contract. The local
-foundation in [status](STATUS.md) does not satisfy full dual-host/editor/chat,
-live IDE write, dirty-editor or real compiler acceptance. Portable component
-and synthetic upstream tests are supplementary evidence only.
+This document defines the product requirements and acceptance contract.
+[Beta 12](releases/native-v0.2.0-beta.12.md) ships Analysis, Editor and Debug on
+TwinCAT 3.1.4024.78 / TcXaeShell 15 x86. Analysis is read-only. Editor supports
+approved ST edits, conditional rollback and object creation; Editor and Debug
+support separately approved selective PLC builds. Debug samples, waits on and
+watches scalar symbols read-only from an existing PLC login.
 
-The current milestone is strictly **read-only M1**: x86 has passed a user-reported
-window/docking smoke test, not full native acceptance. Writes/builds described
-below are future M3/M4 product requirements, not permission to implement or run
-them now. See the [roadmap](ROADMAP.md) for the current scope and order.
+The release passes the complete local source-to-installer pipeline. An isolated
+live TwinCAT run verifies project dirty-state detection and a successful selective
+build on a synthetic project. Full installed-host editor/chat/build acceptance,
+real-corpus quality and performance, and TcXaeShell64 acceptance remain open.
+This evidence does not complete the full MVP. See [Status](STATUS.md) for evidence
+and [Roadmap](ROADMAP.md) for the remaining work and exit gates.
 
 ## Goal
 

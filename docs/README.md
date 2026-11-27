@@ -4,11 +4,12 @@ Repository documentation and GitHub release titles and notes are maintained in
 English. The product UI remains available in German and English. Preserve
 localized UI/error quotations when needed as evidence, with an English explanation.
 
-The MVP documents describe the target product. Start with [Status](STATUS.md) for
-what exists and has been tested, then [Roadmap](ROADMAP.md) for the work sequence
-and exit gates. The current planning branch describes the
-[OpenCode/OpenChamber specialization for TwinCAT](TWINCAT_RUNTIME_UI_PLAN.md).
-Native acceptance and future engineering write milestones remain separate.
+Start with [Status](STATUS.md) for the released scope and verification evidence,
+then [Roadmap](ROADMAP.md) for remaining work and exit gates. [MVP](MVP.md)
+defines the full product requirements. Dated prototype and planning documents
+retain their historical scope; they do not override the current profile guide.
+
+## Current release
 
 [0.2.0 Beta 12](releases/native-v0.2.0-beta.12.md) adopts Engineering MCP 0.5.13
 with Debug waits and watches, separate dynamic MCP server names,
@@ -16,29 +17,42 @@ side-by-side source approvals, reliable profile switching and corrected
 selective build preflight. The [latest published release](https://github.com/Auda29/twincat-assistant/releases/latest)
 includes the installer, checksums and provenance.
 
-Previous release: [0.2.0 Beta 11](releases/native-v0.2.0-beta.11.md), with project-wide Structured Text discovery, approved edits and object creation.
+Published on **2026-11-27**, application `0.2.0-beta.12` / native `0.2.0.18`
+is built from `201a9f0ccbbbc099ef5edc6a3675168c2f70536b`. All 23 stages of
+the local Windows release pipeline passed. Full installed-host workflow
+acceptance and real-corpus quality/performance checks remain open.
 
-Previous release: [0.2.0 Beta 9](releases/native-v0.2.0-beta.9.md), updating Engineering MCP to `0.5.7` with TwinCAT `<PlcProjectDef>` association and COM invocation fixes.
+## Start here
 
-Previous release: [0.2.0 Beta 8](releases/native-v0.2.0-beta.8.md), consolidating `main` with the shared composer profile menu and clearer Debug availability guidance.
+- [Install Beta 12 and review verification](releases/native-v0.2.0-beta.12.md)
+- [Profiles and native approvals](EDITOR_PROFILE.md)
+- [Project chats and attachments](CHAT_INTEGRATION.md)
+- [Set up Beckhoff documentation search](KNOWLEDGE_SETUP.md)
+- [Architecture and data boundaries](ARCHITECTURE.md)
+- [Current status](STATUS.md) and [remaining work](ROADMAP.md)
 
-Previous release: [0.2.0 Beta 7](releases/native-v0.2.0-beta.7.md), providing Analysis, Editor and Debug in the chat composer.
+The released MCP inputs are Engineering 0.5.13 and Knowledge 0.1.2. The
+[MCP-first integration record](MCP_P1_INTEGRATION_20261112.md) retains earlier
+private-development evidence.
 
-Previous release: [0.2.0 Beta 6](releases/native-v0.2.0-beta.6.md), with Windows chat restart recovery, background build readiness and more precise Engineering diagnostics.
+## Earlier releases
 
-Previous release: [0.2.0 Beta 5](releases/native-v0.2.0-beta.5.md), with the initial optional build tools, typed Knowledge tools and pinned-history fix.
+| Release | Main changes |
+| --- | --- |
+| [Beta 11](releases/native-v0.2.0-beta.11.md) | Project-wide ST discovery, approved edits and object creation |
+| [Beta 10](releases/native-v0.2.0-beta.10.md) | Automatic read-only Debug connection; Engineering 0.5.8 |
+| [Beta 9](releases/native-v0.2.0-beta.9.md) | PLC association and COM invocation fixes; Engineering 0.5.7 |
+| [Beta 8](releases/native-v0.2.0-beta.8.md) | Shared composer profile menu and clearer Debug availability |
+| [Beta 7](releases/native-v0.2.0-beta.7.md) | Analysis, Editor and Debug profiles |
+| [Beta 6](releases/native-v0.2.0-beta.6.md) | Chat restart recovery and background build readiness |
+| [Beta 5](releases/native-v0.2.0-beta.5.md) | Selective builds, typed Knowledge tools and pinned-history fix |
+| [Beta 4](releases/native-v0.2.0-beta.4.md) | Startup/member-context hardening and Knowledge validation overlay |
+| [Beta 3](releases/native-v0.2.0-beta.3.md) | Startup performance corrections and shared product icon |
+| [Beta 2](releases/native-v0.2.0-beta.2.md) | Extraction fix and version-aware installer |
+| [Beta 1](releases/native-v0.2.0-beta.1.md) / [Setup 1](releases/native-v0.2.0-beta.1-setup.1.md) | Product cleanup, DE/EN language selection and installer extraction correction |
 
-Start with [Profiles and approvals](EDITOR_PROFILE.md), [Knowledge setup](KNOWLEDGE_SETUP.md) and [current status](STATUS.md). The released inputs are Engineering 0.5.13 and Knowledge 0.1.2. The [MCP-first integration record](MCP_P1_INTEGRATION_20261112.md) retains private-development evidence, separately from active release scope.
+## Development and historical evidence
 
-Previous release: [0.2.0 Beta 4](releases/native-v0.2.0-beta.4.md), including startup/member-context hardening and the Knowledge validation overlay.
-
-Previous release: [0.2.0 Beta 3](releases/native-v0.2.0-beta.3.md), with UI-thread/startup performance corrections and the shared product icon. The [Beta 3 release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.3) includes setup, checksums and build provenance.
-
-Previous application: [0.2.0 Beta 2](releases/native-v0.2.0-beta.2.md), with the integrated extraction fix and version-aware wizard. The [Beta 2 release](https://github.com/Auda29/twincat-assistant/releases/tag/native-v0.2.0-beta.2) includes the setup EXE, checksums and build provenance.
-
-Previous application: [0.2.0 Beta 1](releases/native-v0.2.0-beta.1.md), including product cleanup and saved DE/EN language selection. [Setup 1](releases/native-v0.2.0-beta.1-setup.1.md) corrects extraction of empty Windows ZIP directories. Installed Beta language acceptance and the remaining host gates stay open. The [2026-11-06 checkpoint](INTEGRATED_ACCEPTANCE_20261106.md) is retained as historical evidence.
-
-- [Beta 1 release and update](releases/native-v0.2.0-beta.1.md)
 - [Preview 6 native chat startup fix](releases/native-v0.2.0-preview.6.md)
 - [Preview 5 Unicode project-path fix](releases/native-v0.2.0-preview.5.md)
 - [Preview 4 project-setup fix and update](releases/native-v0.2.0-preview.4.md)
@@ -65,19 +79,19 @@ Previous application: [0.2.0 Beta 1](releases/native-v0.2.0-beta.1.md), includin
 - [First actual CI installation and installed native backend checks](HOST_INSTALLATION_20261105.md)
 - [Integrated alpha 0.2.0-preview.2 build evidence](releases/alpha-0.2.0-preview.2.md)
 - [Managed profile and project configuration across package versions](INSTALLER_RELOCATION.md)
-- [Analysis profile prompts, migration and evaluation cases](PROFILE_PROMPTS.md)
+- [Profile prompts, migration and evaluation cases](PROFILE_PROMPTS.md)
 - [Real model and native WebView renderer acceptance](PROMPT_ACCEPTANCE_20261105.md)
 - [OpenChamber extension](EXTENSION.md)
 - [Diagnostic bridge and portable safety core](BRIDGE.md)
 - [Slow solution load and PLC editor restoration investigation](SOLUTION_STARTUP_INVESTIGATION.md)
 - [Beta 2 UI-thread configuration work and startup performance correction](STARTUP_PERFORMANCE_20261110.md)
-- [Unreleased beta hardening, Knowledge overlay and automated release pipeline](BETA_HARDENING_20261110.md)
+- [Historical beta hardening, Knowledge overlay and release pipeline](BETA_HARDENING_20261110.md)
 - [Native Windows acceptance](WINDOWS_ACCEPTANCE.md)
 - [Active editor implementation and acceptance](ACTIVE_EDITOR.md)
 - [Native chat start and connection](NATIVE_CHAT.md)
-- [Native Knowledge and TwinCAT MCP integration, 0.1.8 preview](NATIVE_MCP.md)
-- [Automatic Beckhoff documentation setup, 0.1.9](KNOWLEDGE_SETUP.md)
-- [Project-bound native chat and compact UI, 0.1.6 candidate](CHAT_INTEGRATION.md)
+- [Native Knowledge and Engineering MCP integration](NATIVE_MCP.md)
+- [Automatic Beckhoff documentation setup](KNOWLEDGE_SETUP.md)
+- [Project-bound native chat and integration history](CHAT_INTEGRATION.md)
 - [Dependency audit and release blockers](SECURITY_AUDIT.md)
 - [TwinCAT Assistant 0.2.0 Preview release notes](releases/native-v0.2.0-preview.1.md)
 - [Native 0.1.3 preview release notes](releases/native-v0.1.3.md)
@@ -106,7 +120,9 @@ Previous application: [0.2.0 Beta 1](releases/native-v0.2.0-beta.1.md), includin
    selection is diagnostic scaffolding, not the normal product workflow.
 7. Automatic local context is not source-disclosure consent. Current native work
    keeps Analysis read-only; each optional PLC build requires native approval.
-   Source edits and runtime actions remain outside the release permissions.
+   Editor source edits, rollback and object creation require individual native
+   approval. Debug is read-only. PLC runtime mutations remain outside the
+   release permissions.
 
 ## Updating the Plan
 

@@ -3,16 +3,17 @@
 For packaged installation, use the [Beta 12 release instructions](releases/native-v0.2.0-beta.12.md).
 The commands below are for development checkouts, not prerequisites for using the EXE installer.
 
-This is a development checkout, not a supported TwinCAT installer. Commands are
-run at the repository root. Windows operator commands now require the built
-native helper for safe JSON reads and Job Object ownership. Build it before
-running `init`, `doctor`, tests, or `start` on Windows. See
-[native prototype](NATIVE_PROTOTYPE.md) for build commands and the separate
-32-/64-bit host targets. Native IDE installation acceptance remains open.
+Run the development commands at the repository root. Windows operator commands
+require the built native helper for safe JSON reads and Job Object ownership.
+Build it before running `init`, `doctor`, tests or `start` on Windows.
+Beta 12's packaged installation target is TcXaeShell 15 x86 / TwinCAT
+3.1.4024.78 on Windows x64. The separate amd64 build is development groundwork;
+4026/Shell64 is not an enabled installer target. Full installed-host workflow
+acceptance remains open; see [Windows acceptance](WINDOWS_ACCEPTANCE.md).
 
-The 0.1.4 chat-integration candidate also requires the locked root and `upstream`
-Node dependencies. `Build-Native.ps1` verifies and embeds the adapter against the
-pinned OpenChamber assets before compiling. A mismatched distribution is refused.
+Native chat builds require the locked root and `upstream` Node dependencies.
+`Build-Native.ps1` verifies and embeds the adapter against the pinned OpenChamber
+assets before compiling. A mismatched distribution is refused.
 See [project chat setup and consent](CHAT_INTEGRATION.md) for the native workflow
 and `Test-ChatIntegration.ps1` for the actual WPF/WebView2/runtime fixture check.
 Candidate `0.1.2` and its active-editor verification boundary are documented in

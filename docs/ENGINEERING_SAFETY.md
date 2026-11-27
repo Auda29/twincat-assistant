@@ -2,13 +2,20 @@
 
 ## Implemented boundary
 
-Analysis remains read-only with default-deny tool and provider policies. The
-native [Build tools profile](EDITOR_PROFILE.md) connects the Engineering-owned
-provider for explicit builds and diagnostics, with independent native approval.
-The source-development implementation is retained but disabled in Beta 5 at
-catalog, permission, accessor, dispatch and approval boundaries.
-Normal-ST writes remain blocked as documented in
-[the transaction analysis](NORMAL_ST_TRANSACTIONS.md).
+Beta 12 keeps Analysis read-only with default-deny tool and provider policies.
+The project-bound [Editor and Debug profiles](EDITOR_PROFILE.md) connect the
+Engineering-owned provider. Each selective build needs independent native
+approval. Editor supports approved ST edits, conditional rollback and object
+creation; edit and rollback approvals show the exact side-by-side diff.
+Debug samples, waits on and watches approved scalar symbols read-only.
+
+Automation Interface edits may persist directly to disk. Supported open XML
+buffer edits remain unsaved. The native ST text-document fallback is read-only;
+it is separate from the active Automation Interface edit path. See
+[Structured Text transaction paths](NORMAL_ST_TRANSACTIONS.md). New objects are
+written immediately, with project changes pending save. Creation has no source
+journal or automatic rollback. Unknown mutation outcomes require inspection
+before continuing, without retrying the operation.
 The older portable C# core and diagnostic [pipe bridge](BRIDGE.md) remain separate
 test infrastructure; their injected adapter is not a second live compiler/source
 implementation. The requirements below still apply to the native integration.
@@ -39,10 +46,12 @@ proof of authentication nor permission to write.
 Results indicate whether they come from saved files or the live engineering
 model. These states must not be mixed without making the distinction visible.
 
-The MVP does not modify an unsaved target object. The user must explicitly save
-their state, after which the agent must read it again. If reliable dirty-state
-detection is unavailable, the write path remains disabled. The plugin does not
-indiscriminately save the entire solution.
+Automation Interface mutations refuse conflicting or unverified unsaved editor
+changes. Supported XML-buffer edits use their own verified baseline and leave
+the buffer unsaved. If a tool requests a save, the user saves explicitly in
+TwinCAT and the agent reads the state again before requesting another operation.
+If reliable dirty-state evidence is unavailable, the affected operation is
+refused. The plugin does not indiscriminately save the entire solution.
 
 ## Change Workflow
 
@@ -88,9 +97,10 @@ already started COM call or build. This limitation is made visible in the thread
 
 ## Rollback
 
-The agent's before/after states are stored locally. Rollback is allowed only if
+Applied edits retain before/after states in a session journal. Rollback requires
+separate native approval and is allowed only if
 the current state matches the agent's post-change state. Newer user changes
-block automatic restoration.
+block restoration. Object creation has no source journal or automatic rollback.
 
 Neither a global Git reset nor indiscriminate discarding of IDE changes is used.
 Native undo integration is evaluated separately; its availability is not assumed.

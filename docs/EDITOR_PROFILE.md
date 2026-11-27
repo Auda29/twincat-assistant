@@ -5,8 +5,10 @@ These profiles apply to TwinCAT Assistant 0.2.0 Beta 12 with Engineering MCP 0.5
 To use Editor or Debug, open a chat for the active PLC project in this
 Assistant window. With the PLC project selected in TwinCAT, click **+**
 in the Assistant to create a chat for that project. Selecting Editor or
-Debug requests native consent. Switching back to Analysis or changing
-chat, project or runtime owner revokes the grant.
+Debug activates a project-bound grant. Editor asks for native consent; Debug
+connects automatically by default as described below. Switching back to Analysis
+or changing chat, project or runtime owner revokes the grant. Switching profiles
+preserves the selected chat and queued follow-ups.
 
 | Profile | Access |
 | --- | --- |

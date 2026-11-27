@@ -1,6 +1,23 @@
 # Native project chat integration
 
-Beta 5 supports explicit per-chat Build tools while Analysis remains read-only. Source-editor operations are inactive; existing context and attachments remain. See [Beta 5 release scope](releases/native-v0.2.0-beta.5.md). Pinned history survives transient project-context invalidation, with actions paused until the binding is confirmed again.
+Beta 12 offers Analysis, Editor and Debug in the project chat composer.
+Analysis remains read-only. Editor supports native-approved ST edits, rollback,
+object creation and selective builds. Debug reads and watches live scalar
+symbols, waits for conditions and supports separately approved builds.
+See [profiles and approvals](EDITOR_PROFILE.md) and
+[Beta 12 release scope](releases/native-v0.2.0-beta.12.md).
+
+Switching profiles preserves the selected chat and queued follow-ups. The host
+revokes the previous profile and removes its temporary MCP server before
+registering the next one. Pinned history survives transient project-context
+invalidation, with actions paused until the binding is confirmed again.
+Host and chat share a saved German/English language choice.
+
+## Historical chat integration evidence
+
+The candidate descriptions and workflow observations below retain their original
+version boundaries. Use the profile guide above and
+[runtime integration](RUNTIME_INTEGRATION.md) for current behavior.
 
 The source integration is documented in
 [Runtime integration](RUNTIME_INTEGRATION.md). It replaces bootstrap-cache

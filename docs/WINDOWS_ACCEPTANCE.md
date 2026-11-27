@@ -1,5 +1,35 @@
 # Native Windows acceptance gate
 
+## Current release boundary, 2026-11-27
+
+[Beta 12](releases/native-v0.2.0-beta.12.md) ships approved Editor changes,
+read-only Debug and separately approved selective builds for TwinCAT
+3.1.4024.78 / TcXaeShell 15 x86. The local release pipeline passes all 23 stages.
+An isolated private TwinCAT instance verified clean/unsaved project detection
+and a selective build with 0 errors and 0 warnings on a synthetic standard PLC
+project. This does not establish acceptance of the installed application.
+
+Remaining installed-host checks include:
+
+- Editor discovery, edit/creation, diff approval and conditional rollback,
+  including unsaved changes and unknown outcomes.
+- Debug samples, waits, watches and revocation after target/context changes.
+- Profile switching with queued follow-ups and only the selected tool server.
+- Approved builds and native diagnostic navigation in the complete chat flow.
+- Cold startup/restored editors, focus/resizing, project/solution switching,
+  multiple-IDE isolation and shutdown/restart.
+- Real provider login and managed update/rollback with conversations,
+  configuration and credentials preserved.
+
+TcXaeShell64/4026 remains a disabled installer target until separate real-host
+acceptance passes. See [Status](STATUS.md) and [Roadmap](ROADMAP.md).
+
+## Historical prototype evidence and tracer requirements
+
+The versioned observations below retain their original acceptance boundaries.
+The read-only milestone and future-write labels describe those earlier slices;
+they do not describe Beta 12's released tool permissions.
+
 A read-only host prototype is included. The x86 development payload has passed a
 user-reported empty-solution menu/tool-window/docking smoke test, but native
 editor/chat acceptance and measured cold-start behavior are still open;

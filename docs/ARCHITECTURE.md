@@ -5,10 +5,10 @@ TwinCAT Assistant 0.2.0 Beta 12 embeds the source-built OpenChamber 2.1.1 interf
 ```text
 TcXaeShell x86 / native host
   WPF + WebView2 -> OpenChamber + OpenCode
-  Project binding, context, native build approval and diagnostics
+  Project binding, context, native source/build approvals and diagnostics
        | authenticated local transport
        +-- Knowledge MCP: local documentation corpus
-       +-- Engineering MCP: saved project reads and native build provider
+       +-- Engineering MCP: project reads, approved ST changes/builds, read-only Debug
 ```
 
 Analysis is the read-only default. Editor or Debug is bound to the selected project chat and native consent. Each selective build requires its own approval for the exact project, configuration and platform. Diagnostic navigation checks the build baseline and matching native ErrorItem. See [Profiles and native engineering](EDITOR_PROFILE.md).
@@ -18,8 +18,14 @@ and creation through the TwinCAT Automation Interface. These edits may persist
 directly to disk. Edits to a supported XML buffer remain unsaved. Debug reads
 scalar symbols through the local ADS router after checking the existing TwinCAT
 login. By default, it connects automatically to the project's configured AMS
-Net ID and ADS port in read-only mode (configurable in the `...` menu). See
+Net ID and ADS port in read-only mode (configurable in the `...` menu). It also
+supports condition waits of up to 120 seconds and bounded symbol watches. See
 [Structured Text transaction paths](NORMAL_ST_TRANSACTIONS.md).
+
+Analysis uses the static `engineering` MCP server. Editor and Debug use separate
+temporary `engineering_editor` and `engineering_debug` servers. Profile changes
+revoke the previous grant and remove its registration before enabling the next
+profile, while retaining the selected chat and queued follow-ups.
 
 The published dependencies are Engineering 0.5.13 (`engineering-v0.5.13`, `aee9b6d5c39dc7b03b87725e8fec61199c29f689`) and Knowledge 0.1.2 (`v0.1.2`, `84c437aea8e27da930a246e7bb3ae310e8e5d31d`). Knowledge provides nine read-only tools, including five typed symbol, library and error lookup tools. Its corpus is supplied and activated locally, not bundled; documented metadata and versions do not establish installed libraries. See [Knowledge setup](KNOWLEDGE_SETUP.md) and [native MCP integration](NATIVE_MCP.md).
 
@@ -45,4 +51,9 @@ Tool discovery alone is not evidence that content was received. See
 
 ## Eligibility and remaining acceptance
 
-The installation target is TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on Windows x64. TwinCAT 4026 and Shell64 are not enabled. Package and synthetic fixture evidence does not establish installed-host behavior: real build events, dirty-state checks and diagnostic navigation, real-corpus typed extraction quality and performance remain open. See [Beta 10 release scope](releases/native-v0.2.0-beta.10.md) and [status](STATUS.md).
+The installation target is TwinCAT 3.1.4024.78 / TcXaeShell 15 x86 on Windows x64.
+TwinCAT 4026 and Shell64 are not enabled. An isolated live run on a synthetic
+standard PLC project verified clean/unsaved project detection and a selective
+build with 0 errors and 0 warnings. Full installed-host workflows, diagnostic
+navigation, real-corpus typed extraction quality and performance remain open.
+See [Beta 12 release scope](releases/native-v0.2.0-beta.12.md) and [status](STATUS.md).

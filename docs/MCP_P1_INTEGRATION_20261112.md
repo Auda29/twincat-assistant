@@ -1,6 +1,11 @@
 # MCP-first integration, 2026-11-12
 
-Release update: Beta 5 adopts the published MCP versions and exposes only build,
+Current release: [Beta 12](releases/native-v0.2.0-beta.12.md) includes approved
+source edits, rollback and creation in Editor, plus read-only Debug waits and
+watches. See the [profile guide](EDITOR_PROFILE.md) for current permissions.
+The record below preserves the earlier private candidate and Beta 5 boundary.
+
+Historical release update, 2026-11-12: Beta 5 adopts the published MCP versions and exposes only build,
 session and diagnostic operations. All new source-editor paths are retained
 but inactive, as described in [the release scope](releases/native-v0.2.0-beta.5.md)
 and [profile guide](EDITOR_PROFILE.md). The following record describes the
