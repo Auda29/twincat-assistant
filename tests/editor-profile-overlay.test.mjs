@@ -248,14 +248,14 @@ test('overlay routes composer, controls, live submission and mobile display thro
   assert.match(dispatch, /beforeOptimisticInsert: refreshTwinCatSelection/);
   assert.match(dispatch, /refreshTwinCatSelection\(\)[\s\S]*const commandContext/);
   assert.match(dispatch, /validateProfile,[\s\S]*text: params.content/);
-  assert.match(client, /const prompt = .*\n +validate\(\)/);
+  assert.match(client, /const prompt = \([\s\S]*?\) => \{\n +validate\(\)\n +return call\("session.prompt"/);
   assert.match(client, /policy\?\.requireSettled\(\)[\s\S]*const agent = policy \? policy.profileForChat\(/);
   assert.match(client, /policy\?\.contextTexts\(params.id, agent, policy.isSelectedChat/);
   assert.match(review, /beforeOptimisticInsert:[\s\S]*sendContext.unshift\(\.\.\.policy.contextTexts/);
   assert.match(client, /validate\(\)\n +await call\("session.command"/);
 });
 
-test('queued prompts and slash commands wait for their selected chat and settled profile', { timeout: 30_000 }, async t => {
+test('queued prompts and slash commands enforce profile selection through dispatch', { timeout: 30_000 }, async t => {
   const checkout = new URL('../local-data/upstream/openchamber/', import.meta.url);
   try {
     await readFile(new URL('.git/HEAD', checkout));
@@ -287,11 +287,11 @@ test('queued prompts and slash commands wait for their selected chat and settled
     'const { sendMessage } = {',
     section(store, '  sendMessage: async (', '  // createSession\n'),
     '}',
-    section(client, 'export const isOpencodeNotFound', 'async function call<'),
+    section(client, 'const isSkillNotFound', 'async function call<'),
     'class TestClient {',
     section(client, '  private readonly deferredContextCancellations', '  /** Interrupts the running turn.'),
     '  assertRuntimeUnchanged() {}',
-    '  async resolveSkillMentions() { return { attached: [], unresolved: [] } }',
+    '  async resolveSkillMentions(names) { return { attached: transport.skills.filter(skill => names.includes(skill.name)), unresolved: [] } }',
     '  clientFor() { return transport }',
     '  async switchSessionAgent(_id, agent) { transport.agent = agent; await transport.selectionReady }',
     '}',
@@ -313,17 +313,28 @@ test('queued prompts and slash commands wait for their selected chat and settled
     ['/fixture queued command', 'chat changes while the synthetic response is held', 'lost'],
     ['queued prompt', 'chat changes while the synthetic request is dropped', 'dropped'],
     ['/fixture queued command', 'chat changes while the synthetic request is dropped', 'dropped'],
+    ['queued prompt', 'final response is lost after turn acceptance'],
+    ['/fixture queued command', 'final response is lost after turn acceptance'],
+    ['/fixture-skill queued prompt', 'chat changes after the final prompt is rejected for a missing skill'],
   ]) {
     await t.test(`${content}: ${interruption}`, { timeout: 10_000 }, async () => {
       const pauseKnowledge = interruption.endsWith('knowledge load');
       const switchChat = interruption.startsWith('chat changes');
       const pauseSynthetic = response !== undefined || interruption.endsWith('synthetic admission');
+      const lostFinalResponse = interruption === 'final response is lost after turn acceptance';
+      const missingSkill = interruption.endsWith('missing skill');
+      const pauseFinal = lostFinalResponse || missingSkill;
+      const turn = content.startsWith('/fixture ') ? 'command' : 'prompt';
       const syntheticError = new Error('Synthetic response lost');
       const cancellationError = new Error('Cancellation transport failure');
+      const finalError = new Error('Final response lost');
+      const skills = missingSkill ? [{ id: 'fixture-skill-id', name: 'fixture-skill' }] : [];
       class OpencodeApiError extends Error {
-        constructor(status) {
+        constructor(status, tag, detail) {
           super('OpenCode API failure');
           this.status = status;
+          this.tag = tag;
+          this.detail = detail;
         }
       }
       const { api, select, sendPolicy } = await makeBridge();
@@ -334,7 +345,7 @@ test('queued prompts and slash commands wait for their selected chat and settled
       api.twinCatSource.setContext('a', context);
       // Keep Analysis in both chats for the client setup race so comparing
       // agent names alone cannot detect the selection change.
-      if (pauseKnowledge || pauseSynthetic || !switchChat) approve(api);
+      if (pauseKnowledge || pauseSynthetic || pauseFinal || !switchChat) approve(api);
 
       const target = { sessionId: 'a', directory: chatA.currentSessionDirectory, runtimeKey: 'runtime' };
       const queued = { id: 'follow-up', content, text: content, sendConfig: { providerID: 'provider', modelID: 'model' } };
@@ -358,9 +369,18 @@ test('queued prompts and slash commands wait for their selected chat and settled
         history.push(...inbox.values(), record(kind, payload));
         inbox.clear();
       };
+      const dispatch = (kind, payload) => {
+        if (missingSkill && payload.skills?.length) record(kind, payload);
+        else deliver(kind, payload);
+        if (pauseFinal) {
+          paused.resolve();
+          return hold.promise;
+        }
+      };
       const transport = {
+        skills,
         get selectionReady() {
-          if (pauseKnowledge || pauseSynthetic) return;
+          if (pauseKnowledge || pauseSynthetic || pauseFinal) return;
           paused.resolve();
           return hold.promise;
         },
@@ -389,8 +409,8 @@ test('queued prompts and slash commands wait for their selected chat and settled
               inbox.delete(inboxID);
             },
           },
-          prompt: payload => deliver('prompt', payload),
-          command: payload => deliver('command', payload),
+          prompt: payload => dispatch('prompt', payload),
+          command: payload => dispatch('command', payload),
         },
       };
       let nextId = 0;
@@ -437,7 +457,8 @@ test('queued prompts and slash commands wait for their selected chat and settled
           return { text: '' };
         },
         resolveSendSelection: () => ({}),
-        selectCommandsForDirectory: () => [{ name: 'fixture' }], selectSkillsForDirectory: () => [],
+        selectCommandsForDirectory: () => [{ name: 'fixture' }], selectSkillsForDirectory: () => skills,
+        buildSkillMentionInstruction: noop,
         useCommandsStore: emptyStore, useSkillsStore: emptyStore,
         optimisticSend: async input => {
           input.beforeOptimisticInsert?.();
@@ -446,6 +467,7 @@ test('queued prompts and slash commands wait for their selected chat and settled
         call: (_operation, run) => run(),
         ascendingId, OpencodeApiError,
         assertProviderCircuitClosed: noop, recordProviderError: noop, recordProviderSuccess: noop,
+        isDefiniteTransportFailure: () => false,
       };
       let currentChat = chatA;
       let cursor = 0;
@@ -465,6 +487,27 @@ test('queued prompts and slash commands wait for their selected chat and settled
 
       renderQueue();
       await paused.promise;
+      if (pauseFinal) {
+        assert.deepEqual(received.map(record => record.kind), ['synthetic', turn]);
+        assert.match(received[0].text, /Active profile: Editor/);
+        if (missingSkill) {
+          assert.equal(received[1].skills[0].id, skills[0].id);
+          select(currentChat = chatB);
+          hold.reject(new OpencodeApiError(400, 'InvalidRequestError', 'Skill not found: fixture-skill-id'));
+          await finished.promise;
+          assert.deepEqual(received.map(record => record.kind), ['synthetic', 'prompt', 'cancel']);
+          assert.deepEqual(history, []);
+          assert.equal(inbox.size, 0);
+          assert.deepEqual(sendErrors, []);
+        } else {
+          hold.reject(finalError);
+          await finished.promise;
+          assert.deepEqual(received.map(record => record.kind), ['synthetic', turn]);
+          assert.deepEqual(history, received);
+          assert.deepEqual(sendErrors, [finalError]);
+        }
+        return;
+      }
       if (pauseSynthetic) {
         assert.deepEqual(received.map(record => record.kind), ['synthetic']);
         assert.equal(received[0].sessionID, 'a');
@@ -505,7 +548,6 @@ test('queued prompts and slash commands wait for their selected chat and settled
       now += 2_000;
       renderQueue();
       await finished.promise;
-      const turn = content.startsWith('/') ? 'command' : 'prompt';
       assert.deepEqual(received.map(record => record.kind), [
         ...writesBeforeRetry, ...(response === 'lost' ? ['cancel'] : []), 'synthetic', turn,
       ]);
