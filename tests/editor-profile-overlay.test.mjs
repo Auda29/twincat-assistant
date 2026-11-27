@@ -287,6 +287,7 @@ test('queued prompts and slash commands wait for their selected chat and settled
     'const { sendMessage } = {',
     section(store, '  sendMessage: async (', '  // createSession\n'),
     '}',
+    section(client, 'export const isOpencodeNotFound', 'async function call<'),
     'class TestClient {',
     section(client, '  private readonly deferredContextCancellations', '  /** Interrupts the running turn.'),
     '  assertRuntimeUnchanged() {}',
@@ -299,7 +300,7 @@ test('queued prompts and slash commands wait for their selected chat and settled
     'export { sendMessage }',
   ].join('\n'), { loader: 'ts', format: 'cjs', target: 'es2022' });
 
-  for (const [content, interruption] of [
+  for (const [content, interruption, response] of [
     ['queued prompt', 'chat changes during knowledge load'],
     ['/fixture queued command', 'chat changes during knowledge load'],
     ['queued prompt', 'chat changes during client setup'],
@@ -308,11 +309,23 @@ test('queued prompts and slash commands wait for their selected chat and settled
     ['/fixture queued command', 'profile becomes pending during client setup'],
     ['queued prompt', 'chat changes after synthetic admission'],
     ['/fixture queued command', 'chat changes after synthetic admission'],
+    ['queued prompt', 'chat changes while the synthetic response is held', 'lost'],
+    ['/fixture queued command', 'chat changes while the synthetic response is held', 'lost'],
+    ['queued prompt', 'chat changes while the synthetic request is dropped', 'dropped'],
+    ['/fixture queued command', 'chat changes while the synthetic request is dropped', 'dropped'],
   ]) {
     await t.test(`${content}: ${interruption}`, { timeout: 10_000 }, async () => {
       const pauseKnowledge = interruption.endsWith('knowledge load');
       const switchChat = interruption.startsWith('chat changes');
-      const pauseSynthetic = interruption.endsWith('synthetic admission');
+      const pauseSynthetic = response !== undefined || interruption.endsWith('synthetic admission');
+      const syntheticError = new Error('Synthetic response lost');
+      const cancellationError = new Error('Cancellation transport failure');
+      class OpencodeApiError extends Error {
+        constructor(status) {
+          super('OpenCode API failure');
+          this.status = status;
+        }
+      }
       const { api, select, sendPolicy } = await makeBridge();
       const chatA = { currentSessionId: 'a', currentSessionDirectory: 'C:/project' };
       const chatB = { ...chatA, currentSessionId: 'b' };
@@ -334,6 +347,8 @@ test('queued prompts and slash commands wait for their selected chat and settled
       const received = [];
       const inbox = new Map();
       const history = [];
+      const sendErrors = [];
+      let now = Date.now();
       const record = (kind, payload) => {
         const write = { kind, agent: transport.agent, ...payload };
         received.push(write);
@@ -351,22 +366,26 @@ test('queued prompts and slash commands wait for their selected chat and settled
         },
         session: {
           async synthetic(payload) {
-            const id = payload.id ?? ascendingId();
+            const id = payload.id ?? ascendingId('msg');
             const admitted = record('synthetic', { ...payload, id });
             assert.equal(payload.resume, false);
-            inbox.set(id, admitted);
             if (pauseSynthetic && received.length === 1) {
+              if (response !== 'dropped') inbox.set(id, admitted);
               paused.resolve();
               await hold.promise;
+            } else {
+              inbox.set(id, admitted);
             }
             return admitted;
           },
           inbox: {
             async cancel({ sessionID, inboxID }) {
-              assert.equal(inbox.get(inboxID)?.sessionID, sessionID);
+              assert.equal(inboxID, received[0].id);
+              assert.equal(sessionID, received[0].sessionID);
               record('cancel', { sessionID, inboxID });
               cancellationStarted.resolve();
-              await cancellationResponse.promise;
+              if (received.length === 2) await cancellationResponse.promise;
+              if (!inbox.has(inboxID)) throw new OpencodeApiError(404);
               inbox.delete(inboxID);
             },
           },
@@ -375,13 +394,14 @@ test('queued prompts and slash commands wait for their selected chat and settled
         },
       };
       let nextId = 0;
-      const ascendingId = () => `context-${++nextId}`;
+      const ascendingId = prefix => `${prefix}_${++nextId}`;
       const noop = () => {};
       const emptyStore = { getState: () => ({}) };
       const globals = {
         ...api, transport, getTwinCatSendPolicy: sendPolicy,
-        module: { exports: {} }, console,
-        Date, setTimeout, clearTimeout,
+        module: { exports: {} }, console: { ...console, warn: (_message, error) => sendErrors.push(error) },
+        Date: class extends Date { static now() { return now; } },
+        setTimeout: noop, clearTimeout: noop,
         get: () => currentChat,
         useSessionUIStore: Object.assign(selector => selector(currentChat), {
           getState: () => ({ sessionAbortFlags: new Map(), sendMessage: globals.module.exports.sendMessage }),
@@ -424,7 +444,7 @@ test('queued prompts and slash commands wait for their selected chat and settled
           await input.send('prompt-id', input.context);
         },
         call: (_operation, run) => run(),
-        ascendingId,
+        ascendingId, OpencodeApiError,
         assertProviderCircuitClosed: noop, recordProviderError: noop, recordProviderSuccess: noop,
       };
       let currentChat = chatA;
@@ -449,7 +469,7 @@ test('queued prompts and slash commands wait for their selected chat and settled
         assert.deepEqual(received.map(record => record.kind), ['synthetic']);
         assert.equal(received[0].sessionID, 'a');
         assert.match(received[0].text, /Active profile: Editor/);
-        assert.equal(inbox.size, 1);
+        assert.equal(inbox.size, response === 'dropped' ? 0 : 1);
       }
       if (switchChat) {
         select(currentChat = chatB);
@@ -457,7 +477,8 @@ test('queued prompts and slash commands wait for their selected chat and settled
         api.requestTwinCatProfile('twincat-debug');
       }
       renderQueue();
-      hold.resolve();
+      if (response) hold.reject(syntheticError);
+      else hold.resolve();
       await (pauseSynthetic ? Promise.race([cancellationStarted.promise, finished.promise]) : finished.promise);
       const writesBeforeRetry = pauseSynthetic ? ['synthetic', 'cancel'] : [];
       assert.deepEqual(received.map(record => record.kind), writesBeforeRetry);
@@ -473,17 +494,20 @@ test('queued prompts and slash commands wait for their selected chat and settled
         renderQueue();
         assert.deepEqual(received.map(record => record.kind), writesBeforeRetry);
         assert.equal(queueState.queuedMessages.a[0], queued);
-        cancellationResponse.resolve();
+        if (response === 'lost') cancellationResponse.reject(cancellationError);
+        else cancellationResponse.resolve();
       }
       await finished.promise;
-      assert.equal(inbox.size, 0);
+      assert.equal(inbox.size, response === 'lost' ? 1 : 0);
+      assert.deepEqual(sendErrors, response ? [syntheticError] : []);
 
       finished = Promise.withResolvers();
+      now += 2_000;
       renderQueue();
       await finished.promise;
       const turn = content.startsWith('/') ? 'command' : 'prompt';
       assert.deepEqual(received.map(record => record.kind), [
-        ...writesBeforeRetry, 'synthetic', turn,
+        ...writesBeforeRetry, ...(response === 'lost' ? ['cancel'] : []), 'synthetic', turn,
       ]);
       assert.deepEqual(history.map(record => record.kind), ['synthetic', turn]);
       assert.ok(history.every(record => record.sessionID === 'a' && record.agent === 'twincat-debug'));
