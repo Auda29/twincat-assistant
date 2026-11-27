@@ -44,10 +44,32 @@ internal static partial class EngineeringDirtyStateProbe
                 rdt.InfoEntry = rdt.FindEntry;
                 Check(expected, 1, scenario);
             }
+            static void SetAbsent(RunningDocuments.RdtEntry entry)
+            {
+                entry.Cookie = 0;
+                entry.Document = null;
+                entry.Hierarchy = null;
+                entry.Item = VSConstants.VSITEMID_NIL;
+            }
 
             var supportsFallback = extension != ".txt";
             var fallbackCalls = supportsFallback ? 1 : 0;
             CheckEntry(supportsFallback ? false : (bool?)null, fallbackCalls, "clean without IVsPersistDocData", _ => { });
+            if (supportsFallback)
+            {
+                CheckEntry(null, 0, "clean without IVsPersistDocData or a hierarchy", entry => entry.Hierarchy = null);
+                CheckEntry(null, 0, "zero cookie and docdata with a hierarchy", entry =>
+                {
+                    SetAbsent(entry);
+                    entry.Hierarchy = hierarchy;
+                });
+                CheckEntry(null, 0, "zero cookie and docdata with a valid item", entry =>
+                {
+                    entry.Cookie = 0;
+                    entry.Document = null;
+                    entry.Hierarchy = null;
+                });
+            }
             solution.Dirty = true;
             hierarchy.Dirty = 1;
             CheckEntry(supportsFallback ? true : (bool?)null, fallbackCalls, "dirty without IVsPersistDocData", _ => { });
@@ -73,12 +95,12 @@ internal static partial class EngineeringDirtyStateProbe
             CheckEntry(true, 0, "valid persist docdata observes dirty", entry => entry.Document = rdt);
             if (!supportsFallback) continue;
 
-            CheckEntry(true, 1, "absent RDT retains the fallback", entry => { entry.Cookie = 0; entry.Document = null; });
+            CheckEntry(true, 1, "absent RDT retains the fallback", SetAbsent);
             CheckReplaced(null, "changed cookie", entry => entry.Cookie++);
             CheckReplaced(null, "changed item", entry => entry.Item++);
             CheckReplaced(null, "changed docdata", entry => entry.Document = replacement);
             CheckReplaced(null, "changed hierarchy", entry => entry.Hierarchy = replacementHierarchy);
-            CheckReplaced(null, "entry disappears", entry => { entry.Cookie = 0; entry.Document = null; });
+            CheckReplaced(null, "entry disappears", SetAbsent);
             CheckReplaced(null, "later lookup fails", entry => entry.Result = VSConstants.E_POINTER);
             CheckReplaced(true, "later dirty docdata takes precedence", entry => entry.Document = rdt);
             rdt.Dirty = 0;

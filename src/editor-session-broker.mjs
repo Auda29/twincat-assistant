@@ -85,7 +85,7 @@ async function ownedEngineering({ node, entrypoint, bootstrap, workspace }, prof
     let timer;
     try {
       const result = new Promise((resolve, reject) => { pending = { resolve, reject }; });
-      timer = setTimeout(stop, 130000);
+      timer = setTimeout(stop, 150000);
       child.stdin.write(bytes, () => bytes.fill(0));
       return await result;
     } finally { clearTimeout(timer); }
@@ -218,7 +218,7 @@ export async function startEditorSession(options, signal) {
       configuration() {
         if (closing) throw unavailable();
         return { type: 'remote', url: origin + '/mcp', oauth: false, protocol: 'legacy', codemode: false,
-          headers: { Authorization: 'Bearer ' + token }, timeout: { startup: 15000, catalog: 15000, execution: 135000 } };
+          headers: { Authorization: 'Bearer ' + token }, timeout: { startup: 15000, catalog: 15000, execution: 155000 } };
       },
     });
   } catch { await close(); throw unavailable(); }

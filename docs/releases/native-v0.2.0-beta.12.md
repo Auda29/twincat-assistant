@@ -4,8 +4,10 @@
 
 - Engineering MCP `0.5.12` adds four read-only Debug tools. Wait up to
   120 seconds for a condition on approved symbols, including an optional
-  `stableForMs` interval. Register, list or stop bounded symbol watches
-  within the same Debug session. The published catalogs contain 9 Build,
+  `stableForMs` interval. The broker allows 150 seconds for its child exchange
+  and 155 seconds for MCP execution over HTTP to cover the wait, session
+  checks, ADS connection and teardown. Register, list or stop bounded symbol
+  watches within the same Debug session. The published catalogs contain 9 Build,
   16 Editor and 15 Debug tools.
 - Editor and Debug register distinct, temporary MCP servers,
   `engineering_editor` and `engineering_debug`. Analysis continues to use

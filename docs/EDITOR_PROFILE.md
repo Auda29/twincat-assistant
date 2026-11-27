@@ -23,8 +23,10 @@ side-by-side approval dialog, with additions and removals highlighted in color.
 
 Engineering MCP 0.5.12 sends tool approvals with a 90-second expiry, within
 the native host's 120-second ceiling. The Engineering MCP client and native
-host allow 125 seconds for a mutation. The pipe and broker exchanges allow
-130 seconds, and the broker HTTP timeout is 135 seconds.
+host allow 125 seconds for a mutation. The pipe exchange allows 130 seconds.
+The broker allows 150 seconds for a child exchange and 155 seconds for MCP
+execution over HTTP, leaving time for grant checks, ADS connection and teardown
+around a 120-second Debug wait.
 
 - TwinCAT Automation Interface edits support closed and open ST POUs,
   members, DUTs, interfaces and GVLs. Changes may persist directly to disk.

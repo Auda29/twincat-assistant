@@ -92,7 +92,7 @@ test('Editor broker accepts large discovery and enforces 1 MiB requests and 5 Mi
   const broker = await startEditorSession({ ...options(), profile: 'editor' });
   const callCreate = args => call('plc_source_create', 'ses_editor_1', args);
   try {
-    assert.equal(broker.configuration().timeout.execution, 135000);
+    assert.equal(broker.configuration().timeout.execution, 155000);
     const largeRequest = '\u00e9'.repeat(450 * 1024);
     const accepted = await rpc(broker, 'tools/call', callCreate({ declarationText: largeRequest }));
     assert.equal(JSON.parse(accepted.value.result.content[0].text).arguments.declarationText, largeRequest);

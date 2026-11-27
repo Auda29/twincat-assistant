@@ -301,7 +301,10 @@ namespace TwinCatAssistant.Native
             try
             {
                 if (ErrorHandler.Failed(hr)) return default;
-                if (data == IntPtr.Zero && cookie == 0) return new RdtObservation { State = RdtState.Absent };
+                if (data == IntPtr.Zero && cookie == 0)
+                    return hierarchy == null && (item == VSConstants.VSITEMID_NIL || item == 0)
+                        ? new RdtObservation { State = RdtState.Absent }
+                        : default;
                 if (hr != VSConstants.S_OK || data == IntPtr.Zero || cookie == 0) return default;
                 var document = Marshal.GetObjectForIUnknown(data);
                 var persist = document as IVsPersistDocData;
@@ -315,6 +318,7 @@ namespace TwinCatAssistant.Native
                     if (hr != VSConstants.S_OK || currentData != data || currentItem != item
                         || !SamePath(currentPath, path) || !SameCom(hierarchy, currentHierarchy)) return default;
                     if (persist != null) return new RdtObservation { State = RdtState.Observed, Dirty = dirty == 1 };
+                    if (hierarchy == null || currentHierarchy == null) return default;
                     return new RdtObservation { State = RdtState.NoPersistDocData, Cookie = cookie, Item = item,
                         Data = data, Document = document, Hierarchy = hierarchy };
                 }
