@@ -502,4 +502,9 @@ Confirm only after you have manually inspected both the PLC project tree and the
   <data name="EngineeringSourceCreateInspected" xml:space="preserve"><value>I inspected the project tree and files</value></data>
   <data name="EngineeringSourceCreateAcknowledged" xml:space="preserve"><value>Inspection acknowledged for creation operation {0}. The source recovery block is cleared.</value></data>
   <data name="EngineeringSourceRollbackUnsaved" xml:space="preserve"><value>Rollback was blocked by unsaved editor changes. Save the open document in TwinCAT before retrying.</value></data>
+  <data name="EngineeringDiffBefore" xml:space="preserve"><value>Before</value></data>
+  <data name="EngineeringDiffAfter" xml:space="preserve"><value>After</value></data>
+  <data name="EngineeringDiffPrevious" xml:space="preserve"><value>Go to previous change</value></data>
+  <data name="EngineeringDiffNext" xml:space="preserve"><value>Go to next change</value></data>
+  <data name="EngineeringDiffSummary" xml:space="preserve"><value>+{0} / −{1} / ~{2}  ·  Hunks: {3}</value></data>
 </root>

@@ -264,6 +264,33 @@ test('pending manual context stays with its chat, while automatic context never 
   assert.equal(ui.getState().setSidebarOpenValue, false, 'legacy navigation cannot reopen the generic sidebar');
 });
 
+test('a directory switch invalidates profile completion and keeps drafts with their original directory', () => {
+  const calls = [];
+  const source = {
+    composer: () => ({ references: [], submitted: [] }),
+    setContext: (...args) => calls.push(['context', ...args]),
+    peekProfileRequest: () => ({ id: 2, profile: 'twincat-debug' }),
+    setEditorProfile: request => (calls.push(['grant', request]), true),
+    ackProfileRequest: (sessionId, id) => (calls.push(['ack', sessionId, id]), true),
+  };
+  const { adapter, sessions, input } = fixture({ source });
+  const expected = { sessionId: 'session-one', epoch: 0, documentId: 'fixture-document', contextKey: 'project-one' };
+  adapter.permit({ ...expected, context: { project: 'PLC' } });
+  adapter.attach({ ...expected, item });
+  const request = adapter.profileRequest();
+  sessions.set({ currentSessionDirectory: '/another-workspace' });
+  assert.equal(input.getState().pendingGuestIssue, null);
+  sessions.set({ currentSessionDirectory: '/isolated' });
+  assert.equal(input.getState().pendingGuestIssue.text, item.text);
+  assert.equal(adapter.finishProfileRequest({ ...expected, ...request }), false);
+  assert.equal(adapter.permit({ ...expected, context: { project: 'PLC' } }), false);
+  assert.equal(adapter.finishProfileRequest({ ...expected, ...request, epoch: 2 }), true);
+  assert.deepEqual(calls.slice(-2), [
+    ['grant', { sessionId: 'session-one', enabled: true, profile: 'twincat-debug', requestId: 2 }],
+    ['ack', 'session-one', 2],
+  ]);
+});
+
 test('generated chat titles require an explicit action on a reviewed idle conversation', async () => {
   const calls = [];
   const source = { setContext() {}, async manageSession(request, assertCurrent) { assertCurrent(); calls.push(request); return true; } };

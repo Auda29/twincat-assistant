@@ -45,7 +45,8 @@ namespace TwinCatAssistant.Native
         private bool _chatActionPending, _chatAdapterReady, _chatPolling, _autoConnectAttempted, _automating;
         private readonly TextBlock _modelStatus = new TextBlock { Text = HostText.Get("H043"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) };
         private readonly TextBlock _mcpStatus = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
-        private DispatcherTimer _chatReconnect, _automationKick, _noticeTimer;
+        private DispatcherTimer _chatReconnect, _automationKick, _noticeTimer, _profilePoll;
+        private bool _profileProbeRunning;
         private int _chatReconnectAttempts, _signInAttempts;
         private long _chatDocumentGeneration;
         private string _autoProjectKey;
@@ -67,6 +68,9 @@ namespace TwinCatAssistant.Native
             _chatReconnect.Tick += ReconnectChat;
             _automationKick = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(200) };
             _automationKick.Tick += OnAutomationKick;
+            _profilePoll = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(225) };
+            _profilePoll.Tick += OnProfilePoll;
+            Unloaded += OnChatUnloaded;
             _noticeTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(8) };
             _noticeTimer.Tick += (sender, args) => { _noticeTimer.Stop(); if (_noticeTone != "error") DismissNotice(); };
         }
@@ -104,7 +108,10 @@ namespace TwinCatAssistant.Native
             _automationKick?.Stop();
             if (_automationKick != null) _automationKick.Tick -= OnAutomationKick;
             _noticeTimer?.Stop();
+            _profilePoll?.Stop();
+            if (_profilePoll != null) _profilePoll.Tick -= OnProfilePoll;
             Loaded -= OnChatLoaded;
+            Unloaded -= OnChatUnloaded;
         }
 
         private void ScheduleChatReconnect()
@@ -133,9 +140,33 @@ namespace TwinCatAssistant.Native
         private async void OnChatLoaded(object sender, RoutedEventArgs args)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (_autoConnectAttempted || _disposed) return;
+            if (_disposed || !IsLoaded) return;
+            _profilePoll.Start();
+            if (_autoConnectAttempted) return;
             _autoConnectAttempted = true;
             try { await ConnectAsync(); } catch { if (!_disposed) RenderChatBinding(); }
+        }
+
+        private void OnChatUnloaded(object sender, RoutedEventArgs args) => _profilePoll.Stop();
+
+        private async void OnProfilePoll(object sender, EventArgs args)
+        {
+            if (_disposed || !_chatPresented || !_chatAdapterReady || !_browser.IsVisible
+                || _chatPolling || _editorToggleRequested || _profileProbeRunning) return;
+            var browser = _browser.CoreWebView2;
+            if (browser == null || !Allowed(browser.Source)) return;
+            _profileProbeRunning = true;
+            var documentGeneration = _chatDocumentGeneration;
+            try
+            {
+                // The idle probe reads only a boolean. The normal health poll
+                // still owns health, full selection refresh and automation.
+                if (await browser.ExecuteScriptAsync("window.__twinCatChat?.profileRequest() != null") == "true"
+                    && !_disposed && documentGeneration == _chatDocumentGeneration)
+                    await PollChatSelectionAsync();
+            }
+            catch { }
+            finally { _profileProbeRunning = false; }
         }
 
         private async void OnAutomationKick(object sender, EventArgs args)
@@ -189,7 +220,7 @@ namespace TwinCatAssistant.Native
             }
         }
 
-        private async Task<ChatSelection> ReadChatSelectionAsync(bool consumeProfileRequest = false)
+        private async Task<ChatSelection> ReadChatSelectionAsync(bool includeProfileRequest = false)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             if (_disposed || _browser.CoreWebView2 == null || !Allowed(_browser.CoreWebView2.Source)) return null;
@@ -205,7 +236,7 @@ namespace TwinCatAssistant.Native
                 + "const mounted=!!document.querySelector('[data-testid=\"chat-input\"],.oc-draft-center');"
                 + "const loading=!!document.querySelector('#initial-loading,[data-chat-hydration-skeleton],[data-twincat-startup-overlay]');"
                 + "return {...s,ready:s.ready === true,activeEngineeringProfile:window.__twinCatSource?.activeProfile?.() ?? null,"
-                + (consumeProfileRequest ? "profileRequest:window.__twinCatSource?.takeProfileRequest?.(s.sessionId) ?? null," : "")
+                + (includeProfileRequest ? "profileRequest:window.__twinCatChat?.profileRequest() ?? null," : "")
                 + "presentationReady:s.presentationReady === true && mounted && !loading};})())");
             if (_disposed || documentGeneration != _chatDocumentGeneration || !ReferenceEquals(browser, _browser.CoreWebView2) || raw == null || raw.Length > 12000) return null;
             var json = serializer.Deserialize<string>(raw);
@@ -220,9 +251,10 @@ namespace TwinCatAssistant.Native
             var generation = _chatConnection.Generation;
             var documentGeneration = _chatDocumentGeneration;
             var languageVersion = _languageObservationVersion;
+            ChatSelection selection;
             try
             {
-                var selection = await ReadChatSelectionAsync(consumeProfileRequest: true);
+                selection = await ReadChatSelectionAsync(includeProfileRequest: true);
                 if (_disposed || generation != _chatConnection.Generation || documentGeneration != _chatDocumentGeneration || OlderChatSelection(selection)) return;
                 _chatSelection = selection; _chatAdapterReady = selection?.ready == true;
                 if (selection?.ready == true && languageVersion == _languageObservationVersion) ObserveChatLanguage(selection.language);
@@ -230,16 +262,17 @@ namespace TwinCatAssistant.Native
                 try { _chatBinding = selection?.IsSelected == true ? _chatBindings.Read(_origin.AbsoluteUri, selection.sessionId) : null; }
                 catch { _chatBinding = null; }
                 await PermitCurrentChatAsync();
-                if (!_disposed && generation == _chatConnection.Generation && documentGeneration == _chatDocumentGeneration)
-                    await ConsumeChatProfileRequestAsync(selection, documentGeneration);
                 if (!_disposed && generation == _chatConnection.Generation) { RetryKnowledge(); RenderChatBinding(); }
             }
             catch
             {
                 if (!_disposed && generation == _chatConnection.Generation)
                 { _chatAdapterReady = false; _chatSelection = null; _chatBinding = null; RenderChatBinding(); }
+                selection = null;
             }
             finally { _chatPolling = false; }
+            if (!_disposed && generation == _chatConnection.Generation && documentGeneration == _chatDocumentGeneration)
+                await ConsumeChatProfileRequestAsync(selection, documentGeneration);
             if (!_disposed && generation == _chatConnection.Generation) await RunAutomationAsync();
         }
 
@@ -252,7 +285,13 @@ namespace TwinCatAssistant.Native
             var metadata = CanPromptCurrentChat() && !_chatBinding.IsGeneral ? ChatContextMetadata(active, _chatProject) : null;
             var permission = CanPromptCurrentChat() ? new { sessionId = selection.sessionId, selection.epoch, selection.documentId,
                 contextKey = _chatBinding.IsGeneral ? "general" : ProjectKey(_chatProject), context = metadata } : null;
-            await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat?.permit(" + new JavaScriptSerializer().Serialize(permission) + ")");
+            var suspended = permission == null && _engineeringProjectSuspended && _engineeringProject != null
+                && selection?.IsSelected == true && _chatBinding?.SameProjectContext(_engineeringProject) == true
+                && SameDirectory(selection.directory, _projectWorkspace)
+                ? new { sessionId = selection.sessionId, selection.epoch, selection.documentId, contextKey = ProjectKey(_engineeringProject) } : null;
+            var serializer = new JavaScriptSerializer();
+            await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat?.permit("
+                + serializer.Serialize(permission) + "," + serializer.Serialize(suspended) + ")");
         }
         private object ChatContextMetadata(ActiveEditorSnapshot active, NativeProjectIdentity project)
         {

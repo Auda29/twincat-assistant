@@ -28,4 +28,6 @@ var viewStateCases = ProjectChatViewStateTests.Run();
 var hostCases = HostIdentityTests.Run();
 var languageCases = HostTextTests.Run();
 var engineeringCases = EngineeringAuthorizationTests.Run();
-Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases + viewStateCases + hostCases + languageCases + engineeringCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");
+var diffCases = SourceDiffTests.Run();
+var profileCases = ChatProfileRequestTests.Run();
+Console.WriteLine($"{cases.Length + activeCases + chatCases + bindingCases + viewStateCases + hostCases + languageCases + engineeringCases + diffCases + profileCases} native policy/context/chat regressions passed (not live IDE/editor acceptance).");

@@ -83,7 +83,7 @@ namespace TwinCatAssistant.Native
 
     public sealed class ChatSelection
     {
-        public string profileRequest { get; set; }
+        public ChatProfileRequest profileRequest { get; set; }
         public int version;
         public bool ready;
         public bool presentationReady;
@@ -114,6 +114,20 @@ namespace TwinCatAssistant.Native
         public ChatMcpObservation mcpObservation;
         public bool IsSelected { get { return version == 1 && ready && authenticated && ValidSession(sessionId) && Guid.TryParse(documentId, out _) && epoch >= 0; } }
         public static bool ValidSession(string value) { return value != null && Regex.IsMatch(value, @"\A[a-zA-Z0-9_:-]{1,160}\z"); }
+    }
+
+    public sealed class ChatProfileRequest
+    {
+        public long id { get; set; }
+        public string profile { get; set; }
+
+        internal bool Matches(ChatSelection selected, ChatSelection fresh)
+        {
+            return id > 0 && selected?.IsSelected == true && fresh?.IsSelected == true
+                && fresh.sessionId == selected.sessionId && fresh.documentId == selected.documentId
+                && fresh.epoch == selected.epoch && fresh.directory == selected.directory
+                && fresh.profileRequest?.id == id && fresh.profileRequest.profile == profile;
+        }
     }
 
     public sealed class ChatContextBinding

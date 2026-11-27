@@ -35,7 +35,7 @@
     "changes": [
       [
         "import React from 'react';",
-        "import React from 'react';\nimport { useTwinCatComposerReferences, publishTwinCatComposer, recordTwinCatSubmission, twinCatContextTexts, twinCatAttachmentMode, keepTwinCatReference, isTwinCatEmbedded, twinCatSelectableAgents, subscribeTwinCatEmbedding, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { useTwinCatComposerReferences, publishTwinCatComposer, recordTwinCatSubmission, twinCatAttachmentMode, keepTwinCatReference, isTwinCatEmbedded, twinCatSelectableAgents, subscribeTwinCatEmbedding, twinCatActiveProfile, twinCatProfilePending, TWINCAT_ANALYSIS_PROFILE } from '@/lib/twincat/twincat';"
       ],
       [
         "        if (!isPermissionAutoAcceptInteractive) return false;",
@@ -44,22 +44,6 @@
       [
         "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);",
         "const [linkedReferences, setLinkedReferences] = React.useState<ComposerReference[]>([]);\n    React.useEffect(() => {\n        if (columnPinned) return;\n        return publishTwinCatComposer(currentSessionId, linkedReferences, () => {\n            setLinkedReferences(current => current.some(item => twinCatAttachmentMode(item) === 'following')\n                ? current.filter(item => twinCatAttachmentMode(item) !== 'following') : current);\n        });\n    }, [columnPinned, currentSessionId, linkedReferences]);"
-      ],
-      [
-        "const queueRuntimeKey = getRuntimeKey();",
-        "const twinCatQueuedContext = twinCatContextTexts(currentSessionId);\n        const queueRuntimeKey = getRuntimeKey();"
-      ],
-      [
-        "syntheticTexts: syntheticParts.map((part) => part.text),",
-        "syntheticTexts: [...twinCatQueuedContext, ...syntheticParts.map((part) => part.text)],"
-      ],
-      [
-        "if (queuedOnly && autoReviewRunning) {",
-        "const twinCatSubmittedContext = twinCatContextTexts(currentSessionId);\n        if (queuedOnly && autoReviewRunning) {"
-      ],
-      [
-        "syntheticTexts: [\n                ...buildBtwSyntheticTexts",
-        "syntheticTexts: [\n                ...(!isBtwActive && !queuedOnly && inputSnapshot.hasContent ? twinCatSubmittedContext : []),\n                ...buildBtwSyntheticTexts"
       ],
       [
         "recordLinkedReferences(linkTargetSessionId, linkTargetDirectory, linkedReferences);",
@@ -120,6 +104,14 @@
       [
         "const handleDictationActiveChange = React.useCallback((active: boolean) => {\n        onDictationActiveChange(active);\n        if (!active && !dictationSendInFlightRef.current) dictationSendEndRef.current?.();\n    }, [onDictationActiveChange]);",
         ""
+      ],
+      [
+        "    const canSend = (hasContent || hasQueuedMessages)",
+        "    const profileSwitchPending = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatProfilePending, () => false);\n    const canSend = !profileSwitchPending && (hasContent || hasQueuedMessages)"
+      ],
+      [
+        "    const handleSubmit = async (options?: SubmitOptions) => {",
+        "    const handleSubmit = async (options?: SubmitOptions) => {\n        if (twinCatProfilePending()) return;"
       ]
     ]
   },
@@ -236,7 +228,7 @@
     "changes": [
       [
         "\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatic\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Follows the active editor. Switching objects replaces this attachment.\",\n  'chat.twincat.attachment.manualHint': \"Kept manually. Switching objects does not change this snapshot.\",\n  'chat.twincat.attachment.keep': \"Keep\",\n  'chat.twincat.attachment.keepHint': \"Keep this revision as a manual attachment.\",\n\n  'chat.twincat.profile.label': \"Profile\",\n  'chat.twincat.profile.projectRequired': \"Editor and Debug require a chat for the open PLC project.\",\n  'chat.twincat.profile.analysis': \"Analysis\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat information\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatic\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Follows the active editor. Switching objects replaces this attachment.\",\n  'chat.twincat.attachment.manualHint': \"Kept manually. Switching objects does not change this snapshot.\",\n  'chat.twincat.attachment.keep': \"Keep\",\n  'chat.twincat.attachment.keepHint': \"Keep this revision as a manual attachment.\",\n\n  'chat.twincat.profile.label': \"Profile\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Editor and Debug require a chat for the open PLC project.\",\n  'chat.twincat.profile.analysis': \"Analysis\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat information\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n\nexport type I18nKey = keyof typeof dict;\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -637,7 +629,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Manuell\",\n  'chat.twincat.attachment.followingHint': \"Folgt dem aktiven Editor. Ein Objektwechsel ersetzt diesen Anhang.\",\n  'chat.twincat.attachment.manualHint': \"Manuell beibehalten. Ein Objektwechsel ändert diesen Snapshot nicht.\",\n  'chat.twincat.attachment.keep': \"Beibehalten\",\n  'chat.twincat.attachment.keepHint': \"Diesen Stand als manuellen Anhang beibehalten.\",\n\n  'chat.twincat.profile.label': \"Profil\",\n  'chat.twincat.profile.projectRequired': \"Öffne für Editor oder Debug einen Chat zum aktuell geöffneten PLC-Projekt.\",\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.profile.build': \"Build-Werkzeuge\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat-Informationen\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Manuell\",\n  'chat.twincat.attachment.followingHint': \"Folgt dem aktiven Editor. Ein Objektwechsel ersetzt diesen Anhang.\",\n  'chat.twincat.attachment.manualHint': \"Manuell beibehalten. Ein Objektwechsel ändert diesen Snapshot nicht.\",\n  'chat.twincat.attachment.keep': \"Beibehalten\",\n  'chat.twincat.attachment.keepHint': \"Diesen Stand als manuellen Anhang beibehalten.\",\n\n  'chat.twincat.profile.label': \"Profil\",\n  'chat.twincat.profile.switching': \"Profilwechsel …\",\n  'chat.twincat.profile.projectRequired': \"Öffne für Editor oder Debug einen Chat zum aktuell geöffneten PLC-Projekt.\",\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.profile.build': \"Build-Werkzeuge\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chat-Informationen\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -1034,7 +1026,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Sigue al editor activo. Al cambiar de objeto se reemplaza este adjunto.\",\n  'chat.twincat.attachment.manualHint': \"Conservado manualmente. Cambiar de objeto no modifica esta instantánea.\",\n  'chat.twincat.attachment.keep': \"Conservar\",\n  'chat.twincat.attachment.keepHint': \"Conservar esta revisión como adjunto manual.\",\n\n  'chat.twincat.profile.label': \"Perfil\",\n  'chat.twincat.profile.projectRequired': \"Abre un chat del proyecto PLC actual para usar Editor o Debug.\",\n  'chat.twincat.profile.analysis': \"Análisis\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Detalles\",\n\n  'chat.twincat.chatInformation': \"Información del chat\",\n  'chat.twincat.chatInformationDetails': \"Detalles\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Sigue al editor activo. Al cambiar de objeto se reemplaza este adjunto.\",\n  'chat.twincat.attachment.manualHint': \"Conservado manualmente. Cambiar de objeto no modifica esta instantánea.\",\n  'chat.twincat.attachment.keep': \"Conservar\",\n  'chat.twincat.attachment.keepHint': \"Conservar esta revisión como adjunto manual.\",\n\n  'chat.twincat.profile.label': \"Perfil\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Abre un chat del proyecto PLC actual para usar Editor o Debug.\",\n  'chat.twincat.profile.analysis': \"Análisis\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Detalles\",\n\n  'chat.twincat.chatInformation': \"Información del chat\",\n  'chat.twincat.chatInformationDetails': \"Detalles\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -1435,7 +1427,7 @@
     "changes": [
       [
         "\n} as const;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatique\",\n  'chat.twincat.attachment.manual': \"Manuel\",\n  'chat.twincat.attachment.followingHint': \"Suit l’éditeur actif. Un changement d’objet remplace cette pièce jointe.\",\n  'chat.twincat.attachment.manualHint': \"Conservé manuellement. Un changement d’objet ne modifie pas cet instantané.\",\n  'chat.twincat.attachment.keep': \"Conserver\",\n  'chat.twincat.attachment.keepHint': \"Conserver cette version comme pièce jointe manuelle.\",\n\n  'chat.twincat.profile.label': \"Profil\",\n  'chat.twincat.profile.projectRequired': \"Ouvrez un chat du projet PLC actuel pour utiliser Editor ou Debug.\",\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Détails\",\n\n  'chat.twincat.chatInformation': \"Informations du chat\",\n  'chat.twincat.chatInformationDetails': \"Détails\",\n\n} as const;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatique\",\n  'chat.twincat.attachment.manual': \"Manuel\",\n  'chat.twincat.attachment.followingHint': \"Suit l’éditeur actif. Un changement d’objet remplace cette pièce jointe.\",\n  'chat.twincat.attachment.manualHint': \"Conservé manuellement. Un changement d’objet ne modifie pas cet instantané.\",\n  'chat.twincat.attachment.keep': \"Conserver\",\n  'chat.twincat.attachment.keepHint': \"Conserver cette version comme pièce jointe manuelle.\",\n\n  'chat.twincat.profile.label': \"Profil\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Ouvrez un chat du projet PLC actuel pour utiliser Editor ou Debug.\",\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Détails\",\n\n  'chat.twincat.chatInformation': \"Informations du chat\",\n  'chat.twincat.chatInformationDetails': \"Détails\",\n\n} as const;\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -1844,7 +1836,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"アクティブなエディターに追従します。オブジェクトを切り替えると、この添付は置き換わります。\",\n  'chat.twincat.attachment.manualHint': \"手動で保持されています。オブジェクトを切り替えても、このスナップショットは変わりません。\",\n  'chat.twincat.attachment.keep': \"保持\",\n  'chat.twincat.attachment.keepHint': \"この版を手動の添付として保持します。\",\n\n  'chat.twincat.profile.label': \"プロファイル\",\n  'chat.twincat.profile.projectRequired': \"Editor と Debug を使うには、開いている PLC プロジェクトのチャットを開いてください。\",\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"詳細\",\n\n  'chat.twincat.chatInformation': \"チャット情報\",\n  'chat.twincat.chatInformationDetails': \"詳細\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"アクティブなエディターに追従します。オブジェクトを切り替えると、この添付は置き換わります。\",\n  'chat.twincat.attachment.manualHint': \"手動で保持されています。オブジェクトを切り替えても、このスナップショットは変わりません。\",\n  'chat.twincat.attachment.keep': \"保持\",\n  'chat.twincat.attachment.keepHint': \"この版を手動の添付として保持します。\",\n\n  'chat.twincat.profile.label': \"プロファイル\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Editor と Debug を使うには、開いている PLC プロジェクトのチャットを開いてください。\",\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"詳細\",\n\n  'chat.twincat.chatInformation': \"チャット情報\",\n  'chat.twincat.chatInformationDetails': \"詳細\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -2241,7 +2233,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"자동\",\n  'chat.twincat.attachment.manual': \"수동\",\n  'chat.twincat.attachment.followingHint': \"활성 편집기를 따릅니다. 개체를 전환하면 이 첨부가 교체됩니다.\",\n  'chat.twincat.attachment.manualHint': \"수동으로 유지됩니다. 개체를 전환해도 이 스냅샷은 바뀌지 않습니다.\",\n  'chat.twincat.attachment.keep': \"유지\",\n  'chat.twincat.attachment.keepHint': \"이 버전을 수동 첨부로 유지합니다.\",\n\n  'chat.twincat.profile.label': \"프로필\",\n  'chat.twincat.profile.projectRequired': \"Editor 또는 Debug를 사용하려면 현재 PLC 프로젝트의 채팅을 여세요.\",\n  'chat.twincat.profile.analysis': \"분석\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"세부 정보\",\n\n  'chat.twincat.chatInformation': \"채팅 정보\",\n  'chat.twincat.chatInformationDetails': \"세부 정보\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"자동\",\n  'chat.twincat.attachment.manual': \"수동\",\n  'chat.twincat.attachment.followingHint': \"활성 편집기를 따릅니다. 개체를 전환하면 이 첨부가 교체됩니다.\",\n  'chat.twincat.attachment.manualHint': \"수동으로 유지됩니다. 개체를 전환해도 이 스냅샷은 바뀌지 않습니다.\",\n  'chat.twincat.attachment.keep': \"유지\",\n  'chat.twincat.attachment.keepHint': \"이 버전을 수동 첨부로 유지합니다.\",\n\n  'chat.twincat.profile.label': \"프로필\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Editor 또는 Debug를 사용하려면 현재 PLC 프로젝트의 채팅을 여세요.\",\n  'chat.twincat.profile.analysis': \"분석\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"세부 정보\",\n\n  'chat.twincat.chatInformation': \"채팅 정보\",\n  'chat.twincat.chatInformationDetails': \"세부 정보\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -2638,7 +2630,7 @@
     "changes": [
       [
         "\n} as const;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Handmatig\",\n  'chat.twincat.attachment.followingHint': \"Volgt de actieve editor. Bij een ander object wordt deze bijlage vervangen.\",\n  'chat.twincat.attachment.manualHint': \"Handmatig bewaard. Bij een ander object blijft deze momentopname ongewijzigd.\",\n  'chat.twincat.attachment.keep': \"Bewaren\",\n  'chat.twincat.attachment.keepHint': \"Deze versie als handmatige bijlage bewaren.\",\n\n  'chat.twincat.profile.label': \"Profiel\",\n  'chat.twincat.profile.projectRequired': \"Open voor Editor of Debug een chat van het huidige PLC-project.\",\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chatinformatie\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatisch\",\n  'chat.twincat.attachment.manual': \"Handmatig\",\n  'chat.twincat.attachment.followingHint': \"Volgt de actieve editor. Bij een ander object wordt deze bijlage vervangen.\",\n  'chat.twincat.attachment.manualHint': \"Handmatig bewaard. Bij een ander object blijft deze momentopname ongewijzigd.\",\n  'chat.twincat.attachment.keep': \"Bewaren\",\n  'chat.twincat.attachment.keepHint': \"Deze versie als handmatige bijlage bewaren.\",\n\n  'chat.twincat.profile.label': \"Profiel\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Open voor Editor of Debug een chat van het huidige PLC-project.\",\n  'chat.twincat.profile.analysis': \"Analyse\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Details\",\n\n  'chat.twincat.chatInformation': \"Chatinformatie\",\n  'chat.twincat.chatInformationDetails': \"Details\",\n\n} as const;\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -3039,7 +3031,7 @@
     "changes": [
       [
         "\n} as const;\n",
-        "\n  'chat.twincat.attachment.following': \"Automatycznie\",\n  'chat.twincat.attachment.manual': \"Ręcznie\",\n  'chat.twincat.attachment.followingHint': \"Podąża za aktywnym edytorem. Zmiana obiektu zastępuje ten załącznik.\",\n  'chat.twincat.attachment.manualHint': \"Zachowano ręcznie. Zmiana obiektu nie zmienia tej migawki.\",\n  'chat.twincat.attachment.keep': \"Zachowaj\",\n  'chat.twincat.attachment.keepHint': \"Zachowaj tę wersję jako ręczny załącznik.\",\n\n  'chat.twincat.profile.label': \"Profil\",\n  'chat.twincat.profile.projectRequired': \"Aby użyć Editor lub Debug, otwórz czat bieżącego projektu PLC.\",\n  'chat.twincat.profile.analysis': \"Analiza\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Szczegóły\",\n\n  'chat.twincat.chatInformation': \"Informacje o czacie\",\n  'chat.twincat.chatInformationDetails': \"Szczegóły\",\n\n} as const;\n"
+        "\n  'chat.twincat.attachment.following': \"Automatycznie\",\n  'chat.twincat.attachment.manual': \"Ręcznie\",\n  'chat.twincat.attachment.followingHint': \"Podąża za aktywnym edytorem. Zmiana obiektu zastępuje ten załącznik.\",\n  'chat.twincat.attachment.manualHint': \"Zachowano ręcznie. Zmiana obiektu nie zmienia tej migawki.\",\n  'chat.twincat.attachment.keep': \"Zachowaj\",\n  'chat.twincat.attachment.keepHint': \"Zachowaj tę wersję jako ręczny załącznik.\",\n\n  'chat.twincat.profile.label': \"Profil\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Aby użyć Editor lub Debug, otwórz czat bieżącego projektu PLC.\",\n  'chat.twincat.profile.analysis': \"Analiza\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Szczegóły\",\n\n  'chat.twincat.chatInformation': \"Informacje o czacie\",\n  'chat.twincat.chatInformationDetails': \"Szczegóły\",\n\n} as const;\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -3440,7 +3432,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Acompanha o editor ativo. Trocar de objeto substitui este anexo.\",\n  'chat.twincat.attachment.manualHint': \"Mantido manualmente. Trocar de objeto não altera este instantâneo.\",\n  'chat.twincat.attachment.keep': \"Manter\",\n  'chat.twincat.attachment.keepHint': \"Manter esta versão como anexo manual.\",\n\n  'chat.twincat.profile.label': \"Perfil\",\n  'chat.twincat.profile.projectRequired': \"Abra um chat do projeto PLC atual para usar Editor ou Debug.\",\n  'chat.twincat.profile.analysis': \"Análise\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Detalhes\",\n\n  'chat.twincat.chatInformation': \"Informações do chat\",\n  'chat.twincat.chatInformationDetails': \"Detalhes\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Automático\",\n  'chat.twincat.attachment.manual': \"Manual\",\n  'chat.twincat.attachment.followingHint': \"Acompanha o editor ativo. Trocar de objeto substitui este anexo.\",\n  'chat.twincat.attachment.manualHint': \"Mantido manualmente. Trocar de objeto não altera este instantâneo.\",\n  'chat.twincat.attachment.keep': \"Manter\",\n  'chat.twincat.attachment.keepHint': \"Manter esta versão como anexo manual.\",\n\n  'chat.twincat.profile.label': \"Perfil\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Abra um chat do projeto PLC atual para usar Editor ou Debug.\",\n  'chat.twincat.profile.analysis': \"Análise\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Detalhes\",\n\n  'chat.twincat.chatInformation': \"Informações do chat\",\n  'chat.twincat.chatInformationDetails': \"Detalhes\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -3841,7 +3833,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Otomatik\",\n  'chat.twincat.attachment.manual': \"El ile\",\n  'chat.twincat.attachment.followingHint': \"Etkin düzenleyiciyi izler. Nesne değiştirildiğinde bu ek değiştirilir.\",\n  'chat.twincat.attachment.manualHint': \"El ile saklanır. Nesne değiştirmek bu anlık görüntüyü değiştirmez.\",\n  'chat.twincat.attachment.keep': \"Sakla\",\n  'chat.twincat.attachment.keepHint': \"Bu sürümü el ile eklenmiş bir ek olarak sakla.\",\n\n  'chat.twincat.profile.label': \"Profil\",\n  'chat.twincat.profile.projectRequired': \"Editor veya Debug için açık PLC projesine ait bir sohbet açın.\",\n  'chat.twincat.profile.analysis': \"Analiz\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Ayrıntılar\",\n\n  'chat.twincat.chatInformation': \"Sohbet bilgileri\",\n  'chat.twincat.chatInformationDetails': \"Ayrıntılar\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Otomatik\",\n  'chat.twincat.attachment.manual': \"El ile\",\n  'chat.twincat.attachment.followingHint': \"Etkin düzenleyiciyi izler. Nesne değiştirildiğinde bu ek değiştirilir.\",\n  'chat.twincat.attachment.manualHint': \"El ile saklanır. Nesne değiştirmek bu anlık görüntüyü değiştirmez.\",\n  'chat.twincat.attachment.keep': \"Sakla\",\n  'chat.twincat.attachment.keepHint': \"Bu sürümü el ile eklenmiş bir ek olarak sakla.\",\n\n  'chat.twincat.profile.label': \"Profil\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Editor veya Debug için açık PLC projesine ait bir sohbet açın.\",\n  'chat.twincat.profile.analysis': \"Analiz\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Ayrıntılar\",\n\n  'chat.twincat.chatInformation': \"Sohbet bilgileri\",\n  'chat.twincat.chatInformationDetails': \"Ayrıntılar\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -4242,7 +4234,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"Автоматично\",\n  'chat.twincat.attachment.manual': \"Вручну\",\n  'chat.twincat.attachment.followingHint': \"Стежить за активним редактором. Зміна об’єкта замінює це вкладення.\",\n  'chat.twincat.attachment.manualHint': \"Збережено вручну. Зміна об’єкта не змінює цей знімок.\",\n  'chat.twincat.attachment.keep': \"Зберегти\",\n  'chat.twincat.attachment.keepHint': \"Зберегти цю версію як ручне вкладення.\",\n\n  'chat.twincat.profile.label': \"Профіль\",\n  'chat.twincat.profile.projectRequired': \"Для Editor або Debug відкрийте чат поточного проєкту PLC.\",\n  'chat.twincat.profile.analysis': \"Аналіз\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Докладніше\",\n\n  'chat.twincat.chatInformation': \"Інформація про чат\",\n  'chat.twincat.chatInformationDetails': \"Докладніше\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"Автоматично\",\n  'chat.twincat.attachment.manual': \"Вручну\",\n  'chat.twincat.attachment.followingHint': \"Стежить за активним редактором. Зміна об’єкта замінює це вкладення.\",\n  'chat.twincat.attachment.manualHint': \"Збережено вручну. Зміна об’єкта не змінює цей знімок.\",\n  'chat.twincat.attachment.keep': \"Зберегти\",\n  'chat.twincat.attachment.keepHint': \"Зберегти цю версію як ручне вкладення.\",\n\n  'chat.twincat.profile.label': \"Профіль\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"Для Editor або Debug відкрийте чат поточного проєкту PLC.\",\n  'chat.twincat.profile.analysis': \"Аналіз\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"Докладніше\",\n\n  'chat.twincat.chatInformation': \"Інформація про чат\",\n  'chat.twincat.chatInformationDetails': \"Докладніше\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -4643,7 +4635,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"自动\",\n  'chat.twincat.attachment.manual': \"手动\",\n  'chat.twincat.attachment.followingHint': \"跟随当前编辑器。切换对象会替换此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手动保留。切换对象不会更改此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"将此版本保留为手动附件。\",\n\n  'chat.twincat.profile.label': \"模式\",\n  'chat.twincat.profile.projectRequired': \"要使用 Editor 或 Debug，请打开当前 PLC 项目的聊天。\",\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"详情\",\n\n  'chat.twincat.chatInformation': \"聊天信息\",\n  'chat.twincat.chatInformationDetails': \"详情\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"自动\",\n  'chat.twincat.attachment.manual': \"手动\",\n  'chat.twincat.attachment.followingHint': \"跟随当前编辑器。切换对象会替换此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手动保留。切换对象不会更改此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"将此版本保留为手动附件。\",\n\n  'chat.twincat.profile.label': \"模式\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"要使用 Editor 或 Debug，请打开当前 PLC 项目的聊天。\",\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"详情\",\n\n  'chat.twincat.chatInformation': \"聊天信息\",\n  'chat.twincat.chatInformationDetails': \"详情\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -5048,7 +5040,7 @@
     "changes": [
       [
         "\n};\n",
-        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"跟隨目前的編輯器。切換物件會取代此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手動保留。切換物件不會變更此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"將此版本保留為手動附件。\",\n\n  'chat.twincat.profile.label': \"模式\",\n  'chat.twincat.profile.projectRequired': \"若要使用 Editor 或 Debug，請開啟目前 PLC 專案的聊天。\",\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"詳細資料\",\n\n  'chat.twincat.chatInformation': \"聊天資訊\",\n  'chat.twincat.chatInformationDetails': \"詳細資料\",\n\n};\n"
+        "\n  'chat.twincat.attachment.following': \"自動\",\n  'chat.twincat.attachment.manual': \"手動\",\n  'chat.twincat.attachment.followingHint': \"跟隨目前的編輯器。切換物件會取代此附件。\",\n  'chat.twincat.attachment.manualHint': \"已手動保留。切換物件不會變更此快照。\",\n  'chat.twincat.attachment.keep': \"保留\",\n  'chat.twincat.attachment.keepHint': \"將此版本保留為手動附件。\",\n\n  'chat.twincat.profile.label': \"模式\",\n  'chat.twincat.profile.switching': \"Switching profile…\",\n  'chat.twincat.profile.projectRequired': \"若要使用 Editor 或 Debug，請開啟目前 PLC 專案的聊天。\",\n  'chat.twincat.profile.analysis': \"分析\",\n  'chat.twincat.profile.build': \"Build tools\",\n  'chat.twincat.modelDetails': \"詳細資料\",\n\n  'chat.twincat.chatInformation': \"聊天資訊\",\n  'chat.twincat.chatInformationDetails': \"詳細資料\",\n\n};\n"
       ],
       [
         "  'chat.twincat.chatInformation':",
@@ -5491,11 +5483,11 @@
       ],
       [
         "import React from 'react';",
-        "import React from 'react';\nimport { Button } from '@/components/ui/button';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE, TwinCatProfilePicker } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { Button } from '@/components/ui/button';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE, TWINCAT_DEBUG_PROFILE, TwinCatProfilePicker } from '@/lib/twincat/twincat';"
       ],
       [
         "    const { t } = useI18n();",
-        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const twinCatProfile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);\n    const [twinCatModelDetails, setTwinCatModelDetails] = React.useState(false);\n    const labelAgent = (agent: Pick<Agent, 'name' | 'displayName'>) => twinCatEmbedded && agent.name === TWINCAT_ANALYSIS_PROFILE\n        ? t('chat.twincat.profile.analysis') : twinCatEmbedded && agent.name === TWINCAT_EDITOR_PROFILE ? t('chat.twincat.profile.build') : agentLabel(agent);"
+        "    const { t } = useI18n();\n    const twinCatEmbedded = React.useSyncExternalStore(subscribeTwinCatEmbedding, isTwinCatEmbedded, () => false);\n    const twinCatProfile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);\n    const [twinCatModelDetails, setTwinCatModelDetails] = React.useState(false);\n    const labelAgent = (agent: Pick<Agent, 'name' | 'displayName'>) => twinCatEmbedded && agent.name === TWINCAT_ANALYSIS_PROFILE\n        ? t('chat.twincat.profile.analysis') : twinCatEmbedded && agent.name === TWINCAT_EDITOR_PROFILE ? 'Editor' : twinCatEmbedded && agent.name === TWINCAT_DEBUG_PROFILE ? 'Debug' : agentLabel(agent);"
       ],
       [
         "    const agents = getVisibleAgents();",
@@ -5511,7 +5503,7 @@
       ],
       [
         "    const handleAgentChange = React.useCallback((agentName: string, options?: { closeModelSelector?: boolean }) => {",
-        "    const handleAgentChange = React.useCallback((agentName: string, options?: { closeModelSelector?: boolean }) => {\n        if (isTwinCatEmbedded() && (agentName !== TWINCAT_ANALYSIS_PROFILE && !(agentName === TWINCAT_EDITOR_PROFILE && twinCatActiveProfile() === TWINCAT_EDITOR_PROFILE))) return;"
+        "    const handleAgentChange = React.useCallback((agentName: string, options?: { closeModelSelector?: boolean }) => {\n        if (isTwinCatEmbedded() && (agentName !== TWINCAT_ANALYSIS_PROFILE && agentName !== twinCatActiveProfile())) return;"
       ],
       [
         "            return shownAgent ? agentLabel(shownAgent) : t('chat.modelControls.selectAgent');",
@@ -5568,7 +5560,7 @@
       ],
       [
         "import React from 'react';",
-        "import React from 'react';\nimport { useI18n } from '@/lib/i18n';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE, TwinCatProfilePicker } from '@/lib/twincat/twincat';"
+        "import React from 'react';\nimport { useI18n } from '@/lib/i18n';\nimport { isTwinCatEmbedded, subscribeTwinCatEmbedding, twinCatSelectableAgents, twinCatActiveProfile, TWINCAT_ANALYSIS_PROFILE, TWINCAT_EDITOR_PROFILE, TWINCAT_DEBUG_PROFILE, TwinCatProfilePicker } from '@/lib/twincat/twincat';"
       ],
       [
         "    const getAgentColor = useAgentColors();",
@@ -5584,7 +5576,7 @@
       ],
       [
         "    const agentLabel = getAgentDisplayName(agents, uiAgentName);",
-        "    const agentLabel = twinCatEmbedded ? (twinCatProfile === TWINCAT_EDITOR_PROFILE ? t('chat.twincat.profile.build') : t('chat.twincat.profile.analysis')) : getAgentDisplayName(agents, uiAgentName);"
+        "    const agentLabel = twinCatEmbedded ? (twinCatProfile === TWINCAT_DEBUG_PROFILE ? 'Debug' : twinCatProfile === TWINCAT_EDITOR_PROFILE ? 'Editor' : t('chat.twincat.profile.analysis')) : getAgentDisplayName(agents, uiAgentName);"
       ]
     ]
   },
@@ -12114,6 +12106,104 @@
       [
         "locales.map((availableLocale) => (",
         "locales.filter((availableLocale) => availableLocale === 'de' || availableLocale === 'en').map((availableLocale) => ("
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/sync/session-ui-store.ts",
+    "changes": [
+      [
+        "import { useConfigStore } from \"@/stores/useConfigStore\"",
+        "import { useConfigStore } from \"@/stores/useConfigStore\"\nimport { isTwinCatEmbedded, requireTwinCatProfileSettled, twinCatActiveProfile, twinCatSource, TWINCAT_ANALYSIS_PROFILE } from \"@/lib/twincat/twincat\""
+      ],
+      [
+        "  const requestDirectory = params.directory ?? undefined\n  // The session",
+        "  const requestDirectory = params.directory ?? undefined\n  const embedded = isTwinCatEmbedded()\n  if (embedded) requireTwinCatProfileSettled()\n  // The session"
+      ],
+      [
+        "  // The command route takes no skill attachments,",
+        "  // Use the same live profile in the explicit request and its synthetic context.\n  // Refresh after asynchronous command lookup or connection readiness.\n  const matchesTwinCatChat = () => {\n    const current = useSessionUIStore.getState()\n    return current.currentSessionId === params.sessionId\n      && (requestDirectory === undefined || normalizePath(current.currentSessionDirectory ?? \"\") === normalizePath(requestDirectory))\n  }\n  const validateProfile = embedded ? () => {\n    requireTwinCatProfileSettled()\n    const currentAgent = matchesTwinCatChat() ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    if (currentAgent !== selection.agent) throw new Error(\"TwinCAT profile changed before dispatch\")\n  } : undefined\n  const refreshTwinCatSelection = () => {\n    if (!embedded) return\n    requireTwinCatProfileSettled()\n    const sameChat = matchesTwinCatChat()\n    selection.agent = sameChat ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE\n    contextItems.unshift(...twinCatSource.contextTexts(params.sessionId, selection.agent, sameChat)\n      .map(text => ({ text, metadata: undefined })))\n  }\n  // The command route takes no skill attachments,"
+      ],
+      [
+        "      params.appendSubmissions?.()\n      const commandContext",
+        "      refreshTwinCatSelection()\n      params.appendSubmissions?.()\n      const commandContext"
+      ],
+      [
+        "    appendSubmissions: params.appendSubmissions,\n    send:",
+        "    appendSubmissions: params.appendSubmissions,\n    beforeOptimisticInsert: refreshTwinCatSelection,\n    send:"
+      ],
+      [
+        "agentMentions: params.agentMentionName ?",
+        "agentMentions: params.agentMentionName && (!embedded || params.agentMentionName === selection.agent) ?"
+      ],
+      [
+        "    const capturedTarget = options?.target\n",
+        "    requireTwinCatProfileSettled()\n    const capturedTarget = options?.target\n"
+      ],
+      [
+        "    const effectiveAgent = trimmedAgent || sessionAgentSelection || configAgentName || undefined",
+        "    const effectiveAgent = isTwinCatEmbedded() ? twinCatActiveProfile() : trimmedAgent || sessionAgentSelection || configAgentName || undefined"
+      ],
+      [
+        "agent: selection.agent,\n      text: params.content,",
+        "agent: selection.agent,\n      validateProfile,\n      text: params.content,"
+      ],
+      [
+        "agent: selection.agent,\n        command: cmdName,",
+        "agent: selection.agent,\n        validateProfile,\n        command: cmdName,"
+      ]
+    ]
+  },
+  {
+    "file": "packages/ui/src/lib/opencode/client.ts",
+    "changes": [
+      [
+        "    runtimeKey: string | undefined,\n  ): Promise<void> {\n    if (selection.model)",
+        "    runtimeKey: string | undefined,\n    validateProfile?: () => void,\n  ): Promise<void> {\n    validateProfile?.()\n    if (selection.model)"
+      ],
+      [
+        "    if (selection.agent) {\n      this.assertRuntimeUnchanged(runtimeKey)",
+        "    if (selection.agent) {\n      validateProfile?.()\n      this.assertRuntimeUnchanged(runtimeKey)"
+      ],
+      [
+        "  async sendMessage(params: {\n    runtimeKey?: string",
+        "  async sendMessage(params: {\n    runtimeKey?: string\n    validateProfile?: () => void"
+      ],
+      [
+        "  async sendCommand(params: {\n    runtimeKey?: string",
+        "  async sendCommand(params: {\n    runtimeKey?: string\n    validateProfile?: () => void"
+      ],
+      [
+        "      await this.applySendSelection(params.id, { model: params.model, agent: params.agent }, params.directory, params.runtimeKey)",
+        "      await this.applySendSelection(params.id, { model: params.model, agent: params.agent }, params.directory, params.runtimeKey, validateProfile)"
+      ],
+      [
+        "    await this.applySendSelection(params.id, { model: params.model, agent: params.agent }, params.directory, params.runtimeKey)\n    for (const item",
+        "    await this.applySendSelection(params.id, { model: params.model, agent: params.agent }, params.directory, params.runtimeKey, params.validateProfile)\n    for (const item"
+      ],
+      [
+        "    const admitSynthetic = async (item: SyntheticContextInput) => {",
+        "    const admitSynthetic = async (item: SyntheticContextInput) => {\n      validateProfile()"
+      ],
+      [
+        "    const prompt = (skills: readonly SkillAttachmentRef[]) => {",
+        "    const prompt = (skills: readonly SkillAttachmentRef[]) => {\n      validateProfile()"
+      ],
+      [
+        "      if (!item.text.trim()) continue\n      this.assertRuntimeUnchanged(params.runtimeKey)",
+        "      if (!item.text.trim()) continue\n      params.validateProfile?.()\n      this.assertRuntimeUnchanged(params.runtimeKey)"
+      ],
+      [
+        "    await call(\"session.command\", () =>\n      this.clientFor(params.directory)",
+        "    params.validateProfile?.()\n    await call(\"session.command\", () =>\n      this.clientFor(params.directory)"
+      ],
+      [
+        "    assertProviderCircuitClosed(params.providerID)\n\n    const admitSynthetic",
+        "    assertProviderCircuitClosed(params.providerID)\n    let profileInvalidated = false\n    const validateProfile = () => {\n      try { params.validateProfile?.() }\n      catch (error) {\n        profileInvalidated = true\n        throw error\n      }\n    }\n\n    const admitSynthetic"
+      ],
+      [
+        "      if (!(error instanceof Error && isDefiniteTransportFailure(error))) {\n        recordProviderError",
+        "      if (!profileInvalidated && !(error instanceof Error && isDefiniteTransportFailure(error))) {\n        recordProviderError"
       ]
     ]
   }

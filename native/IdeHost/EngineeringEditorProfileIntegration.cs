@@ -60,35 +60,41 @@ namespace TwinCatAssistant.Native
         private async Task ConsumeChatProfileRequestAsync(ChatSelection selection, long documentGeneration)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (selection?.IsSelected != true || !ReferenceEquals(selection, _chatSelection)) return;
-            if (selection.profileRequest == "twincat-readonly")
-            {
-                if (_engineeringEditorEnabled || _engineeringEditorChanging) RevokeEngineeringEditor();
-                return;
-            }
-            var profile = selection.profileRequest == "twincat-editor" ? "editor"
-                : selection.profileRequest == "twincat-debug" ? "debug" : null;
-            if (profile == null || profile == _activeEngineeringProfile) return;
-            var fresh = await ReadChatSelectionAsync();
-            if (_disposed || documentGeneration != _chatDocumentGeneration || !ReferenceEquals(selection, _chatSelection)
-                || fresh?.sessionId != selection.sessionId || fresh.epoch != selection.epoch || fresh.documentId != selection.documentId) return;
-            await EnableEngineeringEditorAsync(profile);
-        }
-
-        private async Task EnableEngineeringEditorAsync(string profile)
-        {
-            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (_editorToggleRequested) return;
+            var request = selection?.profileRequest;
+            if (selection?.IsSelected != true || request == null || _editorToggleRequested || _engineeringEditorChanging) return;
             _editorToggleRequested = true;
-            try { await EnableEngineeringEditorCoreAsync(profile); }
+            try
+            {
+                var fresh = await ReadChatSelectionAsync(includeProfileRequest: true);
+                if (_disposed || documentGeneration != _chatDocumentGeneration || !request.Matches(selection, fresh)) return;
+                var handled = false;
+                try
+                {
+                    if (_engineeringEditorEnabled) RevokeEngineeringEditor();
+                    await _editorRevocation;
+                    if (request.profile == "twincat-readonly") { handled = true; return; }
+                    if (documentGeneration != _chatDocumentGeneration
+                        || !request.Matches(selection, await ReadChatSelectionAsync(includeProfileRequest: true))) return;
+                    handled = true;
+                    var profile = request.profile == "twincat-editor" ? "editor"
+                        : request.profile == "twincat-debug" ? "debug" : null;
+                    if (profile != null) await EnableEngineeringEditorCoreAsync(profile, selection);
+                }
+                finally
+                {
+                    // The success path publishes the grant and acknowledges in
+                    // one script. On failure, acknowledge only this request.
+                    if (handled && documentGeneration == _chatDocumentGeneration)
+                        await FinishChatProfileRequestAsync(selection);
+                }
+            }
+            catch { } // A navigation or WebView failure leaves an unread request retryable until expiry.
             finally { _editorToggleRequested = false; }
         }
-        private async Task EnableEngineeringEditorCoreAsync(string profile)
+
+        private async Task EnableEngineeringEditorCoreAsync(string profile, ChatSelection expected)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (_engineeringEditorChanging || profile == _activeEngineeringProfile) return;
-            if (_engineeringEditorEnabled) RevokeEngineeringEditor();
-            await _editorRevocation;
             var session = _engineering;
             var runtime = _chatSession;
             if (_disposed) return;
@@ -115,6 +121,8 @@ namespace TwinCatAssistant.Native
                 var online = await ObserveDebugLoginAsync(session, _engineeringLifetime.Token);
                 if (_disposed || session != _engineering || _chatSelection?.sessionId != chat
                     || _chatSelection.epoch != selectedEpoch || _chatSelection.documentId != selectedDocument) return;
+                if (!expected.profileRequest.Matches(expected, await ReadChatSelectionAsync(includeProfileRequest: true))
+                    || _disposed || session != _engineering || _engineeringLifetime == null) return;
                 if (online.Login == null)
                 {
                     Notify(HostText.Get(online.Notice), "warning");
@@ -138,10 +146,9 @@ namespace TwinCatAssistant.Native
             }
             else if (MessageBox.Show(HostText.Get("EngineeringEditorConsent"), HostText.Get("EngineeringEditorEnable"),
                 MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel) != MessageBoxResult.OK) return;
-            var afterConsent = await ReadChatSelectionAsync();
+            var afterConsent = await ReadChatSelectionAsync(includeProfileRequest: true);
             if (_disposed || session != _engineering || runtime != _chatSession || _chatSelection?.sessionId != chat
-                || _chatDocumentGeneration != selectedDocumentGeneration || afterConsent?.IsSelected != true
-                || afterConsent.sessionId != chat || afterConsent.epoch != selectedEpoch || afterConsent.documentId != selectedDocument
+                || _chatDocumentGeneration != selectedDocumentGeneration || !expected.profileRequest.Matches(expected, afterConsent)
                 || _projectWorkspace != workspace || _engineeringProjectSuspended) return;
             _engineeringEditorChanging = true;
             var generation = ++_editorGeneration;
@@ -165,8 +172,9 @@ namespace TwinCatAssistant.Native
                     workspace, sessionId = chat, entrypoint = Path.Combine(configuration.RepositoryRoot, "runtime", "mcp", "engineering", "packages", "mcp", "dist", "index.js") };
                 submitted = true;
                 if (!await runtime.EditorControlAsync(command, id, "editor-ready", CancellationToken.None)) throw new InvalidOperationException();
-                var freshSelection = await ReadChatSelectionAsync();
+                var freshSelection = await ReadChatSelectionAsync(includeProfileRequest: true);
                 if (_disposed || generation != _editorGeneration || !EditorSelectionMatches(freshSelection)
+                    || !expected.profileRequest.Matches(expected, freshSelection)
                     || session != _engineering || runtime != _chatSession || _chatSelection?.sessionId != chat
                     || _projectWorkspace != workspace || _engineeringProjectSuspended) throw new InvalidOperationException();
                 _editorTransport = transport; transport = null;
@@ -174,7 +182,8 @@ namespace TwinCatAssistant.Native
                 _activeEngineeringProfile = profile;
                 _debugGrant = debug;
                 _engineeringEditorEnabled = true;
-                if (!await PublishEngineeringEditorModeAsync(chat, true) || generation != _editorGeneration
+                if (!EditorProfileIsCurrent() || !await FinishChatProfileRequestAsync(expected, "twincat-" + profile)
+                    || generation != _editorGeneration
                     || !EditorProfileIsCurrent()) throw new InvalidOperationException();
                 EngineeringEditorModeChanged?.Invoke();
                 SetEngineeringStatus(profile == "debug"
@@ -213,11 +222,12 @@ namespace TwinCatAssistant.Native
             _debugGrant = null;
             _editorTransport?.Dispose(); _editorTransport = null;
             var chat = _editorChat;
+            var document = _editorDocument;
             _editorChat = _editorWorkspace = null; _editorBinding = Guid.Empty;
             if (wasActive)
             {
                 EngineeringEditorModeChanged?.Invoke();
-                _ = PublishEngineeringEditorModeAsync(chat, false);
+                _ = PublishEngineeringEditorRevocationAsync(chat, document);
                 if (runtime?.IsRunning == true)
                     _editorRevocation = RevokeEditorRuntimeAsync(runtime);
             }
@@ -240,21 +250,30 @@ namespace TwinCatAssistant.Native
             if (!await runtime.EditorControlAsync(new { kind = "editor.revoke", requestId = id }, id, "editor-revoked", CancellationToken.None))
                 await runtime.StopAsync(); // Only the runtime this pane owns; its job reaps the broker.
         }
-        private async Task<bool> PublishEngineeringEditorModeAsync(string session, bool enabled)
+        private async Task<bool> FinishChatProfileRequestAsync(ChatSelection selection, string profile = null)
         {
             try
             {
-                if (_disposed || _browser.CoreWebView2 == null) return false;
-                var profile = _activeEngineeringProfile == "debug" ? "twincat-debug" : "twincat-editor";
-                var data = EngineeringProviderSession.Json().Serialize(new { sessionId = session, enabled, profile });
-                var expected = EngineeringProviderSession.Json().Serialize(new { sessionId = session, documentId = _editorDocument, epoch = _editorSelectionEpoch });
-                var script = enabled
-                    ? "(()=>{const s=window.__twinCatChat?.state();const e=" + expected
-                      + ";return s?.sessionId===e.sessionId&&s.documentId===e.documentId&&s.epoch===e.epoch&&window.__twinCatSource?.setEditorProfile(" + data + ")===true;})()"
-                    : "window.__twinCatSource?.setEditorProfile(" + data + ")===true";
-                return await _browser.CoreWebView2.ExecuteScriptAsync(script) == "true";
+                if (_disposed || _browser.CoreWebView2 == null || !Allowed(_browser.CoreWebView2.Source)) return false;
+                var data = EngineeringProviderSession.Json().Serialize(new {
+                    selection.sessionId, selection.documentId, selection.epoch, selection.profileRequest.id, profile
+                });
+                return await _browser.CoreWebView2.ExecuteScriptAsync("window.__twinCatChat?.finishProfileRequest(" + data + ") === true") == "true";
             }
             catch { return false; }
+        }
+
+        private async Task PublishEngineeringEditorRevocationAsync(string session, string document)
+        {
+            try
+            {
+                if (_disposed || _browser.CoreWebView2 == null || !Allowed(_browser.CoreWebView2.Source)) return;
+                var json = EngineeringProviderSession.Json();
+                var data = json.Serialize(new { sessionId = session, enabled = false });
+                await _browser.CoreWebView2.ExecuteScriptAsync("if (window.__twinCatChat?.documentId === "
+                    + json.Serialize(document) + ") window.__twinCatSource?.setEditorProfile(" + data + ")");
+            }
+            catch { }
         }
     }
 }

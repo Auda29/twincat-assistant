@@ -87,6 +87,45 @@ try{
  [Threading.SynchronizationContext]::SetSynchronizationContext($sync)
  $context=[Activator]::CreateInstance($contextType)
  $thread.GetField('_joinableTaskContextCache',[Reflection.BindingFlags]'Static,NonPublic').SetValue($null,$context)
+ $diffBuilder=$assembly.GetType('TwinCatAssistant.Native.SourceDiffView').GetMethod('Build',[Reflection.BindingFlags]'Static,NonPublic')
+ $prefix=(1..48|ForEach-Object { "(* line $_ *)" }) -join "`n"
+ $suffix=(1..48|ForEach-Object { "(* trailing line $_ *)" }) -join "`n"
+ $longLine='long := '+('AB' * 150)+';'
+ $leftSource="$prefix`nx := 1;`n$longLine`nremove;`n$suffix"
+ $rightSource="$prefix`nx := 20;`n$longLine`n$suffix"
+ $diff=$diffBuilder.Invoke($null,@($leftSource,$rightSource,$false))
+ $diffPaneGrid=$diff.Children[1]
+ $leftDiff=$diffPaneGrid.Children[0].Children[1]
+ $rightDiff=$diffPaneGrid.Children[1].Children[1]
+ $leftRows=@($leftDiff.Document.Blocks)
+ $rightRows=@($rightDiff.Document.Blocks)
+ Check ($leftDiff.IsReadOnly -and $rightDiff.IsReadOnly -and $leftDiff.Document.FontFamily.Source -eq 'Consolas' -and $leftRows.Count -eq $rightRows.Count) 'source diff panes are aligned selectable monospace documents'
+ Check ($leftRows[48].Background.Color.ToString() -eq '#FFFDECEF' -and $rightRows[48].Background.Color.ToString() -eq '#FFEBF9EE' -and $rightRows[50].Background.Color.ToString() -eq '#FFF4F6F8') 'source diff distinguishes changed rows and filler by color'
+ $leftInline=@($leftRows[48].Inlines)[1];$rightInline=@($rightRows[48].Inlines)[1]
+ Check ($leftInline.Text -ceq '1' -and $rightInline.Text -ceq '20' -and $leftInline.Background.Color.ToString() -eq '#FFF9C6CE' -and $rightInline.Background.Color.ToString() -eq '#FFB8EBC4') 'source diff highlights the exact before and after characters'
+ $reversed=$diffBuilder.Invoke($null,@($leftSource,$rightSource,$true))
+ $rollbackLeft=@($reversed.Children[1].Children[0].Children[1].Document.Blocks)
+ Check (@($rollbackLeft[48].Inlines)[1].Text -ceq '20' -and $rollbackLeft[50].Background.Color.ToString() -eq '#FFF4F6F8') 'rollback reverses the source diff panes'
+ $diffWindow=[Windows.Window]::new();$diffWindow.Content=$diff;$diffWindow.Width=680;$diffWindow.Height=300
+ $diffWindow.ShowInTaskbar=$false;$diffWindow.ShowActivated=$false;$diffWindow.Opacity=0.02
+ try {
+  $diffWindow.Show()
+  Await ([Threading.Tasks.Task]::Delay(150))|Out-Null
+  Check ($leftDiff.VerticalOffset -eq 48*19 -and $rightDiff.VerticalOffset -eq $leftDiff.VerticalOffset) 'both source panes initially jump to the first hunk'
+  $longStart=$leftRows[49].ContentStart.GetCharacterRect([Windows.Documents.LogicalDirection]::Forward)
+  $longEnd=$leftRows[49].ContentEnd.GetCharacterRect([Windows.Documents.LogicalDirection]::Backward)
+  $copy=[Windows.Documents.TextRange]::new($leftRows[49].ContentStart,$leftRows[49].ContentEnd)
+  Check ($longStart.Top -eq $longEnd.Top -and $longEnd.X -gt 1000 -and $copy.Text -ceq $longLine) 'a long ST line stays unwrapped and source selection excludes the gutter'
+  $navigation=$diff.Children[0].Children[1].Children[1]
+  $next=$navigation.Children[0];$previous=$navigation.Children[1]
+  $next.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+  Await ([Threading.Tasks.Task]::Delay(100))|Out-Null
+  Check ($leftDiff.VerticalOffset -eq 50*19 -and $rightDiff.VerticalOffset -eq $leftDiff.VerticalOffset -and $previous.IsEnabled -and !$next.IsEnabled) 'next change scrolls both source panes to the next hunk'
+  $leftDiff.ScrollToHorizontalOffset(150)
+  $rightDiff.ScrollToVerticalOffset(100)
+  Await ([Threading.Tasks.Task]::Delay(100))|Out-Null
+  Check ($leftDiff.HorizontalOffset -eq 150 -and $rightDiff.HorizontalOffset -eq 150 -and $leftDiff.VerticalOffset -eq 100 -and $rightDiff.VerticalOffset -eq 100) 'source pane scrolling stays synchronized on both axes'
+ } finally { $diffWindow.Close() }
  Make-Control
  $chatNavigationUrl=$control.GetType().GetMethod('ChatNavigationUrl',[Reflection.BindingFlags]'Static,NonPublic')
  $testOrigin=[Uri]'http://127.0.0.1:3123/'
@@ -350,6 +389,40 @@ window.fetch = function(path, options) {
  do{Await ([Threading.Tasks.Task]::Delay(150))|Out-Null;Await(Invoke-Private 'PollChatSelectionStateAsync')|Out-Null}while(!(Field '_chatPresented') -and [DateTime]::UtcNow -lt $deadline)
  Check ((Invoke-Private 'HasCurrentChatBinding') -eq $true) 'automatic project startup binds its confirmed conversation'
  Check ((Field '_chatPresented') -eq $true) 'automatic project startup reaches the visible chat'
+ (Field '_profilePoll').Stop()
+ function Request-FixtureProfile([string]$profileLabel) {
+  $script='(()=>{const trigger=document.querySelector('+($profileTrigger|ConvertTo-Json -Compress)+');if(trigger?.getAttribute("aria-expanded")==="false"){trigger.click();return false;}const item=[...document.querySelectorAll("[data-slot=dropdown-menu-radio-item]")].find(i=>i.textContent.trim()==='+($profileLabel|ConvertTo-Json -Compress)+');if(!item||item.hasAttribute("data-disabled"))return false;item.click();return true;})()'
+  $deadline=[DateTime]::UtcNow.AddSeconds(5)
+  do{Await ([Threading.Tasks.Task]::Delay(50))|Out-Null;$picked=Await ($core.ExecuteScriptAsync($script))}while($picked -ne 'true' -and [DateTime]::UtcNow -lt $deadline)
+  if($picked -ne 'true'){throw ('Could not select synthetic profile '+$profileLabel)}
+ }
+ Request-FixtureProfile 'Editor'
+ $requested=Await (Invoke-Private 'ReadChatSelectionAsync' @($true))
+ $repeated=Await (Invoke-Private 'ReadChatSelectionAsync' @($true))
+ Check ($requested.profileRequest.profile -ceq 'twincat-editor' -and $requested.profileRequest.id -eq $repeated.profileRequest.id -and $requested.activeEngineeringProfile -ceq 'twincat-readonly') 'native selection peeks the same Editor request without activating it'
+ $requested.epoch++
+ Check (!(Await (Invoke-Private 'FinishChatProfileRequestAsync' @($requested,$null)))) 'stale selection cannot acknowledge a profile switch'
+ $requested.epoch--
+ Await ($core.ExecuteScriptAsync('window.__fixtureProfileSend=null;window.__twinCatSource.stores.sessions.getState().sendMessage("fixture","openai","fixture").then(()=>window.__fixtureProfileSend=false,()=>window.__fixtureProfileSend=true);'))|Out-Null
+ Check ((Await ($core.ExecuteScriptAsync('window.__fixtureProfileSend === true'))) -eq 'true') 'the actual send path rejects submissions during pending profile approval'
+ Put '_editorToggleRequested' $true
+ (Field '_profilePoll').Start()
+ Await ([Threading.Tasks.Task]::Delay(350))|Out-Null
+ $busy=Await (Invoke-Private 'ReadChatSelectionAsync' @($true))
+ Check ($busy.profileRequest.id -eq $requested.profileRequest.id) 'a busy native profile handler leaves the exact request pending'
+ Put '_editorToggleRequested' $false
+ $deadline=[DateTime]::UtcNow.AddSeconds(3)
+ do{Await ([Threading.Tasks.Task]::Delay(55))|Out-Null;$settled=Await (Invoke-Private 'ReadChatSelectionAsync' @($true))}while($null -ne $settled.profileRequest -and [DateTime]::UtcNow -lt $deadline)
+ Check ($null -eq $settled.profileRequest -and $settled.activeEngineeringProfile -eq 'twincat-readonly') 'the lightweight poll picks up a pending request and releases the composer after rejection'
+ (Field '_profilePoll').Stop()
+ Request-FixtureProfile 'Debug'
+ $debugRequest=Await (Invoke-Private 'ReadChatSelectionAsync' @($true))
+ Check ($debugRequest.profileRequest.id -gt $requested.profileRequest.id -and $debugRequest.profileRequest.profile -ceq 'twincat-debug') 'the picker can request Debug after rejection'
+ # Exercise only the completed-grant publication, without a provider or any PLC login.
+ Check (Await (Invoke-Private 'FinishChatProfileRequestAsync' @($debugRequest,'twincat-debug'))) 'native publication activates and acknowledges the exact Debug request'
+ Await (Invoke-Private 'PollChatSelectionStateAsync')|Out-Null
+ Check ((Await ($core.ExecuteScriptAsync('(()=>{const s=window.__twinCatSource;return s.activeProfile()==="twincat-debug" && s.contextTexts(s.stores.sessions.getState().currentSessionId)[0].includes("Active profile: Debug (twincat-debug)")})()'))) -eq 'true') 'a context refresh keeps Debug active and the agent context identifies it'
+ Await (Invoke-Private 'PublishEngineeringEditorRevocationAsync' @($debugRequest.sessionId,$debugRequest.documentId))|Out-Null
  $selected=(Field '_chatSelection').sessionId
  Put '_automating' $false;Await(Invoke-Private 'RunAutomationAsync')|Out-Null;Put '_automating' $true
  Check ((Field '_chatSelection').sessionId -ceq $selected) 'a later automation pass does not create another chat'

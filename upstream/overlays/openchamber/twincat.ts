@@ -72,9 +72,13 @@ export const TWINCAT_ANALYSIS_PROFILE = 'twincat-readonly';
 export const TWINCAT_EDITOR_PROFILE = 'twincat-editor';
 export const TWINCAT_DEBUG_PROFILE = 'twincat-debug';
 const privilegedProfiles = z.enum([TWINCAT_EDITOR_PROFILE, TWINCAT_DEBUG_PROFILE]);
-const editorProfileRequest = z.object({ sessionId: z.string().min(1).max(256), enabled: z.boolean(), profile: privilegedProfiles.optional() }).strict();
+const editorProfileRequest = z.object({ sessionId: z.string().min(1).max(256), enabled: z.boolean(),
+  profile: privilegedProfiles.optional(), requestId: z.number().int().positive().optional() }).strict();
 let editorProfile: { sessionId: string; directory: string; project: string; profile: z.infer<typeof privilegedProfiles> } | null = null;
-let requestedProfile: { profile: string; sessionId: string; directory: string; project: string } | null = null;
+let requestedProfile: { id: number; profile: string; sessionId: string; directory: string; project: string } | null = null;
+let nextProfileRequestId = 0;
+let profileRequestTimer: ReturnType<typeof setTimeout> | undefined;
+const profileRequestTimeoutMs = 120_000;
 function notifyTwinCatProfile() { for (const listener of embeddingListeners) listener(); }
 function revokeTwinCatEditor() {
   if (!editorProfile) return;
@@ -84,14 +88,15 @@ function revokeTwinCatEditor() {
 // A stored chat or agent name cannot grant Editor; only the native host can
 // enable it for the currently committed view and selection.
 export function twinCatActiveProfile() {
-  const selected = useSessionUIStore.getState();
-  return active && editorProfile && view?.ready === true && view.sessionId === editorProfile.sessionId
-    && view.directory === editorProfile.directory && selected.currentSessionId === editorProfile.sessionId
-    && selected.currentSessionDirectory === editorProfile.directory && context?.sessionId === editorProfile.sessionId
-    && context.value.project === editorProfile.project ? editorProfile.profile : TWINCAT_ANALYSIS_PROFILE;
+  return editorProfile && matchesProfileContext(editorProfile) ? editorProfile.profile : TWINCAT_ANALYSIS_PROFILE;
+}
+export const twinCatProfilePending = () => requestedProfile !== null;
+export function requireTwinCatProfileSettled() {
+  if (twinCatProfilePending()) throw new Error(useI18nStore.getState().dictionary['chat.twincat.profile.switching']);
 }
 export function TwinCatProfilePicker() {
   const profile = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatActiveProfile, () => TWINCAT_ANALYSIS_PROFILE);
+  const pending = React.useSyncExternalStore(subscribeTwinCatEmbedding, twinCatProfilePending, () => false);
   const eligible = React.useSyncExternalStore(subscribeTwinCatEmbedding, canRequestTwinCatProfile, () => false);
   const dictionary = useI18nStore(state => state.dictionary);
   const heading = dictionary['chat.twincat.profile.label'];
@@ -107,7 +112,8 @@ export function TwinCatProfilePicker() {
       'aria-label': heading,
       className: 'flex h-8 min-w-0 cursor-pointer select-none items-center gap-1 transition-colors hover:opacity-70 focus-visible:outline focus-visible:outline-ring',
     },
-    React.createElement('span', { className: 'typography-meta min-w-0 truncate font-medium text-foreground' }, label),
+    React.createElement('span', { className: 'typography-meta min-w-0 truncate font-medium text-foreground', role: 'status' },
+      pending ? dictionary['chat.twincat.profile.switching'] : label),
     React.createElement(Icon, { name: 'arrow-down-s', className: 'size-3 shrink-0 text-muted-foreground' })),
     React.createElement(DropdownMenuContent, { side: 'top', align: 'end', className: 'w-[min(180px,calc(100vw-2rem))]' },
       React.createElement(DropdownMenuLabel, { className: 'typography-ui-header font-semibold text-foreground' }, heading),
@@ -125,16 +131,34 @@ function currentProfileContext() {
   const selected = useSessionUIStore.getState();
   if (!active || !view?.ready || !view.sessionId || !view.directory || !context
     || selected.currentSessionId !== view.sessionId || selected.currentSessionDirectory !== view.directory
-    || context.sessionId !== view.sessionId || !context.value.project) return null;
-  return { sessionId: view.sessionId, directory: view.directory, project: context.value.project };
+    || context.sessionId !== view.sessionId || !context.value?.project) return null;
+  return { sessionId: view.sessionId, directory: view.directory, project: context.projectKey };
+}
+function matchesProfileContext(target: { sessionId: string; directory: string; project: string }) {
+  const current = currentProfileContext();
+  return current?.sessionId === target.sessionId && current.directory === target.directory && current.project === target.project;
+}
+function clearProfileRequest() {
+  if (!requestedProfile) return;
+  requestedProfile = null;
+  clearTimeout(profileRequestTimer);
+  notifyTwinCatProfile();
 }
 function canRequestTwinCatProfile() { return currentProfileContext() !== null; }
 export function requestTwinCatProfile(profile: string) {
   if (profile !== TWINCAT_ANALYSIS_PROFILE && !privilegedProfiles.safeParse(profile).success) return;
   const target = currentProfileContext();
-  if (!target || profile === twinCatActiveProfile()) return;
-  requestedProfile = { profile, ...target };
+  if (!target || profile === (requestedProfile?.profile ?? twinCatActiveProfile())) return;
+  const id = ++nextProfileRequestId;
+  requestedProfile = { id, profile, ...target };
   revokeTwinCatEditor();
+  clearTimeout(profileRequestTimer);
+  profileRequestTimer = setTimeout(() => {
+    if (requestedProfile?.id !== id) return;
+    revokeTwinCatEditor();
+    clearProfileRequest();
+  }, profileRequestTimeoutMs);
+  notifyTwinCatProfile();
 }
 // One native profile policy for menus, keyboard cycling and @ mentions.
 // Keep the original catalog and stored profile IDs intact.
@@ -161,7 +185,7 @@ export function publishTwinCatThreadExport(sessionId: string | null, title: stri
   threadExport = value;
   return () => { if (threadExport === value) threadExport = null; };
 }
-let context: { sessionId: string; value: Context } | null = null;
+let context: { sessionId: string; projectKey: string; value: Context | null } | null = null;
 let composer: { sessionId: string | null; references: Reference[]; clearFollowing: () => void } | null = null;
 let view: { sessionId: string | null; directory: string | null; ready: boolean } | null = null;
 const sent = new Map<string, Reference[]>();
@@ -212,15 +236,14 @@ export function publishTwinCatComposer(sessionId: string | null, items: readonly
 export function publishTwinCatView(sessionId: string | null, directory: string | null, ready: boolean) {
   const eligible = canRequestTwinCatProfile();
   const value = { sessionId, directory, ready };
-  if (requestedProfile && (sessionId !== requestedProfile.sessionId || directory !== requestedProfile.directory || !ready)) requestedProfile = null;
-  if (editorProfile && (sessionId !== editorProfile.sessionId || directory !== editorProfile.directory)) revokeTwinCatEditor();
   view = value;
+  if (requestedProfile && (sessionId !== requestedProfile.sessionId || directory !== requestedProfile.directory)) clearProfileRequest();
+  if (editorProfile && (sessionId !== editorProfile.sessionId || directory !== editorProfile.directory)) revokeTwinCatEditor();
   if (editorProfile || eligible !== canRequestTwinCatProfile()) notifyTwinCatProfile();
   return () => {
     if (view !== value) return;
     const wasEligible = canRequestTwinCatProfile();
     view = null;
-    requestedProfile = null;
     if (editorProfile || wasEligible) notifyTwinCatProfile();
   };
 }
@@ -231,14 +254,18 @@ export function recordTwinCatSubmission(sessionId: string, items: readonly Compo
   if (submitted.length) sent.set(sessionId, submitted);
 }
 
-export function twinCatContextTexts(sessionId: string | null): string[] {
-  if (!active || !sessionId || context?.sessionId !== sessionId) return [];
-  const value = context.value;
+export function twinCatContextTexts(sessionId: string | null, profile = sessionId === context?.sessionId
+  ? twinCatActiveProfile() : TWINCAT_ANALYSIS_PROFILE, includeContext = true): string[] {
+  if (!active || !sessionId) return [];
+  const value = includeContext && context?.sessionId === sessionId ? context.value : null;
+  const label = profile === TWINCAT_DEBUG_PROFILE ? 'Debug' : profile === TWINCAT_EDITOR_PROFILE ? 'Editor' : 'Analysis';
   return ['TwinCAT IDE context, metadata only. Observed when this message was composed.\n'
-    + 'PLC project: ' + value.project + '\nActive object: ' + (value.object ?? 'none')
+    + 'Active profile: ' + label + ' (' + profile + '). '
+    + 'Earlier messages in this conversation may have used a different profile. Current tool permissions follow the active profile.'
+    + (value ? '\nPLC project: ' + value.project + '\nActive object: ' + (value.object ?? 'none')
     + '\nObject kind: ' + (value.objectKind ?? 'unknown') + '\nOwning POU: ' + (value.owner ?? 'unknown')
     + '\nMember: ' + (value.member || 'POU body')
-    + '\nTree path: ' + (value.treePath ?? 'none') + '\nSource observation: ' + (value.sourceKind ?? 'unknown')
+    + '\nTree path: ' + (value.treePath ?? 'none') + '\nSource observation: ' + (value.sourceKind ?? 'unknown') : '')
     + '\nThis metadata contains no source code and does not verify the unsaved editor buffer. '
     + 'Attached snapshots and saved files returned by engineering tools are separate sources.'];
 }
@@ -246,7 +273,7 @@ export function twinCatContextTexts(sessionId: string | null): string[] {
 export const twinCatSource = {
   version: 1,
   nativeIntro() { return useI18nStore.getState().dictionary['twincat.chat.empty.intro']; },
-  stores: { ui: useUIStore, sessions: useSessionUIStore, input: useInputStore, config: useConfigStore, locale: useI18nStore },
+  get stores() { return { ui: useUIStore, sessions: useSessionUIStore, input: useInputStore, config: useConfigStore, locale: useI18nStore }; },
   activate() {
     if (active) return;
     active = true;
@@ -254,54 +281,52 @@ export const twinCatSource = {
     // deferred view commits or if it later returns to the same conversation.
     useSessionUIStore.subscribe(state => {
       if (requestedProfile && (state.currentSessionId !== requestedProfile.sessionId
-        || state.currentSessionDirectory !== requestedProfile.directory)) requestedProfile = null;
+        || state.currentSessionDirectory !== requestedProfile.directory)) clearProfileRequest();
       if (editorProfile && (state.currentSessionId !== editorProfile.sessionId
         || state.currentSessionDirectory !== editorProfile.directory)) revokeTwinCatEditor();
     });
     for (const listener of embeddingListeners) listener();
   },
-  takeProfileRequest(sessionId: string) {
+  peekProfileRequest(sessionId: string) {
     const request = requestedProfile;
-    requestedProfile = null;
-    const selected = useSessionUIStore.getState();
-    return request && request.sessionId === sessionId && view?.ready === true && view.sessionId === sessionId
-      && view.directory === request.directory && selected.currentSessionId === sessionId
-      && selected.currentSessionDirectory === request.directory && context?.sessionId === sessionId
-      && context.value.project === request.project ? request.profile : null;
+    return request && request.sessionId === sessionId && matchesProfileContext(request)
+      ? { id: request.id, profile: request.profile } : null;
+  },
+  ackProfileRequest(sessionId: string, id: number) {
+    if (requestedProfile?.sessionId !== sessionId || requestedProfile.id !== id) return false;
+    clearProfileRequest();
+    return true;
   },
   activeProfile: twinCatActiveProfile,
+  contextTexts: twinCatContextTexts,
   presentationReady() {
     const selection = useSessionUIStore.getState();
     return startup?.ready === true && useConfigStore.getState().isInitialized && view?.ready === true
       && view.sessionId === (selection.currentSessionId ?? null)
       && view.directory === (selection.currentSessionDirectory ?? null);
   },
-  setEditorProfile(request: { sessionId: string; enabled: boolean; profile?: z.infer<typeof privilegedProfiles> }) {
+  setEditorProfile(request: z.infer<typeof editorProfileRequest>) {
     const parsed = editorProfileRequest.safeParse(request);
     if (!parsed.success) { revokeTwinCatEditor(); return false; }
     request = parsed.data;
-    if (!request.enabled) { revokeTwinCatEditor(); return true; }
-    if (requestedProfile !== null) return false;
-    const selected = useSessionUIStore.getState();
-    if (!active
-      || view?.ready !== true || !view.directory || view.sessionId !== request.sessionId
-      || context?.sessionId !== request.sessionId || !context.value.project
-      || selected.currentSessionId !== request.sessionId || selected.currentSessionDirectory !== view.directory) {
-      revokeTwinCatEditor(); return false;
+    if (!request.enabled) {
+      if (editorProfile?.sessionId === request.sessionId) revokeTwinCatEditor();
+      return true;
     }
     const profile = request.profile ?? TWINCAT_EDITOR_PROFILE;
-    if (editorProfile?.sessionId === request.sessionId && editorProfile.directory === view.directory
-      && editorProfile.project === context.value.project && editorProfile.profile === profile) return true;
-    editorProfile = { sessionId: request.sessionId, directory: view.directory, project: context.value.project, profile };
+    const target = currentProfileContext();
+    if (!target || target.sessionId !== request.sessionId || !requestedProfile
+      || requestedProfile.id !== request.requestId || requestedProfile.profile !== profile
+      || !matchesProfileContext(requestedProfile)) return false;
+    editorProfile = { ...target, profile };
     notifyTwinCatProfile(); return true;
   },
-  setContext(sessionId: string, value: Context | null) {
+  setContext(sessionId: string, value: Context | null, projectKey = value?.project) {
     const before = twinCatActiveProfile();
     const eligible = canRequestTwinCatProfile();
-    if (requestedProfile && (sessionId !== requestedProfile.sessionId || value?.project !== requestedProfile.project)) requestedProfile = null;
-    if (editorProfile && (sessionId !== editorProfile.sessionId
-      || (value && editorProfile.project !== value.project))) revokeTwinCatEditor();
-    context = value ? { sessionId, value } : null;
+    context = projectKey ? { sessionId, projectKey, value } : null;
+    if (requestedProfile && (sessionId !== requestedProfile.sessionId || context?.projectKey !== requestedProfile.project)) clearProfileRequest();
+    if (editorProfile && (sessionId !== editorProfile.sessionId || context?.projectKey !== editorProfile.project)) revokeTwinCatEditor();
     if (before !== twinCatActiveProfile() || eligible !== canRequestTwinCatProfile()) notifyTwinCatProfile();
     if (!value?.reference && composer?.sessionId === sessionId) composer.clearFollowing();
   },

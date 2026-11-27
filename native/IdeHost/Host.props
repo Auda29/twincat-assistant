@@ -24,6 +24,7 @@
     <Compile Include="../EngineeringInteropReference.cs" Link="Shared/EngineeringInteropReference.cs" />
     <Compile Include="../EngineeringEditorAccess.cs" Link="Shared/EngineeringEditorAccess.cs" />
     <Compile Include="../EngineeringSourceIntegration.cs" Link="Shared/EngineeringSourceIntegration.cs" />
+    <Compile Include="../SourceDiffView.cs;../../Shared/SourceDiff.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../EngineeringDiagnosticNavigation.cs;../EngineeringNavigationIntegration.cs" Link="Shared/%(Filename)%(Extension)" />
     <Compile Include="../EngineeringSectionEditorAccess.cs" Link="Shared/EngineeringSectionEditorAccess.cs" />
     <Compile Include="../EngineeringEditorProfileIntegration.cs;../EngineeringEditorApproval.cs" Link="Shared/%(Filename)%(Extension)" />

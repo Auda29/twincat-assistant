@@ -115,6 +115,7 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
   }
   let epoch = 0;
   let selected = sessions.getState().currentSessionId;
+  let selectedDirectory = sessions.getState().currentSessionDirectory;
   let permission = null;
   // Chip ID -> { title, revision, reference } for chips this adapter staged.
   // Presence is always re-read from the composer; this only adds revisions.
@@ -122,6 +123,7 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
   // chip in place on every POU switch instead of adding another one.
   const staged = new Map();
   const queuedDrafts = new Map();
+  const draftKey = () => JSON.stringify([selected, selectedDirectory]);
   const knownHistory = new Map();
   let creating = false;
   const pending = id => input.getState().pendingGuestIssue?.providerId === 'twincat-assistant' && input.getState().pendingGuestIssue.id === id;
@@ -144,19 +146,22 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
     staged.delete('Aktiver Baustein');
   };
   const unsubscribe = sessions.subscribe(state => {
-    if (selected === state.currentSessionId) return;
+    if (selected === state.currentSessionId && selectedDirectory === state.currentSessionDirectory) return;
     const queued = input.getState().pendingGuestIssue;
-    if (queued?.providerId === 'twincat-assistant' && queued.id !== 'Aktiver Baustein' && queued.data?.mode !== 'following') queuedDrafts.set(selected, queued);
-    else queuedDrafts.delete(selected);
+    const previousDraft = draftKey();
+    if (queued?.providerId === 'twincat-assistant' && queued.id !== 'Aktiver Baustein' && queued.data?.mode !== 'following') queuedDrafts.set(previousDraft, queued);
+    else queuedDrafts.delete(previousDraft);
     selected = state.currentSessionId;
+    selectedDirectory = state.currentSessionDirectory;
     epoch++;
     permission = null;
     permissionChanged(false);
     staged.clear();
     source?.setContext('', null);
     clearPending();
-    const restore = queuedDrafts.get(selected);
-    if (restore) { queuedDrafts.delete(selected); input.getState().setPendingGuestIssue(restore); }
+    const nextDraft = draftKey();
+    const restore = queuedDrafts.get(nextDraft);
+    if (restore) { queuedDrafts.delete(nextDraft); input.getState().setPendingGuestIssue(restore); }
   });
   const unsubscribeUI = ui.subscribe(value => { if (value.isSidebarOpen) ui.getState().setSidebarOpen(false); });
   ui.getState().setSidebarOpen(false);
@@ -200,7 +205,15 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
   };
   const matches = expected => expected && expected.documentId === documentId && expected.sessionId && expected.sessionId === selected && expected.epoch === epoch;
   return Object.freeze({
+    documentId,
     state,
+    profileRequest() { return source?.peekProfileRequest?.(selected) ?? null; },
+    finishProfileRequest(expected) {
+      if (!matches(expected) || !source) return false;
+      if (expected.profile && !source.setEditorProfile({ sessionId: selected, enabled: true,
+        profile: expected.profile, requestId: expected.id })) return false;
+      return source.ackProfileRequest(selected, expected.id);
+    },
     setLanguage(locale) {
       if (!['de', 'en'].includes(locale) || typeof setLanguage !== 'function') throw new Error('Unsupported UI language');
       setLanguage(locale);
@@ -219,8 +232,10 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
       return result;
     },
     clearFollowing,
-    permit(expected) {
-      const next = matches(expected) ? { ...expected } : null;
+    permit(expected, suspended) {
+      if (expected && !matches(expected)) return false;
+      if (suspended && !matches(suspended)) return false;
+      const next = expected ? { ...expected } : null;
       if (permission?.contextKey !== next?.contextKey) knownHistory.clear();
       permission = next;
       if (!permission) clearPending();
@@ -235,7 +250,7 @@ export function createChatAdapter({ ui, sessions, input, config, source = null, 
         throw new Error('Invalid native context metadata');
       }
       if (!context?.reference) clearFollowing();
-      source?.setContext(selected, context ?? null);
+      source?.setContext(selected, context ?? null, context ? permission.contextKey : suspended?.contextKey);
       permissionChanged(!!permission);
       return !!permission;
     },
