@@ -37,6 +37,14 @@ The [release notes](releases/native-v0.2.0-beta.12.md) separate these checks fro
 the isolated live TwinCAT proof. GitHub Pages built both language pages from
 the release commit.
 
+Hosted source CI is separate from that local release pipeline. The
+[Portable checks run for the release commit](https://github.com/Auda29/twincat-assistant/actions/runs/45994936596)
+failed the `source-runtime` lint gate at
+`packages/ui/src/lib/twincat/twincat.ts:114:46`: the `error` parameter was reported
+as leaving input unparsed instead of using a named domain type and boundary
+parser. That source-lint failure remains unresolved by this documentation update;
+the local release checks are not a claim of fully green hosted CI.
+
 Remaining work includes full installed-host Editor/Debug/build workflows,
 diagnostic navigation, lifecycle/provider-login/update/rollback acceptance,
 real-corpus extraction quality and performance, and real-host 4026/Shell64

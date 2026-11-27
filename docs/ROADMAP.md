@@ -21,6 +21,8 @@ diagnostics. Engineering is pinned to 0.5.13 and Knowledge to 0.1.2.
 The complete local source-to-installer pipeline passes all 23 stages. An isolated
 live TwinCAT run verifies saved/unsaved project detection and a selective build
 with 0 errors and 0 warnings. These checks do not close the installed-host gates.
+Hosted source CI also needs the existing source-contract lint failure corrected;
+the release commit's failed run is recorded in [Status](STATUS.md).
 
 Remaining work and exit gates:
 
